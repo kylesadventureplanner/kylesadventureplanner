@@ -22,6 +22,7 @@
     '/CSS/edit-page.css',
     '/CSS/bike-details-window.css',
     '/CSS/mobile-standalone-enhancements.css',
+    '/CSS/visited-locations-tab.css',
     '/JS%20Files/tab-content-loader.js',
     '/JS%20Files/visited-locations-tab-system.js',
     '/JS%20Files/nature-challenge-tab-system.js',

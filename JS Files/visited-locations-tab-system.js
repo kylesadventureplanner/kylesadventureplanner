@@ -12,6 +12,30 @@
   const VISITED_META_KEY = 'visitedLocationsMetaV1';
   const VISIT_RECORDS_KEY = 'visitedLocationRecordsV1';
   const EXPLORER_CARD_STATE_KEY = 'visitedExplorerCardStateV1';
+  const VISITED_PERSISTENCE_DEFAULT_WORKBOOK = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+  const VISITED_PERSISTENCE_DEFAULT_TABLE = 'VisitedFeaturePersistence';
+  const VISITED_PERSISTENCE_DEFAULT_WORKSHEET = 'VisitedPersistence';
+  const VISITED_PERSISTENCE_SYNC_TYPE = 'visited-persistence-event-sync';
+  const VISITED_PERSISTENCE_FETCH_LIMIT = 2400;
+  const VISITED_PERSISTENCE_SCHEMA_COLUMNS = [
+    'Event Id',
+    'Event Type',
+    'Action',
+    'Created At',
+    'Subtab Key',
+    'Location Id',
+    'Location Title',
+    'Place Key',
+    'Source Workbook Path',
+    'Source Table',
+    'Source Row Index',
+    'Source Context',
+    'Payload Json'
+  ];
+  const LEGACY_DETAIL_FIELD_REFRESH_META_KEY = '__adventure_detail_field_refresh_meta_v1';
+  const LEGACY_DETAIL_RATING_HISTORY_KEY = '__adventure_detail_rating_history_v1';
+  const LEGACY_COST_INFERENCE_META_STORAGE_KEY = '__adventure_detail_cost_inference_meta_v1';
+  const LEGACY_DETAIL_METADATA_MIGRATION_KEY = 'visitedLegacyDetailMetadataMigrationV1';
 
   const CATEGORY_DEFS = [
     { key: 'hiking', label: 'Hiking Trails', icon: '🥾', keywords: ['hiking', 'trail', 'mountain', 'summit'] },
@@ -170,6 +194,8 @@
     links: ['links', 'social urls', 'social links', 'related urls', 'url links', 'social media'],
     links2: ['links2', 'social urls 2', 'related urls 2', 'links 2'],
     photoUrls: ['photo_urls', 'photo urls', 'photo url', 'photos', 'images'],
+    myRating: ['my rating', 'my_rating', 'user rating', 'personal rating', 'rating'],
+    favoriteStatus: ['favorite status', 'favorite_status', 'favorite', 'is favorite', 'is_favorite'],
     latitude: ['latitude', 'lat', 'gps latitude'],
     longitude: ['longitude', 'lng', 'lon', 'gps longitude'],
     updatedAt: ['updated at', 'last refreshed', 'last refresh', 'last updated', 'modified'],
@@ -247,6 +273,26 @@
    const state = {
      initialized: false,
      visitedSyncProcessorRegistered: false,
+      visitedPersistenceProcessorRegistered: false,
+      visitedPersistenceHydrated: false,
+      visitedPersistenceBootstrapReady: false,
+      visitedPersistenceBootstrapPromise: null,
+      visitedPersistenceBootstrapStatus: {
+        tone: 'info',
+        text: 'Persistence backend: checking…',
+        detail: '',
+        pathIssue: false
+      },
+      visitedPersistenceWarningShown: false,
+      visitedPersistenceMigrationPromise: null,
+      visitedPersistenceMigrationStatus: {
+        running: false,
+        completed: false,
+        count: 0,
+        queued: 0,
+        skipped: false,
+        reason: ''
+      },
      activeProgressSubTab: 'outdoors',
      activeOverviewView: 'main',
      weatherMode: 'auto',
@@ -283,7 +329,8 @@
        adventure: null,
        bike: null
      },
-      explorerColumnIndexCache: {},
+       explorerColumnIndexCache: {},
+      visitedPersistenceColumnCache: {},
      lastRenderAt: null,
      lastCategoryFilterClick: 0,
      categoryFilterDebounceMs: 100
@@ -293,7 +340,8 @@
        explorerCardState: {},
        visitLogLocationOptions: [],
        visitLogLocationQuery: '',
-       parserSession: {
+        routePersistenceTimers: {},
+        parserSession: {
          baseline: {},
          current: {},
          confidenceByField: {}
@@ -1108,6 +1156,52 @@
     }
   }
 
+  function maybeShowVisitedPersistenceWarningToast(status) {
+    if (!status || !status.pathIssue || state.visitedPersistenceWarningShown) return;
+    state.visitedPersistenceWarningShown = true;
+    if (typeof window.showToast === 'function') {
+      const target = getVisitedPersistenceTarget();
+      window.showToast(`Persistence workbook not found: ${target.workbookPath}`, 'warning', 4200);
+    }
+  }
+
+  function renderVisitedPersistenceBootstrapStatus() {
+    const el = document.getElementById('visitedPersistenceBootstrapStatus');
+    if (!el) return;
+    const status = state.visitedPersistenceBootstrapStatus || {};
+    const migration = state.visitedPersistenceMigrationStatus || {};
+    const segments = [String(status.text || 'Persistence backend: checking…').trim()].filter(Boolean);
+    if (migration.running) {
+      segments.push('Legacy metadata import in progress');
+    } else if (migration.completed) {
+      if (migration.count > 0) {
+        segments.push(`Legacy metadata imported: ${migration.count}${migration.queued > 0 ? ` (${migration.queued} queued)` : ''}`);
+      } else if (migration.skipped) {
+        segments.push(`Legacy metadata import skipped${migration.reason ? ` (${migration.reason})` : ''}`);
+      } else {
+        segments.push('Legacy metadata checked');
+      }
+    }
+    if (status.detail) segments.push(String(status.detail).trim());
+    el.textContent = segments.join(' • ');
+    el.classList.remove('is-success', 'is-warning', 'is-error');
+    if (status.tone === 'success') el.classList.add('is-success');
+    if (status.tone === 'warning') el.classList.add('is-warning');
+    if (status.tone === 'error') el.classList.add('is-error');
+    maybeShowVisitedPersistenceWarningToast(status);
+  }
+
+  function setVisitedPersistenceBootstrapStatus(nextStatus) {
+    const incoming = nextStatus && typeof nextStatus === 'object' ? nextStatus : {};
+    state.visitedPersistenceBootstrapStatus = {
+      tone: String(incoming.tone || 'info').trim() || 'info',
+      text: String(incoming.text || 'Persistence backend: checking…').trim() || 'Persistence backend: checking…',
+      detail: String(incoming.detail || '').trim(),
+      pathIssue: !!incoming.pathIssue
+    };
+    renderVisitedPersistenceBootstrapStatus();
+  }
+
   function renderSyncMeta(visitMap) {
     const el = document.getElementById('visitedSyncMeta');
     if (!el) return;
@@ -1121,6 +1215,7 @@
     const since = formatRelativeTime(state.lastRenderAt);
     el.textContent = `Last synced: ${since} • Pending local-only: ${pending} • Sources: ${sourceCounts.adventure} adv / ${sourceCounts.bike} bike`;
     renderVisitedHeaderSyncIndicator(map);
+    renderVisitedPersistenceBootstrapStatus();
   }
 
   function getSubtabStatusSourceSummary(subtabKey, explorerState) {
@@ -3025,6 +3120,980 @@
     localStorage.setItem(VISIT_RECORDS_KEY, JSON.stringify(state.visitRecords || []));
   }
 
+  function normalizePersistenceTimestamp(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    const ts = Date.parse(text);
+    return Number.isFinite(ts) ? new Date(ts).toISOString() : '';
+  }
+
+  function normalizePersistenceColumnName(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  }
+
+  function indexToExcelColumnName(index) {
+    let n = Math.max(0, Number(index) || 0);
+    let out = '';
+    do {
+      out = String.fromCharCode(65 + (n % 26)) + out;
+      n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return out;
+  }
+
+  function getVisitedPersistenceHeaderRange(columns) {
+    const count = Math.max(1, Array.isArray(columns) ? columns.length : 0);
+    return `A1:${indexToExcelColumnName(count - 1)}1`;
+  }
+
+  function invalidateVisitedPersistenceColumnCache(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    if (!workbookPath || !tableName) return;
+    delete state.visitedPersistenceColumnCache[`${workbookPath}::${tableName}`];
+  }
+
+  function readVisitedJsonMap(key, fallback) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(String(key || '')) || JSON.stringify(fallback));
+      return parsed == null ? fallback : parsed;
+    } catch (_error) {
+      return fallback;
+    }
+  }
+
+  function getVisitedPersistenceTarget() {
+    const config = window.visitedSyncConfig && typeof window.visitedSyncConfig === 'object'
+      ? window.visitedSyncConfig
+      : {};
+    const workbookPath = String(config.persistenceWorkbookPath || window.filePath || VISITED_PERSISTENCE_DEFAULT_WORKBOOK).trim();
+    const tableName = String(config.persistenceTableName || VISITED_PERSISTENCE_DEFAULT_TABLE).trim();
+    const worksheetName = String(config.persistenceWorksheetName || VISITED_PERSISTENCE_DEFAULT_WORKSHEET).trim();
+    return { workbookPath, tableName, worksheetName };
+  }
+
+  async function listVisitedPersistenceFolderFiles(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const parts = String(source.workbookPath || '').split('/').filter(Boolean);
+    parts.pop();
+    if (!parts.length) return [];
+    const encodedFolder = encodeGraphPath(parts.join('/'));
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedFolder}:/children`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) return [];
+      const payload = await response.json().catch(() => ({}));
+      return Array.isArray(payload.value)
+        ? payload.value.map((entry) => String(entry && entry.name ? entry.name : '').trim()).filter(Boolean)
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  async function describeVisitedPersistenceBootstrapError(target, error) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const message = String(error && error.message ? error.message : error || '').trim();
+    const lower = message.toLowerCase();
+    const pathIssue = lower.includes('http 404')
+      || lower.includes('unable to list workbook tables')
+      || lower.includes('unable to list workbook worksheets')
+      || lower.includes('unable to create persistence worksheet');
+    if (pathIssue) {
+      const files = await listVisitedPersistenceFolderFiles(source);
+      return {
+        tone: 'error',
+        pathIssue: true,
+        text: `Persistence workbook not found at ${source.workbookPath}`,
+        detail: files.length
+          ? `Files in folder: ${files.slice(0, 6).join(', ')}`
+          : 'Check visitedSyncConfig.persistenceWorkbookPath or upload the workbook to OneDrive.'
+      };
+    }
+    return {
+      tone: 'warning',
+      pathIssue: false,
+      text: 'Persistence backend warning',
+      detail: message || 'Bootstrap could not finish.'
+    };
+  }
+
+  function getLegacyDetailMetadataMigrationMarker() {
+    const parsed = readVisitedJsonMap(LEGACY_DETAIL_METADATA_MIGRATION_KEY, null);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  }
+
+  function saveLegacyDetailMetadataMigrationMarker(marker) {
+    try {
+      localStorage.setItem(LEGACY_DETAIL_METADATA_MIGRATION_KEY, JSON.stringify(marker || {}));
+    } catch (_error) {}
+  }
+
+  function collectLegacyDetailMetadataEvents() {
+    const events = [];
+    const freshnessMap = readVisitedJsonMap(LEGACY_DETAIL_FIELD_REFRESH_META_KEY, {});
+    Object.keys(freshnessMap || {}).forEach((placeKey) => {
+      const byPlace = freshnessMap[placeKey] && typeof freshnessMap[placeKey] === 'object' ? freshnessMap[placeKey] : {};
+      Object.keys(byPlace).forEach((fieldKey) => {
+        const entry = byPlace[fieldKey] && typeof byPlace[fieldKey] === 'object' ? byPlace[fieldKey] : null;
+        const updatedAt = normalizePersistenceTimestamp(entry && entry.updatedAt) || new Date().toISOString();
+        events.push({
+          eventType: 'detail-meta',
+          action: 'field-refresh',
+          placeKey: String(placeKey || '').trim(),
+          createdAt: updatedAt,
+          sourceContext: 'legacy-detail-meta-migration',
+          payload: {
+            kind: 'field-refresh',
+            placeKey: String(placeKey || '').trim(),
+            fieldKey: String(fieldKey || '').trim(),
+            source: String(entry && entry.source || 'legacy-local-storage').trim(),
+            updatedAt: updatedAt,
+            meta: entry
+          }
+        });
+      });
+    });
+
+    const ratingMap = readVisitedJsonMap(LEGACY_DETAIL_RATING_HISTORY_KEY, {});
+    Object.keys(ratingMap || {}).forEach((placeKey) => {
+      const history = Array.isArray(ratingMap[placeKey]) ? ratingMap[placeKey] : [];
+      history.slice(-30).forEach((point, index) => {
+        const updatedAt = normalizePersistenceTimestamp(point && point.at) || new Date().toISOString();
+        const value = Number(point && point.value);
+        if (!Number.isFinite(value)) return;
+        events.push({
+          eventType: 'detail-meta',
+          action: 'rating-history',
+          placeKey: String(placeKey || '').trim(),
+          createdAt: updatedAt,
+          sourceContext: 'legacy-detail-meta-migration',
+          payload: {
+            kind: 'rating-history',
+            placeKey: String(placeKey || '').trim(),
+            value: value,
+            at: updatedAt,
+            index: index
+          }
+        });
+      });
+    });
+
+    const costMap = readVisitedJsonMap(LEGACY_COST_INFERENCE_META_STORAGE_KEY, {});
+    Object.keys(costMap || {}).forEach((placeKey) => {
+      const entry = costMap[placeKey] && typeof costMap[placeKey] === 'object' ? costMap[placeKey] : null;
+      if (!entry) return;
+      const updatedAt = normalizePersistenceTimestamp(entry.updatedAt) || new Date().toISOString();
+      events.push({
+        eventType: 'detail-meta',
+        action: 'cost-inference',
+        placeKey: String(placeKey || '').trim(),
+        createdAt: updatedAt,
+        sourceContext: 'legacy-detail-meta-migration',
+        payload: {
+          kind: 'cost-inference',
+          placeKey: String(placeKey || '').trim(),
+          value: entry,
+          updatedAt: updatedAt
+        }
+      });
+    });
+
+    return events
+      .filter((event) => String(event && event.placeKey || '').trim())
+      .sort((a, b) => Date.parse(String(a.createdAt || '')) - Date.parse(String(b.createdAt || '')));
+  }
+
+  async function migrateLegacyDetailMetadataToBackend(options = {}) {
+    if (!window.accessToken) {
+      state.visitedPersistenceMigrationStatus = { running: false, completed: false, count: 0, queued: 0, skipped: true, reason: 'sign-in-required' };
+      renderVisitedPersistenceBootstrapStatus();
+      return state.visitedPersistenceMigrationStatus;
+    }
+    if (!state.visitedPersistenceBootstrapReady) {
+      state.visitedPersistenceMigrationStatus = { running: false, completed: false, count: 0, queued: 0, skipped: true, reason: 'bootstrap-not-ready' };
+      renderVisitedPersistenceBootstrapStatus();
+      return state.visitedPersistenceMigrationStatus;
+    }
+    if (!options.force && state.visitedPersistenceMigrationPromise) return state.visitedPersistenceMigrationPromise;
+    const marker = getLegacyDetailMetadataMigrationMarker();
+    if (!options.force && marker && marker.version === 1 && marker.completed) {
+      state.visitedPersistenceMigrationStatus = {
+        running: false,
+        completed: true,
+        count: Number(marker.count || 0),
+        queued: Number(marker.queued || 0),
+        skipped: false,
+        reason: 'already-migrated'
+      };
+      renderVisitedPersistenceBootstrapStatus();
+      return state.visitedPersistenceMigrationStatus;
+    }
+
+    const run = (async () => {
+      state.visitedPersistenceMigrationStatus = { running: true, completed: false, count: 0, queued: 0, skipped: false, reason: '' };
+      renderVisitedPersistenceBootstrapStatus();
+      const events = collectLegacyDetailMetadataEvents();
+      if (!events.length) {
+        const nextStatus = { running: false, completed: true, count: 0, queued: 0, skipped: true, reason: 'no-legacy-data' };
+        state.visitedPersistenceMigrationStatus = nextStatus;
+        saveLegacyDetailMetadataMigrationMarker({ version: 1, completed: true, count: 0, queued: 0, completedAt: new Date().toISOString() });
+        renderVisitedPersistenceBootstrapStatus();
+        return nextStatus;
+      }
+
+      let migrated = 0;
+      let queued = 0;
+      for (const eventRecord of events) {
+        const result = await persistVisitedPersistenceEvent(eventRecord, { skipBootstrap: true });
+        if (result && (result.synced || result.queued || result.excelSaved)) {
+          migrated += 1;
+          if (result.queued) queued += 1;
+          continue;
+        }
+        throw new Error(result && result.reason ? result.reason : 'legacy-migration-failed');
+      }
+
+      const nextStatus = { running: false, completed: true, count: migrated, queued: queued, skipped: false, reason: '' };
+      state.visitedPersistenceMigrationStatus = nextStatus;
+      saveLegacyDetailMetadataMigrationMarker({ version: 1, completed: true, count: migrated, queued: queued, completedAt: new Date().toISOString() });
+      renderVisitedPersistenceBootstrapStatus();
+      return nextStatus;
+    })();
+
+    const tracked = run.catch((error) => {
+      state.visitedPersistenceMigrationPromise = null;
+      state.visitedPersistenceMigrationStatus = { running: false, completed: false, count: 0, queued: 0, skipped: false, reason: String(error && error.message ? error.message : error || 'migration-failed') };
+      renderVisitedPersistenceBootstrapStatus();
+      throw error;
+    }).then((result) => {
+      state.visitedPersistenceMigrationPromise = null;
+      return result;
+    });
+    state.visitedPersistenceMigrationPromise = tracked;
+    return tracked;
+  }
+
+  function doesVisitedPersistenceColumnExist(columns, expectedName) {
+    return resolvePersistenceColumnIndex(columns, [expectedName]) >= 0;
+  }
+
+  async function fetchVisitedPersistenceTableNames(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    if (!workbookPath) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error(`Unable to list workbook tables (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    return Array.isArray(payload.value)
+      ? payload.value.map((entry) => String(entry && entry.name ? entry.name : '').trim()).filter(Boolean)
+      : [];
+  }
+
+  async function fetchVisitedPersistenceWorksheets(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    if (!workbookPath) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/worksheets?$select=id,name,position`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error(`Unable to list workbook worksheets (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    return Array.isArray(payload.value)
+      ? payload.value.map((entry, idx) => ({
+          id: String(entry && entry.id ? entry.id : entry && entry.name ? entry.name : '').trim(),
+          name: String(entry && entry.name ? entry.name : '').trim(),
+          position: Number.isInteger(entry && entry.position) ? entry.position : idx
+        })).filter((entry) => entry.id || entry.name)
+      : [];
+  }
+
+  async function createVisitedPersistenceWorksheet(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const worksheetName = String(source.worksheetName || VISITED_PERSISTENCE_DEFAULT_WORKSHEET).trim() || VISITED_PERSISTENCE_DEFAULT_WORKSHEET;
+    if (!workbookPath) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/worksheets/add`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: worksheetName })
+    });
+    if (!response.ok) throw new Error(`Unable to create persistence worksheet '${worksheetName}' (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    return {
+      id: String(payload && payload.id ? payload.id : worksheetName).trim(),
+      name: String(payload && payload.name ? payload.name : worksheetName).trim()
+    };
+  }
+
+  async function writeVisitedPersistenceHeaderRow(target, worksheetIdentifier, columnNames) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const worksheetRef = String(worksheetIdentifier || source.worksheetName || VISITED_PERSISTENCE_DEFAULT_WORKSHEET).trim();
+    if (!workbookPath || !worksheetRef) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const headerRange = getVisitedPersistenceHeaderRange(columnNames);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/worksheets/${encodeURIComponent(worksheetRef)}/range(address='${headerRange}')`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values: [Array.isArray(columnNames) ? columnNames : VISITED_PERSISTENCE_SCHEMA_COLUMNS] })
+    });
+    if (!response.ok) throw new Error(`Unable to seed persistence worksheet headers (HTTP ${response.status})`);
+    return true;
+  }
+
+  async function createVisitedPersistenceTable(target, worksheetIdentifier, columnNames) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    const worksheetRef = String(worksheetIdentifier || source.worksheetName || VISITED_PERSISTENCE_DEFAULT_WORKSHEET).trim();
+    if (!workbookPath || !tableName || !worksheetRef) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/worksheets/${encodeURIComponent(worksheetRef)}/tables/add`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        address: getVisitedPersistenceHeaderRange(columnNames),
+        hasHeaders: true,
+        name: tableName
+      })
+    });
+    if (!response.ok) throw new Error(`Unable to create persistence table '${tableName}' (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    const createdName = String(payload && payload.name ? payload.name : tableName).trim() || tableName;
+    if (createdName !== tableName) {
+      const renameUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(createdName)}`;
+      const renameResponse = await fetch(renameUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: tableName })
+      });
+      if (!renameResponse.ok) {
+        throw new Error(`Unable to rename persistence table '${createdName}' to '${tableName}' (HTTP ${renameResponse.status})`);
+      }
+    }
+    invalidateVisitedPersistenceColumnCache(source);
+    return true;
+  }
+
+  async function fetchVisitedPersistenceRowCount(target) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    if (!workbookPath || !tableName) return 0;
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows?$top=5000`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) return 0;
+    const payload = await response.json().catch(() => ({}));
+    return Array.isArray(payload.value) ? payload.value.length : 0;
+  }
+
+  async function addVisitedPersistenceColumn(target, columnName, rowCount) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    if (!workbookPath || !tableName || !columnName) throw new Error('Visited persistence target is incomplete.');
+    const encodedPath = encodeGraphPath(workbookPath);
+    const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}`;
+    const safeRowCount = Math.max(0, Number(rowCount) || 0);
+    const values = [[String(columnName)], ...Array.from({ length: safeRowCount }, () => [''])];
+    const attempts = [`${baseUrl}/columns/add`, `${baseUrl}/columns`];
+    let lastError = 'Unknown error';
+    for (const url of attempts) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ index: null, values })
+      });
+      if (response.ok) {
+        invalidateVisitedPersistenceColumnCache(source);
+        return true;
+      }
+      const detail = await response.text().catch(() => response.statusText || '');
+      lastError = `${response.status} ${detail || response.statusText}`.trim();
+    }
+    throw new Error(`Unable to add persistence column '${columnName}': ${lastError}`);
+  }
+
+  async function ensureVisitedPersistenceBootstrapReady(options = {}) {
+    if (!window.accessToken) {
+      setVisitedPersistenceBootstrapStatus({
+        tone: 'warning',
+        text: 'Persistence backend: sign in required for Excel bootstrap',
+        detail: 'Backend setup will resume after sign-in.',
+        pathIssue: false
+      });
+      return { ready: false, skipped: true, reason: 'no-token' };
+    }
+    if (!options.force && state.visitedPersistenceBootstrapReady) {
+      renderVisitedPersistenceBootstrapStatus();
+      return { ready: true, created: false, updated: false, skipped: false };
+    }
+    if (!options.force && state.visitedPersistenceBootstrapPromise) {
+      return state.visitedPersistenceBootstrapPromise;
+    }
+
+    setVisitedPersistenceBootstrapStatus({
+      tone: 'info',
+      text: 'Persistence backend: checking workbook schema…',
+      detail: '',
+      pathIssue: false
+    });
+
+    const run = (async () => {
+      const target = getVisitedPersistenceTarget();
+      const desiredTableName = normalizePersistenceColumnName(target.tableName);
+      let created = false;
+      let updated = false;
+
+      const tableNames = await fetchVisitedPersistenceTableNames(target);
+      const hasTable = tableNames.some((name) => normalizePersistenceColumnName(name) === desiredTableName);
+
+      if (!hasTable) {
+        const worksheets = await fetchVisitedPersistenceWorksheets(target);
+        const desiredSheetName = normalizePersistenceColumnName(target.worksheetName);
+        let worksheet = worksheets.find((entry) => normalizePersistenceColumnName(entry && entry.name) === desiredSheetName) || null;
+        if (!worksheet) {
+          worksheet = await createVisitedPersistenceWorksheet(target);
+        }
+        const worksheetRef = String(worksheet && (worksheet.id || worksheet.name) ? (worksheet.id || worksheet.name) : target.worksheetName).trim() || target.worksheetName;
+        await writeVisitedPersistenceHeaderRow(target, worksheetRef, VISITED_PERSISTENCE_SCHEMA_COLUMNS);
+        await createVisitedPersistenceTable(target, worksheetRef, VISITED_PERSISTENCE_SCHEMA_COLUMNS);
+        created = true;
+      }
+
+      let columns = await fetchVisitedPersistenceColumns(target, { forceRefresh: true }).catch(async (error) => {
+        if (!created) throw error;
+        invalidateVisitedPersistenceColumnCache(target);
+        return VISITED_PERSISTENCE_SCHEMA_COLUMNS.map((name, index) => ({ name, index }));
+      });
+      const missingColumns = VISITED_PERSISTENCE_SCHEMA_COLUMNS.filter((name) => !doesVisitedPersistenceColumnExist(columns, name));
+      if (missingColumns.length) {
+        const rowCount = await fetchVisitedPersistenceRowCount(target).catch(() => 0);
+        for (const columnName of missingColumns) {
+          await addVisitedPersistenceColumn(target, columnName, rowCount);
+        }
+        columns = await fetchVisitedPersistenceColumns(target, { forceRefresh: true }).catch(() => columns);
+        updated = true;
+      }
+
+      state.visitedPersistenceBootstrapReady = true;
+      setVisitedPersistenceBootstrapStatus({
+        tone: 'success',
+        text: 'Persistence backend ready',
+        detail: created
+          ? 'Created worksheet/table and aligned schema.'
+          : updated
+            ? 'Added missing persistence columns.'
+            : 'Workbook schema already aligned.',
+        pathIssue: false
+      });
+      return { ready: true, created, updated, skipped: false, columnCount: Array.isArray(columns) ? columns.length : 0 };
+    })();
+
+    const tracked = run.catch((error) => {
+      state.visitedPersistenceBootstrapReady = false;
+      state.visitedPersistenceBootstrapPromise = null;
+      return describeVisitedPersistenceBootstrapError(getVisitedPersistenceTarget(), error).then((status) => {
+        setVisitedPersistenceBootstrapStatus(status);
+        throw error;
+      });
+    }).then((result) => {
+      state.visitedPersistenceBootstrapPromise = null;
+      return result;
+    });
+    state.visitedPersistenceBootstrapPromise = tracked;
+    return tracked;
+  }
+
+  function resolvePersistenceColumnIndex(columns, aliases) {
+    const candidates = Array.isArray(aliases) ? aliases : [];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const candidate = normalizePersistenceColumnName(candidates[i]);
+      if (!candidate) continue;
+      const exact = (columns || []).find((col) => normalizePersistenceColumnName(col && col.name) === candidate);
+      if (exact && Number.isInteger(exact.index) && exact.index >= 0) return exact.index;
+    }
+    for (let i = 0; i < candidates.length; i += 1) {
+      const candidate = normalizePersistenceColumnName(candidates[i]);
+      if (!candidate) continue;
+      const partial = (columns || []).find((col) => normalizePersistenceColumnName(col && col.name).includes(candidate));
+      if (partial && Number.isInteger(partial.index) && partial.index >= 0) return partial.index;
+    }
+    return -1;
+  }
+
+  async function fetchVisitedPersistenceColumns(target, options = {}) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    if (!workbookPath || !tableName) throw new Error('Visited persistence target is incomplete.');
+    const cacheId = `${workbookPath}::${tableName}`;
+    if (!options.forceRefresh && Array.isArray(state.visitedPersistenceColumnCache[cacheId])) {
+      return state.visitedPersistenceColumnCache[cacheId];
+    }
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns?$select=name,index`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error(`Unable to read persistence table columns (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    const columns = Array.isArray(payload.value)
+      ? payload.value
+        .map((col, idx) => ({
+          name: String(col && col.name ? col.name : '').trim(),
+          index: Number.isInteger(col && col.index) ? col.index : idx
+        }))
+        .filter((col) => col.name && Number.isInteger(col.index) && col.index >= 0)
+      : [];
+    state.visitedPersistenceColumnCache[cacheId] = columns;
+    return columns;
+  }
+
+  function normalizeVisitedPersistenceEvent(eventRecord) {
+    if (!eventRecord || typeof eventRecord !== 'object') return null;
+    const eventType = String(eventRecord.eventType || '').trim();
+    if (!eventType) return null;
+    const payloadObject = eventRecord.payload && typeof eventRecord.payload === 'object'
+      ? eventRecord.payload
+      : {};
+    let payloadJson = '{}';
+    try {
+      payloadJson = JSON.stringify(payloadObject);
+    } catch (_error) {
+      payloadJson = '{}';
+    }
+    const createdAt = normalizePersistenceTimestamp(eventRecord.createdAt) || new Date().toISOString();
+    return {
+      eventId: String(eventRecord.eventId || `vp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`).trim(),
+      eventType,
+      action: String(eventRecord.action || '').trim(),
+      subtabKey: String(eventRecord.subtabKey || '').trim(),
+      locationId: String(eventRecord.locationId || '').trim(),
+      locationTitle: String(eventRecord.locationTitle || '').trim(),
+      placeKey: String(eventRecord.placeKey || '').trim(),
+      sourceWorkbookPath: String(eventRecord.sourceWorkbookPath || '').trim(),
+      sourceTable: String(eventRecord.sourceTable || '').trim(),
+      sourceRowIndex: Number.isInteger(Number(eventRecord.sourceRowIndex)) ? Number(eventRecord.sourceRowIndex) : -1,
+      sourceContext: String(eventRecord.sourceContext || 'visited-locations-tab').trim(),
+      createdAt,
+      payloadJson,
+      payload: payloadObject
+    };
+  }
+
+  async function appendVisitedPersistenceEvent(target, eventRecord) {
+    const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
+    const workbookPath = String(source.workbookPath || '').trim();
+    const tableName = String(source.tableName || source.table || '').trim();
+    if (!workbookPath || !tableName) throw new Error('Visited persistence target is incomplete.');
+    const columns = await fetchVisitedPersistenceColumns({ workbookPath, tableName });
+    const idxEventType = resolvePersistenceColumnIndex(columns, ['event type', 'event_type', 'type']);
+    const idxCreatedAt = resolvePersistenceColumnIndex(columns, ['created at', 'created_at', 'timestamp']);
+    const idxPayloadJson = resolvePersistenceColumnIndex(columns, ['payload json', 'payload_json', 'payload']);
+    const missing = [];
+    if (idxEventType < 0) missing.push('event_type');
+    if (idxCreatedAt < 0) missing.push('created_at');
+    if (idxPayloadJson < 0) missing.push('payload_json');
+    if (missing.length) throw new Error(`Visited persistence table is missing required columns: ${missing.join(', ')}`);
+
+    const maxIndex = columns.reduce((max, col) => Math.max(max, Number(col && col.index)), -1);
+    const rowValues = Array.from({ length: Math.max(0, maxIndex + 1) }, () => '');
+    const idxEventId = resolvePersistenceColumnIndex(columns, ['event id', 'event_id', 'id']);
+    const idxAction = resolvePersistenceColumnIndex(columns, ['action']);
+    const idxSubtab = resolvePersistenceColumnIndex(columns, ['subtab key', 'subtab_key', 'subtab']);
+    const idxLocationId = resolvePersistenceColumnIndex(columns, ['location id', 'location_id']);
+    const idxLocationTitle = resolvePersistenceColumnIndex(columns, ['location title', 'location_title', 'location name']);
+    const idxPlaceKey = resolvePersistenceColumnIndex(columns, ['place key', 'place_key']);
+    const idxSourceWorkbook = resolvePersistenceColumnIndex(columns, ['source workbook path', 'source_workbook_path', 'workbook path']);
+    const idxSourceTable = resolvePersistenceColumnIndex(columns, ['source table', 'source_table', 'table']);
+    const idxSourceRow = resolvePersistenceColumnIndex(columns, ['source row index', 'source_row_index', 'row index']);
+    const idxSourceContext = resolvePersistenceColumnIndex(columns, ['source context', 'source_context', 'source']);
+
+    if (idxEventId >= 0) rowValues[idxEventId] = eventRecord.eventId;
+    if (idxAction >= 0) rowValues[idxAction] = eventRecord.action;
+    if (idxSubtab >= 0) rowValues[idxSubtab] = eventRecord.subtabKey;
+    if (idxLocationId >= 0) rowValues[idxLocationId] = eventRecord.locationId;
+    if (idxLocationTitle >= 0) rowValues[idxLocationTitle] = eventRecord.locationTitle;
+    if (idxPlaceKey >= 0) rowValues[idxPlaceKey] = eventRecord.placeKey;
+    if (idxSourceWorkbook >= 0) rowValues[idxSourceWorkbook] = eventRecord.sourceWorkbookPath;
+    if (idxSourceTable >= 0) rowValues[idxSourceTable] = eventRecord.sourceTable;
+    if (idxSourceRow >= 0) rowValues[idxSourceRow] = eventRecord.sourceRowIndex >= 0 ? String(eventRecord.sourceRowIndex) : '';
+    if (idxSourceContext >= 0) rowValues[idxSourceContext] = eventRecord.sourceContext;
+    rowValues[idxEventType] = eventRecord.eventType;
+    rowValues[idxCreatedAt] = eventRecord.createdAt;
+    rowValues[idxPayloadJson] = eventRecord.payloadJson;
+
+    const encodedPath = encodeGraphPath(workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/add`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values: [rowValues] })
+    });
+    if (!response.ok) throw new Error(`Unable to append persistence event (HTTP ${response.status})`);
+  }
+
+  function shouldQueueVisitedPersistenceError(error) {
+    const message = String(error && error.message ? error.message : error || '').toLowerCase();
+    if (shouldQueueVisitedWriteError(error)) return true;
+    return message.includes('missing required columns')
+      || message.includes('persistence table')
+      || message.includes('http 404');
+  }
+
+  async function enqueueVisitedPersistenceEventWrite(eventRecord, target, reason) {
+    if (!window.OfflinePwa || typeof window.OfflinePwa.enqueueWrite !== 'function') return null;
+    const destination = `${String(target && target.workbookPath || '').trim()} / ${String(target && target.tableName || '').trim()}`;
+    return window.OfflinePwa.enqueueWrite(VISITED_PERSISTENCE_SYNC_TYPE, {
+      target: {
+        workbookPath: String(target && target.workbookPath || '').trim(),
+        tableName: String(target && target.tableName || '').trim()
+      },
+      event: {
+        ...eventRecord,
+        payload: eventRecord && eventRecord.payload && typeof eventRecord.payload === 'object' ? eventRecord.payload : {}
+      }
+    }, {
+      source: 'visited-persistence',
+      destination,
+      failureReason: String(reason || '').trim()
+    });
+  }
+
+  function registerVisitedPersistenceProcessor() {
+    if (!window.OfflinePwa || typeof window.OfflinePwa.registerProcessor !== 'function') return;
+    if (state.visitedPersistenceProcessorRegistered) return;
+    state.visitedPersistenceProcessorRegistered = true;
+    window.OfflinePwa.registerProcessor(VISITED_PERSISTENCE_SYNC_TYPE, function (payload) {
+      const event = payload && payload.event ? payload.event : null;
+      const target = payload && payload.target ? payload.target : null;
+      return persistVisitedPersistenceEvent(event, { bypassQueue: true, target: target })
+        .then(function (result) {
+          return !!(result && result.synced);
+        });
+    });
+  }
+
+  async function persistVisitedPersistenceEvent(eventRecord, options = {}) {
+    registerVisitedPersistenceProcessor();
+    const normalized = normalizeVisitedPersistenceEvent(eventRecord);
+    if (!normalized) return { synced: false, queued: false, reason: 'invalid-event' };
+    const targetInput = options.target && typeof options.target === 'object' ? options.target : getVisitedPersistenceTarget();
+    const target = {
+      workbookPath: String(targetInput.workbookPath || targetInput.workbook || '').trim(),
+      tableName: String(targetInput.tableName || targetInput.table || '').trim()
+    };
+    if (!target.workbookPath || !target.tableName) {
+      throw new Error('Visited persistence target is incomplete.');
+    }
+    if (!window.accessToken) {
+      if (!options.bypassQueue && window.OfflinePwa && typeof window.OfflinePwa.enqueueWrite === 'function') {
+        const queueItem = await enqueueVisitedPersistenceEventWrite(normalized, target, 'SIGN_IN_REQUIRED');
+        return { synced: false, queued: true, queueId: queueItem && queueItem.id ? String(queueItem.id) : '', reason: 'queued-sign-in-required' };
+      }
+      throw new Error('Sign in required to sync visited persistence data.');
+    }
+
+    if (!options.skipBootstrap) {
+      await ensureVisitedPersistenceBootstrapReady(options.forceBootstrap ? { force: true } : {});
+    }
+
+    try {
+      await appendVisitedPersistenceEvent(target, normalized);
+      return { synced: true, queued: false, excelSaved: true };
+    } catch (error) {
+      const message = String(error && error.message ? error.message : error || '').toLowerCase();
+      const shouldRetryBootstrap = !options.bootstrapRetried && (
+        message.includes('http 404')
+        || message.includes('missing required columns')
+        || message.includes('persistence table')
+      );
+      if (shouldRetryBootstrap) {
+        try {
+          await ensureVisitedPersistenceBootstrapReady({ force: true });
+          return persistVisitedPersistenceEvent(normalized, {
+            ...options,
+            bootstrapRetried: true,
+            skipBootstrap: true,
+            target
+          });
+        } catch (_bootstrapError) {}
+      }
+      if (!options.bypassQueue && window.OfflinePwa && typeof window.OfflinePwa.enqueueWrite === 'function' && shouldQueueVisitedPersistenceError(error)) {
+        const queueItem = await enqueueVisitedPersistenceEventWrite(normalized, target, error && error.message ? error.message : String(error));
+        return {
+          synced: false,
+          queued: true,
+          excelSaved: false,
+          queueId: queueItem && queueItem.id ? String(queueItem.id) : '',
+          reason: 'queued-for-retry'
+        };
+      }
+      throw error;
+    }
+  }
+
+  async function fetchVisitedPersistenceEvents(limit = VISITED_PERSISTENCE_FETCH_LIMIT) {
+    const target = getVisitedPersistenceTarget();
+    if (!target.workbookPath || !target.tableName || !window.accessToken) return [];
+    const columns = await fetchVisitedPersistenceColumns(target);
+    const idxEventType = resolvePersistenceColumnIndex(columns, ['event type', 'event_type', 'type']);
+    const idxCreatedAt = resolvePersistenceColumnIndex(columns, ['created at', 'created_at', 'timestamp']);
+    const idxPayloadJson = resolvePersistenceColumnIndex(columns, ['payload json', 'payload_json', 'payload']);
+    const idxAction = resolvePersistenceColumnIndex(columns, ['action']);
+    const idxSubtab = resolvePersistenceColumnIndex(columns, ['subtab key', 'subtab_key', 'subtab']);
+    const idxLocationId = resolvePersistenceColumnIndex(columns, ['location id', 'location_id']);
+    const idxLocationTitle = resolvePersistenceColumnIndex(columns, ['location title', 'location_title', 'location name']);
+    const idxPlaceKey = resolvePersistenceColumnIndex(columns, ['place key', 'place_key']);
+    const idxSourceWorkbook = resolvePersistenceColumnIndex(columns, ['source workbook path', 'source_workbook_path']);
+    const idxSourceTable = resolvePersistenceColumnIndex(columns, ['source table', 'source_table']);
+    const idxSourceRow = resolvePersistenceColumnIndex(columns, ['source row index', 'source_row_index']);
+    const idxSourceContext = resolvePersistenceColumnIndex(columns, ['source context', 'source_context', 'source']);
+    const idxEventId = resolvePersistenceColumnIndex(columns, ['event id', 'event_id', 'id']);
+    if (idxEventType < 0 || idxCreatedAt < 0 || idxPayloadJson < 0) return [];
+
+    const encodedPath = encodeGraphPath(target.workbookPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/rows?$top=${Math.max(1, Number(limit) || VISITED_PERSISTENCE_FETCH_LIMIT)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) throw new Error(`Unable to read persistence rows (HTTP ${response.status})`);
+    const payload = await response.json().catch(() => ({}));
+    const rows = Array.isArray(payload.value) ? payload.value : [];
+    return rows.map((row) => {
+      const values = Array.isArray(row && row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const rawPayload = String(values[idxPayloadJson] || '').trim();
+      let parsedPayload = {};
+      if (rawPayload) {
+        try {
+          parsedPayload = JSON.parse(rawPayload);
+        } catch (_err) {
+          parsedPayload = {};
+        }
+      }
+      return {
+        eventId: String(values[idxEventId] || '').trim(),
+        eventType: String(values[idxEventType] || '').trim(),
+        createdAt: normalizePersistenceTimestamp(values[idxCreatedAt]) || new Date(0).toISOString(),
+        action: String(values[idxAction] || '').trim(),
+        subtabKey: String(values[idxSubtab] || '').trim(),
+        locationId: String(values[idxLocationId] || '').trim(),
+        locationTitle: String(values[idxLocationTitle] || '').trim(),
+        placeKey: String(values[idxPlaceKey] || '').trim(),
+        sourceWorkbookPath: String(values[idxSourceWorkbook] || '').trim(),
+        sourceTable: String(values[idxSourceTable] || '').trim(),
+        sourceRowIndex: Number(values[idxSourceRow]),
+        sourceContext: String(values[idxSourceContext] || '').trim(),
+        payload: parsedPayload
+      };
+    }).filter((row) => !!row.eventType);
+  }
+
+  function applyVisitedPersistenceEvents(events) {
+    const ordered = (Array.isArray(events) ? events : [])
+      .filter((event) => event && typeof event === 'object')
+      .sort((a, b) => Date.parse(String(a.createdAt || '')) - Date.parse(String(b.createdAt || '')));
+    if (!ordered.length) return false;
+
+    const visitById = {};
+    (Array.isArray(state.visitRecords) ? state.visitRecords : []).forEach((record) => {
+      if (!record || typeof record !== 'object') return;
+      const id = String(record.id || '').trim();
+      if (!id) return;
+      visitById[id] = record;
+    });
+    const routeSnapshotBySubtab = {};
+
+    ordered.forEach((event) => {
+      if (event.eventType === 'visit-log') {
+        const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
+        const action = norm(event.action || payload.action || 'add');
+        const record = payload.record && typeof payload.record === 'object' ? payload.record : payload;
+        const recordId = String(payload.recordId || record.id || '').trim();
+        if (!recordId) return;
+        if (action === 'remove' || action === 'delete') {
+          delete visitById[recordId];
+          return;
+        }
+        visitById[recordId] = { ...record, id: recordId };
+        return;
+      }
+
+      if (event.eventType === 'route-state') {
+        const payload = event.payload && typeof event.payload === 'object' ? event.payload : {};
+        const snapshot = payload.snapshot && typeof payload.snapshot === 'object' ? payload.snapshot : payload;
+        const subtabKey = String(event.subtabKey || snapshot.subtabKey || '').trim();
+        if (!subtabKey) return;
+        routeSnapshotBySubtab[subtabKey] = {
+          routeSelectionIds: Array.isArray(snapshot.routeSelectionIds)
+            ? snapshot.routeSelectionIds.map((id) => String(id || '').trim()).filter(Boolean)
+            : [],
+          lastRoutePlan: snapshot.lastRoutePlan && typeof snapshot.lastRoutePlan === 'object'
+            ? { ...snapshot.lastRoutePlan }
+            : null
+        };
+      }
+    });
+
+    state.visitRecords = Object.values(visitById)
+      .sort((a, b) => Date.parse(String(b && (b.visitedAt || b.createdAt) || '')) - Date.parse(String(a && (a.visitedAt || a.createdAt) || '')))
+      .slice(0, 1200);
+    saveVisitRecords();
+
+    Object.keys(routeSnapshotBySubtab).forEach((subtabKey) => {
+      const explorerState = getExplorerState(subtabKey);
+      const snapshot = routeSnapshotBySubtab[subtabKey];
+      explorerState.routeSelectionIds = Array.isArray(snapshot.routeSelectionIds) ? snapshot.routeSelectionIds.slice() : [];
+      explorerState.lastRoutePlan = snapshot.lastRoutePlan ? { ...snapshot.lastRoutePlan } : null;
+    });
+
+    return true;
+  }
+
+  async function hydrateVisitedPersistenceFromBackend() {
+    if (state.visitedPersistenceHydrated) return false;
+    state.visitedPersistenceHydrated = true;
+    if (!window.accessToken) return false;
+    try {
+      await ensureVisitedPersistenceBootstrapReady();
+      const events = await fetchVisitedPersistenceEvents(VISITED_PERSISTENCE_FETCH_LIMIT);
+      const applied = applyVisitedPersistenceEvents(events);
+      return !!applied;
+    } catch (error) {
+      state.visitedPersistenceHydrated = false;
+      logVisitedDiagnostics('Visited persistence hydration skipped:', error && error.message ? error.message : error);
+      return false;
+    }
+  }
+
+  function buildRoutePlanForPersistence(plan) {
+    if (!plan || typeof plan !== 'object') return null;
+    return {
+      createdAt: normalizePersistenceTimestamp(plan.createdAt) || new Date().toISOString(),
+      itemIds: Array.isArray(plan.itemIds) ? plan.itemIds.map((id) => String(id || '').trim()).filter(Boolean).slice(0, 120) : [],
+      shareUrl: String(plan.shareUrl || '').trim(),
+      itineraryText: String(plan.itineraryText || '').trim().slice(0, 12000),
+      optimized: !!plan.optimized
+    };
+  }
+
+  function buildExplorerRouteStateSnapshot(subtabKey) {
+    const key = String(subtabKey || '').trim();
+    if (!key) return null;
+    const explorerState = getExplorerState(key);
+    return {
+      subtabKey: key,
+      routeSelectionIds: Array.isArray(explorerState.routeSelectionIds)
+        ? explorerState.routeSelectionIds.map((id) => String(id || '').trim()).filter(Boolean)
+        : [],
+      lastRoutePlan: buildRoutePlanForPersistence(explorerState.lastRoutePlan),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function persistExplorerRouteStateSoon(subtabKey, reason) {
+    const key = String(subtabKey || '').trim();
+    if (!key) return;
+    const existingTimer = state.routePersistenceTimers[key];
+    if (existingTimer) window.clearTimeout(existingTimer);
+    state.routePersistenceTimers[key] = window.setTimeout(async function () {
+      delete state.routePersistenceTimers[key];
+      const snapshot = buildExplorerRouteStateSnapshot(key);
+      if (!snapshot) return;
+      await persistVisitedPersistenceEvent({
+        eventType: 'route-state',
+        action: String(reason || 'route-state-update').trim(),
+        subtabKey: key,
+        sourceContext: 'visited-route-planner',
+        payload: { snapshot: snapshot }
+      }).catch(function (error) {
+        logVisitedDiagnostics('Route persistence fallback:', error && error.message ? error.message : error);
+      });
+    }, 360);
+  }
+
+  async function persistVisitRecordEvent(record, action, item) {
+    if (!record || typeof record !== 'object') return { synced: false, queued: false, reason: 'invalid-record' };
+    const source = item && typeof item === 'object' ? item : {};
+    const safeAction = String(action || 'add').trim() || 'add';
+    return persistVisitedPersistenceEvent({
+      eventType: 'visit-log',
+      action: safeAction,
+      subtabKey: String(record.subtabKey || '').trim(),
+      locationId: String(record.locationId || '').trim(),
+      locationTitle: String(record.locationTitle || '').trim(),
+      sourceWorkbookPath: String(source.sourceWorkbookPath || '').trim(),
+      sourceTable: String(source.sourceTable || '').trim(),
+      sourceRowIndex: Number.isInteger(Number(source.sourceRowIndex)) ? Number(source.sourceRowIndex) : -1,
+      sourceContext: 'visited-log-modal',
+      payload: {
+        action: safeAction,
+        recordId: String(record.id || '').trim(),
+        record: { ...record }
+      }
+    });
+  }
+
   function loadExplorerCardState() {
     const parsed = safeJsonParse(localStorage.getItem(EXPLORER_CARD_STATE_KEY), {}) || {};
     state.explorerCardState = parsed && typeof parsed === 'object' ? parsed : {};
@@ -3076,6 +4145,16 @@
     saveExplorerCardState();
   }
 
+  async function persistExplorerItemPreferenceUpdate(item, updates) {
+    if (!item || !item.sourceWorkbookPath || !item.sourceTable || !Number.isInteger(item.sourceRowIndex)) {
+      throw new Error('Explorer source metadata is unavailable for this location.');
+    }
+    return syncVisitedExplorerDetailFields(
+      { workbookPath: item.sourceWorkbookPath, table: item.sourceTable, rowIndex: item.sourceRowIndex },
+      updates
+    );
+  }
+
   function getVisitRecordsForSubtab(subtabKey) {
     const key = String(subtabKey || '').trim();
     return (state.visitRecords || []).filter((record) => record && record.subtabKey === key);
@@ -3093,7 +4172,14 @@
     const status = getSyncHealthStatus();
     const map = visitMap || state.latestVisitMap || {};
     const pending = Object.values(map).filter((entry) => entry && entry.synced === false).length;
-    panel.textContent = `Adventure visited column: ${status.adventureText} | Bike visited column: ${status.bikeText} | Pending local-only rows: ${pending}`;
+    const persistence = state.visitedPersistenceBootstrapStatus || {};
+    const migration = state.visitedPersistenceMigrationStatus || {};
+    const migrationText = migration.running
+      ? 'running'
+      : migration.completed
+        ? `${migration.count || 0} event${migration.count === 1 ? '' : 's'}${migration.queued > 0 ? ` (${migration.queued} queued)` : ''}`
+        : 'pending';
+    panel.textContent = `Adventure visited column: ${status.adventureText} | Bike visited column: ${status.bikeText} | Pending local-only rows: ${pending} | Persistence: ${persistence.text || 'checking'} | Legacy import: ${migrationText}`;
   }
 
   function getVisitMap() {
@@ -3217,6 +4303,17 @@
     return num;
   }
 
+  function normalizeExplorerRatingValue(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return 0;
+    return Math.max(0, Math.min(5, Math.round(num)));
+  }
+
+  function parseExplorerFavoriteStatus(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'favorite' || raw === 'favorited';
+  }
+
   function toExplorerItems(matrix, source) {
     if (!Array.isArray(matrix) || matrix.length < 2) return [];
     const headers = (matrix[0] || []).map((header, idx) => {
@@ -3245,6 +4342,8 @@
       const links = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links);
       const links2 = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links2);
       const photoUrls = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.photoUrls);
+      const myRating = normalizeExplorerRatingValue(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.myRating));
+      const favorite = parseExplorerFavoriteStatus(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.favoriteStatus));
       const latitude = parseExplorerCoordinate(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.latitude));
       const longitude = parseExplorerCoordinate(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.longitude));
       const updatedAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.updatedAt);
@@ -3275,6 +4374,8 @@
         links: String(links || '').trim(),
         links2: String(links2 || '').trim(),
         photoUrls: String(photoUrls || '').trim(),
+        myRating,
+        favorite,
         latitude: Number.isFinite(latitude) ? latitude : null,
         longitude: Number.isFinite(longitude) ? longitude : null,
         updatedAt: String(updatedAt || '').trim(),
@@ -3565,7 +4666,14 @@
 
   function setExplorerRouteSelectionSet(subtabKey, selectionSet) {
     const explorerState = getExplorerState(subtabKey);
-    explorerState.routeSelectionIds = Array.from(selectionSet || []).map((value) => String(value || '').trim()).filter(Boolean);
+    const previous = Array.isArray(explorerState.routeSelectionIds)
+      ? explorerState.routeSelectionIds.map((value) => String(value || '').trim()).filter(Boolean)
+      : [];
+    const next = Array.from(selectionSet || []).map((value) => String(value || '').trim()).filter(Boolean);
+    explorerState.routeSelectionIds = next;
+    if (previous.join('|') !== next.join('|')) {
+      persistExplorerRouteStateSoon(subtabKey, 'route-selection-updated');
+    }
   }
 
   function getExplorerRouteSelectedItems(subtabKey) {
@@ -3640,6 +4748,7 @@
       optimized: Array.isArray(waypointOrder) && waypointOrder.length > 0
     };
     getExplorerState(subtabKey).lastRoutePlan = plan;
+    persistExplorerRouteStateSoon(subtabKey, 'route-plan-created');
     return plan;
   }
 
@@ -3666,12 +4775,15 @@
     const resolveDraftField = (fieldKey) => Object.prototype.hasOwnProperty.call(rawDraft, fieldKey)
       ? draft[fieldKey]
       : item[fieldKey];
+    const resolveDraftPreference = (draftKey, itemKey, fallback) => Object.prototype.hasOwnProperty.call(rawDraft, draftKey)
+      ? draft[draftKey]
+      : (item && item[itemKey] !== undefined ? item[itemKey] : fallback);
     return {
       ...item,
       tags,
       notes: draft.notes,
-      myRating: draft.rating,
-      favorite: draft.favorite,
+      myRating: resolveDraftPreference('rating', 'myRating', 0),
+      favorite: resolveDraftPreference('favorite', 'favorite', false),
       address: resolveDraftField('address'),
       city: resolveDraftField('city'),
       state: resolveDraftField('state'),
@@ -3975,8 +5087,10 @@
           const removed = records.splice(fallbackIdx, 1)[0];
           state.visitRecords = records;
           saveVisitRecords();
+          const backendResult = await persistVisitRecordEvent(removed, 'remove', item).catch(function () { return null; });
           if (typeof window.showToast === 'function') {
-            window.showToast(`Visit removed: ${removed.locationTitle || item.title}`, 'info', 2200);
+            const suffix = backendResult && backendResult.queued ? ' (queued for backend sync)' : '';
+            window.showToast(`Visit removed: ${removed.locationTitle || item.title}${suffix}`, 'info', 2200);
           }
         } else if (typeof window.showToast === 'function') {
           window.showToast('No matching visit record found to remove.', 'warning', 2600);
@@ -4017,11 +5131,13 @@
         };
         state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
         saveVisitRecords();
+        const backendResult = await persistVisitRecordEvent(record, 'add', item).catch(function () { return null; });
 
         if (typeof window.showToast === 'function') {
           const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
           const withFailures = uploadFailures ? ` • ${uploadFailures} photo upload${uploadFailures === 1 ? '' : 's'} pending retry` : '';
-          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}${withFailures}`, uploadFailures ? 'warning' : 'success', 2600);
+          const withBackendQueue = backendResult && backendResult.queued ? ' • backend sync queued' : '';
+          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}${withFailures}${withBackendQueue}`, uploadFailures ? 'warning' : 'success', 2600);
         }
       }
 
@@ -4751,9 +5867,10 @@
     const hasPlaceIdUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'googlePlaceId');
     const hasNearbyUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'nearby');
     const hasMyRatingUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'myRating');
+    const hasFavoriteStatusUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'favoriteStatus');
     const hasLatitudeUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'latitude');
     const hasLongitudeUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'longitude');
-    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate && !hasNameUpdate && !hasWebsiteUpdate && !hasGoogleUrlUpdate && !hasDriveTimeUpdate && !hasDurationUpdate && !hasDifficultyUpdate && !hasTrailLengthUpdate && !hasCostUpdate && !hasGoogleRatingUpdate && !hasPlaceIdUpdate && !hasNearbyUpdate && !hasMyRatingUpdate && !hasLatitudeUpdate && !hasLongitudeUpdate) {
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate && !hasNameUpdate && !hasWebsiteUpdate && !hasGoogleUrlUpdate && !hasDriveTimeUpdate && !hasDurationUpdate && !hasDifficultyUpdate && !hasTrailLengthUpdate && !hasCostUpdate && !hasGoogleRatingUpdate && !hasPlaceIdUpdate && !hasNearbyUpdate && !hasMyRatingUpdate && !hasFavoriteStatusUpdate && !hasLatitudeUpdate && !hasLongitudeUpdate) {
       return { synced: false, reason: 'no-fields' };
     }
 
@@ -4829,6 +5946,9 @@
     const myRatingColIdx = hasMyRatingUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'my_rating', ['my rating', 'user rating', 'personal rating'])
       : -1;
+    const favoriteStatusColIdx = hasFavoriteStatusUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'favorite_status', ['favorite status', 'favorite_status', 'favorite', 'is favorite', 'is_favorite'])
+      : -1;
     const latitudeColIdx = hasLatitudeUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'latitude', EXPLORER_COLUMN_CANDIDATES.latitude)
       : -1;
@@ -4836,7 +5956,7 @@
       ? await resolveExplorerColumnIndex(filePath, tableName, 'longitude', EXPLORER_COLUMN_CANDIDATES.longitude)
       : -1;
 
-    if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
+    if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0) || (hasMyRatingUpdate && myRatingColIdx < 0) || (hasFavoriteStatusUpdate && favoriteStatusColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
     }
     // Photo/links columns are optional — if not found, skip without throwing
@@ -4862,6 +5982,7 @@
     const shouldSyncPlaceId = hasPlaceIdUpdate && placeIdColIdx >= 0;
     const shouldSyncNearby = hasNearbyUpdate && nearbyColIdx >= 0;
     const shouldSyncMyRating = hasMyRatingUpdate && myRatingColIdx >= 0;
+    const shouldSyncFavoriteStatus = hasFavoriteStatusUpdate && favoriteStatusColIdx >= 0;
     const shouldSyncLatitude = hasLatitudeUpdate && latitudeColIdx >= 0;
     const shouldSyncLongitude = hasLongitudeUpdate && longitudeColIdx >= 0;
 
@@ -4962,6 +6083,10 @@
     if (shouldSyncMyRating) {
       while (rowValues.length <= myRatingColIdx) rowValues.push('');
       rowValues[myRatingColIdx] = String(updateMap.myRating || '').trim();
+    }
+    if (shouldSyncFavoriteStatus) {
+      while (rowValues.length <= favoriteStatusColIdx) rowValues.push('');
+      rowValues[favoriteStatusColIdx] = String(updateMap.favoriteStatus || '').trim();
     }
     if (shouldSyncLatitude) {
       while (rowValues.length <= latitudeColIdx) rowValues.push('');
@@ -6958,11 +8083,27 @@
             const subtabKey = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-favorite') || '').trim();
             if (!acquireExplorerActionLock(`favorite:${subtabKey}:${itemId}`, 160)) return;
+            const item = getExplorerItemById(subtabKey, itemId);
+            if (!item) return;
             const before = getExplorerCardDraft(itemId);
-            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, favorite: !draft.favorite }));
+            const nextFavorite = !before.favorite;
+            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, favorite: nextFavorite }));
             renderExplorerList(root, subtabKey);
-            if (typeof window.showToast === 'function') {
-              window.showToast(before.favorite ? 'Removed from favorites.' : 'Added to favorites.', 'success', 1800);
+            try {
+              const syncResult = await persistExplorerItemPreferenceUpdate(item, { favoriteStatus: nextFavorite ? 'TRUE' : 'FALSE' });
+              if (typeof window.showToast === 'function') {
+                if (syncResult && syncResult.queued) {
+                  window.showToast(before.favorite ? 'Favorite removal queued for sync.' : 'Favorite queued for sync.', 'info', 2200);
+                } else {
+                  window.showToast(before.favorite ? 'Removed from favorites.' : 'Added to favorites.', 'success', 1800);
+                }
+              }
+            } catch (error) {
+              updateExplorerCardDraft(itemId, (draft) => ({ ...draft, favorite: before.favorite }));
+              renderExplorerList(root, subtabKey);
+              if (typeof window.showToast === 'function') {
+                window.showToast(`Could not save favorite to OneDrive: ${error && error.message ? error.message : 'unknown error'}`, 'warning', 3000);
+              }
             }
             return;
           }
@@ -6974,8 +8115,23 @@
             const itemId = String(explorerRateBtn.getAttribute('data-visited-explorer-rate') || '').trim();
             if (!acquireExplorerActionLock(`rate:${subtabKey}:${itemId}`, 90)) return;
             const value = Math.max(0, Math.min(5, Number(explorerRateBtn.getAttribute('data-visited-explorer-rating-value') || '0')));
+            const item = getExplorerItemById(subtabKey, itemId);
+            if (!item) return;
+            const before = getExplorerCardDraft(itemId);
             updateExplorerCardDraft(itemId, (draft) => ({ ...draft, rating: value }));
             renderExplorerList(root, subtabKey);
+            try {
+              const syncResult = await persistExplorerItemPreferenceUpdate(item, { myRating: value > 0 ? String(value) : '' });
+              if (typeof window.showToast === 'function' && syncResult && syncResult.queued) {
+                window.showToast('Rating queued for sync.', 'info', 2200);
+              }
+            } catch (error) {
+              updateExplorerCardDraft(itemId, (draft) => ({ ...draft, rating: before.rating }));
+              renderExplorerList(root, subtabKey);
+              if (typeof window.showToast === 'function') {
+                window.showToast(`Could not save rating to OneDrive: ${error && error.message ? error.message : 'unknown error'}`, 'warning', 3000);
+              }
+            }
             return;
           }
 
@@ -7570,11 +8726,22 @@
 
   function initializeVisitedLocationsTab() {
     registerVisitedExplorerSyncProcessor();
+    registerVisitedPersistenceProcessor();
     loadChallengeState();
     loadMetaState();
     loadVisitRecords();
     loadExplorerCardState();
     bindControls();
+    renderVisitedPersistenceBootstrapStatus();
+    ensureVisitedPersistenceBootstrapReady().catch((error) => {
+      logVisitedDiagnostics('Visited persistence bootstrap skipped:', error && error.message ? error.message : error);
+      return { ready: false };
+    }).then(() => migrateLegacyDetailMetadataToBackend().catch((error) => {
+      logVisitedDiagnostics('Visited legacy metadata migration skipped:', error && error.message ? error.message : error);
+      return { completed: false };
+    })).then(() => hydrateVisitedPersistenceFromBackend()).then((applied) => {
+      if (applied) refreshTab();
+    });
     ensureBikeDataLoadedForTracker().finally(() => refreshTab());
     scheduleDataRefreshCheck();
 
@@ -7590,6 +8757,29 @@
   window.openVisitedVisitLogFromAchievements = openVisitedVisitLogFromAchievements;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
   window.syncVisitedExplorerDetailFields = syncVisitedExplorerDetailFields;
+  window.persistAdventureDetailMetadata = function (metaEvent) {
+    const payload = metaEvent && typeof metaEvent === 'object' ? metaEvent : {};
+    return persistVisitedPersistenceEvent({
+      eventType: 'detail-meta',
+      action: String(payload.kind || payload.action || 'detail-meta').trim(),
+      placeKey: String(payload.placeKey || '').trim(),
+      locationTitle: String(payload.locationName || '').trim(),
+      sourceWorkbookPath: String(payload.sourceWorkbookPath || '').trim(),
+      sourceTable: String(payload.sourceTable || '').trim(),
+      sourceRowIndex: Number.isInteger(Number(payload.sourceRowIndex)) ? Number(payload.sourceRowIndex) : -1,
+      sourceContext: 'adventure-details-window',
+      payload: {
+        kind: String(payload.kind || '').trim(),
+        placeKey: String(payload.placeKey || '').trim(),
+        fieldKey: String(payload.fieldKey || '').trim(),
+        source: String(payload.source || '').trim(),
+        updatedAt: normalizePersistenceTimestamp(payload.updatedAt) || new Date().toISOString(),
+        value: payload.value,
+        meta: payload.meta && typeof payload.meta === 'object' ? payload.meta : null,
+        context: payload.context && typeof payload.context === 'object' ? payload.context : null
+      }
+    });
+  };
   window.__visitedState = state;
   window.enableVisitedClickTrace = function() {
     state.tracerEnabled = true;

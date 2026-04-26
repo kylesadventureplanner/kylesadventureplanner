@@ -851,6 +851,32 @@
   var DETAIL_FIELD_REFRESH_META_KEY = '__adventure_detail_field_refresh_meta_v1';
   var DETAIL_RATING_HISTORY_KEY = '__adventure_detail_rating_history_v1';
 
+  function syncDetailMetadataToBackend(kind, data, details, explicitPlaceKey) {
+    var eventKind = String(kind || '').trim();
+    if (!eventKind) return;
+    var placeKey = String(explicitPlaceKey || getLocationKey(data || {})).trim();
+    if (!placeKey) return;
+    var openerWin = getOpenerWindow();
+    if (!openerWin || typeof openerWin.persistAdventureDetailMetadata !== 'function') return;
+    var payload = window.__detailCurrentPayload || null;
+    var syncState = buildDetailSyncState(payload, data || {});
+    var source = syncState && syncState.explorerSource ? syncState.explorerSource : {};
+    openerWin.persistAdventureDetailMetadata({
+      kind: eventKind,
+      placeKey: placeKey,
+      locationName: String(data && data.name || '').trim(),
+      sourceWorkbookPath: String(source.workbookPath || source.workbook || '').trim(),
+      sourceTable: String(source.table || '').trim(),
+      sourceRowIndex: Number(source.rowIndex),
+      updatedAt: new Date().toISOString(),
+      context: {
+        tab: getActiveDetailTabId(),
+        hostContext: window.__detailHostContext || 'none'
+      },
+      meta: details && typeof details === 'object' ? details : {}
+    }).catch(function () {});
+  }
+
   function readJsonMap(key) {
     try {
       var parsed = JSON.parse(window.localStorage.getItem(String(key || '')) || '{}');
@@ -890,11 +916,17 @@
   function markDetailFieldRefreshed(data, fieldKey, source) {
     var key = getLocationKey(data || {});
     if (!key || !fieldKey) return;
+    var updatedAt = new Date().toISOString();
     var map = readJsonMap(DETAIL_FIELD_REFRESH_META_KEY);
     var byPlace = map[key] && typeof map[key] === 'object' ? map[key] : {};
-    byPlace[String(fieldKey)] = { updatedAt: new Date().toISOString(), source: String(source || 'detail-refresh') };
+    byPlace[String(fieldKey)] = { updatedAt: updatedAt, source: String(source || 'detail-refresh') };
     map[key] = byPlace;
     writeJsonMap(DETAIL_FIELD_REFRESH_META_KEY, map);
+    syncDetailMetadataToBackend('field-refresh', data, {
+      fieldKey: String(fieldKey),
+      source: String(source || 'detail-refresh'),
+      updatedAt: updatedAt
+    }, key);
   }
 
   function getDetailFreshnessMap(data, payload) {
@@ -1825,6 +1857,8 @@
       return {
         attempted: true,
         synced: !!(result && result.synced),
+        queued: !!(result && result.queued),
+        queueId: result && result.queueId ? String(result.queueId) : '',
         excelSaved: !!(result && result.excelSaved),
         reason: result && result.reason ? result.reason : (result && result.synced ? 'saved' : 'unknown'),
         context: window.__detailHostContext || 'none'
@@ -1833,6 +1867,8 @@
       return {
         attempted: true,
         synced: false,
+        queued: false,
+        queueId: '',
         excelSaved: false,
         reason: String(error && error.message ? error.message : error),
         context: window.__detailHostContext || 'none'
@@ -1870,6 +1906,15 @@
     var hostSync = await syncViaExplorerHost(state, updates || {});
     if (hostSync && hostSync.synced) {
       return { synced: true, queued: false, hostSync: hostSync, queueId: '' };
+    }
+    if (hostSync && hostSync.queued) {
+      return {
+        synced: false,
+        queued: true,
+        hostSync: hostSync,
+        queueId: hostSync.queueId ? String(hostSync.queueId) : '',
+        reason: hostSync.reason ? String(hostSync.reason) : ''
+      };
     }
     var queuedResult = await queueExplorerHostSync(state, updates || {}, reason || (hostSync && hostSync.reason) || 'host-sync-failed').catch(function () {
       return { queued: false, reason: 'queue-failed' };
@@ -3886,6 +3931,7 @@
   }
 
   function render(payload) {
+    window.__detailCurrentPayload = payload || null;
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
       document.getElementById('header').innerHTML =
@@ -4125,6 +4171,10 @@
       var map = loaded.map || {};
       map[placeKey] = normalizeCostInferenceMetaEntry(meta) || buildCostInferenceMeta(meta);
       saveCostInferenceMetaMap(map);
+      var currentData = window.__detailCurrentPayload && window.__detailCurrentPayload.data ? window.__detailCurrentPayload.data : {};
+      syncDetailMetadataToBackend('cost-inference', currentData, {
+        value: map[placeKey]
+      }, placeKey);
     } catch (_err) {}
   }
 
@@ -4218,12 +4268,19 @@
 
   function appendRatingHistory(placeKey, ratingValue) {
     if (!placeKey || !Number.isFinite(ratingValue)) return;
+    var updatedAt = new Date().toISOString();
     var map = readJsonMap(DETAIL_RATING_HISTORY_KEY);
     var history = Array.isArray(map[placeKey]) ? map[placeKey].slice() : [];
-    history.push({ value: Number(ratingValue), at: new Date().toISOString() });
+    history.push({ value: Number(ratingValue), at: updatedAt });
     if (history.length > 30) history = history.slice(history.length - 30);
     map[placeKey] = history;
     writeJsonMap(DETAIL_RATING_HISTORY_KEY, map);
+    var currentData = window.__detailCurrentPayload && window.__detailCurrentPayload.data ? window.__detailCurrentPayload.data : {};
+    syncDetailMetadataToBackend('rating-history', currentData, {
+      value: Number(ratingValue),
+      at: updatedAt,
+      points: history.length
+    }, placeKey);
   }
 
   function getRatingTrendForPlace(placeKey) {
@@ -4867,11 +4924,12 @@
   }
 
   function loadActionBarState(key) {
-    try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX_ADV + key) || '{}'); } catch (_) { return {}; }
+    return {};
   }
 
   function saveActionBarState(key, state) {
-    try { localStorage.setItem(STORAGE_PREFIX_ADV + key, JSON.stringify(state)); } catch (_) {}
+    void key;
+    void state;
   }
 
   function renderStars(rating) {
@@ -4907,15 +4965,22 @@
   async function persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex) {
     if (!openerWin || !rowMatch || !rowMatch.row || !Array.isArray(rowValues) || visitedColIndex < 0) return false;
 
+    var updateMap = {};
+    updateMap[visitedColIndex] = rowValues[visitedColIndex];
+    var result = await persistAdventureRowValues(openerWin, rowMatch, rowValues, updateMap);
+    return !!(result && (result.synced || result.queued || result.excelSaved));
+  }
+
+  async function persistAdventureRowValues(openerWin, rowMatch, rowValues, updatesByColumnIndex) {
+    if (!openerWin || !rowMatch || !rowMatch.row || !Array.isArray(rowValues)) return { synced: false, queued: false, excelSaved: false, reason: 'invalid-row' };
+
     if (typeof openerWin.updateAdventureRowColumns === 'function' && Number.isInteger(rowMatch.index) && rowMatch.index >= 0) {
-      var updateMap = {};
-      updateMap[visitedColIndex] = rowValues[visitedColIndex];
-      await openerWin.updateAdventureRowColumns(rowMatch.index, updateMap, {
+      await openerWin.updateAdventureRowColumns(rowMatch.index, updatesByColumnIndex || {}, {
         accessToken: openerWin.accessToken,
         filePath: openerWin.filePath,
         tableRef: openerWin.tableName
       });
-      return true;
+      return { synced: true, queued: false, excelSaved: true };
     }
 
     var rowId = rowMatch.row.rowId;
@@ -4934,7 +4999,7 @@
         body: JSON.stringify({ values: [rowValues] })
       });
 
-      if (response.ok) return true;
+      if (response.ok) return { synced: true, queued: false, excelSaved: true };
 
       if (response.status === 401 && typeof openerWin.rehydrateAuthState === 'function') {
         var refreshed = await openerWin.rehydrateAuthState();
@@ -4947,21 +5012,115 @@
             },
             body: JSON.stringify({ values: [rowValues] })
           });
-          if (retryResponse.ok) return true;
+          if (retryResponse.ok) return { synced: true, queued: false, excelSaved: true };
         }
       }
     }
 
     if (typeof openerWin.saveToExcel === 'function') {
+      var saveResult;
       if (rowId && openerWin.saveToExcel.length >= 2) {
-        await openerWin.saveToExcel(rowId, rowValues);
+        saveResult = await openerWin.saveToExcel(rowId, rowValues);
       } else {
-        await openerWin.saveToExcel();
+        saveResult = await openerWin.saveToExcel();
       }
-      return true;
+      if (saveResult && saveResult.queued) {
+        return { synced: false, queued: true, excelSaved: false, reason: 'queued-offline' };
+      }
+      return { synced: true, queued: false, excelSaved: true };
     }
 
-    return false;
+    return { synced: false, queued: false, excelSaved: false, reason: 'save-unavailable' };
+  }
+
+  function normalizeActionBarRatingValue(value) {
+    var num = Number(value);
+    if (!Number.isFinite(num)) return 0;
+    return Math.max(0, Math.min(5, Math.round(num)));
+  }
+
+  function parseActionBarFavoriteStatus(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    return raw === 'true' || raw === '1' || raw === 'yes' || raw === 'favorite' || raw === 'favorited';
+  }
+
+  function getAdventurePreferenceColumnIndex(openerWin, primaryName, aliases, fallbackIndex) {
+    if (!openerWin) return fallbackIndex;
+    var byKnownHelpers = [
+      'getColumnIndexByName',
+      'getAdventureColumnIndexByName'
+    ];
+
+    for (var i = 0; i < byKnownHelpers.length; i += 1) {
+      var helperName = byKnownHelpers[i];
+      if (typeof openerWin[helperName] === 'function') {
+        var idx = Number(openerWin[helperName](primaryName, aliases || []));
+        if (Number.isInteger(idx) && idx >= 0) return idx;
+      }
+    }
+
+    if (openerWin.columnIndices && Number.isInteger(openerWin.columnIndices[primaryName]) && openerWin.columnIndices[primaryName] >= 0) {
+      return openerWin.columnIndices[primaryName];
+    }
+
+    return fallbackIndex;
+  }
+
+  async function persistActionBarPreferenceUpdate(kind, nextValue, context) {
+    var syncState = context && context.syncState ? context.syncState : null;
+    if (syncState && syncState.explorerSource) {
+      var explorerUpdates = {};
+      if (kind === 'favorite') explorerUpdates.favoriteStatus = nextValue ? 'TRUE' : 'FALSE';
+      if (kind === 'rating') explorerUpdates.myRating = nextValue ? String(nextValue) : '';
+      return syncOrQueueExplorerUpdate(syncState, explorerUpdates, kind === 'favorite' ? 'detail-favorite-toggle' : 'detail-rating-toggle');
+    }
+
+    var openerWin = context && context.openerWin;
+    var rowMatch = context && context.rowMatch;
+    var rowValues = context && context.rowValues;
+    if (!openerWin || !rowMatch || !Array.isArray(rowValues)) {
+      return { synced: false, queued: false, excelSaved: false, reason: 'no-backend-target' };
+    }
+
+    var nextRowValues = rowValues.slice();
+    var updateMap = {};
+
+    if (kind === 'favorite') {
+      var favoriteColIndex = getAdventurePreferenceColumnIndex(openerWin, 'Favorite Status', ['FavoriteStatus', 'Favorite'], 22);
+      if (!Number.isInteger(favoriteColIndex) || favoriteColIndex < 0) {
+        return { synced: false, queued: false, excelSaved: false, reason: 'favorite-column-missing' };
+      }
+      while (nextRowValues.length <= favoriteColIndex) nextRowValues.push('');
+      nextRowValues[favoriteColIndex] = nextValue ? 'TRUE' : 'FALSE';
+      updateMap[favoriteColIndex] = nextRowValues[favoriteColIndex];
+    }
+
+    if (kind === 'rating') {
+      var ratingColIndex = getAdventurePreferenceColumnIndex(openerWin, 'My Rating', ['MyRating', 'Rating'], 21);
+      if (!Number.isInteger(ratingColIndex) || ratingColIndex < 0) {
+        return { synced: false, queued: false, excelSaved: false, reason: 'rating-column-missing' };
+      }
+      while (nextRowValues.length <= ratingColIndex) nextRowValues.push('');
+      nextRowValues[ratingColIndex] = nextValue ? String(nextValue) : '';
+      updateMap[ratingColIndex] = nextRowValues[ratingColIndex];
+    }
+
+    var saveResult = await persistAdventureRowValues(openerWin, rowMatch, nextRowValues, updateMap);
+    if (saveResult && (saveResult.synced || saveResult.queued || saveResult.excelSaved)) {
+      if (rowMatch.row) {
+        rowMatch.row.values = rowMatch.row.values || [];
+        rowMatch.row.values[0] = nextRowValues;
+      }
+      if (Number.isInteger(rowMatch.index) && openerWin.adventuresData && openerWin.adventuresData[rowMatch.index]) {
+        openerWin.adventuresData[rowMatch.index].values = openerWin.adventuresData[rowMatch.index].values || [];
+        openerWin.adventuresData[rowMatch.index].values[0] = nextRowValues;
+      }
+      if (Array.isArray(context.rowValues)) {
+        context.rowValues.length = 0;
+        Array.prototype.push.apply(context.rowValues, nextRowValues);
+      }
+    }
+    return saveResult;
   }
 
   function initActionBar(data, directionsUrl, payload) {
@@ -4970,7 +5129,18 @@
     bar.classList.remove('u-hidden');
 
     var locationKey = getLocationKey(data);
-    var state = loadActionBarState(locationKey);
+    void locationKey;
+    var state = {
+      favorite: parseActionBarFavoriteStatus(data && data.favoriteStatus),
+      myRating: normalizeActionBarRatingValue(data && data.myRating)
+    };
+    var openerWin = getOpenerWindow();
+    var syncState = buildDetailSyncState(payload, data);
+    var rowMatch = findOpenerRowForTagSync(openerWin, {
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
+      data: data
+    });
+    var rowValues = rowMatch && rowMatch.row && rowMatch.row.values && rowMatch.row.values[0];
 
     var favBtn = document.getElementById('abFavBtn');
     var favIcon = document.getElementById('abFavIcon');
@@ -4990,28 +5160,81 @@
 
     syncFav(!!state.favorite);
 
-    favBtn.addEventListener('click', function () {
-      state.favorite = !state.favorite;
-      syncFav(state.favorite);
-      saveActionBarState(locationKey, state);
+    favBtn.addEventListener('click', async function () {
+      if (favBtn.disabled) return;
+      var previousFavorite = !!state.favorite;
+      var nextFavorite = !previousFavorite;
+      state.favorite = nextFavorite;
+      syncFav(nextFavorite);
+      favBtn.disabled = true;
+      try {
+        var favoriteResult = await persistActionBarPreferenceUpdate('favorite', nextFavorite, {
+          openerWin: openerWin,
+          rowMatch: rowMatch,
+          rowValues: rowValues,
+          syncState: syncState
+        });
+        if (!favoriteResult || (!favoriteResult.synced && !favoriteResult.queued && !favoriteResult.excelSaved)) {
+          throw new Error(favoriteResult && favoriteResult.reason ? favoriteResult.reason : 'save-unavailable');
+        }
+        data.favoriteStatus = nextFavorite ? 'TRUE' : 'FALSE';
+        if (typeof showDetailToast === 'function') {
+          showDetailToast(favoriteResult.queued ? 'Favorite queued for sync.' : (nextFavorite ? 'Added to favorites.' : 'Removed from favorites.'), favoriteResult.queued ? 'info' : 'success', 2200);
+        }
+      } catch (error) {
+        state.favorite = previousFavorite;
+        syncFav(previousFavorite);
+        if (typeof showDetailToast === 'function') {
+          showDetailToast('Could not save favorite to Excel: ' + (error && error.message ? error.message : 'unknown error'), 'warning', 3200);
+        }
+      } finally {
+        favBtn.disabled = false;
+      }
     });
 
     var currentRating = state.myRating || 0;
     renderStars(currentRating);
+    var starButtons = Array.prototype.slice.call(document.querySelectorAll('.star-btn'));
 
-    document.querySelectorAll('.star-btn').forEach(function (btn) {
+    starButtons.forEach(function (btn) {
       btn.addEventListener('mouseenter', function () {
         renderStars(parseInt(btn.getAttribute('data-star'), 10));
       });
       btn.addEventListener('mouseleave', function () {
         renderStars(currentRating);
       });
-      btn.addEventListener('click', function () {
+      btn.addEventListener('click', async function () {
         var clicked = parseInt(btn.getAttribute('data-star'), 10);
-        currentRating = (currentRating === clicked) ? 0 : clicked;
+        var previousRating = currentRating;
+        var nextRating = (currentRating === clicked) ? 0 : clicked;
+        currentRating = nextRating;
         renderStars(currentRating);
         state.myRating = currentRating;
-        saveActionBarState(locationKey, state);
+        starButtons.forEach(function (starBtn) { starBtn.disabled = true; });
+        try {
+          var ratingResult = await persistActionBarPreferenceUpdate('rating', nextRating, {
+            openerWin: openerWin,
+            rowMatch: rowMatch,
+            rowValues: rowValues,
+            syncState: syncState
+          });
+          if (!ratingResult || (!ratingResult.synced && !ratingResult.queued && !ratingResult.excelSaved)) {
+            throw new Error(ratingResult && ratingResult.reason ? ratingResult.reason : 'save-unavailable');
+          }
+          data.myRating = nextRating ? String(nextRating) : '';
+          if (typeof showDetailToast === 'function' && ratingResult.queued) {
+            showDetailToast('Rating queued for sync.', 'info', 2200);
+          }
+        } catch (error) {
+          currentRating = previousRating;
+          state.myRating = previousRating;
+          renderStars(currentRating);
+          if (typeof showDetailToast === 'function') {
+            showDetailToast('Could not save rating to Excel: ' + (error && error.message ? error.message : 'unknown error'), 'warning', 3200);
+          }
+        } finally {
+          starButtons.forEach(function (starBtn) { starBtn.disabled = false; });
+        }
       });
     });
 
@@ -5037,14 +5260,7 @@
     var visitedBadge = document.getElementById('detailVisitedBadge');
     var logVisitBtn = document.getElementById('abLogVisitBtn');
 
-    var openerWin = getOpenerWindow();
-    var syncState = buildDetailSyncState(payload, data);
     var detailNav = getDetailNavigationContext(payload);
-    var rowMatch = findOpenerRowForTagSync(openerWin, {
-      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
-      data: data
-    });
-    var rowValues = rowMatch && rowMatch.row && rowMatch.row.values && rowMatch.row.values[0];
     var visitedColIndex = getAdventureVisitedColumnIndex(openerWin);
     var isVisited = String((rowValues && rowValues[visitedColIndex]) || data.visitedStatus || data.visited || '').trim().toLowerCase() === 'yes';
 

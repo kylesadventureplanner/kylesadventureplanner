@@ -76,11 +76,31 @@ const ONE_PIXEL_PNG = Buffer.from(
 
 async function mockExplorerWorkbookRequests(page) {
   await page.addInitScript(() => {
-    window.accessToken = 'playwright-mock-token';
+    Object.defineProperty(window, 'accessToken', {
+      configurable: true,
+      get() {
+        return 'playwright-mock-token';
+      },
+      set(_value) {}
+    });
+    // Ensure deterministic explorer draft state for each test run.
+    localStorage.removeItem('visitedExplorerCardStateV1');
   });
 
+  const headerRow = Array.isArray(MOCK_EXPLORER_TABLE.values) && Array.isArray(MOCK_EXPLORER_TABLE.values[0])
+    ? MOCK_EXPLORER_TABLE.values[0].map((value) => String(value || ''))
+    : [];
+  const columnNames = headerRow
+    .concat(['My Rating', 'Favorite Status'])
+    .map((name) => String(name || '').trim())
+    .filter(Boolean);
+  const dataRows = (Array.isArray(MOCK_EXPLORER_TABLE.values) ? MOCK_EXPLORER_TABLE.values.slice(1) : [])
+    .map((row) => (Array.isArray(row) ? row.slice() : []));
+
   await page.route('https://graph.microsoft.com/**', async (route) => {
-    const url = route.request().url();
+    const req = route.request();
+    const url = req.url();
+    const method = req.method();
     if (!url.includes('/workbook/tables/')) {
       await route.fulfill({
         status: 200,
@@ -95,13 +115,44 @@ async function mockExplorerWorkbookRequests(page) {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          value: [
-            { name: 'Name' },
-            { name: 'Address' },
-            { name: 'Google URL' },
-            { name: 'Visited' }
-          ]
+          value: columnNames.map((name, index) => ({ name, index }))
         })
+      });
+      return;
+    }
+
+    const itemAtMatch = url.match(/\/rows\/itemAt\(index=(\d+)\)/i);
+    if (itemAtMatch) {
+      const rowIndex = Number(itemAtMatch[1]);
+      const normalizedRow = Number.isInteger(rowIndex) && rowIndex >= 0 && Array.isArray(dataRows[rowIndex])
+        ? dataRows[rowIndex]
+        : [];
+
+      if (method === 'PATCH') {
+        let payload = {};
+        try {
+          payload = req.postDataJSON ? req.postDataJSON() : JSON.parse(String(req.postData() || '{}'));
+        } catch (_error) {
+          payload = {};
+        }
+        const incomingValues = payload && Array.isArray(payload.values) && Array.isArray(payload.values[0])
+          ? payload.values[0]
+          : null;
+        if (incomingValues && Number.isInteger(rowIndex) && rowIndex >= 0) {
+          dataRows[rowIndex] = incomingValues.slice();
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ values: [incomingValues || normalizedRow] })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ values: [normalizedRow] })
       });
       return;
     }
@@ -355,6 +406,20 @@ test.describe('Adventure explorer in-pane details flow', () => {
       const saveInlineBtn = plannerDetailsFrameLocator.locator('#inlineEditSaveBtn');
       await expect(saveInlineBtn).toBeEnabled();
       await saveInlineBtn.click();
+      const clearedDirtyState = await expect.poll(async () => {
+        const frameHandleNow = await detailsFrame.elementHandle();
+        const liveFrameNow = frameHandleNow ? await frameHandleNow.contentFrame() : null;
+        if (!liveFrameNow) return true;
+        return liveFrameNow.evaluate(() => {
+          const card = document.querySelector('[data-detail-field-card="hoursOfOperation"]');
+          return !card || !card.classList.contains('is-dirty');
+        });
+      }, { timeout: 15000 }).toBe(true).then(() => true).catch(() => false);
+
+      if (!clearedDirtyState) {
+        await saveInlineBtn.click();
+      }
+
       await expect.poll(async () => {
         const frameHandleNow = await detailsFrame.elementHandle();
         const liveFrameNow = frameHandleNow ? await frameHandleNow.contentFrame() : null;
