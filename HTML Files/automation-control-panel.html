@@ -644,6 +644,17 @@
         </div>
       </div>
 
+      <!-- Auto-refresh invalid Place IDs toggle -->
+      <div class="dry-run-section" style="margin-top: 10px;">
+        <div class="dry-run-label">
+          <span>♻️</span>
+          <span id="autoRefreshInvalidPlaceIdsLabel">Auto-refresh invalid Place IDs: ON</span>
+        </div>
+        <div id="autoRefreshInvalidPlaceIdsToggle" class="dry-run-toggle on" onclick="toggleAutoRefreshInvalidPlaceIds()">
+          <div class="dry-run-thumb"></div>
+        </div>
+      </div>
+
       <!-- Info Box -->
       <div class="info-box" id="infoBox">
         ℹ️ <strong>Dry Run ON:</strong> Changes are previewed but not written to Excel. Turn off to apply updates.
@@ -900,6 +911,7 @@
     // Communication with parent window
     let mainWindow = window.opener;
     let isDryRun = true;
+    let autoRefreshInvalidPlaceIds = true;
     let rehydrateInFlight = null;
 
     function getMainAuthState() {
@@ -1005,6 +1017,26 @@
       setStatus(`Dry Run mode: ${isDryRun ? 'ON' : 'OFF'}`, 'info');
     }
 
+    function toggleAutoRefreshInvalidPlaceIds() {
+      autoRefreshInvalidPlaceIds = !autoRefreshInvalidPlaceIds;
+      const toggle = document.getElementById('autoRefreshInvalidPlaceIdsToggle');
+      const label = document.getElementById('autoRefreshInvalidPlaceIdsLabel');
+      if (autoRefreshInvalidPlaceIds) {
+        toggle.classList.add('on');
+        label.textContent = 'Auto-refresh invalid Place IDs: ON';
+      } else {
+        toggle.classList.remove('on');
+        label.textContent = 'Auto-refresh invalid Place IDs: OFF';
+      }
+      setStatus(`Auto-refresh invalid Place IDs: ${autoRefreshInvalidPlaceIds ? 'ON' : 'OFF'}`, 'info');
+    }
+
+    function getAutomationRunOptions() {
+      return {
+        autoRefreshInvalidPlaceIds: !!autoRefreshInvalidPlaceIds
+      };
+    }
+
     // Handle automation action
     function handleAutomation(action, button) {
       if (!checkConnection()) return;
@@ -1019,7 +1051,7 @@
           throw new Error('runGoogleAutomation function not found in main window');
         }
 
-        Promise.resolve(mainWindow.runGoogleAutomation(action, isDryRun))
+        Promise.resolve(mainWindow.runGoogleAutomation(action, isDryRun, getAutomationRunOptions()))
           .then(() => {
             setStatus(`✅ ${action} completed successfully!`, 'success');
             setButtonState(button, 'success');
@@ -2017,7 +2049,7 @@
 
       try {
         setStatus(`⏳ Running ${action}...`, 'info');
-        await mainWindow.runGoogleAutomation(action, isDryRun);
+        await mainWindow.runGoogleAutomation(action, isDryRun, getAutomationRunOptions());
         setStatus(`✅ ${action} completed`, 'success');
       } catch (err) {
         console.error('Error in handleAutomation:', err);
@@ -2051,7 +2083,7 @@
           : { changes: [], skipped: [] };
 
         setStatus('🔍 Searching Place IDs...', 'info');
-        await mainWindow.runGoogleAutomation('searchPlaceIds', isDryRun);
+        await mainWindow.runGoogleAutomation('searchPlaceIds', isDryRun, getAutomationRunOptions());
 
         const after = (typeof mainWindow.analyzeAutomationChanges === 'function')
           ? mainWindow.analyzeAutomationChanges('searchPlaceIds')
@@ -2109,7 +2141,7 @@
           : { changes: [], skipped: [] };
 
         setStatus('🔄 Refreshing Place IDs...', 'info');
-        await mainWindow.runGoogleAutomation('refreshPlaceIds', isDryRun);
+        await mainWindow.runGoogleAutomation('refreshPlaceIds', isDryRun, getAutomationRunOptions());
 
         const after = (typeof mainWindow.analyzeAutomationChanges === 'function')
           ? mainWindow.analyzeAutomationChanges('refreshPlaceIds')
@@ -2269,7 +2301,7 @@
       } else if (mainWindow && typeof mainWindow.runGoogleAutomation === 'function') {
         // Fallback to original system
         setStatus('🏷️ Auto-tagging all locations...', 'info');
-        mainWindow.runGoogleAutomation('autoTagAll', isDryRun)
+        mainWindow.runGoogleAutomation('autoTagAll', isDryRun, getAutomationRunOptions())
           .then(() => {
             setStatus('✅ Auto-tagging completed! Check your locations for new tags.', 'success');
             if (typeof mainWindow.showToast === 'function') {

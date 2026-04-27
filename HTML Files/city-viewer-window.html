@@ -5221,7 +5221,7 @@
         return;
       }
       if (actionKey === 'open-google') {
-        const googleUrl = String(locVal(loc, 23, 'googleUrl') || '').trim();
+        const googleUrl = buildGoogleOpenUrlForLocation(loc);
         if (!googleUrl) {
           showRouteToast('No Google URL available for this location.', true);
           return;
@@ -5967,6 +5967,60 @@
         }
       }
       return (loc && fallbackKey ? loc[fallbackKey] : '') || '';
+    }
+
+    function isPlaceholderText(value) {
+      const text = String(value || '').trim().toLowerCase();
+      if (!text) return true;
+      return ['n/a', 'na', 'none', 'null', 'undefined', 'skip', 'unavailable', 'not available', '(empty)'].includes(text);
+    }
+
+    function normalizeExternalUrl(rawValue) {
+      const raw = String(rawValue || '').trim();
+      if (!raw || isPlaceholderText(raw)) return '';
+      const lower = raw.toLowerCase();
+      if (lower.startsWith('javascript:') || lower.startsWith('data:')) return '';
+      if (lower.startsWith('http://') || lower.startsWith('https://')) return raw;
+      if (lower.startsWith('www.')) return `https://${raw}`;
+      return '';
+    }
+
+    function isLikelyValidPlaceId(rawValue) {
+      const value = String(rawValue || '').trim();
+      if (!value) return false;
+      if (isPlaceholderText(value)) return false;
+      if (/\s/.test(value)) return false;
+      return value.length >= 8;
+    }
+
+    function buildGoogleOpenUrlForLocation(loc) {
+      const directUrl = normalizeExternalUrl(locVal(loc, 23, 'googleUrl'));
+      if (directUrl) return directUrl;
+
+      const placeId = String(locVal(loc, 1, 'googlePlaceId') || '').trim();
+      const name = String(locVal(loc, 0, 'name') || '').trim();
+      const address = String(locVal(loc, 11, 'address') || '').trim();
+      const lat = Number(locVal(loc, 25, 'latitude') || loc.latitude || loc.lat);
+      const lng = Number(locVal(loc, 26, 'longitude') || loc.longitude || loc.lng);
+
+      if (isLikelyValidPlaceId(placeId)) {
+        const params = new URLSearchParams({
+          api: '1',
+          query: address || name || placeId,
+          query_place_id: placeId
+        });
+        return `https://www.google.com/maps/search/?${params.toString()}`;
+      }
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const params = new URLSearchParams({ api: '1', query: `${lat},${lng}` });
+        return `https://www.google.com/maps/search/?${params.toString()}`;
+      }
+
+      const fallbackQuery = address || name;
+      if (!fallbackQuery) return '';
+      const params = new URLSearchParams({ api: '1', query: fallbackQuery });
+      return `https://www.google.com/maps/search/?${params.toString()}`;
     }
 
     function parseShareStateFromUrl() {

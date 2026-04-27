@@ -10891,7 +10891,18 @@
   async function getPlaceDetails(placeId) {
     try {
       // Validate Place ID before attempting fetch
-      if (!placeId || typeof placeId !== 'string' || placeId.trim() === '' || placeId === 'SKIP' || placeId === 'undefined') {
+      const normalizedPlaceId = String(placeId || '').trim();
+      const normalizedUpper = normalizedPlaceId.toUpperCase();
+      if (!placeId || typeof placeId !== 'string' || !normalizedPlaceId || [
+        'SKIP',
+        'UNDEFINED',
+        'UNAVAILABLE',
+        'NOT AVAILABLE',
+        'N/A',
+        'NA',
+        'NONE',
+        'NULL'
+      ].includes(normalizedUpper)) {
         console.warn(`⚠️ Skipping invalid Place ID: "${placeId}"`);
         return null;
       }
@@ -21320,7 +21331,7 @@ COMMON ISSUES:
       }
 
       const upper = raw.toUpperCase();
-      if (["N/A", "NA", "NONE", "NULL", "UNDEFINED", "SKIP"].includes(upper)) {
+      if (["N/A", "NA", "NONE", "NULL", "UNDEFINED", "SKIP", "UNAVAILABLE", "NOT AVAILABLE"].includes(upper)) {
         return { status: "invalid-place-id", value: raw, reason: "Place ID contains a placeholder value" };
       }
 
@@ -21378,6 +21389,58 @@ COMMON ISSUES:
       }
 
       return [];
+    }
+
+    function gaResolveRunOptions(options) {
+      const normalized = (options && typeof options === 'object') ? options : {};
+      return {
+        autoRefreshInvalidPlaceIds: normalized.autoRefreshInvalidPlaceIds !== false
+      };
+    }
+
+    async function gaAutoRefreshPlaceIdForRow(rowIndex, values, rowData, isDryRun, reason) {
+      const name = gaStr(rowData?.name || values?.[0]);
+      const city = gaStr(rowData?.city || values?.[10] || values?.[7]);
+      const state = gaStr(rowData?.state || values?.[9] || values?.[6]);
+      const oldPlaceId = gaStr(values?.[GA_COL.PLACE_ID]);
+      const query = [name, city, state].filter(Boolean).join(" ");
+
+      if (!query) {
+        addAutomationLog(`  -> Auto-refresh skipped: not enough location data${reason ? ` (${reason})` : ""}`, "warning");
+        return { success: false, reason: "missing-query" };
+      }
+
+      addAutomationLog(`  -> Auto-refreshing Place ID via search: ${query}${reason ? ` (${reason})` : ""}`, "warning");
+      const results = await searchPlaces(query);
+      if (!Array.isArray(results) || !results.length || !gaStr(results[0].placeId)) {
+        addAutomationLog("  -> Auto-refresh failed: no replacement Place ID found", "warning");
+        return { success: false, reason: "not-found" };
+      }
+
+      const newPlaceId = gaStr(results[0].placeId);
+      if (oldPlaceId === newPlaceId) {
+        values[GA_COL.PLACE_ID] = newPlaceId;
+        addAutomationLog(`  -> Auto-refresh found same Place ID: ${newPlaceId}`, "info");
+        return { success: true, placeId: newPlaceId, changed: false };
+      }
+
+      const updates = {};
+      updates[GA_COL.PLACE_ID] = newPlaceId;
+      const newDirections = gaBuildDirections(newPlaceId, gaStr(values[GA_COL.ADDRESS]), name);
+      if (newDirections && (gaEmpty(values[GA_COL.DIRECTIONS]) || oldPlaceId !== newPlaceId)) {
+        updates[GA_COL.DIRECTIONS] = newDirections;
+      }
+
+      if (isDryRun) {
+        addAutomationLog(`  -> [DRY RUN] Would auto-refresh Place ID: ${oldPlaceId || "(empty)"} -> ${newPlaceId}`, "warning");
+      } else {
+        await gaPatchRow(rowIndex, values, updates);
+        addAutomationLog(`  -> Auto-refreshed Place ID: ${oldPlaceId || "(empty)"} -> ${newPlaceId}`, "success");
+      }
+
+      values[GA_COL.PLACE_ID] = newPlaceId;
+      if (updates[GA_COL.DIRECTIONS]) values[GA_COL.DIRECTIONS] = updates[GA_COL.DIRECTIONS];
+      return { success: true, placeId: newPlaceId, changed: oldPlaceId !== newPlaceId };
     }
 
     async function gaPatchRow(rowIndex, currentValues, updatesByCol) {
@@ -21449,7 +21512,9 @@ COMMON ISSUES:
       return { changes, skipped };
     };
 
-    window.runGoogleAutomation = async function (actionType, isDryRun) {
+    window.runGoogleAutomation = async function (actionType, isDryRun, options) {
+      const runOptions = gaResolveRunOptions(options);
+      const autoRefreshInvalidPlaceIds = !!runOptions.autoRefreshInvalidPlaceIds;
       const actionTitles = {
         populateMissing: "Populate Missing Fields",
         refreshHours: "Refresh Hours Only",
@@ -21475,6 +21540,7 @@ COMMON ISSUES:
       }
 
       addAutomationLog(`Starting ${title.toLowerCase()}...`, "info");
+      addAutomationLog(`Auto-refresh invalid Place IDs: ${autoRefreshInvalidPlaceIds ? 'ON' : 'OFF'}`, autoRefreshInvalidPlaceIds ? 'info' : 'warning');
       if (isDryRun) addAutomationLog("DRY RUN MODE: No changes will be written to Excel", "warning");
 
       const rows = window.adventuresData;
@@ -21677,14 +21743,42 @@ COMMON ISSUES:
           }
 
           if (pidInfo.status !== "valid") {
-            skipped++;
-            addAutomationLog(`  -> Skipped: ${pidInfo.reason}`, "warning");
-            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
-            setAutomationProgress(processed, total);
-            continue;
+            if (!autoRefreshInvalidPlaceIds) {
+              skipped++;
+              addAutomationLog(`  -> Skipped: ${pidInfo.reason}`, "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+            const refreshed = await gaAutoRefreshPlaceIdForRow(i, values, rowData, isDryRun, pidInfo.reason);
+            if (!refreshed.success) {
+              skipped++;
+              addAutomationLog(`  -> Skipped: ${pidInfo.reason}`, "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+            placeId = gaStr(values[GA_COL.PLACE_ID]);
           }
 
-          const details = await getPlaceDetails(placeId);
+          let details;
+          try {
+            details = await getPlaceDetails(placeId);
+          } catch (detailsErr) {
+            if (isInvalidPlaceIdError(detailsErr)) {
+              if (!autoRefreshInvalidPlaceIds) {
+                throw detailsErr;
+              }
+              const refreshed = await gaAutoRefreshPlaceIdForRow(i, values, rowData, isDryRun, "Google reported NOT_FOUND");
+              if (!refreshed.success) {
+                throw detailsErr;
+              }
+              placeId = gaStr(values[GA_COL.PLACE_ID]) || placeId;
+              details = await getPlaceDetails(placeId);
+            } else {
+              throw detailsErr;
+            }
+          }
           const fetched = {
             hours: gaNormalizeHours(details?.hours),
             website: gaStr(details?.website),

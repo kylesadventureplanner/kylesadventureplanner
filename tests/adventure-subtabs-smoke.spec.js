@@ -10,6 +10,7 @@ const ADVENTURE_SUBTABS = [
     cityAction: 'open-city-explorer-wildlife-animals',
     logAction: 'open-visit-log-wildlife-animals',
     editAction: 'open-edit-mode-wildlife-animals',
+    batchAction: 'open-batch-tags-wildlife-animals',
     legacyFindAction: 'find-wildlife-animals'
   },
   {
@@ -21,6 +22,7 @@ const ADVENTURE_SUBTABS = [
     cityAction: 'open-city-explorer-regional-festivals',
     logAction: 'open-visit-log-regional-festivals',
     editAction: 'open-edit-mode-regional-festivals',
+    batchAction: 'open-batch-tags-regional-festivals',
     legacyFindAction: 'find-regional-festivals'
   },
   {
@@ -32,6 +34,7 @@ const ADVENTURE_SUBTABS = [
     cityAction: 'open-city-explorer-retail',
     logAction: 'open-visit-log-retail',
     editAction: 'open-edit-mode-retail',
+    batchAction: 'open-batch-tags-retail',
     legacyFindAction: 'find-retail-location'
   }
 ];
@@ -165,6 +168,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
       'open-city-explorer-outdoors',
       'open-visit-log-outdoors',
       'open-edit-mode-outdoors',
+      'open-batch-tags-outdoors',
       'refresh-subtab-outdoors',
       'undo-subtab-outdoors'
     ];
@@ -187,7 +191,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     }, { timeout: 15000 }).toEqual(expectedActions);
   });
 
-  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, cityAction, logAction, editAction, legacyFindAction }) => {
+  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, cityAction, logAction, editAction, batchAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
       await expect(dockButton).toBeVisible();
@@ -204,6 +208,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${cityAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${logAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${editAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${batchAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${legacyFindAction}"]`)).toHaveCount(0);
 
       const expectedActions = [
@@ -211,6 +216,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
         cityAction,
         logAction,
         editAction,
+        batchAction,
         refreshAction,
         undoAction
       ];

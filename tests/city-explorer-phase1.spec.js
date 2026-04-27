@@ -706,6 +706,36 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     }, { timeout: 10000 }).toContain('Testville');
   });
 
+  test('quick action open-google falls back to a real Google Maps URL when stored googleUrl is unavailable', async ({ page }) => {
+    await openTestCity(page);
+
+    const openedUrl = await page.evaluate(() => {
+      let captured = '';
+      const originalOpen = window.open;
+      window.open = (url, target, features) => {
+        captured = String(url || '');
+        return { focus() {}, closed: false, target, features };
+      };
+
+      try {
+        const city = citiesData && citiesData[currentCityKey];
+        const loc = city && Array.isArray(city.locations)
+          ? city.locations.find((entry) => String(entry?.name || '') === 'River Falls')
+          : null;
+        if (!loc) return '';
+        loc.googleUrl = 'Unavailable';
+        loc.googlePlaceId = 'pid-river-falls';
+        runQuickActionByEncodedId(encodeURIComponent(getLocId(loc)), 'open-google');
+        return captured;
+      } finally {
+        window.open = originalOpen;
+      }
+    });
+
+    expect(openedUrl).toContain('https://www.google.com/maps/search/?');
+    expect(openedUrl).toContain('query_place_id=pid-river-falls');
+  });
+
   test('quick action map view opens split map and focuses selected location', async ({ page }) => {
     await openTestCity(page);
 
