@@ -1012,18 +1012,21 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.locator('[data-bulk-group-index="1"][data-bulk-candidate-index="1"]').click();
     await popup.click('#bulkOpenSelectedInGoogleBtn');
-    await expect.poll(() => popup.evaluate(() => window.__openedCandidateUrls || [])).toEqual([
+    await expect.poll(() => popup.evaluate(() => (window.__openedCandidateUrls || []).slice().sort())).toEqual([
       'https://www.google.com/maps/place/?q=place_id:pid-apple-festival-main',
+      'https://www.google.com/maps/place/?q=place_id:pid-pear-fair-center',
       'https://www.google.com/maps/place/?q=place_id:pid-pear-fair-lakeside'
     ]);
     await popup.click('#bulkAddSelectedCandidatesBtn');
 
-    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(2);
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(3);
 
     const firstRow = graphCalls[0].body.values[0];
     const secondRow = graphCalls[1].body.values[0];
+    const thirdRow = graphCalls[2].body.values[0];
     const firstResolved = buildResolvedByPlaceId('pid-apple-festival-main');
-    const secondResolved = buildResolvedByPlaceId('pid-pear-fair-lakeside');
+    const secondResolved = buildResolvedByPlaceId('pid-pear-fair-center');
+    const thirdResolved = buildResolvedByPlaceId('pid-pear-fair-lakeside');
 
     expect(firstRow[1]).toBe(firstResolved.name);
     expect(firstRow[9]).toBe(firstResolved.placeId);
@@ -1032,6 +1035,10 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(secondRow[1]).toBe(secondResolved.name);
     expect(secondRow[9]).toBe(secondResolved.placeId);
     expect(String(secondRow[10] || '')).toContain(secondResolved.placeId);
+
+    expect(thirdRow[1]).toBe(thirdResolved.name);
+    expect(thirdRow[9]).toBe(thirdResolved.placeId);
+    expect(String(thirdRow[10] || '')).toContain(thirdResolved.placeId);
   });
 
   test('festival candidate search can use an official festival website URL as a direct fallback candidate', async ({ page }) => {
