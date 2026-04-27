@@ -1,6 +1,7 @@
 const { test, expect } = require('./reliability-test');
 
 const CITY_VIEWER_TEST_KEY = 'city_test_payload';
+const NEARBY_CACHE_STORAGE_KEY = '__nearby_attractions_cache_v2';
 const CITY_VIEWER_PATH = `/HTML%20Files/city-viewer-window.html?dataKey=${CITY_VIEWER_TEST_KEY}&dataMode=curated-only`;
 const CITY_VIEWER_PREFILTER_PATH = `${CITY_VIEWER_PATH}&prefilterTag=nature&prefilterLabel=Outdoors&sourceSubtab=outdoors`;
 
@@ -91,10 +92,106 @@ const TEST_LOCATIONS = [
   }
 ];
 
-async function seedCityViewer(page) {
-  await page.addInitScript(({ key, payload }) => {
+function buildNearbyCachePayload() {
+  return {
+    '35.1230|-82.4560|r5.0|c:all|p:none': {
+      timestamp: Date.now(),
+      data: [
+        {
+          id: 'google-cache-coffee',
+          googlePlaceId: 'google-cache-coffee',
+          name: 'Creekside Coffee Stop',
+          types: ['cafe', 'food'],
+          latitude: 35.124,
+          longitude: -82.451,
+          distance: 1.2,
+          rating: 4.5,
+          openNow: true,
+          description: '45 Market St, Testville, NC',
+          source: 'google',
+          sourceSet: ['google'],
+          exists: false,
+          rankingReasonText: 'nearby, high rating',
+          category: 'coffee_dessert'
+        },
+        {
+          id: 'google-cache-dessert',
+          googlePlaceId: 'google-cache-dessert',
+          name: 'Sunset Dessert Bar',
+          types: ['bakery', 'food'],
+          latitude: 35.125,
+          longitude: -82.452,
+          distance: 1.6,
+          rating: 4.4,
+          openNow: false,
+          description: '80 Sunset Ave, Testville, NC',
+          source: 'google',
+          sourceSet: ['google'],
+          exists: false,
+          rankingReasonText: 'distance relevance',
+          category: 'coffee_dessert'
+        },
+        {
+          id: 'pid-river-falls',
+          googlePlaceId: 'pid-river-falls',
+          name: 'River Falls',
+          types: ['tourist_attraction'],
+          latitude: 35.123,
+          longitude: -82.456,
+          distance: 0.1,
+          rating: 4.9,
+          description: '1 Falls Rd, Testville, NC',
+          source: 'google',
+          sourceSet: ['google'],
+          exists: true
+        },
+        {
+          id: 'google-cache-river-dup',
+          googlePlaceId: '',
+          name: 'River Falls',
+          types: ['tourist_attraction'],
+          latitude: 35.1231,
+          longitude: -82.4562,
+          distance: 0.2,
+          rating: 4.8,
+          description: '1 Falls Road, Testville NC',
+          source: 'google',
+          sourceSet: ['google'],
+          exists: false,
+          rankingReasonText: 'duplicate candidate by normalized address'
+        },
+        {
+          id: 'google-cache-art-house-dup',
+          googlePlaceId: '',
+          name: 'Downtown Art House',
+          types: ['art_gallery'],
+          latitude: 35.12002,
+          longitude: -82.45003,
+          distance: 0.2,
+          rating: 4.4,
+          description: 'Nearby duplicate by geo fallback',
+          source: 'google',
+          sourceSet: ['google'],
+          exists: false,
+          rankingReasonText: 'duplicate candidate by geo fallback'
+        }
+      ]
+    }
+  };
+}
+
+async function seedCityViewer(page, options = {}) {
+  const withNearbyCache = !!options.withNearbyCache;
+  const adventuresData = Array.isArray(options.adventuresData) ? options.adventuresData : TEST_LOCATIONS;
+  const nearbyPayload = (options.nearbyPayload && typeof options.nearbyPayload === 'object')
+    ? options.nearbyPayload
+    : buildNearbyCachePayload();
+  await page.addInitScript(({ key, payload, nearbyKey, nearbyPayloadData, shouldSeedNearby }) => {
     try {
       window.localStorage.clear();
+      if (shouldSeedNearby) {
+        window.localStorage.setItem(nearbyKey, JSON.stringify(nearbyPayloadData));
+      }
       window.sessionStorage.setItem(key, JSON.stringify(payload));
       window.sessionStorage.setItem('city_viewer_data_latest', key);
     } catch (_error) {
@@ -102,8 +199,11 @@ async function seedCityViewer(page) {
     }
   }, {
     key: CITY_VIEWER_TEST_KEY,
+    nearbyKey: NEARBY_CACHE_STORAGE_KEY,
+    nearbyPayloadData: nearbyPayload,
+    shouldSeedNearby: withNearbyCache,
     payload: {
-      adventuresData: TEST_LOCATIONS,
+      adventuresData,
       configuredSources: [
         'Nature_Locations.xlsx / Nature_Locations',
         'Entertainment_Locations.xlsx / General_Entertainment',
@@ -161,9 +261,160 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(chips).toContainText('Name: falls');
   });
 
+  test('quick tag pills display result counts and cards render star rating badges', async ({ page }) => {
+    await openTestCity(page);
+
+    const quickTags = page.locator('#locQuickTags .loc-tag-btn');
+    await expect(quickTags.first()).toBeVisible();
+    await expect(quickTags.first()).toContainText(/\(\d+\)/);
+
+    await expect(page.locator('.loc-card .loc-rating-stars').first()).toBeVisible();
+  });
+
+  test('mixed nearby cache rows blend with saved results using saved-first ranking and source chips', async ({ page }) => {
+    await seedCityViewer(page, { withNearbyCache: true });
+    await openTestCity(page);
+
+    await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(4)');
+    await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(2)');
+    await expect(page.locator('#locationsPageSubtitle')).toContainText('4 saved + 2 nearby web recs');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Dedupe skipped: 2');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Raw nearby rows: 5');
+    await expect(page.locator('#locMixedSourceDiagnosticsHelp')).toBeVisible();
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Thresholds: geo ≤ 0.20mi');
+
+    const names = await page.locator('.loc-card .loc-card-name').allInnerTexts();
+    expect(names.slice(0, 4)).toEqual([
+      'Downtown Art House',
+      'Hidden Tea Garden',
+      'River Falls',
+      'Skyline Overlook'
+    ]);
+
+    const origins = await page.locator('.loc-card').evaluateAll((cards) => cards.map((card) => card.getAttribute('data-location-origin')));
+    expect(origins.slice(0, 4)).toEqual(['saved', 'saved', 'saved', 'saved']);
+    expect(origins.slice(4)).toEqual(['web', 'web']);
+
+    await page.locator('#locSourceFilters [data-source-filter="web"]').click();
+    await expect(page.locator('#locResultsCount')).toContainText('2 locations');
+    await expect(page.locator('#locActiveFilters')).toContainText('Source: web');
+    await expect(page.locator('.loc-card')).toHaveCount(2);
+    await expect(page.locator('.loc-card').first()).toContainText('Creekside Coffee Stop');
+
+    await page.locator('#locSearchName').fill('coffee');
+    await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(0)');
+    await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(1)');
+
+    await page.locator('#locActiveFilters .loc-active-filter-chip').filter({ hasText: 'Source: web' }).locator('button').click();
+    await expect(page.locator('#locResultsCount')).toContainText('1 location');
+    await expect(page.locator('.loc-card')).toHaveCount(1);
+    await expect(page.locator('.loc-card').first()).toContainText('Creekside Coffee Stop');
+  });
+
+  test('debug dedupe URL thresholds split just-inside vs just-outside geo candidates', async ({ page }) => {
+    await seedCityViewer(page, {
+      withNearbyCache: true,
+      nearbyPayload: {
+        '35.1230|-82.4560|r5.0|c:all|p:none': {
+          timestamp: Date.now(),
+          data: [
+            {
+              id: 'inside-threshold-dup',
+              name: 'Downtown Art House',
+              latitude: 35.1206,
+              longitude: -82.45,
+              source: 'google',
+              sourceSet: ['google'],
+              exists: false,
+              rankingReasonText: 'inside threshold duplicate candidate'
+            },
+            {
+              id: 'outside-threshold-kept',
+              name: 'Downtown Art House',
+              latitude: 35.1211,
+              longitude: -82.45,
+              source: 'google',
+              sourceSet: ['google'],
+              exists: false,
+              rankingReasonText: 'outside threshold keep candidate'
+            }
+          ]
+        }
+      }
+    });
+
+    await page.goto(CITY_VIEWER_PATH, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('debugDedupeGeoMiles', '0.05');
+      url.searchParams.set('debugDedupeNameGeoMiles', '0.05');
+      window.history.replaceState({}, '', url.toString());
+      resolveNearbyDebugThresholdsFromUrl();
+    });
+    await expect(page.locator('.city-card')).toHaveCount(1);
+    await page.locator('.city-card').first().click();
+    await expect(page.locator('#locationsPage')).toBeVisible();
+
+    await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(4)');
+    await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(1)');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Dedupe skipped: 1');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Thresholds: geo ≤ 0.05mi');
+
+    await page.locator('#locSourceFilters [data-source-filter="web"]').click();
+    await expect(page.locator('.loc-card')).toHaveCount(1);
+    await expect(page.locator('.loc-card').first()).toContainText('Downtown Art House');
+  });
+
+  test('web-only source view is preserved through source chips and diagnostics counts', async ({ page }) => {
+    await seedCityViewer(page, { withNearbyCache: true });
+    await openTestCity(page);
+
+    await page.locator('#locSourceFilters [data-source-filter="web"]').click();
+    await expect(page.locator('#locResultsCount')).toContainText('2 locations');
+    await expect(page.locator('.loc-card')).toHaveCount(2);
+    await expect(page.locator('.loc-card').first()).toHaveAttribute('data-location-origin', 'web');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Visible now: 0 saved');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('2 web');
+  });
+
+  test('saved-only source mix without nearby cache shows only saved counts and zero web additions', async ({ page }) => {
+    await seedCityViewer(page, { withNearbyCache: false });
+    await openTestCity(page);
+
+    await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(4)');
+    await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(0)');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Web added: 0');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Raw nearby rows: 0');
+  });
+
+  test('empty nearby cache payload keeps saved-only behavior without introducing web rows', async ({ page }) => {
+    await seedCityViewer(page, {
+      withNearbyCache: true,
+      nearbyPayload: {
+        '35.1230|-82.4560|r5.0|c:all|p:none': {
+          timestamp: Date.now(),
+          data: []
+        }
+      }
+    });
+    await openTestCity(page);
+
+    await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(4)');
+    await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(0)');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Cache entries: 0');
+    await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Raw nearby rows: 0');
+    await expect(page.locator('.loc-card')).toHaveCount(4);
+  });
+
   test('Adventure prefilter is visible and can be cleared to show everything', async ({ page }) => {
     await page.goto(CITY_VIEWER_PREFILTER_PATH, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('#cityPrefilterNotice')).toContainText('Filtered from Adventure subtab: Outdoors');
+    await page.evaluate(() => {
+      prefilterTag = 'nature';
+      prefilterLabel = 'Outdoors';
+      prefilterSourceSubtab = 'outdoors';
+      renderPrefilterNotice();
+      renderCities();
+    });
 
     await page.locator('.city-card').first().click();
     await expect(page.locator('#locationsPage')).toBeVisible();
@@ -234,8 +485,8 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
   test('day plan shows itinerary score and route-feasibility confidence', async ({ page }) => {
     await openTestCity(page);
 
-    await page.locator('.loc-select-btn').nth(0).evaluate((node) => node.click());
-    await page.locator('.loc-select-btn').nth(1).evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'River Falls' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'Downtown Art House' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
     await page.locator('.loc-card', { hasText: 'Hidden Tea Garden' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
 
     await page.getByRole('button', { name: 'Build Day Plan' }).click();
@@ -453,6 +704,35 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
       const copied = await readCopiedText(page);
       return copied;
     }, { timeout: 10000 }).toContain('Testville');
+  });
+
+  test('quick action map view opens split map and focuses selected location', async ({ page }) => {
+    await openTestCity(page);
+
+    const locId = await page.locator('.loc-card', { hasText: 'River Falls' }).first().getAttribute('data-loc-id');
+    await page.evaluate((id) => {
+      window.runQuickActionByEncodedId(encodeURIComponent(String(id || '')), 'focus-map');
+    }, locId);
+
+    await expect(page.locator('#locMainLayout')).toHaveClass(/split/);
+    await expect(page.locator('.loc-card.active')).toContainText('River Falls');
+  });
+
+  test('non-Nature rows hide Nature-only detail fields while Nature rows keep them', async ({ page }) => {
+    await openTestCity(page);
+
+    const natureCard = page.locator('.loc-card', { hasText: 'River Falls' }).first();
+    await expect(natureCard).toContainText('⏱️');
+    await expect(natureCard).toContainText('📏');
+
+    const nonNatureCard = page.locator('.loc-card', { hasText: 'Downtown Art House' }).first();
+    await expect(nonNatureCard).not.toContainText('⏱️');
+    await expect(nonNatureCard).not.toContainText('📏');
+
+    await nonNatureCard.click();
+    await expect(page.locator('#locationDetailPage')).toBeVisible();
+    await expect(page.locator('#locationDetailContent')).not.toContainText('⏱️');
+    await expect(page.locator('#locationDetailContent')).not.toContainText('📏');
   });
 
   test('detail card supports inline field edits and syncs updates to Excel backend', async ({ page }) => {

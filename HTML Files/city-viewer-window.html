@@ -416,6 +416,82 @@
       align-items: center;
     }
 
+    .loc-source-filters {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .loc-source-filters.visible {
+      display: flex;
+    }
+
+    .loc-source-filter-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-right: 2px;
+    }
+
+    .loc-mixed-source-diagnostics {
+      display: none;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #dbeafe;
+      background: #f8fbff;
+      color: #1e3a8a;
+      font-size: 11px;
+      font-weight: 700;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .loc-mixed-source-diagnostics.visible {
+      display: flex;
+    }
+
+    .loc-mixed-source-diagnostics .diag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+
+    .loc-mixed-source-help {
+      margin-left: 2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #93c5fd;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: help;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .loc-mixed-source-help:hover {
+      background: #bfdbfe;
+      border-color: #60a5fa;
+    }
+
     .loc-active-filters {
       display: none;
       flex-wrap: wrap;
@@ -555,6 +631,15 @@
       border-color: transparent;
       color: white;
     }
+    .loc-tag-btn .loc-tag-count {
+      font-size: 11px;
+      font-weight: 700;
+      opacity: 0.82;
+      margin-left: 4px;
+    }
+    .loc-tag-btn.active .loc-tag-count {
+      opacity: 0.94;
+    }
 
     /* Sort + results row */
     .loc-sort-row {
@@ -657,6 +742,22 @@
     }
     .loc-meta-badge.cost              { background: #ecfdf5; color: #065f46; }
     .loc-meta-badge.rating            { background: #fffbeb; color: #92400e; }
+    .loc-meta-badge.source-saved      { background: #eff6ff; color: #1e40af; }
+    .loc-meta-badge.source-web        { background: #fdf2f8; color: #9d174d; }
+    .loc-rating-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .loc-rating-stars {
+      letter-spacing: 0.06em;
+      font-size: 11px;
+      line-height: 1;
+      color: #f59e0b;
+    }
+    .loc-rating-stars .is-empty {
+      color: #cbd5e1;
+    }
 
     .loc-card-tags {
       display: flex;
@@ -2187,6 +2288,8 @@
 
         <!-- Quick Tag Buttons (populated dynamically) -->
         <div id="locQuickTags" class="loc-quick-tags"></div>
+        <div id="locSourceFilters" class="loc-source-filters" aria-live="polite"></div>
+        <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
         <div id="locActiveFilters" class="loc-active-filters" aria-live="polite"></div>
         <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
         <div id="wildlifeDiagnosticsStrip" class="wildlife-diagnostics-strip" aria-live="polite"></div>
@@ -2208,6 +2311,7 @@
           </select>
           <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
           <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+          <button type="button" class="loc-mini-btn" onclick="openNearbyDiagnosticsFromCityViewer()">🩺 Nearby Diagnostics</button>
            <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
            <div class="loc-results-count" id="locResultsCount">0 locations</div>
          </div>
@@ -2231,6 +2335,7 @@
           <button class="loc-mini-btn" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
+          <button class="loc-mini-btn" onclick="openBatchTagActionsFromCityViewer()" title="Open Batch Tag Actions in Edit Mode">🏷️ Batch Tags</button>
           <button class="loc-mini-btn" onclick="selectAllVisibleLocations()" title="Select all currently visible cards">Select Visible</button>
           <select id="locBulkActionSelect" class="loc-bulk-action-select" onchange="syncBulkActionInputHint()" aria-label="Bulk action for selected locations">
             <option value="add-tags">Add tags to selected</option>
@@ -2578,6 +2683,7 @@
       if (isEmbeddedViewer()) {
         document.body.classList.add('embedded-viewer');
       }
+      resolveNearbyDebugThresholdsFromUrl();
       resolvePrefilterFromUrl();
       syncBulkActionInputHint();
       renderPrefilterNotice();
@@ -2868,6 +2974,15 @@
     let prefilterTag = '';
     let prefilterLabel = '';
     let prefilterSourceSubtab = '';
+    let activeLocSourceFilter = '';
+    const CITY_VIEWER_NEARBY_CACHE_STORAGE_KEY = '__nearby_attractions_cache_v2';
+    const CITY_VIEWER_NEARBY_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24;
+    const CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT = 1.25;
+    const CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT = 0.2;
+    const CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT = 0.12;
+    let cityViewerNearbyCityMatchMiles = CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT;
+    let cityViewerNearbyDedupeGeoMiles = CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT;
+    let cityViewerNearbyDedupeNameGeoMiles = CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT;
 
     function runDeferredCityViewerWork(task) {
       if (typeof task !== 'function') return;
@@ -3279,6 +3394,47 @@
       return `fallback:${name}::${addr}`;
     }
 
+    function parsePositiveThreshold(rawValue, fallback) {
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+      return parsed;
+    }
+
+    function getActiveNearbyBlendThresholds() {
+      return {
+        cityMatchMiles: Number(cityViewerNearbyCityMatchMiles) || CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT,
+        dedupeGeoMiles: Number(cityViewerNearbyDedupeGeoMiles) || CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT,
+        dedupeNameGeoMiles: Number(cityViewerNearbyDedupeNameGeoMiles) || CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT
+      };
+    }
+
+    function resolveNearbyDebugThresholdsFromUrl() {
+      const defaults = {
+        cityMatchMiles: CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT,
+        dedupeGeoMiles: CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT,
+        dedupeNameGeoMiles: CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT
+      };
+      try {
+        const p = new URLSearchParams(window.location.search);
+        cityViewerNearbyCityMatchMiles = parsePositiveThreshold(
+          p.get('debugCityMatchMiles') || p.get('nearbyCityMatchMiles'),
+          defaults.cityMatchMiles
+        );
+        cityViewerNearbyDedupeGeoMiles = parsePositiveThreshold(
+          p.get('debugDedupeGeoMiles') || p.get('nearbyDedupeGeoMiles'),
+          defaults.dedupeGeoMiles
+        );
+        cityViewerNearbyDedupeNameGeoMiles = parsePositiveThreshold(
+          p.get('debugDedupeNameGeoMiles') || p.get('nearbyDedupeNameGeoMiles'),
+          defaults.dedupeNameGeoMiles
+        );
+      } catch (_error) {
+        cityViewerNearbyCityMatchMiles = defaults.cityMatchMiles;
+        cityViewerNearbyDedupeGeoMiles = defaults.dedupeGeoMiles;
+        cityViewerNearbyDedupeNameGeoMiles = defaults.dedupeNameGeoMiles;
+      }
+    }
+
     function resolvePrefilterFromUrl() {
       try {
         const p = new URLSearchParams(window.location.search);
@@ -3354,6 +3510,510 @@
       });
     }
 
+    function getLocSourceKey(loc) {
+      const source = String((loc && (loc.source || loc.recommendationSource || loc.originSource)) || '').toLowerCase();
+      const sourceLabel = String((loc && loc.sourceLabel) || '').toLowerCase();
+      const isWebRecommendation =
+        !!(loc && (loc.isWebRecommendation || loc.webRecommendation)) ||
+        source === 'google' || source === 'web' || source === 'places' || source === 'merged' ||
+        sourceLabel.indexOf('web recommendation') >= 0;
+      return isWebRecommendation ? 'web' : 'saved';
+    }
+
+    function getLocationSourcePriority(loc) {
+      return getLocSourceKey(loc) === 'web' ? 1 : 0;
+    }
+
+    function calculateGeoMilesBetween(lat1, lng1, lat2, lng2) {
+      const aLat = Number(lat1);
+      const aLng = Number(lng1);
+      const bLat = Number(lat2);
+      const bLng = Number(lng2);
+      if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return Number.POSITIVE_INFINITY;
+      const toRad = (deg) => deg * (Math.PI / 180);
+      const earthRadiusMiles = 3959;
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
+      const sinLat = Math.sin(dLat / 2);
+      const sinLng = Math.sin(dLng / 2);
+      const a = (sinLat * sinLat) + (Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * sinLng * sinLng);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return earthRadiusMiles * c;
+    }
+
+    function parseNearbyCacheCenter(cacheKey) {
+      const parts = String(cacheKey || '').split('|');
+      if (parts.length < 2) return null;
+      const lat = Number(parts[0]);
+      const lng = Number(parts[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat: lat, lng: lng };
+    }
+
+    function getLocationLatLng(loc) {
+      const lat = parseFloat(locVal(loc, 25, 'latitude') || loc.latitude || loc.lat);
+      const lng = parseFloat(locVal(loc, 26, 'longitude') || loc.longitude || loc.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat: lat, lng: lng };
+    }
+
+    function normalizeLocationIdentityText(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    function normalizeAddressIdentityText(value) {
+      return normalizeLocationIdentityText(value)
+        .replace(/\b(street|st\.?)(?=\s|$)/g, 'st')
+        .replace(/\b(road|rd\.?)(?=\s|$)/g, 'rd')
+        .replace(/\b(avenue|ave\.?)(?=\s|$)/g, 'ave')
+        .replace(/\b(boulevard|blvd\.?)(?=\s|$)/g, 'blvd')
+        .replace(/\b(drive|dr\.?)(?=\s|$)/g, 'dr')
+        .replace(/\b(lane|ln\.?)(?=\s|$)/g, 'ln')
+        .replace(/\b(north|n\.?)(?=\s|$)/g, 'n')
+        .replace(/\b(south|s\.?)(?=\s|$)/g, 's')
+        .replace(/\b(east|e\.?)(?=\s|$)/g, 'e')
+        .replace(/\b(west|w\.?)(?=\s|$)/g, 'w')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function buildIdentityModel(raw) {
+      const placeId = String((raw && (raw.googlePlaceId || raw.placeId || raw.id)) || '').trim().toLowerCase();
+      const name = normalizeLocationIdentityText(raw && raw.name);
+      const address = normalizeAddressIdentityText(raw && (raw.address || raw.vicinity || raw.description));
+      const point = {
+        lat: Number(raw && raw.latitude),
+        lng: Number(raw && raw.longitude)
+      };
+      const hasPoint = Number.isFinite(point.lat) && Number.isFinite(point.lng);
+      return {
+        placeId,
+        name,
+        address,
+        lat: hasPoint ? point.lat : null,
+        lng: hasPoint ? point.lng : null,
+        hasPoint
+      };
+    }
+
+    function isAddressCloseMatch(a, b) {
+      const left = String(a || '').trim();
+      const right = String(b || '').trim();
+      if (!left || !right) return false;
+      if (left === right) return true;
+      return left.includes(right) || right.includes(left);
+    }
+
+    function modelsLikelySameLocation(left, right) {
+      if (!left || !right) return false;
+      const thresholds = getActiveNearbyBlendThresholds();
+      if (left.placeId && right.placeId && left.placeId === right.placeId) return true;
+      if (left.name && right.name && left.name === right.name) {
+        if (isAddressCloseMatch(left.address, right.address)) return true;
+        if (left.hasPoint && right.hasPoint) {
+          return calculateGeoMilesBetween(left.lat, left.lng, right.lat, right.lng) <= thresholds.dedupeNameGeoMiles;
+        }
+      }
+      if (left.hasPoint && right.hasPoint) {
+        const nearEnough = calculateGeoMilesBetween(left.lat, left.lng, right.lat, right.lng) <= thresholds.dedupeGeoMiles;
+        if (!nearEnough) return false;
+        if (left.name && right.name) return left.name === right.name;
+        return !!(left.address && right.address && isAddressCloseMatch(left.address, right.address));
+      }
+      return false;
+    }
+
+    function getLocationIdentityModel(loc) {
+      const point = getLocationLatLng(loc);
+      return buildIdentityModel({
+        id: loc && loc.id,
+        googlePlaceId: locVal(loc, 1, 'googlePlaceId') || (loc && loc.googlePlaceId),
+        name: locVal(loc, 0, 'name') || (loc && loc.name),
+        address: locVal(loc, 11, 'address') || (loc && loc.address),
+        latitude: point && point.lat,
+        longitude: point && point.lng
+      });
+    }
+
+    function getLocationIdentityKey(loc) {
+      const model = getLocationIdentityModel(loc);
+      if (model.placeId) return 'pid:' + model.placeId;
+      const name = model.name;
+      const address = model.address;
+      if (name && address) return 'nameaddr:' + name + '::' + address;
+      if (name && model.hasPoint) return 'namegeo:' + name + '::' + model.lat.toFixed(4) + ',' + model.lng.toFixed(4);
+      return name ? 'name:' + name : '';
+    }
+
+    function getNearbyAttractionIdentityKey(item) {
+      const model = buildIdentityModel(item || {});
+      const placeId = model.placeId;
+      if (placeId) return 'pid:' + placeId;
+      const name = model.name;
+      const address = model.address;
+      if (name && address) return 'nameaddr:' + name + '::' + address;
+      if (name && model.hasPoint) return 'namegeo:' + name + '::' + model.lat.toFixed(4) + ',' + model.lng.toFixed(4);
+      return name ? 'name:' + name : '';
+    }
+
+    function readNearbyAttractionsCacheEntries() {
+      try {
+        const raw = window.localStorage.getItem(CITY_VIEWER_NEARBY_CACHE_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return [];
+        const now = Date.now();
+        return Object.keys(parsed).map((key) => {
+          const entry = parsed[key];
+          return {
+            key: String(key || ''),
+            timestamp: Number(entry && entry.timestamp || 0),
+            data: Array.isArray(entry && entry.data) ? entry.data : []
+          };
+        }).filter((entry) => {
+          if (!entry.key || !entry.data.length) return false;
+          if (!Number.isFinite(entry.timestamp)) return true;
+          return (now - entry.timestamp) <= CITY_VIEWER_NEARBY_CACHE_MAX_AGE_MS;
+        });
+      } catch (_error) {
+        return [];
+      }
+    }
+
+    function getCityLocationsForView(cityEntry) {
+      if (!cityEntry) return [];
+      if (Array.isArray(cityEntry.effectiveLocations)) return cityEntry.effectiveLocations;
+      return Array.isArray(cityEntry.locations) ? cityEntry.locations : [];
+    }
+
+    function getCurrentCityLocationsForView() {
+      return currentCityKey ? getCityLocationsForView(citiesData[currentCityKey]) : [];
+    }
+
+    function buildNearbyRecommendationGoogleUrl(item) {
+      const existingUrl = String((item && item.googleUrl) || '').trim();
+      if (existingUrl) return existingUrl;
+      const query = String(item && item.name || 'Nearby place').trim();
+      const placeId = String((item && (item.googlePlaceId || item.placeId)) || '').trim();
+      const lat = Number(item && item.latitude);
+      const lng = Number(item && item.longitude);
+      const params = new URLSearchParams({
+        api: '1',
+        query: Number.isFinite(lat) && Number.isFinite(lng) ? `${lat},${lng}` : query
+      });
+      if (placeId) params.set('query_place_id', placeId);
+      return `https://www.google.com/maps/search/?${params.toString()}`;
+    }
+
+    function estimateNearbyDriveTimeText(item) {
+      const existing = String((item && (item.driveTimeText || item.driveTime)) || '').trim();
+      if (existing) return existing;
+      const distance = Number(item && item.distance);
+      if (!Number.isFinite(distance) || distance <= 0) return '';
+      const minutes = Math.max(5, Math.round(distance * 4));
+      return minutes >= 60 ? `${Math.round(minutes / 60)}h` : `${minutes}m`;
+    }
+
+    function buildNearbyRecommendationTagText(item) {
+      const tokens = [];
+      const rawTags = String((item && item.tags) || '').trim();
+      if (rawTags) tokens.push.apply(tokens, rawTags.split(','));
+      if (Array.isArray(item && item.types)) tokens.push.apply(tokens, item.types);
+      if (item && item.category) tokens.push(item.category);
+      tokens.push('nearby');
+      return Array.from(new Set(tokens
+        .map((token) => String(token || '').replace(/_/g, ' ').trim().toLowerCase())
+        .filter(Boolean)))
+        .slice(0, 8)
+        .join(', ');
+    }
+
+    function buildNearbyWebRecommendationRecord(item, cityEntry) {
+      if (!item || !cityEntry) return null;
+      const name = String(item.name || '').trim();
+      if (!name) return null;
+      const address = String(item.address || item.vicinity || item.description || '').trim();
+      const googlePlaceId = String(item.googlePlaceId || item.placeId || item.id || '').trim();
+      const rating = Number(item.rating || 0);
+      const latitude = Number(item.latitude);
+      const longitude = Number(item.longitude);
+      const values = Array.from({ length: 27 }, () => '');
+      values[0] = name;
+      values[1] = googlePlaceId;
+      values[3] = buildNearbyRecommendationTagText(item);
+      values[4] = estimateNearbyDriveTimeText(item);
+      values[5] = item.openNow === true ? 'Open now' : '';
+      values[9] = String(cityEntry.state || '');
+      values[10] = String(cityEntry.city || '');
+      values[11] = address;
+      values[13] = Number.isFinite(rating) && rating > 0 ? rating.toFixed(1) : '';
+      values[16] = String(item.rankingReasonText || item.description || 'Nearby web recommendation').trim();
+      values[23] = buildNearbyRecommendationGoogleUrl(item);
+      values[25] = Number.isFinite(latitude) ? String(latitude) : '';
+      values[26] = Number.isFinite(longitude) ? String(longitude) : '';
+      return {
+        city: cityEntry.city,
+        state: cityEntry.state,
+        name: name,
+        googlePlaceId: googlePlaceId,
+        address: address,
+        description: String(item.rankingReasonText || item.description || 'Nearby web recommendation').trim(),
+        driveTime: values[4],
+        hours: values[5],
+        rating: values[13],
+        website: '',
+        googleUrl: values[23],
+        tags: values[3],
+        latitude: Number.isFinite(latitude) ? latitude : '',
+        longitude: Number.isFinite(longitude) ? longitude : '',
+        source: 'web',
+        recommendationSource: String(item.source || 'web'),
+        sourceLabel: 'Web recommendation / Nearby cache',
+        isWebRecommendation: true,
+        webRecommendation: true,
+        values: [values]
+      };
+    }
+
+    function refreshCityNearbyBlend(cityEntry) {
+      const savedLocations = Array.isArray(cityEntry && cityEntry.locations) ? cityEntry.locations.slice() : [];
+      if (!cityEntry) return savedLocations;
+      const savedIdentityKeys = new Set(savedLocations.map(getLocationIdentityKey).filter(Boolean));
+      const savedIdentityModels = savedLocations.map(getLocationIdentityModel);
+      const geoAnchors = savedLocations.map(getLocationLatLng).filter(Boolean);
+      const thresholds = getActiveNearbyBlendThresholds();
+      const relevantEntries = geoAnchors.length
+        ? readNearbyAttractionsCacheEntries().filter((entry) => {
+          const center = parseNearbyCacheCenter(entry.key);
+          if (!center) return false;
+          return geoAnchors.some((anchor) => calculateGeoMilesBetween(center.lat, center.lng, anchor.lat, anchor.lng) <= thresholds.cityMatchMiles);
+        })
+        : [];
+      const webLocations = [];
+      const acceptedWebModels = [];
+      const stats = {
+        cacheEntryCount: relevantEntries.length,
+        rawNearbyCount: 0,
+        skippedExistsCount: 0,
+        skippedIdentityCount: 0,
+        skippedFuzzyCount: 0,
+        addedWebCount: 0,
+        activeCityMatchMiles: thresholds.cityMatchMiles,
+        activeDedupeGeoMiles: thresholds.dedupeGeoMiles,
+        activeDedupeNameGeoMiles: thresholds.dedupeNameGeoMiles
+      };
+      relevantEntries.forEach((entry) => {
+        entry.data.forEach((item) => {
+          if (!item) return;
+          stats.rawNearbyCount += 1;
+          if (item.exists) {
+            stats.skippedExistsCount += 1;
+            return;
+          }
+          const itemKey = getNearbyAttractionIdentityKey(item);
+          if (itemKey && savedIdentityKeys.has(itemKey)) {
+            stats.skippedIdentityCount += 1;
+            return;
+          }
+          const itemModel = buildIdentityModel(item || {});
+          const matchedSaved = savedIdentityModels.some((savedModel) => modelsLikelySameLocation(savedModel, itemModel));
+          const matchedWeb = acceptedWebModels.some((webModel) => modelsLikelySameLocation(webModel, itemModel));
+          if (matchedSaved || matchedWeb) {
+            stats.skippedFuzzyCount += 1;
+            return;
+          }
+          const record = buildNearbyWebRecommendationRecord(item, cityEntry);
+          if (!record) return;
+          const recordKey = getLocationIdentityKey(record);
+          if (recordKey && savedIdentityKeys.has(recordKey)) {
+            stats.skippedIdentityCount += 1;
+            return;
+          }
+          if (recordKey) savedIdentityKeys.add(recordKey);
+          webLocations.push(record);
+          acceptedWebModels.push(getLocationIdentityModel(record));
+          stats.addedWebCount += 1;
+        });
+      });
+      webLocations.sort((a, b) => String(locVal(a, 0, 'name') || '').localeCompare(String(locVal(b, 0, 'name') || '')));
+      cityEntry.effectiveLocations = savedLocations.concat(webLocations);
+      cityEntry.nearbyBlendMeta = {
+        savedCount: savedLocations.length,
+        webCount: webLocations.length,
+        totalCount: savedLocations.length + webLocations.length,
+        cacheMatchCount: relevantEntries.length,
+        rawNearbyCount: stats.rawNearbyCount,
+        skippedExistsCount: stats.skippedExistsCount,
+        skippedIdentityCount: stats.skippedIdentityCount,
+        skippedFuzzyCount: stats.skippedFuzzyCount,
+        dedupedCount: stats.skippedIdentityCount + stats.skippedFuzzyCount,
+        addedWebCount: stats.addedWebCount,
+        activeCityMatchMiles: stats.activeCityMatchMiles,
+        activeDedupeGeoMiles: stats.activeDedupeGeoMiles,
+        activeDedupeNameGeoMiles: stats.activeDedupeNameGeoMiles
+      };
+      return cityEntry.effectiveLocations;
+    }
+
+    function renderLocationsPageSubtitle(cityEntry) {
+      const subtitle = document.getElementById('locationsPageSubtitle');
+      if (!subtitle || !cityEntry) return;
+      const meta = cityEntry.nearbyBlendMeta || { savedCount: getCityLocationsForView(cityEntry).length, webCount: 0 };
+      const webCount = Number(meta.webCount || 0);
+      if (webCount > 0) {
+        subtitle.textContent = `${cityEntry.state} · ${meta.savedCount} saved + ${webCount} nearby web rec${webCount === 1 ? '' : 's'}`;
+        return;
+      }
+      const total = getCityLocationsForView(cityEntry).length;
+      subtitle.textContent = `${cityEntry.state} · ${total} location${total !== 1 ? 's' : ''}`;
+    }
+
+    function computeSourceFilterCounts(locations) {
+      return (Array.isArray(locations) ? locations : []).reduce((acc, loc) => {
+        const key = getLocSourceKey(loc);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, { saved: 0, web: 0 });
+    }
+
+    function renderLocSourceFilterChips(counts) {
+      const wrap = document.getElementById('locSourceFilters');
+      if (!wrap) return;
+      const sourceCounts = counts || { saved: 0, web: 0 };
+      const total = Number(sourceCounts.saved || 0) + Number(sourceCounts.web || 0);
+      if (total <= 0) {
+        wrap.classList.remove('visible');
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.classList.add('visible');
+      wrap.innerHTML = `
+        <span class="loc-source-filter-label">Source:</span>
+        <button type="button" class="loc-tag-btn loc-source-btn ${activeLocSourceFilter === 'saved' ? 'active' : ''}" data-source-filter="saved" onclick="toggleLocSourceFilter('saved')">✅ Saved<span class="loc-tag-count">(${Number(sourceCounts.saved || 0)})</span></button>
+        <button type="button" class="loc-tag-btn loc-source-btn ${activeLocSourceFilter === 'web' ? 'active' : ''}" data-source-filter="web" onclick="toggleLocSourceFilter('web')">🔗 Web<span class="loc-tag-count">(${Number(sourceCounts.web || 0)})</span></button>
+        ${activeLocSourceFilter ? '<button type="button" class="loc-mini-btn" onclick="toggleLocSourceFilter(\'\')">Show all</button>' : ''}
+      `;
+    }
+
+    function renderMixedSourceDiagnosticsPanel(cityEntry, baseResults, visibleResults) {
+      const panel = document.getElementById('locMixedSourceDiagnostics');
+      if (!panel) return;
+      const meta = cityEntry && cityEntry.nearbyBlendMeta ? cityEntry.nearbyBlendMeta : null;
+      if (!meta) {
+        panel.classList.remove('visible');
+        panel.innerHTML = '';
+        return;
+      }
+      const savedVisible = (Array.isArray(visibleResults) ? visibleResults : []).filter((loc) => getLocSourceKey(loc) === 'saved').length;
+      const webVisible = (Array.isArray(visibleResults) ? visibleResults : []).filter((loc) => getLocSourceKey(loc) === 'web').length;
+      const baseCount = Array.isArray(baseResults) ? baseResults.length : 0;
+      const dedupeGeo = Number(meta.activeDedupeGeoMiles || CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT);
+      const dedupeNameGeo = Number(meta.activeDedupeNameGeoMiles || CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT);
+      const cityMatch = Number(meta.activeCityMatchMiles || CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT);
+      const helpText = [
+        'Saved: curated/app rows in this city.',
+        'Web added: nearby web recommendations added after dedupe.',
+        'Dedupe skipped: nearby rows rejected as likely duplicates.',
+        'Cache entries: nearby cache buckets near this city.',
+        'Raw nearby rows: nearby rows scanned before dedupe.',
+        'Visible now: current saved/web rows after active filters.',
+        `Thresholds: city match <= ${cityMatch.toFixed(2)}mi, geo dedupe <= ${dedupeGeo.toFixed(2)}mi, name+geo dedupe <= ${dedupeNameGeo.toFixed(2)}mi.`
+      ].join(' ');
+      panel.classList.add('visible');
+      panel.innerHTML =
+        '<span class="diag-pill">mixed source</span>' +
+        '<button type="button" id="locMixedSourceDiagnosticsHelp" class="loc-mixed-source-help" title="' + escAttr(helpText) + '" aria-label="Explain mixed-source diagnostics metrics">?</button>' +
+        '<span>Saved: <strong>' + Number(meta.savedCount || 0) + '</strong></span>' +
+        '<span>Web added: <strong>' + Number(meta.addedWebCount || 0) + '</strong></span>' +
+        '<span>Dedupe skipped: <strong>' + Number(meta.dedupedCount || 0) + '</strong></span>' +
+        '<span>Cache entries: <strong>' + Number(meta.cacheMatchCount || 0) + '</strong></span>' +
+        '<span>Raw nearby rows: <strong>' + Number(meta.rawNearbyCount || 0) + '</strong></span>' +
+        '<span>Visible now: <strong>' + savedVisible + ' saved</strong> · <strong>' + webVisible + ' web</strong> (from ' + baseCount + ' post-filter rows)</span>' +
+        '<span>Thresholds: geo ≤ <strong>' + dedupeGeo.toFixed(2) + 'mi</strong> · name+geo ≤ <strong>' + dedupeNameGeo.toFixed(2) + 'mi</strong> · city match ≤ <strong>' + cityMatch.toFixed(2) + 'mi</strong></span>';
+    }
+
+    function toggleLocSourceFilter(sourceKey) {
+      const next = String(sourceKey || '').trim().toLowerCase();
+      activeLocSourceFilter = activeLocSourceFilter === next ? '' : (next === 'saved' || next === 'web' ? next : '');
+      applyLocFilters();
+    }
+
+    function getLocFilterCriteria() {
+      return {
+        searchTerm: String((document.getElementById('locSearchName') && document.getElementById('locSearchName').value) || '').trim().toLowerCase(),
+        diffFilter: String((document.getElementById('locFilterDifficulty') && document.getElementById('locFilterDifficulty').value) || '').toLowerCase(),
+        costFilter: String((document.getElementById('locFilterCost') && document.getElementById('locFilterCost').value) || '').toLowerCase(),
+        tagFilter: String(activeLocQuickTag || ((document.getElementById('locFilterTag') && document.getElementById('locFilterTag').value) || '')).trim().toLowerCase(),
+        openNowOnly: !!(document.getElementById('locFilterOpenNow') && document.getElementById('locFilterOpenNow').checked),
+        closingSoonOnly: !!(document.getElementById('locFilterClosingSoon') && document.getElementById('locFilterClosingSoon').checked),
+        sourceFilter: String(activeLocSourceFilter || '').trim().toLowerCase()
+      };
+    }
+
+    function locationMatchesLocCriteria(loc, criteria, options) {
+      const settings = options || {};
+      const filters = criteria || getLocFilterCriteria();
+      if (!locationMatchesPrefilter(loc)) return false;
+      const name = String(locVal(loc, 0, 'name')).toLowerCase();
+      const tags = getLocationTags(loc).join(',').toLowerCase();
+      const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
+      const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
+      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      if (filters.searchTerm && !name.includes(filters.searchTerm)) return false;
+      if (filters.diffFilter && !difficulty.includes(filters.diffFilter)) return false;
+      if (filters.costFilter && !cost.includes(filters.costFilter)) return false;
+      if (filters.tagFilter && !tags.includes(filters.tagFilter)) return false;
+      if (filters.openNowOnly && !openInfo.isOpen) return false;
+      if (filters.closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= 120)) return false;
+      if (!settings.ignoreSourceFilter && filters.sourceFilter && getLocSourceKey(loc) !== filters.sourceFilter) return false;
+      return true;
+    }
+
+    function compareLocationsForSort(a, b, sortBy, cityEntry) {
+      const sourcePriority = getLocationSourcePriority(a) - getLocationSourcePriority(b);
+      if (sourcePriority !== 0) return sourcePriority;
+      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      const diffOrder = { easy: 0, moderate: 1, hard: 2 };
+      let av;
+      let bv;
+      if (sortBy === 'driveTime') {
+        av = parseDriveMinutes(locVal(a, 4, 'driveTime'));
+        bv = parseDriveMinutes(locVal(b, 4, 'driveTime'));
+      } else if (sortBy === 'difficulty') {
+        av = diffOrder[String(locVal(a, 7, 'difficulty')).toLowerCase()] ?? 99;
+        bv = diffOrder[String(locVal(b, 7, 'difficulty')).toLowerCase()] ?? 99;
+      } else if (sortBy === 'cost') {
+        av = costOrder[String(locVal(a, 14, 'cost')).toLowerCase()] ?? 99;
+        bv = costOrder[String(locVal(b, 14, 'cost')).toLowerCase()] ?? 99;
+      } else if (sortBy === 'rating') {
+        av = parseFloat(locVal(a, 13, 'rating')) || 0;
+        bv = parseFloat(locVal(b, 13, 'rating')) || 0;
+      } else if (sortBy === 'bestValue') {
+        av = getLocationBestValueScore(a);
+        bv = getLocationBestValueScore(b);
+      } else if (sortBy === 'mostUnique') {
+        av = getLocationMostUniqueScore(a, cityEntry);
+        bv = getLocationMostUniqueScore(b, cityEntry);
+      } else if (sortBy === 'tags') {
+        av = String(locVal(a, 3, 'tags')).toLowerCase();
+        bv = String(locVal(b, 3, 'tags')).toLowerCase();
+      } else {
+        av = String(locVal(a, 0, 'name')).toLowerCase();
+        bv = String(locVal(b, 0, 'name')).toLowerCase();
+      }
+      if (typeof av === 'number' && typeof bv === 'number') {
+        const delta = locSortOrder === 'asc' ? av - bv : bv - av;
+        if (delta !== 0) return delta;
+      } else {
+        const cmp = String(av).localeCompare(String(bv));
+        if (cmp !== 0) return locSortOrder === 'asc' ? cmp : -cmp;
+      }
+      return String(locVal(a, 0, 'name') || '').localeCompare(String(locVal(b, 0, 'name') || ''));
+    }
+
     function getLocFilterState() {
       return {
         searchName: document.getElementById('locSearchName').value,
@@ -3362,6 +4022,7 @@
         tagText: document.getElementById('locFilterTag').value,
         openNow: document.getElementById('locFilterOpenNow').checked,
         closingSoon: document.getElementById('locFilterClosingSoon').checked,
+        sourceFilter: activeLocSourceFilter,
         sortBy: document.getElementById('locSortBy').value,
         sortOrder: locSortOrder,
         quickTag: activeLocQuickTag,
@@ -3377,6 +4038,7 @@
       document.getElementById('locFilterTag').value = state.tagText || '';
       document.getElementById('locFilterOpenNow').checked = Boolean(state.openNow);
       document.getElementById('locFilterClosingSoon').checked = Boolean(state.closingSoon);
+      activeLocSourceFilter = state.sourceFilter === 'web' ? 'web' : (state.sourceFilter === 'saved' ? 'saved' : '');
       document.getElementById('locSortBy').value = state.sortBy || 'name';
       locSortOrder = state.sortOrder === 'desc' ? 'desc' : 'asc';
       document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
@@ -3536,7 +4198,7 @@
     }
 
     function getLocationMostUniqueScore(loc, cityEntry) {
-      const tagFreq = buildCityTagFrequency((cityEntry && cityEntry.locations) || []);
+      const tagFreq = buildCityTagFrequency(getCityLocationsForView(cityEntry));
       const tags = getLocationTags(loc);
       const rarityScore = tags.reduce((sum, tag) => {
         const count = tagFreq[String(tag || '').toLowerCase()] || 1;
@@ -4182,14 +4844,15 @@
       const cost = String(state.cost || '').trim();
       const searchName = String(state.searchName || '').trim();
       const quickTag = String(state.quickTag || '').trim();
+      const sourceFilter = String(state.sourceFilter || '').trim();
 
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && state.openNow && !state.closingSoon && state.sortBy === 'driveTime' && state.sortOrder === 'asc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && state.openNow && !state.closingSoon && state.sortBy === 'driveTime' && state.sortOrder === 'asc') {
         return 'closest-now';
       }
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !state.openNow && !state.closingSoon && state.sortBy === 'bestValue' && state.sortOrder === 'desc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !state.openNow && !state.closingSoon && state.sortBy === 'bestValue' && state.sortOrder === 'desc') {
         return 'best-value';
       }
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !state.openNow && !state.closingSoon && state.sortBy === 'mostUnique' && state.sortOrder === 'desc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !state.openNow && !state.closingSoon && state.sortBy === 'mostUnique' && state.sortOrder === 'desc') {
         return 'most-unique';
       }
       return '';
@@ -4210,6 +4873,7 @@
       document.getElementById('locFilterClosingSoon').checked = false;
       document.getElementById('locFilterOpenNow').checked = false;
       activeLocQuickTag = null;
+      activeLocSourceFilter = '';
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
 
       if (kind === 'closest-now') {
@@ -4452,8 +5116,8 @@
         const label = normalizedAction.replace('-', ' ');
         showRouteToast(`Applied ${label} to ${targets.length} location${targets.length === 1 ? '' : 's'}.`, false);
       }
-      buildQuickTagPills(citiesData[currentCityKey]?.locations || []);
-      populateTagDatalist(citiesData[currentCityKey]?.locations || []);
+      buildQuickTagPills(getCurrentCityLocationsForView());
+      populateTagDatalist(getCurrentCityLocationsForView());
       applyLocFilters();
       if (activeLocationDetailId) {
         const detailLoc = findLocationById(activeLocationDetailId);
@@ -4490,6 +5154,38 @@
       updateUrlFromState();
     }
 
+    function openBatchTagActionsFromCityViewer(optionalLocId) {
+      const host = window.opener && !window.opener.closed ? window.opener : null;
+      let baseUrl = '';
+      if (host && typeof host.resolvePlannerPageUrl === 'function') {
+        baseUrl = String(host.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html') || '').trim();
+      }
+      if (!baseUrl) {
+        baseUrl = new URL('edit-mode-enhanced.html', window.location.href).toString();
+      }
+      const url = new URL(baseUrl, window.location.href);
+      if (prefilterSourceSubtab) {
+        url.searchParams.set('sourceSubtab', String(prefilterSourceSubtab));
+      }
+      url.searchParams.set('batchTagAction', '1');
+      const locId = String(optionalLocId || '').trim();
+      const loc = locId ? findLocationById(locId) : null;
+      const seed = String(
+        (loc && (locVal(loc, 1, 'googlePlaceId') || locVal(loc, 0, 'name') || getLocId(loc)))
+        || ''
+      ).trim();
+      if (seed) {
+        url.searchParams.set('batchTagSeed', seed);
+        url.searchParams.set('batchTagCopySource', seed);
+      }
+      const win = window.open(url.toString(), '_blank', 'noopener');
+      if (win && typeof win.focus === 'function') {
+        win.focus();
+      } else {
+        showRouteToast('Popup blocked. Allow popups to open Batch Tag Actions.', true);
+      }
+    }
+
     function renderQuickActionsMenu(locId, encodedLocId) {
       return `
         <details class="loc-quick-actions" onclick="event.stopPropagation()">
@@ -4504,6 +5200,8 @@
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-visit')">Add visit</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'copy-address')">Copy address</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'copy-gps')">Copy GPS coordinates</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'focus-map')">🗺️ Open in Map View</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'open-batch-tags')">🏷️ Batch Tag Actions</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'open-google')">Open Google URL</button>
           </div>
         </details>`;
@@ -4531,13 +5229,30 @@
         window.open(googleUrl, '_blank', 'noopener');
         return;
       }
+      if (actionKey === 'focus-map') {
+        if (activeLocationDetailId) {
+          goBackToLocationResults();
+        }
+        if (!locSplitView) setSplitView(true);
+        setActiveLocation(locId, true);
+        const visible = Array.isArray(lastFilteredLocations) && lastFilteredLocations.length
+          ? lastFilteredLocations
+          : getCurrentCityLocationsForView();
+        requestAnimationFrame(() => renderLocMap(visible));
+        showRouteToast('Focused location in split map view.', false);
+        return;
+      }
+      if (actionKey === 'open-batch-tags') {
+        openBatchTagActionsFromCityViewer(locId);
+        return;
+      }
       if (actionKey === 'copy-tags-to-selected') {
         const selectedIds = Array.from(getShortlistSet());
         const copyPlan = buildBulkCopyPlan(selectedIds, locId);
         const copyResult = copyTagsFromLocationToTargets(copyPlan.sourceIds, copyPlan.targetIds, { mergeMode: copyPlan.mergeMode });
         if (!copyResult) return;
-        buildQuickTagPills(citiesData[currentCityKey]?.locations || []);
-        populateTagDatalist(citiesData[currentCityKey]?.locations || []);
+        buildQuickTagPills(getCurrentCityLocationsForView());
+        populateTagDatalist(getCurrentCityLocationsForView());
         applyLocFilters();
         Promise.all(copyResult.targets.map((targetId) => syncLocationEditsToGraph(targetId))).catch((error) => {
           console.warn('⚠️ City Explorer copy-tags sync failed:', error && error.message ? error.message : error);
@@ -4721,7 +5436,6 @@
       const cityEntry = currentCityKey ? citiesData[currentCityKey] : null;
       const name = locVal(loc, 0, 'name') || 'Unnamed Location';
       const website = locVal(loc, 2, 'website');
-      const tagsRaw = locVal(loc, 3, 'tags');
       const driveTime = locVal(loc, 4, 'driveTime');
       const hours = locVal(loc, 5, 'hours');
       const duration = locVal(loc, 6, 'duration');
@@ -4733,6 +5447,8 @@
       const cost = locVal(loc, 14, 'cost');
       const description = locVal(loc, 12, 'description');
       const googleUrl = locVal(loc, 23, 'googleUrl');
+      const isNatureSource = isNatureLocationRecord(loc);
+      const originBadge = getLocationOriginBadge(loc);
       const tagEntries = getLocationDerivedTags(loc);
       const editState = getLocationEditState(locId);
       const noteText = editState.note;
@@ -4752,9 +5468,10 @@
           <div class="loc-card-header">
             <div class="loc-card-name">${escHtml(name)}</div>
             <div class="loc-card-meta">
-              ${difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
+              <span class="loc-meta-badge ${escAttr(originBadge.className)}">${escHtml(originBadge.label)}</span>
+              ${isNatureSource && difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
               ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
-              ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
+              ${renderRatingBadgeHtml(rating)}
             </div>
           </div>
           ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
@@ -4764,8 +5481,8 @@
           <div class="loc-card-details">
             ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
             ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
-            ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
-            ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
+            ${isNatureSource && duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
+            ${isNatureSource && trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
             ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
             ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
           </div>
@@ -4775,6 +5492,7 @@
             ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
             <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
             <button class="loc-action-btn" type="button" onclick="toggleLocationDetailEditor()">✏️ Edit Fields</button>
+            <button class="loc-action-btn" type="button" onclick="openBatchTagActionsFromCityViewer('${escAttr(locId)}')">🏷️ Batch Tags</button>
             ${renderQuickActionsMenu(locId, encodedLocId)}
           </div>
           ${buildLocationDetailEditorPanel(loc)}
@@ -4880,7 +5598,7 @@
     function findLocationById(locId) {
       const cityEntry = citiesData[currentCityKey];
       if (!cityEntry) return null;
-      return cityEntry.locations.find(loc => getLocId(loc) === locId) || null;
+      return getCityLocationsForView(cityEntry).find(loc => getLocId(loc) === locId) || null;
     }
 
     function getLocPoint(loc, locId) {
@@ -5324,12 +6042,41 @@
           if (tag) counts[tag] = (counts[tag] || 0) + 1;
         });
       });
-      const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12);
       const wrap = document.getElementById('locQuickTags');
       if (!wrap) return;
-      wrap.innerHTML = top.map(tag =>
-        `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(tag.charAt(0).toUpperCase() + tag.slice(1))}</button>`
-      ).join('');
+      wrap.innerHTML = top.map(entry => {
+        const tag = String(entry[0] || '');
+        const count = Number(entry[1] || 0);
+        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
+        return `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(label)}<span class="loc-tag-count">(${count})</span></button>`;
+      }).join('');
+    }
+
+    function getLocationOriginBadge(loc) {
+      if (getLocSourceKey(loc) === 'web') {
+        return { label: '🔗 Web recommendation', className: 'source-web' };
+      }
+      return { label: '✅ Saved in app', className: 'source-saved' };
+    }
+
+    function isNatureLocationRecord(loc) {
+      const sourceLabel = String((loc && loc.sourceLabel) || '').toLowerCase();
+      if (sourceLabel.indexOf('nature_locations.xlsx / nature_locations') >= 0) return true;
+      if (sourceLabel.indexOf('nature_locations') >= 0 && sourceLabel.indexOf('nature') >= 0) return true;
+      const workbook = String((loc && (loc.sourceWorkbook || loc.workbook || loc.sheet || loc.tableName)) || '').toLowerCase();
+      return workbook.indexOf('nature_locations') >= 0;
+    }
+
+    function renderRatingBadgeHtml(rawRating) {
+      const ratingNumber = Number(rawRating);
+      if (!Number.isFinite(ratingNumber) || ratingNumber <= 0) return '';
+      const clamped = Math.max(0, Math.min(5, ratingNumber));
+      const rounded = Math.round(clamped);
+      const stars = Array.from({ length: 5 }).map(function (_x, idx) {
+        return idx < rounded ? '★' : '<span class="is-empty">★</span>';
+      }).join('');
+      return `<span class="loc-meta-badge rating loc-rating-inline"><span class="loc-rating-stars" aria-hidden="true">${stars}</span><span>${escHtml(clamped.toFixed(1))}</span></span>`;
     }
 
     function populateTagDatalist(locations) {
@@ -5375,6 +6122,7 @@
       const sortBtn = document.getElementById('locSortOrderBtn');
       if (sortBtn) sortBtn.textContent = '↑';
       activeLocQuickTag = null;
+      activeLocSourceFilter = '';
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
       setSplitView(false);
       applyLocFilters();
@@ -5388,6 +6136,7 @@
       const tagText = String(document.getElementById('locFilterTag')?.value || '').trim();
       const openNow = Boolean(document.getElementById('locFilterOpenNow')?.checked);
       const closingSoon = Boolean(document.getElementById('locFilterClosingSoon')?.checked);
+      const sourceFilter = String(activeLocSourceFilter || '').trim();
       const sortBy = String(document.getElementById('locSortBy')?.value || 'name').trim();
 
       if (prefilterTag) {
@@ -5399,6 +6148,7 @@
       if (cost) chips.push({ key: 'cost', label: `Cost: ${cost}` });
       if (activeLocQuickTag) chips.push({ key: 'quickTag', label: `Quick tag: ${activeLocQuickTag}` });
       else if (tagText) chips.push({ key: 'tagText', label: `Tag: ${tagText}` });
+      if (sourceFilter) chips.push({ key: 'sourceFilter', label: `Source: ${sourceFilter}` });
       if (openNow) chips.push({ key: 'openNow', label: 'Open now' });
       if (closingSoon) chips.push({ key: 'closingSoon', label: 'Closing within 2h' });
       if (sortBy !== 'name' || locSortOrder !== 'asc') chips.push({ key: 'sort', label: `Sort: ${sortBy} (${locSortOrder})` });
@@ -5420,6 +6170,7 @@
         document.getElementById('locFilterTag').value = '';
         document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
       }
+      if (key === 'sourceFilter') activeLocSourceFilter = '';
       if (key === 'openNow') document.getElementById('locFilterOpenNow').checked = false;
       if (key === 'closingSoon') document.getElementById('locFilterClosingSoon').checked = false;
       if (key === 'sort') {
@@ -5453,18 +6204,52 @@
       const text = String(hoursText || '').toLowerCase();
       if (!text) return { isOpen: true, minutesUntilClose: null };
       if (text.includes('closed')) return { isOpen: false, minutesUntilClose: null };
-      return { isOpen: true, minutesUntilClose: null };
+      if (text.includes('open 24') || text.includes('24/7')) return { isOpen: true, minutesUntilClose: 999 };
+      if (text.includes('open daily')) return { isOpen: true, minutesUntilClose: null };
+
+      const rangeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*[-–to]+\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+      if (!rangeMatch) return { isOpen: true, minutesUntilClose: null };
+
+      function toMinutes(hours, minutes, suffix) {
+        let h = Number(hours) || 0;
+        const m = Number(minutes) || 0;
+        const meridiem = String(suffix || '').toLowerCase();
+        if (meridiem === 'pm' && h < 12) h += 12;
+        if (meridiem === 'am' && h === 12) h = 0;
+        return (h * 60) + m;
+      }
+
+      const now = new Date();
+      const nowMinutes = (now.getHours() * 60) + now.getMinutes();
+      const openMinutes = toMinutes(rangeMatch[1], rangeMatch[2], rangeMatch[3]);
+      let closeMinutes = toMinutes(rangeMatch[4], rangeMatch[5], rangeMatch[6]);
+      if (closeMinutes <= openMinutes) closeMinutes += 24 * 60;
+      const normalizedNow = nowMinutes < openMinutes ? nowMinutes + (24 * 60) : nowMinutes;
+      const isOpen = normalizedNow >= openMinutes && normalizedNow <= closeMinutes;
+      const untilClose = isOpen ? Math.max(0, closeMinutes - normalizedNow) : null;
+      return { isOpen, minutesUntilClose: untilClose };
+    }
+
+    function openNearbyDiagnosticsFromCityViewer() {
+      const host = window.opener && !window.opener.closed ? window.opener : null;
+      if (host && typeof host.openDiagnosticsHubPage === 'function') {
+        host.openDiagnosticsHubPage({ section: 'nearby', source: 'city-explorer' });
+        try { host.focus(); } catch (_err) {}
+        return;
+      }
+      if (typeof window.openDiagnosticsHubPage === 'function') {
+        window.openDiagnosticsHubPage({ section: 'nearby', source: 'city-explorer-inline' });
+        return;
+      }
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('tab', 'diagnostics-hub');
+      nextUrl.searchParams.set('diagSection', 'nearby');
+      nextUrl.searchParams.set('diagSource', 'city-explorer');
+      window.open(nextUrl.toString(), '_blank', 'noopener');
     }
 
     function getLocFilterSnapshot() {
-      return {
-        searchTerm: String((document.getElementById('locSearchName') && document.getElementById('locSearchName').value) || '').trim().toLowerCase(),
-        diffFilter: String((document.getElementById('locFilterDifficulty') && document.getElementById('locFilterDifficulty').value) || '').toLowerCase(),
-        costFilter: String((document.getElementById('locFilterCost') && document.getElementById('locFilterCost').value) || '').toLowerCase(),
-        tagFilter: String(activeLocQuickTag || ((document.getElementById('locFilterTag') && document.getElementById('locFilterTag').value) || '')).trim().toLowerCase(),
-        openNowOnly: !!(document.getElementById('locFilterOpenNow') && document.getElementById('locFilterOpenNow').checked),
-        closingSoonOnly: !!(document.getElementById('locFilterClosingSoon') && document.getElementById('locFilterClosingSoon').checked)
-      };
+      return getLocFilterCriteria();
     }
 
     function computeWildlifeFilterBreakdown(locations, filters) {
@@ -5550,13 +6335,14 @@
       const strip = document.getElementById('wildlifeDiagnosticsStrip');
       if (!strip) return;
 
-      if (!isWildlifePrefilterActive() || !cityEntry || !Array.isArray(cityEntry.locations)) {
+      const cityLocations = getCityLocationsForView(cityEntry);
+      if (!isWildlifePrefilterActive() || !cityEntry || !cityLocations.length) {
         strip.classList.remove('visible');
         strip.innerHTML = '';
         return;
       }
 
-      const allInCity = cityEntry.locations;
+      const allInCity = cityLocations;
       const wildlifeMatches = allInCity.filter(function (loc) { return locationMatchesPrefilter(loc); });
       const visible = Array.isArray(visibleResults) ? visibleResults : [];
       const hiddenByFilters = Math.max(0, wildlifeMatches.length - visible.length);
@@ -5591,78 +6377,25 @@
     function applyLocFilters() {
       if (!currentCityKey || !citiesData[currentCityKey]) return;
       const cityEntry = citiesData[currentCityKey];
-
-      const searchTerm = document.getElementById('locSearchName').value.trim().toLowerCase();
-      const diffFilter = document.getElementById('locFilterDifficulty').value.toLowerCase();
-      const costFilter = document.getElementById('locFilterCost').value.toLowerCase();
-      const tagInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
-      const tagFilter = activeLocQuickTag || tagInput;
-      const openNowOnly = document.getElementById('locFilterOpenNow').checked;
-      const closingSoonOnly = document.getElementById('locFilterClosingSoon').checked;
       const sortBy = document.getElementById('locSortBy').value;
-
-      let results = cityEntry.locations.filter(loc => {
-        // ── prefilter guard (exact source mapping or fuzzy fallback) ──────────
-        if (!locationMatchesPrefilter(loc)) return false;
-
-        const name = String(locVal(loc, 0, 'name')).toLowerCase();
-        const tags = getLocationTags(loc).join(',').toLowerCase();
-        const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
-        const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
-        const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
-        if (searchTerm && !name.includes(searchTerm)) return false;
-        if (diffFilter && !difficulty.includes(diffFilter)) return false;
-        if (costFilter && !cost.includes(costFilter)) return false;
-        if (tagFilter && !tags.includes(tagFilter)) return false;
-        if (openNowOnly && !openInfo.isOpen) return false;
-        if (closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= 120)) return false;
-        return true;
-      });
-
-      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
-      const diffOrder = { easy: 0, moderate: 1, hard: 2 };
-      results.sort((a, b) => {
-        let av;
-        let bv;
-        if (sortBy === 'driveTime') {
-          av = parseDriveMinutes(locVal(a, 4, 'driveTime'));
-          bv = parseDriveMinutes(locVal(b, 4, 'driveTime'));
-        } else if (sortBy === 'difficulty') {
-          av = diffOrder[String(locVal(a, 7, 'difficulty')).toLowerCase()] ?? 99;
-          bv = diffOrder[String(locVal(b, 7, 'difficulty')).toLowerCase()] ?? 99;
-        } else if (sortBy === 'cost') {
-          av = costOrder[String(locVal(a, 14, 'cost')).toLowerCase()] ?? 99;
-          bv = costOrder[String(locVal(b, 14, 'cost')).toLowerCase()] ?? 99;
-        } else if (sortBy === 'rating') {
-          av = parseFloat(locVal(a, 13, 'rating')) || 0;
-          bv = parseFloat(locVal(b, 13, 'rating')) || 0;
-        } else if (sortBy === 'bestValue') {
-          av = getLocationBestValueScore(a);
-          bv = getLocationBestValueScore(b);
-        } else if (sortBy === 'mostUnique') {
-          av = getLocationMostUniqueScore(a, cityEntry);
-          bv = getLocationMostUniqueScore(b, cityEntry);
-        } else if (sortBy === 'tags') {
-          av = String(locVal(a, 3, 'tags')).toLowerCase();
-          bv = String(locVal(b, 3, 'tags')).toLowerCase();
-        } else {
-          av = String(locVal(a, 0, 'name')).toLowerCase();
-          bv = String(locVal(b, 0, 'name')).toLowerCase();
-        }
-        if (typeof av === 'number' && typeof bv === 'number') return locSortOrder === 'asc' ? av - bv : bv - av;
-        const cmp = String(av).localeCompare(String(bv));
-        return locSortOrder === 'asc' ? cmp : -cmp;
-      });
+      const criteria = getLocFilterCriteria();
+      const cityLocations = getCityLocationsForView(cityEntry);
+      const baseResults = cityLocations.filter((loc) => locationMatchesLocCriteria(loc, criteria, { ignoreSourceFilter: true }));
+      renderLocSourceFilterChips(computeSourceFilterCounts(baseResults));
+      const results = baseResults
+        .filter((loc) => locationMatchesLocCriteria(loc, criteria))
+        .sort((a, b) => compareLocationsForSort(a, b, sortBy, cityEntry));
 
       lastFilteredLocations = results;
-      lastRankBadgeIndex = buildRankBadgeIndexForCity(cityEntry);
+      lastRankBadgeIndex = buildRankBadgeIndexForCity({ ...cityEntry, locations: cityLocations });
       document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
       saveLastLocState();
       renderActiveFilterChips();
       renderSmartPresetState();
       renderDataFreshnessBadge();
+      renderMixedSourceDiagnosticsPanel(cityEntry, baseResults, results);
       renderWildlifeDiagnosticsStrip(cityEntry, results);
-      renderCategoryBar(cityEntry.locations, results);
+      renderCategoryBar(cityLocations, results);
       renderLocationCards(results);
       renderLocMap(results);
       renderShortlistTray();
@@ -5695,7 +6428,6 @@
         const encodedLocId = encodeURIComponent(locId);
         const name = locVal(loc, 0, 'name') || 'Unnamed Location';
         const website = locVal(loc, 2, 'website');
-        const tagsRaw = locVal(loc, 3, 'tags');
         const driveTime = locVal(loc, 4, 'driveTime');
         const locAnimDelay = `${Math.min(idx * 0.035, 0.5).toFixed(3)}s`;
         const hours = locVal(loc, 5, 'hours');
@@ -5708,6 +6440,9 @@
         const cost = locVal(loc, 14, 'cost');
         const description = locVal(loc, 12, 'description');
         const googleUrl = locVal(loc, 23, 'googleUrl');
+        const isNatureSource = isNatureLocationRecord(loc);
+        const originBadge = getLocationOriginBadge(loc);
+        const originKey = getLocSourceKey(loc);
         const tagEntries = getLocationDerivedTags(loc);
         const editState = getLocationEditState(locId);
         const noteText = editState.note;
@@ -5725,13 +6460,14 @@
           : '';
 
         return `
-          <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" role="button" tabindex="0" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
+          <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" data-location-origin="${escAttr(originKey)}" role="button" tabindex="0" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
             <div class="loc-card-header">
               <div class="loc-card-name">${escHtml(name)}</div>
               <div class="loc-card-meta">
-                ${difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
+                <span class="loc-meta-badge ${escAttr(originBadge.className)}">${escHtml(originBadge.label)}</span>
+                ${isNatureSource && difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
                 ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
-                ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
+                ${renderRatingBadgeHtml(rating)}
               </div>
             </div>
             ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
@@ -5741,8 +6477,8 @@
             <div class="loc-card-details">
               ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
               ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
-              ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
-              ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
+              ${isNatureSource && duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
+              ${isNatureSource && trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
               ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
               ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
             </div>
@@ -5771,11 +6507,13 @@
       currentCityKey = key;
       activeLocId = null;
       activeLocQuickTag = null;
+      activeLocSourceFilter = '';
       activeLocationDetailId = null;
       lastRankBadgeIndex = {};
+      const viewLocations = refreshCityNearbyBlend(cityEntry);
 
       document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
-      document.getElementById('locationsPageSubtitle').textContent = `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
+      renderLocationsPageSubtitle(cityEntry);
 
       // Apply city-matched gradient to the locations header
       const locHeader = document.getElementById('locationsHeader');
@@ -5794,8 +6532,8 @@
       document.getElementById('locSortOrderBtn').textContent = '↑';
       setSplitView(false);
 
-      buildQuickTagPills(cityEntry.locations);
-      populateTagDatalist(cityEntry.locations);
+      buildQuickTagPills(viewLocations);
+      populateTagDatalist(viewLocations);
       refreshPresetSelect();
       renderShortlistTray();
       renderDataFreshnessBadge();
@@ -5954,7 +6692,7 @@
 
     function bulkAddTopRated(count) {
       if (!currentCityKey || !citiesData[currentCityKey]) return;
-      const locs = citiesData[currentCityKey].locations.slice();
+      const locs = getCurrentCityLocationsForView().slice();
       locs.sort((a, b) => (parseFloat(locVal(b, 13, 'rating')) || 0) - (parseFloat(locVal(a, 13, 'rating')) || 0));
       const topN = locs.slice(0, count);
       const shortlist = getShortlistSet();
@@ -6003,6 +6741,7 @@
     window.toggleLocFilterPanel = toggleLocFilterPanel;
     window.scrollToTop = scrollToTop;
     window.filterByCategory = filterByCategory;
+    window.openNearbyDiagnosticsFromCityViewer = openNearbyDiagnosticsFromCityViewer;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

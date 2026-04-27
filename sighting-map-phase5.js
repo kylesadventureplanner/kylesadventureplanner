@@ -22,8 +22,20 @@
   const SIGHTING_LOG_KEY   = 'natureChallengeBirdSightingLogV1';
   const LEAFLET_CSS_CDN    = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
   const LEAFLET_JS_CDN     = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-  const TILE_URL           = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const TILE_ATTR          = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const TILE_SOURCES       = [
+    {
+      key: 'osm',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      options: { maxZoom: 19, crossOrigin: true, referrerPolicy: 'strict-origin-when-cross-origin' }
+    },
+    {
+      key: 'carto',
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '© OpenStreetMap contributors © CARTO',
+      options: { maxZoom: 20, subdomains: 'abcd', crossOrigin: true, referrerPolicy: 'strict-origin-when-cross-origin' }
+    }
+  ];
   const DEFAULT_CENTER     = [39.5, -98.35];
   const DEFAULT_ZOOM       = 4;
 
@@ -332,6 +344,28 @@
     document.head.appendChild(s);
   }
 
+  function addBaseTileLayerWithFallback(map) {
+    let sourceIndex = 0;
+    let switched = false;
+    let tileLayer = null;
+
+    function mountLayer() {
+      const source = TILE_SOURCES[sourceIndex];
+      tileLayer = window.L.tileLayer(source.url, Object.assign({ attribution: source.attribution }, source.options));
+      window.__birdsMapTileSource = source.key;
+      tileLayer.on('tileerror', function () {
+        if (switched || sourceIndex >= TILE_SOURCES.length - 1) return;
+        switched = true;
+        sourceIndex += 1;
+        if (map.hasLayer(tileLayer)) map.removeLayer(tileLayer);
+        mountLayer();
+      });
+      tileLayer.addTo(map);
+    }
+
+    mountLayer();
+  }
+
   /* ─── Map init ───────────────────────────────────────────── */
   function initMap() {
     if (leafletMap) {
@@ -342,7 +376,7 @@
     if (!container || !window.L) return;
 
     leafletMap  = window.L.map(container, { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM });
-    window.L.tileLayer(TILE_URL, { attribution: TILE_ATTR, maxZoom: 19 }).addTo(leafletMap);
+    addBaseTileLayerWithFallback(leafletMap);
     markerLayer = window.L.layerGroup().addTo(leafletMap);
     renderMarkers();
     leafletReady = true;

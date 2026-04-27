@@ -40,16 +40,32 @@ window.DeviceAuthSystem = (function () {
     activeModal = null;
   }
 
+  function getApiMisconfigurationMessage(status, path) {
+    if (status !== 404 && status !== 405) return '';
+    var route = String(path || '').trim() || 'device-auth endpoint';
+    return 'Device sign-in API is not deployed/configured (' + route + ' returned ' + status + '). Operator hint: deploy/enable Static Web Apps API routes ' + API_START + ' and ' + API_POLL + '.';
+  }
+
   function requestJson(path, payload) {
     return fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload || {})
     }).then(async function (response) {
-      const body = await response.json().catch(function () { return {}; });
+      const bodyText = await response.text().catch(function () { return ''; });
+      let body = {};
+      try {
+        body = bodyText ? JSON.parse(bodyText) : {};
+      } catch (_err) {
+        body = {};
+      }
       if (!response.ok) {
-        const err = new Error(safeText(body.message || ('Request failed: ' + response.status)));
+        const hintMessage = getApiMisconfigurationMessage(response.status, path);
+        const fallbackMessage = safeText((body && body.message) || bodyText || ('Request failed: ' + response.status));
+        const err = new Error(safeText(hintMessage || fallbackMessage));
         err.code = safeText(body.error || ('http_' + response.status));
+        err.status = response.status;
+        err.path = path;
         throw err;
       }
       return body;

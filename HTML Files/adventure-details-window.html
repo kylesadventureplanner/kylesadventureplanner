@@ -344,12 +344,12 @@
       🗺️ Open Maps
     </a>
 
-    <a class="ab-btn ab-parking u-hidden" id="abParkingBtn" href="#" target="_blank" rel="noopener">
-      🅿️ Best Parking
-    </a>
-
     <button type="button" class="ab-btn" id="abLinksBtn" title="Add or update related links">
       🔗 Add Links
+    </button>
+
+    <button type="button" class="ab-btn" id="abBatchTagsBtn" title="Open Batch Tag Actions in Edit Mode">
+      🏷️ Batch Tags
     </button>
 
     <button type="button" class="ab-btn" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
@@ -1368,6 +1368,36 @@
     return '';
   }
 
+  function openBatchTagActionsFromDetail(data, payload) {
+    var hostWin = getOpenerWindow();
+    var baseUrl = '';
+    try {
+      if (hostWin && typeof hostWin.resolvePlannerPageUrl === 'function') {
+        baseUrl = String(hostWin.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html') || '').trim();
+      }
+    } catch (_resolveErr) {}
+    if (!baseUrl) {
+      baseUrl = new URL('edit-mode-enhanced.html', window.location.href).toString();
+    }
+    var url = new URL(baseUrl, window.location.href);
+    var nav = getDetailNavigationContext(payload);
+    if (nav && nav.subtabKey) {
+      url.searchParams.set('sourceSubtab', String(nav.subtabKey || '').trim());
+    }
+    url.searchParams.set('batchTagAction', '1');
+    var seed = String((data && (data.googlePlaceId || data.name)) || '').trim();
+    if (seed) {
+      url.searchParams.set('batchTagSeed', seed);
+      url.searchParams.set('batchTagCopySource', seed);
+    }
+    var editWin = window.open(url.toString(), '_blank', 'noopener');
+    if (editWin && typeof editWin.focus === 'function') {
+      editWin.focus();
+      return;
+    }
+    showDetailToast('⚠️ Popup blocked. Allow popups to open Batch Tag Actions.', 'info', 3200);
+  }
+
   function parseTagCsv(raw) {
     return String(raw || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
   }
@@ -1842,6 +1872,24 @@
     } catch (_errB) {}
 
     return null;
+  }
+
+  function openNearbyDiagnosticsFromDetail() {
+    var hostWin = getOpenerWindow();
+    if (hostWin && typeof hostWin.openDiagnosticsHubPage === 'function') {
+      hostWin.openDiagnosticsHubPage({ section: 'nearby', source: 'adventure-details-nearby' });
+      try { hostWin.focus(); } catch (_focusErr) {}
+      return;
+    }
+    if (typeof window.openDiagnosticsHubPage === 'function') {
+      window.openDiagnosticsHubPage({ section: 'nearby', source: 'adventure-details-inline' });
+      return;
+    }
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', 'diagnostics-hub');
+    url.searchParams.set('diagSection', 'nearby');
+    url.searchParams.set('diagSource', 'adventure-details-nearby');
+    window.open(url.toString(), '_blank', 'noopener');
   }
 
   function resolveExplorerHostSyncTarget() {
@@ -3655,6 +3703,7 @@
     return '<div id="nearbyControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
       '<div class="tm-actions">' +
         '<button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button>' +
+        '<button type="button" class="tm-btn" onclick="openNearbyDiagnosticsFromDetail()">🩺 Nearby Diagnostics</button>' +
         '<button type="button" class="tm-btn" onclick="openDayPlanDrawer()">📋 Day Plan (<span id="dayPlanCountBadge">' + loadDetailDayPlan().length + '</span>)</button>' +
         '<span class="u-text-xs-dim">Weighted blend · smart suggestions</span>' +
         profileLabel + weatherBadge +
@@ -4472,6 +4521,13 @@
       '</div>';
   }
 
+  function renderHoursCard(data) {
+    return '<span id="detailHoursValue">' + escapeHtml(String(data && data.hoursOfOperation || '')) + '</span>' +
+      '<div class="tm-actions" style="margin-top:8px;">' +
+      '<button type="button" id="refreshHoursBtn" class="tm-btn">🕐 Refresh Hours</button>' +
+      '</div>';
+  }
+
   async function refreshCoordinatesForDetail(forceSync) {
     var state = window.__detailInlineEditState;
     if (!state || !state.data) return;
@@ -4583,7 +4639,7 @@
       if (!hours) { showDetailToast('ℹ️ No hours returned from Google Places.', 'info', 2600); return; }
       data.hoursOfOperation = hours;
       markDetailFieldRefreshed(data, 'hoursOfOperation', 'google-places');
-      var hoursEl = document.querySelector('[data-detail-field-card="hoursOfOperation"] .value');
+      var hoursEl = document.getElementById('detailHoursValue');
       if (hoursEl) hoursEl.textContent = hours;
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { hours: hours }, 'detail-hours-refresh').catch(function () {});
       showDetailToast('✅ Hours of Operation refreshed.', 'success', 2600);
@@ -4964,7 +5020,7 @@
       card('Coordinates', renderCoordsCard(data), 'coordinates') +
       '</div>' +
       card('Description', data.description, 'description') +
-      card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
+      card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div><div class="tm-actions" style="margin-top:8px;"><button type="button" id="openBatchTagsFromCardBtn" class="tm-btn">🏷️ Batch Tag Actions</button></div>');
 
     var isNatureSource = (function() {
       var wb = (payload && payload.explorerSource && payload.explorerSource.workbook) || '';
@@ -4977,7 +5033,7 @@
 
     document.getElementById('pane-details').innerHTML =
       '<div class="grid">' +
-      card('Hours', data.hoursOfOperation, 'hoursOfOperation') +
+      card('Hours', renderHoursCard(data), 'hoursOfOperation') +
       (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
       (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
       (isNatureSource ? card('Trail Length', data.trailLength, 'trailLength') : '') +
@@ -5013,19 +5069,12 @@
       '</div>';
 
     document.getElementById('pane-additional').innerHTML =
-      renderParkingPanelHtml(data) +
       renderNearbyControlsHtml(data) +
       card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || [], data) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby') +
       renderDetailInsightsCard(data, payload);
     renderMapPaneShell();
     renderDetailMap(data);
     hydrateNearbyFromCacheForDetail(data);
-    hydrateParkingFromCacheForDetail(data);
-    window.setTimeout(function () {
-      if (!window.__detailParkingState || !Array.isArray(window.__detailParkingState.options) || !window.__detailParkingState.options.length) {
-        refreshParkingIntelligenceForDetail();
-      }
-    }, 60);
     renderDetailInlineEditPanel();
   }
 
@@ -5414,6 +5463,49 @@
       '</div>';
   }
 
+  var DETAIL_MAP_TILE_SOURCES = [
+    {
+      key: 'osm',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '© OpenStreetMap contributors',
+      options: { maxZoom: 19, crossOrigin: true, referrerPolicy: 'strict-origin-when-cross-origin' }
+    },
+    {
+      key: 'carto',
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '© OpenStreetMap contributors © CARTO',
+      options: { maxZoom: 20, subdomains: 'abcd', crossOrigin: true, referrerPolicy: 'strict-origin-when-cross-origin' }
+    }
+  ];
+
+  function addDetailBaseLayerWithFallback(map, onFallbackActivated) {
+    var sourceIndex = 0;
+    var switched = false;
+    var tileLayer = null;
+
+    function mountLayer() {
+      var source = DETAIL_MAP_TILE_SOURCES[sourceIndex];
+      tileLayer = window.L.tileLayer(source.url, Object.assign({ attribution: source.attribution }, source.options));
+      window.__detailLeafletTileSource = source.key;
+      tileLayer.on('tileerror', function () {
+        if (switched || sourceIndex >= DETAIL_MAP_TILE_SOURCES.length - 1) return;
+        switched = true;
+        var previousSource = DETAIL_MAP_TILE_SOURCES[sourceIndex];
+        sourceIndex += 1;
+        var nextSource = DETAIL_MAP_TILE_SOURCES[sourceIndex];
+        if (map.hasLayer(tileLayer)) map.removeLayer(tileLayer);
+        if (typeof onFallbackActivated === 'function') {
+          onFallbackActivated(previousSource, nextSource);
+        }
+        mountLayer();
+      });
+      tileLayer.addTo(map);
+    }
+
+    mountLayer();
+    return tileLayer;
+  }
+
   async function renderDetailMap(data) {
     renderMapPaneShell();
     var pane = document.getElementById('pane-map');
@@ -5437,10 +5529,12 @@
       }
       window.__detailLeafletMap = window.L.map(mapEl, { center: [coords.lat, coords.lng], zoom: 12 });
       window.__detailLeafletMapEl = mapEl;
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19
-      }).addTo(window.__detailLeafletMap);
+      window.__detailLeafletBaseTileLayer = addDetailBaseLayerWithFallback(window.__detailLeafletMap, function (_prev, next) {
+        if (next && next.key) window.__detailLeafletTileSource = next.key;
+        if (mapMeta && mapMeta.innerHTML.indexOf('Using backup tile provider') === -1) {
+          mapMeta.innerHTML += '<span class="u-text-xs-dim" style="margin-left:8px;">Using backup tile provider.</span>';
+        }
+      });
       window.__detailLeafletLayer = window.L.layerGroup().addTo(window.__detailLeafletMap);
     }
 
@@ -5449,7 +5543,6 @@
     centerMarker.addTo(window.__detailLeafletLayer);
     var markers = [centerMarker];
     var nearbyMarkers = getNearbyMapMarkers(window.__detailNearbyState);
-    var parkingMarkers = getParkingMapMarkers(window.__detailParkingState);
     nearbyMarkers.forEach(function (entry) {
       var marker = window.L.circleMarker([entry.lat, entry.lng], {
         radius: 7,
@@ -5458,23 +5551,6 @@
         fillOpacity: 0.85,
         weight: 2
       }).bindPopup('<strong>' + escapeHtml(entry.name) + '</strong>' + (entry.distanceText ? '<br>' + escapeHtml(entry.distanceText) : ''));
-      marker.addTo(window.__detailLeafletLayer);
-      markers.push(marker);
-    });
-    parkingMarkers.forEach(function (entry) {
-      var marker = window.L.marker([entry.lat, entry.lng], {
-        icon: window.L.divIcon({
-          className: 'detail-parking-marker-wrap',
-          html: '<span class="detail-parking-marker ' + escapeHtml(entry.sourceClassName) + '"></span>',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        })
-      }).bindPopup(
-        '<strong>' + escapeHtml(entry.name) + '</strong><br>' +
-        'Parking • ' + escapeHtml(entry.sourceLabel) +
-        (entry.distanceText ? '<br>' + escapeHtml(entry.distanceText) : '') +
-        '<br>Confidence ' + entry.confidencePct + '%'
-      );
       marker.addTo(window.__detailLeafletLayer);
       markers.push(marker);
     });
@@ -5490,17 +5566,17 @@
     }, 120);
     var mapSummaryParts = ['Showing 1 primary pin'];
     if (nearbyMarkers.length) mapSummaryParts.push(nearbyMarkers.length + ' nearby locations');
-    if (parkingMarkers.length) mapSummaryParts.push(parkingMarkers.length + ' parking options');
     var needsRefreshHints = [];
     if (!nearbyMarkers.length) needsRefreshHints.push('Nearby');
-    if (!parkingMarkers.length) needsRefreshHints.push('Parking');
+    var tileFallbackNote = window.__detailLeafletTileSource === 'carto'
+      ? '<span class="u-text-xs-dim" style="margin-left:8px;">Using backup tile provider.</span>'
+      : '';
     mapMeta.innerHTML = mapSummaryParts.join(' + ') +
       (needsRefreshHints.length ? ('. Refresh ' + needsRefreshHints.join(' or ') + ' to plot more markers.') : '.') +
       '<span class="detail-map-legend">' +
         '<span class="detail-map-legend-chip"><span class="detail-map-legend-dot detail-map-legend-dot--nearby"></span>Nearby</span>' +
-        '<span class="detail-map-legend-chip"><span class="detail-map-legend-dot detail-map-legend-dot--parking"></span>Parking</span>' +
       '</span>' +
-      renderParkingSourceLegendHtml(parkingMarkers);
+      tileFallbackNote;
   }
 
   // Dev/ops helpers for backup + restore from browser storage.
@@ -6323,7 +6399,12 @@
       mapsBtn.classList.remove('u-hidden');
     }
 
-    syncBestParkingAction(data);
+    var batchTagsBtn = document.getElementById('abBatchTagsBtn');
+    if (batchTagsBtn) {
+      batchTagsBtn.onclick = function () {
+        openBatchTagActionsFromDetail(data, payload);
+      };
+    }
 
     var visitedBtn = document.getElementById('abVisitedBtn');
     var visitedIcon = document.getElementById('abVisitedIcon');
@@ -6662,102 +6743,26 @@
         return;
       }
 
+      if (closestFromEvent(e, '#openBatchTagsFromCardBtn') || closestFromEvent(e, '#abBatchTagsBtn')) {
+        var _stateForBatch = window.__detailInlineEditState;
+        if (_stateForBatch && _stateForBatch.data) {
+          openBatchTagActionsFromDetail(_stateForBatch.data, _stateForBatch.payload || window.__detailCurrentPayload || {});
+        }
+        return;
+      }
+
       if (closestFromEvent(e, '#refreshCoordsBtn')) {
         refreshCoordinatesForDetail(true);
         return;
       }
 
+      if (closestFromEvent(e, '#refreshHoursBtn')) {
+        refreshHoursForDetail(true);
+        return;
+      }
+
       if (closestFromEvent(e, '#refreshDriveTimeBtn') || closestFromEvent(e, '#abRefreshDriveTimeBtn')) {
         refreshDriveTimeForDetail(true);
-        return;
-      }
-
-      if (closestFromEvent(e, '#refreshParkingBtn')) {
-        refreshParkingIntelligenceForDetail();
-        return;
-      }
-
-      var parkingRadiusBtn = closestFromEvent(e, '[data-parking-radius]');
-      if (parkingRadiusBtn) {
-        var nextRadius = Number(parkingRadiusBtn.getAttribute('data-parking-radius'));
-        var curParkingUi = getParkingUiState();
-        persistParkingUiState({
-          radiusMiles: Number.isFinite(nextRadius) && nextRadius > 0 ? nextRadius : curParkingUi.radiusMiles,
-          transportMode: curParkingUi.transportMode,
-          requireAda: curParkingUi.requireAda,
-          requireEv: curParkingUi.requireEv,
-          sourceToggles: curParkingUi.sourceToggles
-        });
-        var parkingControls = document.getElementById('parkingControlsWrap');
-        if (parkingControls) parkingControls.outerHTML = renderParkingControlsHtml();
-        var parkingList = document.getElementById('parkingOptionsList');
-        if (parkingList) parkingList.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
-        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        return;
-      }
-
-      var parkingModeBtn = closestFromEvent(e, '[data-parking-mode]');
-      if (parkingModeBtn) {
-        var curUi = getParkingUiState();
-        var nextMode = String(parkingModeBtn.getAttribute('data-parking-mode') || 'driving').toLowerCase();
-        persistParkingUiState({
-          radiusMiles: curUi.radiusMiles,
-          transportMode: nextMode === 'walking' ? 'walking' : 'driving',
-          requireAda: curUi.requireAda,
-          requireEv: curUi.requireEv,
-          sourceToggles: curUi.sourceToggles
-        });
-        var controlsEl = document.getElementById('parkingControlsWrap');
-        if (controlsEl) controlsEl.outerHTML = renderParkingControlsHtml();
-        var listEl = document.getElementById('parkingOptionsList');
-        if (listEl) listEl.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
-        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        return;
-      }
-
-      var parkingToggleBtn = closestFromEvent(e, '[data-parking-toggle]');
-      if (parkingToggleBtn) {
-        var toggleKey = String(parkingToggleBtn.getAttribute('data-parking-toggle') || '').toLowerCase();
-        var uiNow = getParkingUiState();
-        var nextUi = {
-          radiusMiles: uiNow.radiusMiles,
-          transportMode: uiNow.transportMode,
-          requireAda: uiNow.requireAda,
-          requireEv: uiNow.requireEv,
-          sourceToggles: uiNow.sourceToggles
-        };
-        if (toggleKey === 'ada') nextUi.requireAda = !nextUi.requireAda;
-        if (toggleKey === 'ev') nextUi.requireEv = !nextUi.requireEv;
-        persistParkingUiState(nextUi);
-        var controlsNode = document.getElementById('parkingControlsWrap');
-        if (controlsNode) controlsNode.outerHTML = renderParkingControlsHtml();
-        var listNode = document.getElementById('parkingOptionsList');
-        if (listNode) listNode.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
-        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        return;
-      }
-
-      var parkingSourceToggleBtn = closestFromEvent(e, '[data-parking-source-toggle]');
-      if (parkingSourceToggleBtn) {
-        var sourceKey = String(parkingSourceToggleBtn.getAttribute('data-parking-source-toggle') || '').toLowerCase();
-        if (!/^(google|osm|municipal|official|unknown)$/.test(sourceKey)) return;
-        var uiCurrent = getParkingUiState();
-        var toggles = Object.assign({}, uiCurrent.sourceToggles || PARKING_DEFAULT_UI_STATE.sourceToggles);
-        toggles[sourceKey] = toggles[sourceKey] === false;
-        persistParkingUiState({
-          radiusMiles: uiCurrent.radiusMiles,
-          transportMode: uiCurrent.transportMode,
-          requireAda: uiCurrent.requireAda,
-          requireEv: uiCurrent.requireEv,
-          sourceToggles: toggles
-        });
-        var listNode2 = document.getElementById('parkingOptionsList');
-        if (listNode2) listNode2.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
-        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
-        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
         return;
       }
 

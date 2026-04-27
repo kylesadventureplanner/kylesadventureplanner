@@ -1326,7 +1326,7 @@
         <div id="autotag-status"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="batchTagActionsCard">
         <div class="card-title">🏷️ Batch Tag Actions (Current Add/Bulk Target)</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Add tags to multiple locations at once, or copy tags from one source location to many target locations.
@@ -1335,6 +1335,17 @@
         <div class="input-group">
           <label for="batchTagIdentifiers">Target locations (optional; one per line or comma-separated)</label>
           <textarea id="batchTagIdentifiers" placeholder="Leave blank to target all loaded rows in the selected Add/Bulk target table."></textarea>
+        </div>
+
+        <div class="input-group" style="margin-top: 10px;">
+          <label for="batchTagSearchInput">Find targets by name, description keywords, or existing tags</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <input id="batchTagSearchInput" type="text" placeholder="e.g. waterfall, family-friendly, downtown" style="flex:1; min-width:220px;" />
+            <button class="button" type="button" onclick="searchBatchTagTargets()">🔎 Search</button>
+            <button class="button button-secondary" type="button" onclick="clearBatchTagTargetSelections()">Clear Selected Targets</button>
+          </div>
+          <div id="batchTagSearchSummary" class="help-text" style="margin-top:6px; color:#64748b;">Search the active Add/Bulk target table and click results to add/remove targets.</div>
+          <div id="batchTagSearchResults" class="candidate-results" aria-live="polite"></div>
         </div>
 
         <div class="input-group">
@@ -3289,6 +3300,41 @@
       });
     }
 
+    function applyBatchTagLaunchContext() {
+      const launchAction = String(getEditModeLaunchParam('batchTagAction') || '').trim();
+      if (launchAction !== '1') return;
+      const seededTarget = String(getEditModeLaunchParam('batchTagSeed') || '').trim();
+      const seededSource = String(getEditModeLaunchParam('batchTagCopySource') || '').trim();
+      switchTab('automation');
+      const card = document.getElementById('batchTagActionsCard');
+      if (card && typeof card.scrollIntoView === 'function') {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      const targetInput = document.getElementById('batchTagIdentifiers');
+      const sourceInput = document.getElementById('batchTagCopySource');
+      const searchInput = document.getElementById('batchTagSearchInput');
+      if (seededTarget && targetInput) {
+        const existing = parseBatchTagIdentifiers(targetInput.value);
+        if (!existing.some((token) => String(token || '').trim().toLowerCase() === seededTarget.toLowerCase())) {
+          existing.push(seededTarget);
+          targetInput.value = Array.from(new Set(existing)).join('\n');
+        }
+      }
+      if (seededSource && sourceInput && !String(sourceInput.value || '').trim()) {
+        sourceInput.value = seededSource;
+      }
+      if (seededTarget && searchInput && !String(searchInput.value || '').trim()) {
+        searchInput.value = seededTarget;
+      }
+      renderBatchTagSearchResults();
+      if (seededTarget) {
+        window.setTimeout(() => {
+          searchBatchTagTargets();
+        }, 50);
+      }
+      setBatchTagStatus('✅ Batch Tag Actions ready. Adjust targets/tags and run when ready.');
+    }
+
     function buildAddTargetConfirmationMessage(target, itemCount, flowLabel) {
       const safeTarget = target && typeof target === 'object' ? target : null;
       const count = Math.max(1, Number(itemCount) || 1);
@@ -3339,6 +3385,7 @@
         resetSingleCandidateResults();
         resetBulkCandidateResults();
         resetChainCandidateResults();
+        resetBatchTagSearchState();
         updateFestivalSearchUi();
         renderTargetStarterRecommendations();
         updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
@@ -6682,15 +6729,197 @@
         .filter(Boolean)));
     }
 
+    const batchTagSearchState = {
+      catalog: [],
+      query: '',
+      results: []
+    };
+
     function getRowIdentifierCatalog(rows) {
       return (Array.isArray(rows) ? rows : []).map((row, index) => {
         const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
         const name = String(values[0] || '').trim();
         const placeId = String(values[1] || '').trim();
         const rowTags = String(values[3] || '').trim();
+        const description = String(values[16] || values[4] || '').trim();
         const identifier = placeId || name || `row:${index + 1}`;
-        return { identifier, name, placeId, rowTags };
+        return {
+          identifier,
+          name,
+          placeId,
+          rowTags,
+          description,
+          searchableText: [identifier, name, placeId, rowTags, description].join(' ').toLowerCase()
+        };
       });
+    }
+
+    function getBatchTagSelectedIdentifierSet(catalog) {
+      const raw = document.getElementById('batchTagIdentifiers')?.value || '';
+      const resolved = resolveBatchTargetIdentifiers(raw, Array.isArray(catalog) ? catalog : [], false);
+      return new Set((Array.isArray(resolved) ? resolved : []).map((value) => String(value || '').trim().toLowerCase()).filter(Boolean));
+    }
+
+    async function ensureBatchTagCatalogLoaded(forceReload = false) {
+      if (!forceReload && Array.isArray(batchTagSearchState.catalog) && batchTagSearchState.catalog.length) {
+        return batchTagSearchState.catalog;
+      }
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!target) {
+        throw new Error('Select an Add/Bulk target table first.');
+      }
+      const loaded = await loadTargetRows(target);
+      if (!loaded) {
+        throw new Error('Could not load rows for the selected Add/Bulk target table.');
+      }
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      batchTagSearchState.catalog = getRowIdentifierCatalog(rows);
+      return batchTagSearchState.catalog;
+    }
+
+    function toggleBatchTagTargetByEncodedIdentifier(encodedIdentifier) {
+      const identifier = decodeURIComponent(String(encodedIdentifier || ''));
+      if (!identifier) return;
+      const input = document.getElementById('batchTagIdentifiers');
+      if (!input) return;
+      const catalog = Array.isArray(batchTagSearchState.catalog) ? batchTagSearchState.catalog : [];
+      const tokens = parseBatchTagIdentifiers(input.value).map((token) => {
+        const resolved = resolveBatchTargetIdentifiers(token, catalog, false);
+        return resolved.length ? resolved[0] : token;
+      });
+      const normalizedIdentifier = identifier.toLowerCase();
+      const nextTokens = [];
+      let removed = false;
+      tokens.forEach((token) => {
+        const normalizedToken = String(token || '').trim().toLowerCase();
+        if (!removed && normalizedToken === normalizedIdentifier) {
+          removed = true;
+          return;
+        }
+        nextTokens.push(token);
+      });
+      if (!removed) nextTokens.push(identifier);
+      input.value = Array.from(new Set(nextTokens)).join('\n');
+      renderBatchTagSearchResults();
+    }
+
+    function renderBatchTagSearchResults() {
+      const resultsEl = document.getElementById('batchTagSearchResults');
+      const summaryEl = document.getElementById('batchTagSearchSummary');
+      if (!resultsEl || !summaryEl) return;
+      const results = Array.isArray(batchTagSearchState.results) ? batchTagSearchState.results : [];
+      const selectedSet = getBatchTagSelectedIdentifierSet(batchTagSearchState.catalog);
+      const selectedCount = selectedSet.size;
+      const query = String(batchTagSearchState.query || '').trim();
+      const resultCount = results.length;
+      if (!query) {
+        summaryEl.textContent = selectedCount
+          ? `${selectedCount} target${selectedCount === 1 ? '' : 's'} currently selected. Enter a query to find more targets.`
+          : 'Search the active Add/Bulk target table and click results to add/remove targets.';
+        resultsEl.innerHTML = '';
+        return;
+      }
+      summaryEl.textContent = `${resultCount} match${resultCount === 1 ? '' : 'es'} for "${query}" • ${selectedCount} selected`;
+      if (!resultCount) {
+        resultsEl.innerHTML = '<div class="help-text" style="padding:8px 2px;">No matches found in name, description, or tags.</div>';
+        return;
+      }
+      resultsEl.innerHTML = results.map((entry) => {
+        const identifier = String(entry && entry.identifier || '').trim();
+        const normalized = identifier.toLowerCase();
+        const selected = selectedSet.has(normalized);
+        const encoded = encodeURIComponent(identifier);
+        const tagsText = String(entry && entry.rowTags || '').trim();
+        const descriptionText = String(entry && entry.description || '').trim();
+        const placeIdText = String(entry && entry.placeId || '').trim();
+        return `<div class="candidate-item${selected ? ' selected' : ''}">` +
+          `<div class="candidate-group">` +
+            `<div class="candidate-title">${escapeHtml(String(entry && entry.name || identifier || 'Unnamed location'))}</div>` +
+            `<div class="candidate-meta">` +
+              `${placeIdText ? `ID: ${escapeHtml(placeIdText)}` : 'Name-based identifier'}` +
+              `${tagsText ? ` • Tags: ${escapeHtml(tagsText)}` : ''}` +
+              `${descriptionText ? ` • ${escapeHtml(descriptionText.slice(0, 140))}${descriptionText.length > 140 ? '…' : ''}` : ''}` +
+            `</div>` +
+          `</div>` +
+          `<div class="candidate-actions">` +
+            `<button type="button" class="button ${selected ? 'button-secondary' : 'button-primary'}" onclick="toggleBatchTagTargetByEncodedIdentifier('${encoded}')">${selected ? 'Remove' : 'Add'}</button>` +
+          `</div>` +
+        `</div>`;
+      }).join('');
+    }
+
+    async function searchBatchTagTargets() {
+      const input = document.getElementById('batchTagSearchInput');
+      const summaryEl = document.getElementById('batchTagSearchSummary');
+      if (!input || !summaryEl) return;
+      const query = String(input.value || '').trim();
+      batchTagSearchState.query = query;
+      if (!query) {
+        batchTagSearchState.results = [];
+        renderBatchTagSearchResults();
+        return;
+      }
+      summaryEl.textContent = 'Searching current target table...';
+      try {
+        const catalog = await ensureBatchTagCatalogLoaded();
+        const tokens = parseBatchTagIdentifiers(query.replace(/\s+/g, ','))
+          .map((token) => String(token || '').toLowerCase())
+          .filter(Boolean);
+        let matches = catalog.filter((entry) => {
+          const haystack = String(entry && entry.searchableText || '');
+          return tokens.every((token) => haystack.includes(token));
+        });
+        matches = matches.sort((a, b) => {
+          const nameA = String(a && a.name || '').toLowerCase();
+          const nameB = String(b && b.name || '').toLowerCase();
+          const queryLower = query.toLowerCase();
+          const aStarts = nameA.startsWith(queryLower) ? 1 : 0;
+          const bStarts = nameB.startsWith(queryLower) ? 1 : 0;
+          if (aStarts !== bStarts) return bStarts - aStarts;
+          return nameA.localeCompare(nameB);
+        });
+        batchTagSearchState.results = matches.slice(0, 120);
+        renderBatchTagSearchResults();
+      } catch (error) {
+        batchTagSearchState.results = [];
+        setBatchTagStatus(`❌ ${error && error.message ? error.message : 'Search failed.'}`, true);
+        renderBatchTagSearchResults();
+      }
+    }
+
+    function clearBatchTagTargetSelections() {
+      const targetInput = document.getElementById('batchTagIdentifiers');
+      if (targetInput) targetInput.value = '';
+      renderBatchTagSearchResults();
+    }
+
+    function resetBatchTagSearchState() {
+      batchTagSearchState.catalog = [];
+      batchTagSearchState.query = '';
+      batchTagSearchState.results = [];
+      const searchInput = document.getElementById('batchTagSearchInput');
+      if (searchInput) searchInput.value = '';
+      renderBatchTagSearchResults();
+    }
+
+    function initBatchTagSearchUi() {
+      const searchInput = document.getElementById('batchTagSearchInput');
+      if (searchInput && searchInput.dataset.bound !== '1') {
+        searchInput.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          searchBatchTagTargets();
+        });
+        searchInput.dataset.bound = '1';
+      }
+      const targetInput = document.getElementById('batchTagIdentifiers');
+      if (targetInput && targetInput.dataset.bound !== '1') {
+        targetInput.addEventListener('input', () => {
+          renderBatchTagSearchResults();
+        });
+        targetInput.dataset.bound = '1';
+      }
+      renderBatchTagSearchResults();
     }
 
     function resolveBatchTargetIdentifiers(rawList, catalog, allowAllWhenEmpty = true) {
@@ -7059,12 +7288,14 @@
       initChainCandidateSearch();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
+      initBatchTagSearchUi();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
       initFestivalSourcesConfig();
       restoreAllDrafts();
       initDraftTracking();
+      applyBatchTagLaunchContext();
     });
 
     // Also try immediately in case DOM is already ready
@@ -7082,12 +7313,14 @@
       initChainCandidateSearch();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
+      initBatchTagSearchUi();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
       initFestivalSourcesConfig();
       restoreAllDrafts();
       initDraftTracking();
+      applyBatchTagLaunchContext();
     }
 
     console.log('📋 Available functions:', {

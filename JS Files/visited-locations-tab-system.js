@@ -675,6 +675,28 @@
     setExplorerView(root, key, 'city-explorer');
   }
 
+  function buildEditModeUrlForSubtab(subtabKey, options = {}) {
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    const opts = options && typeof options === 'object' ? options : {};
+    const editModeUrl = new URL(resolveInlinePageUrl('HTML Files/edit-mode-enhanced.html'));
+    editModeUrl.searchParams.set('embedded', '1');
+    editModeUrl.searchParams.set('sourceSubtab', key);
+    if (opts.batchTagAction) {
+      editModeUrl.searchParams.set('batchTagAction', '1');
+      if (opts.batchTagSeed) editModeUrl.searchParams.set('batchTagSeed', String(opts.batchTagSeed));
+      if (opts.batchTagCopySource) editModeUrl.searchParams.set('batchTagCopySource', String(opts.batchTagCopySource));
+    }
+    const hashParams = new URLSearchParams({ embedded: '1', sourceSubtab: key });
+    if (opts.batchTagAction) {
+      hashParams.set('batchTagAction', '1');
+      if (opts.batchTagSeed) hashParams.set('batchTagSeed', String(opts.batchTagSeed));
+      if (opts.batchTagCopySource) hashParams.set('batchTagCopySource', String(opts.batchTagCopySource));
+    }
+    editModeUrl.hash = hashParams.toString();
+    editModeUrl.searchParams.set('ts', String(Date.now()));
+    return editModeUrl.toString();
+  }
+
   function openEditModeForSubtab(subtabKey) {
     const root = document.getElementById('visitedLocationsRoot');
     if (!root) return;
@@ -691,12 +713,31 @@
     if (!toolView) return;
     const frame = document.getElementById(toolView.frameId);
     if (!frame) return;
-    const editModeUrl = new URL(resolveInlinePageUrl('HTML Files/edit-mode-enhanced.html'));
-    editModeUrl.searchParams.set('embedded', '1');
-    editModeUrl.searchParams.set('sourceSubtab', key);
-    editModeUrl.hash = new URLSearchParams({ embedded: '1', sourceSubtab: key }).toString();
-    editModeUrl.searchParams.set('ts', String(Date.now()));
-    frame.src = editModeUrl.toString();
+    frame.src = buildEditModeUrlForSubtab(key);
+    setExplorerView(root, key, 'edit-mode');
+  }
+
+  function openBatchTagActionsForSubtab(subtabKey, options = {}) {
+    const root = document.getElementById('visitedLocationsRoot');
+    if (!root) return;
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    if (state.activeOverviewView !== 'main') {
+      state.activeOverviewView = 'main';
+      syncVisitedOverviewView(root);
+    }
+    if (state.activeProgressSubTab !== key) {
+      setActiveProgressSubTab(root, key);
+    }
+    const toolView = ensureInlineSubtabToolView(root, key, 'edit');
+    if (!toolView) return;
+    const frame = document.getElementById(toolView.frameId);
+    if (!frame) return;
+    const opts = options && typeof options === 'object' ? options : {};
+    frame.src = buildEditModeUrlForSubtab(key, {
+      batchTagAction: true,
+      batchTagSeed: String(opts.batchTagSeed || '').trim(),
+      batchTagCopySource: String(opts.batchTagCopySource || '').trim()
+    });
     setExplorerView(root, key, 'edit-mode');
   }
 
@@ -714,9 +755,11 @@
       const exploreAction = subtabKey === 'bike-trails' ? 'explore-bike-trails' : `open-explorer-${subtabKey}`;
       const cityAction = `open-city-explorer-${subtabKey}`;
       const editAction = `open-edit-mode-${subtabKey}`;
+      const batchAction = `open-batch-tags-${subtabKey}`;
       const exploreBtn = document.querySelector(`[data-visited-subtab-action="${exploreAction}"]`);
       const cityBtn = document.querySelector(`[data-visited-subtab-action="${cityAction}"]`);
       const editBtn = document.querySelector(`[data-visited-subtab-action="${editAction}"]`);
+      const batchBtn = document.querySelector(`[data-visited-subtab-action="${batchAction}"]`);
       if (exploreBtn) {
         exploreBtn.classList.add('visited-subtab-action-btn--explore');
         exploreBtn.textContent = `🔎 Explore ${label}`;
@@ -740,6 +783,12 @@
         editBtn.textContent = '📝 Edit Mode';
         editBtn.setAttribute('title', `Open Edit Mode for ${label}`);
         editBtn.setAttribute('data-tooltip', `Open Edit Mode for ${label}`);
+      }
+      if (batchBtn) {
+        batchBtn.classList.add('visited-subtab-action-btn--city');
+        batchBtn.textContent = '🏷️ Batch Tags';
+        batchBtn.setAttribute('title', `Open Batch Tag Actions for ${label}`);
+        batchBtn.setAttribute('data-tooltip', `Open Batch Tag Actions for ${label}`);
       }
     });
 
@@ -790,6 +839,7 @@
           'explore-bike-trails',
           'open-city-explorer-bike-trails',
           'open-edit-mode-bike-trails',
+          'open-batch-tags-bike-trails',
           'refresh-subtab-bike-trails',
           'undo-subtab-bike-trails'
         ];
@@ -799,6 +849,7 @@
         `open-city-explorer-${subtabKey}`,
         `open-visit-log-${subtabKey}`,
         `open-edit-mode-${subtabKey}`,
+        `open-batch-tags-${subtabKey}`,
         `refresh-subtab-${subtabKey}`,
         `undo-subtab-${subtabKey}`
       ];
@@ -5853,6 +5904,7 @@
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-batch-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🏷️ Batch Tag Actions</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔗 Find / Add URLs</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔮 Enrich Data</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📝 Paste &amp; Parse Text</button>
@@ -7996,13 +8048,13 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const requiredActions = [
-        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors', 'open-visit-log-outdoors', 'open-city-explorer-outdoors', 'open-edit-mode-outdoors',
-        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment', 'open-visit-log-entertainment', 'open-city-explorer-entertainment', 'open-edit-mode-entertainment',
-        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink', 'open-visit-log-food-drink', 'open-city-explorer-food-drink', 'open-edit-mode-food-drink',
-        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail', 'open-visit-log-retail', 'open-city-explorer-retail', 'open-edit-mode-retail',
-        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals', 'open-visit-log-wildlife-animals', 'open-city-explorer-wildlife-animals', 'open-edit-mode-wildlife-animals',
-        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals', 'open-visit-log-regional-festivals', 'open-city-explorer-regional-festivals', 'open-edit-mode-regional-festivals',
-        'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails', 'open-city-explorer-bike-trails', 'open-edit-mode-bike-trails'
+        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors', 'open-visit-log-outdoors', 'open-city-explorer-outdoors', 'open-edit-mode-outdoors', 'open-batch-tags-outdoors',
+        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment', 'open-visit-log-entertainment', 'open-city-explorer-entertainment', 'open-edit-mode-entertainment', 'open-batch-tags-entertainment',
+        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink', 'open-visit-log-food-drink', 'open-city-explorer-food-drink', 'open-edit-mode-food-drink', 'open-batch-tags-food-drink',
+        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail', 'open-visit-log-retail', 'open-city-explorer-retail', 'open-edit-mode-retail', 'open-batch-tags-retail',
+        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals', 'open-visit-log-wildlife-animals', 'open-city-explorer-wildlife-animals', 'open-edit-mode-wildlife-animals', 'open-batch-tags-wildlife-animals',
+        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals', 'open-visit-log-regional-festivals', 'open-city-explorer-regional-festivals', 'open-edit-mode-regional-festivals', 'open-batch-tags-regional-festivals',
+        'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails', 'open-city-explorer-bike-trails', 'open-edit-mode-bike-trails', 'open-batch-tags-bike-trails'
       ];
       const legacyActions = [
         'find-outdoor-adventure',
@@ -8086,6 +8138,7 @@
         `open-city-explorer-${subtabKey}`,
         `open-visit-log-${subtabKey}`,
         `open-edit-mode-${subtabKey}`,
+        `open-batch-tags-${subtabKey}`,
         `refresh-subtab-${subtabKey}`,
         `undo-subtab-${subtabKey}`
       ];
@@ -8095,6 +8148,7 @@
       ensureButton(outdoorsRow, 'open-city-explorer-outdoors', 'City Explorer', 'Open City Explorer filtered for Outdoors');
       ensureButton(outdoorsRow, 'open-visit-log-outdoors', 'Log a Visit', 'Log an Outdoors visit');
       ensureButton(outdoorsRow, 'open-edit-mode-outdoors', 'Edit Mode', 'Open Edit Mode for Outdoors');
+      ensureButton(outdoorsRow, 'open-batch-tags-outdoors', 'Batch Tags', 'Open Batch Tag Actions for Outdoors');
       ensureButton(outdoorsRow, 'refresh-subtab-outdoors', 'Refresh Data', 'Refresh Outdoors data');
       ensureButton(outdoorsRow, 'undo-subtab-outdoors', '↶ Undo', 'No Outdoors action to undo yet');
       reorderActionRow(outdoorsRow, canonicalAdventureOrder('outdoors'));
@@ -8104,6 +8158,7 @@
       ensureButton(entertainmentRow, 'open-city-explorer-entertainment', 'City Explorer', 'Open City Explorer filtered for Entertainment');
       ensureButton(entertainmentRow, 'open-visit-log-entertainment', 'Log a Visit', 'Log an Entertainment visit');
       ensureButton(entertainmentRow, 'open-edit-mode-entertainment', 'Edit Mode', 'Open Edit Mode for Entertainment');
+      ensureButton(entertainmentRow, 'open-batch-tags-entertainment', 'Batch Tags', 'Open Batch Tag Actions for Entertainment');
       ensureButton(entertainmentRow, 'refresh-subtab-entertainment', 'Refresh Data', 'Refresh Entertainment data');
       ensureButton(entertainmentRow, 'undo-subtab-entertainment', '↶ Undo', 'No Entertainment action to undo yet');
       reorderActionRow(entertainmentRow, canonicalAdventureOrder('entertainment'));
@@ -8113,6 +8168,7 @@
       ensureButton(foodDrinkRow, 'open-city-explorer-food-drink', 'City Explorer', 'Open City Explorer filtered for Food & Drink');
       ensureButton(foodDrinkRow, 'open-visit-log-food-drink', 'Log a Visit', 'Log a Food and Drink visit');
       ensureButton(foodDrinkRow, 'open-edit-mode-food-drink', 'Edit Mode', 'Open Edit Mode for Food & Drink');
+      ensureButton(foodDrinkRow, 'open-batch-tags-food-drink', 'Batch Tags', 'Open Batch Tag Actions for Food & Drink');
       ensureButton(foodDrinkRow, 'refresh-subtab-food-drink', 'Refresh Data', 'Refresh Food and Drink data');
       ensureButton(foodDrinkRow, 'undo-subtab-food-drink', '↶ Undo', 'No Food and Drink action to undo yet');
       reorderActionRow(foodDrinkRow, canonicalAdventureOrder('food-drink'));
@@ -8122,6 +8178,7 @@
       ensureButton(retailRow, 'open-city-explorer-retail', 'City Explorer', 'Open City Explorer filtered for Retail');
       ensureButton(retailRow, 'open-visit-log-retail', 'Log a Visit', 'Log a Retail visit');
       ensureButton(retailRow, 'open-edit-mode-retail', 'Edit Mode', 'Open Edit Mode for Retail');
+      ensureButton(retailRow, 'open-batch-tags-retail', 'Batch Tags', 'Open Batch Tag Actions for Retail');
       ensureButton(retailRow, 'refresh-subtab-retail', 'Refresh Data', 'Refresh Retail data');
       ensureButton(retailRow, 'undo-subtab-retail', '↶ Undo', 'No Retail action to undo yet');
       reorderActionRow(retailRow, canonicalAdventureOrder('retail'));
@@ -8131,6 +8188,7 @@
       ensureButton(wildlifeAnimalsRow, 'open-city-explorer-wildlife-animals', 'City Explorer', 'Open City Explorer filtered for Wildlife & Animals');
       ensureButton(wildlifeAnimalsRow, 'open-visit-log-wildlife-animals', 'Log a Visit', 'Log a Wildlife and Animals visit');
       ensureButton(wildlifeAnimalsRow, 'open-edit-mode-wildlife-animals', 'Edit Mode', 'Open Edit Mode for Wildlife & Animals');
+      ensureButton(wildlifeAnimalsRow, 'open-batch-tags-wildlife-animals', 'Batch Tags', 'Open Batch Tag Actions for Wildlife & Animals');
       ensureButton(wildlifeAnimalsRow, 'refresh-subtab-wildlife-animals', 'Refresh Data', 'Refresh Wildlife and Animals data');
       ensureButton(wildlifeAnimalsRow, 'undo-subtab-wildlife-animals', '↶ Undo', 'No Wildlife and Animals action to undo yet');
       reorderActionRow(wildlifeAnimalsRow, canonicalAdventureOrder('wildlife-animals'));
@@ -8140,6 +8198,7 @@
       ensureButton(regionalFestivalsRow, 'open-city-explorer-regional-festivals', 'City Explorer', 'Open City Explorer filtered for Regional Festivals');
       ensureButton(regionalFestivalsRow, 'open-visit-log-regional-festivals', 'Log a Visit', 'Log a Regional Festivals visit');
       ensureButton(regionalFestivalsRow, 'open-edit-mode-regional-festivals', 'Edit Mode', 'Open Edit Mode for Regional Festivals');
+      ensureButton(regionalFestivalsRow, 'open-batch-tags-regional-festivals', 'Batch Tags', 'Open Batch Tag Actions for Regional Festivals');
       ensureButton(regionalFestivalsRow, 'refresh-subtab-regional-festivals', 'Refresh Data', 'Refresh Regional Festivals data');
       ensureButton(regionalFestivalsRow, 'undo-subtab-regional-festivals', '↶ Undo', 'No Regional Festivals action to undo yet');
       reorderActionRow(regionalFestivalsRow, canonicalAdventureOrder('regional-festivals'));
@@ -8148,12 +8207,14 @@
       ensureButton(bikeRow, 'explore-bike-trails', 'Explore Bike Trails', 'Explore Bike Trails');
       ensureButton(bikeRow, 'open-city-explorer-bike-trails', 'City Explorer', 'Open City Explorer filtered for Bike Trails');
       ensureButton(bikeRow, 'open-edit-mode-bike-trails', 'Edit Mode', 'Open Edit Mode for Bike Trails');
+      ensureButton(bikeRow, 'open-batch-tags-bike-trails', 'Batch Tags', 'Open Batch Tag Actions for Bike Trails');
       ensureButton(bikeRow, 'refresh-subtab-bike-trails', 'Refresh Data', 'Refresh Bike Trails data');
       ensureButton(bikeRow, 'undo-subtab-bike-trails', '↶ Undo', 'No Bike Trails action to undo yet');
       reorderActionRow(bikeRow, [
         'explore-bike-trails',
         'open-city-explorer-bike-trails',
         'open-edit-mode-bike-trails',
+        'open-batch-tags-bike-trails',
         'refresh-subtab-bike-trails',
         'undo-subtab-bike-trails'
       ]);
@@ -8513,6 +8574,12 @@
               return;
             }
 
+            if (action.startsWith('open-batch-tags-')) {
+              const subtabKey = action.replace('open-batch-tags-', '');
+              openBatchTagActionsForSubtab(subtabKey);
+              return;
+            }
+
             if (action.startsWith('close-edit-mode-')) {
               const subtabKey = action.replace('close-edit-mode-', '');
               closeEditModeForSubtab(root, subtabKey);
@@ -8730,6 +8797,20 @@
             if (item && acquireExplorerActionLock(`tags:${subtabKey}:${itemId}`, 260)) {
               openExplorerDetailsPage(root, subtabKey, itemId, { initialTab: 'tag-management' });
             }
+            return;
+          }
+
+          const explorerBatchTagsBtn = closest('[data-visited-explorer-batch-tags]');
+          if (explorerBatchTagsBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerBatchTagsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerBatchTagsBtn.getAttribute('data-visited-explorer-batch-tags') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            const seed = String((item && (item.googlePlaceId || item.placeId || item.title || item.id)) || itemId || '').trim();
+            openBatchTagActionsForSubtab(subtabKey, {
+              batchTagSeed: seed,
+              batchTagCopySource: seed
+            });
             return;
           }
 

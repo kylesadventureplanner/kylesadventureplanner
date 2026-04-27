@@ -8600,6 +8600,7 @@
       <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
       <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup">💾 App Backup</button>
+      <button id="diagnosticsHubBtn" class="auth-btn" title="Open Central Diagnostics Hub" data-tooltip="Open Central Diagnostics Hub">🩺 Diagnostics</button>
       <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
@@ -8680,6 +8681,7 @@
     <button class="app-tab-btn tab-utility-hidden" data-tab="budget" aria-hidden="true" tabindex="-1">Budget Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="app-backup" aria-hidden="true" tabindex="-1">App Backup</button>
+    <button class="app-tab-btn tab-utility-hidden" data-tab="diagnostics-hub" aria-hidden="true" tabindex="-1">Diagnostics Hub</button>
   </div>
   <div id="appSubTabsRow" class="app-subtabs-row" hidden>
     <div id="appSubTabsCutout" class="app-subtabs-cutout">
@@ -8696,6 +8698,9 @@
         <div class="planner-top-actions">
           <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="startFindNearMe()">
             📍 Find Near Me
+          </button>
+          <button id="nearbyDiagnosticsBtn" class="planner-top-btn" title="Open nearby diagnostics" data-tooltip="Open nearby diagnostics" onclick="if (typeof window.openDiagnosticsHubPage === 'function') { window.openDiagnosticsHubPage({ section: 'nearby', source: 'adventure-planner-nearby-controls' }); }">
+            🩺 Nearby Diagnostics
           </button>
           <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="openCityViewerWindow()">
             🌆 City Explorer
@@ -9401,6 +9406,20 @@
           <div id="appBackupStatus" class="card-subtitle">Ready to generate a full backup zip.</div>
           <div class="card-subtitle" style="margin-top:10px;">Last backup: <span id="appBackupLastBackup">No backups downloaded yet.</span></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Central Diagnostics Hub Tab -->
+    <div class="app-tab-pane" data-tab="diagnostics-hub" id="diagnosticsHubTab">
+      <div class="offline-mode-page">
+        <div class="offline-mode-header">
+          <button id="diagnosticsHubBackBtn" type="button" class="pill-button app-back-btn" title="Back to previous page" data-tooltip="Back to previous page">← Back</button>
+          <div class="offline-mode-header-copy">
+            <h1>Central Diagnostics Hub</h1>
+            <div class="card-subtitle">Unified diagnostics for local-only data, sync replay, backend setup checks, and nearby behavior.</div>
+          </div>
+        </div>
+        <div id="diagnosticsHubMount" class="card">Loading diagnostics hub...</div>
       </div>
     </div>
   </div>
@@ -23647,6 +23666,9 @@ COMMON ISSUES:
 
 <!-- PWA + Offline Queue System -->
 <script src="JS Files/pwa-offline-system.js"></script>
+
+<!-- Central Diagnostics Hub -->
+<script src="JS Files/diagnostics-hub-system.js"></script>
 
 <!-- Nature Challenge Tab System -->
 <script src="JS Files/nature-challenge-tab-system.js"></script>

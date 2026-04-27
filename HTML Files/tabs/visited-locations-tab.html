@@ -343,8 +343,11 @@
 
     <div class="card visited-diagnostics-subcard ui-diagnostics-subcard">
       <div class="card-header">
-        <div class="card-title">🔄 Sync Health</div>
-        <div class="card-subtitle">Adventure/Bike visited-column status plus recent sync metadata.</div>
+        <div>
+          <div class="card-title">🔄 Sync Health</div>
+          <div class="card-subtitle">Adventure/Bike visited-column status plus recent sync metadata.</div>
+        </div>
+        <button type="button" class="pill-button" onclick="if (typeof window.openDiagnosticsHubPage === 'function') { window.openDiagnosticsHubPage({ section: 'sync', source: 'adventure-challenge' }); }" title="Open the central diagnostics hub sync section" data-tooltip="Open the central diagnostics hub sync section">Open Central Hub</button>
       </div>
       <div class="visited-diagnostics-sync-row ui-status-stack">
         <span id="visitedSyncHealthBadge" class="visited-sync-health ui-status-pill" aria-live="polite">Sync: checking...</span>

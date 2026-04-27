@@ -232,6 +232,13 @@ class TabContentLoader {
          priority: 11,
          preload: false,
          isInlineContent: true
+       },
+       'diagnostics-hub': {
+         file: null,
+         element: 'diagnosticsHubTab',
+         priority: 12,
+         preload: false,
+         isInlineContent: true
        }
     };
 
@@ -834,6 +841,11 @@ class TabContentLoader {
       case 'app-backup':
         if (window.backupManager && typeof window.backupManager.refreshBackupPageSummary === 'function') {
           window.backupManager.refreshBackupPageSummary();
+        }
+        break;
+      case 'diagnostics-hub':
+        if (typeof window.refreshDiagnosticsHub === 'function') {
+          window.refreshDiagnosticsHub();
         }
         break;
     }
