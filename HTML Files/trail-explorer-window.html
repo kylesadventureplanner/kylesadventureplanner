@@ -694,7 +694,7 @@
     }
   </style>
 </head>
-<body>
+<body class="ui-page-shell">
   <header id="trailExplorerHeader">
     <div class="trail-header-main">
       <h1>🗺️ Trail Explorer</h1>
@@ -711,7 +711,7 @@
   </div>
 
   <section id="trailCitiesPage" class="hidden">
-    <div class="trail-cities-controls mobile-sticky-actions">
+    <div class="trail-cities-controls mobile-sticky-actions ui-control-bar">
       <input id="trailCitySearchInput" class="trail-cities-input" type="text" placeholder="Search regions..." />
       <select id="trailCitySortSelect" class="trail-cities-select" aria-label="Sort regions">
         <option value="count">Sort by Region Count</option>
@@ -733,7 +733,7 @@
     </div>
 
     <div class="trail-results-filters">
-      <div class="trail-presets-row">
+      <div class="trail-presets-row ui-control-bar">
         <input id="trailPresetName" class="trail-preset-input" type="text" placeholder="Preset name..." />
         <select id="trailPresetScope" class="trail-preset-select">
           <option value="city">Region Preset</option>

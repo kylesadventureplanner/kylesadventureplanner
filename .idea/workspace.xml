@@ -5,10 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/UI_MODERNIZATION_ROADMAP.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/ui-shell-a11y-smoke.spec.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/ui-shell-visual.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/design-tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/design-tokens.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/bike-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/bike-details-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -100,7 +107,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="92604000" />
+      <workItem from="1777064709892" duration="93979000" />
     </task>
     <servers />
   </component>

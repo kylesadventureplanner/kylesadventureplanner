@@ -298,11 +298,11 @@
   </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap ui-page-shell">
   <div id="header" class="head"></div>
   <div id="debugBar" class="debug-bar u-hidden"></div>
 
-  <div id="tabs" class="tabs" aria-label="Adventure details tabs">
+  <div id="tabs" class="tabs ui-control-bar" aria-label="Adventure details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
     <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
     <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
@@ -323,7 +323,7 @@
   <div id="pane-map" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
-  <div class="action-bar u-hidden mobile-sticky-actions" id="actionBar">
+  <div class="action-bar u-hidden mobile-sticky-actions ui-control-bar" id="actionBar">
     <span class="action-bar-label">Quick Actions</span>
 
     <button type="button" class="ab-btn ab-fav" id="abFavBtn" title="Add to Favorites">

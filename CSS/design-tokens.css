@@ -225,6 +225,44 @@
   --ui-empty-padding: 20px;
   --ui-empty-min-height: 120px;
   --ui-loading-bg: #f8fafc;
+
+  /* MODERNIZATION FOUNDATION TOKENS */
+  --ui-shell-max-width: 1200px;
+  --ui-shell-padding: 20px;
+  --ui-shell-gap: 20px;
+  --ui-header-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --ui-header-text: #ffffff;
+  --ui-header-subtext: rgba(255, 255, 255, 0.88);
+  --ui-header-radius: 12px;
+  --ui-control-bar-bg: #ffffff;
+  --ui-control-bar-border: #e5e7eb;
+  --ui-control-bar-radius: 12px;
+  --ui-grid-min-card: 300px;
+  --ui-grid-gap: 20px;
+  --ui-card-hero-height: 88px;
+  --ui-card-body-gap: 10px;
+  --ui-card-slot-chip-min-height: 44px;
+  --ui-card-slot-secondary-min-height: 30px;
+  --ui-action-label-size: 13px;
+  --ui-action-label-weight: 700;
+  --ui-action-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --ui-action-primary-bg-hover: linear-gradient(135deg, #5568d3 0%, #6a3e94 100%);
+  --ui-action-primary-text: #ffffff;
+  --ui-action-secondary-bg: #ffffff;
+  --ui-action-secondary-text: #334155;
+  --ui-action-secondary-border: #cbd5e1;
+  --ui-feedback-info-bg: #eff6ff;
+  --ui-feedback-info-border: #bfdbfe;
+  --ui-feedback-info-text: #1e40af;
+  --ui-feedback-error-bg: #fef2f2;
+  --ui-feedback-error-border: #fecaca;
+  --ui-feedback-error-text: #991b1b;
+  --ui-feedback-success-bg: #ecfdf5;
+  --ui-feedback-success-border: #86efac;
+  --ui-feedback-success-text: #166534;
+  --ui-focus-ring-color: #3b82f6;
+  --ui-focus-ring-width: 2px;
+  --ui-focus-ring-offset: 2px;
 }
 
 /* ============================================================
