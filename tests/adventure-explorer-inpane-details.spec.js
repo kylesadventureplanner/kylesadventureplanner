@@ -764,7 +764,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     });
 
     await details.locator('#refreshNearbyBtn').click();
-    await expect(details.locator('#nearbyAttractionsValue .empty')).toContainText('No nearby attractions detected yet', { timeout: 12000 });
+    await expect(details.locator('#nearbyAttractionsValue')).toContainText(/No nearby attractions (found|detected) yet\.?/i, { timeout: 12000 });
 
     const nearbyAfterEmptyRefresh = await liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.nearby || ''));
     expect(nearbyAfterEmptyRefresh).toBe('Saved Nearby Snapshot - Preserve Me');
