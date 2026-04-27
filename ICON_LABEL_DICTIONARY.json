@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "items": {
+    "explore": { "icon": "🔎", "label": "Explore" },
+    "open-map": { "icon": "🗺️", "label": "Open in Map" },
+    "directions": { "icon": "🧭", "label": "Directions" },
+    "log-visit": { "icon": "📝", "label": "Log Visit" },
+    "batch-tags": { "icon": "🏷️", "label": "Batch Tags" },
+    "notes": { "icon": "📌", "label": "Notes" },
+    "quick-add": { "icon": "⚡", "label": "Quick Add" },
+    "favorites": { "icon": "⭐", "label": "Favorites" },
+    "nearby": { "icon": "📍", "label": "Nearby" },
+    "free": { "icon": "💸", "label": "Free" },
+    "indoor": { "icon": "🏠", "label": "Indoor" },
+    "pet-friendly": { "icon": "🐾", "label": "Pet Friendly" },
+    "low-walking": { "icon": "🚶", "label": "Low Walking" },
+    "day-trip": { "icon": "🚗", "label": "Day Trip" },
+    "overnight": { "icon": "🌙", "label": "Overnight Stay" },
+    "confidence": { "icon": "✅", "label": "Confidence" },
+    "why": { "icon": "💡", "label": "Why Suggested" }
+  }
+}
+

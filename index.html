@@ -9085,6 +9085,43 @@
       </script>
 
 
+      <!-- Active Preference Chips -->
+      <div id="activePrefsRow" class="active-prefs-row" aria-live="polite"></div>
+
+      <!-- Family Preferences + Presets Card -->
+      <div id="familyPrefsCard" class="card family-prefs-card collapsed">
+        <div class="card-header" onclick="window.FamilyPrefs && FamilyPrefs.togglePanel()">
+          <div class="card-title">
+            👨‍👩‍👧 Family Preferences &amp; Presets
+            <em class="toggle-arrow" style="font-size:12px;margin-left:6px;">▾</em>
+          </div>
+          <div style="font-size:12px;color:#64748b;" id="familyPrefsChipSummary">Click to expand preferences</div>
+        </div>
+        <div class="family-prefs-body">
+          <div class="pref-section-label">⚡ Quick Presets (1 tap)</div>
+          <div class="preset-buttons-row" id="presetButtonsRow">
+            <button class="pref-preset-btn" data-preset="2hr-nearby"   onclick="FamilyPrefs.applyPreset('2hr-nearby')">⏱️ 2-Hour Nearby</button>
+            <button class="pref-preset-btn" data-preset="half-day"     onclick="FamilyPrefs.applyPreset('half-day')">🌤️ Half-Day Trip</button>
+            <button class="pref-preset-btn" data-preset="rainy-day"    onclick="FamilyPrefs.applyPreset('rainy-day')">🌧️ Rainy Day Indoor</button>
+            <button class="pref-preset-btn" data-preset="free"         onclick="FamilyPrefs.applyPreset('free')">💚 Free Activities</button>
+            <button class="pref-preset-btn" data-preset="food-plus-1"  onclick="FamilyPrefs.applyPreset('food-plus-1')">🍽️ Food + 1 Activity</button>
+            <button class="pref-preset-btn" data-preset="clear"        onclick="FamilyPrefs.applyPreset('clear')" style="border-color:#f87171;color:#b91c1c;">✖ Clear All</button>
+          </div>
+
+          <div class="pref-section-label">🔧 Preference Toggles</div>
+          <div class="pref-toggles-row" id="prefTogglesRow">
+            <button class="pref-toggle" data-pref="budgetMode"    onclick="FamilyPrefs.toggle('budgetMode')">💰 Budget Mode</button>
+            <button class="pref-toggle" data-pref="freeOnly"      onclick="FamilyPrefs.toggle('freeOnly')">💚 Free Only</button>
+            <button class="pref-toggle" data-pref="nearbyOnly"    onclick="FamilyPrefs.toggle('nearbyOnly')">📍 Nearby Only</button>
+            <button class="pref-toggle" data-pref="dayTrip"       onclick="FamilyPrefs.toggle('dayTrip')">🌅 Day Trip</button>
+            <button class="pref-toggle" data-pref="overnightStay" onclick="FamilyPrefs.toggle('overnightStay')">🌙 Overnight Stay</button>
+            <button class="pref-toggle" data-pref="petFriendly"   onclick="FamilyPrefs.toggle('petFriendly')">🐾 Pet Friendly</button>
+            <button class="pref-toggle" data-pref="indoorOnly"    onclick="FamilyPrefs.toggle('indoorOnly')">🏠 Indoor Only</button>
+            <button class="pref-toggle" data-pref="lowWalking"    onclick="FamilyPrefs.toggle('lowWalking')">🦽 Low Walking</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Breadcrumb Filter Menu (Active Filters Display) - Positioned above table -->
       <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
         <div id="breadcrumbContainer" class="breadcrumb-container"></div>
@@ -14685,6 +14722,23 @@
           ` : ''}
 
           ${khFeedbackHtml}
+
+          ${(function(){
+            // Compute confidence score if FamilyPrefs is available
+            if (typeof window.FamilyPrefs !== 'undefined') {
+              const scored = window.FamilyPrefs.scoreAdventure(rowData);
+              if (scored && (scored.confidence > 0 || scored.reasons.length > 0)) {
+                const level = scored.confidence >= 70 ? 'high' : scored.confidence >= 40 ? 'mid' : 'low';
+                const stars = scored.confidence >= 70 ? '✅' : scored.confidence >= 40 ? '⚠️' : '🔻';
+                const reasonsHtml = scored.reasons.map(r => `<span class="confidence-reason-pill">${r}</span>`).join('');
+                return `<div class="card-confidence-row">
+                  <span class="confidence-badge ${level}">${stars} ${scored.confidence}% match</span>
+                  <div class="confidence-reasons">${reasonsHtml}</div>
+                </div>`;
+              }
+            }
+            return '';
+          })()}
         </div>
 
         <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -23754,6 +23808,9 @@ COMMON ISSUES:
 <!-- Multi-select + Bulk Actions -->
 <script src="JS Files/multi-select-bulk-actions.js"></script>
 
+<!-- Family Experience Foundation (shared preferences + confidence helpers) -->
+<script src="JS Files/family-experience-foundation.js"></script>
+
 <!-- Adventure Challenge Tab System -->
 <script src="JS Files/visited-locations-tab-system.js"></script>
 <script src="JS Files/adventure-achievements-system.js"></script>
@@ -26259,6 +26316,437 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   }
 })();
 </script>
+<!-- Family Preferences & Quick Add JS -->
+<script>
+(function() {
+  'use strict';
+
+  // ─── Constants ──────────────────────────────────────────────────────────
+  const LS_KEY = 'kap_family_prefs_v1';
+  const LS_INBOX = 'kap_quick_add_inbox_v1';
+
+  const PREF_META = {
+    budgetMode:    { label: '💰 Budget Mode', icon: '💰' },
+    freeOnly:      { label: '💚 Free Only',   icon: '💚' },
+    nearbyOnly:    { label: '📍 Nearby Only', icon: '📍' },
+    dayTrip:       { label: '🌅 Day Trip',    icon: '🌅' },
+    overnightStay: { label: '🌙 Overnight',   icon: '🌙' },
+    petFriendly:   { label: '🐾 Pet Friendly',icon: '🐾' },
+    indoorOnly:    { label: '🏠 Indoor Only', icon: '🏠' },
+    lowWalking:    { label: '🦽 Low Walking', icon: '🦽' }
+  };
+
+  const PRESETS = {
+    '2hr-nearby':   { nearbyOnly: true, dayTrip: true },
+    'half-day':     { dayTrip: true },
+    'rainy-day':    { indoorOnly: true },
+    'free':         { freeOnly: true, budgetMode: true },
+    'food-plus-1':  {},  // hint only — activates tag filter
+    'clear':        {}
+  };
+
+  // ─── State ──────────────────────────────────────────────────────────────
+  const defaultPrefs = {
+    budgetMode: false, freeOnly: false, nearbyOnly: false,
+    dayTrip: false, overnightStay: false, petFriendly: false,
+    indoorOnly: false, lowWalking: false,
+    activePreset: null
+  };
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? Object.assign({}, defaultPrefs, JSON.parse(raw)) : Object.assign({}, defaultPrefs);
+    } catch(e) { return Object.assign({}, defaultPrefs); }
+  }
+
+  function savePrefs(prefs) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(prefs)); } catch(e) {}
+  }
+
+  function loadInbox() {
+    try { return JSON.parse(localStorage.getItem(LS_INBOX) || '[]'); } catch(e) { return []; }
+  }
+
+  function saveInbox(inbox) {
+    try { localStorage.setItem(LS_INBOX, JSON.stringify(inbox)); } catch(e) {}
+  }
+
+  let prefs = loadPrefs();
+
+  // ─── UI update helpers ──────────────────────────────────────────────────
+  function refreshToggleUI() {
+    document.querySelectorAll('.pref-toggle[data-pref]').forEach(btn => {
+      const key = btn.dataset.pref;
+      btn.classList.toggle('active', !!prefs[key]);
+    });
+    // Preset buttons
+    document.querySelectorAll('.pref-preset-btn[data-preset]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === prefs.activePreset);
+    });
+    // Active chips row
+    renderActiveChips();
+    // Summary line in card header
+    const activeKeys = Object.keys(PREF_META).filter(k => prefs[k]);
+    const summaryEl = document.getElementById('familyPrefsChipSummary');
+    if (summaryEl) {
+      summaryEl.textContent = activeKeys.length
+        ? activeKeys.map(k => PREF_META[k].icon).join(' ')
+        : 'No active preferences — click to set';
+    }
+  }
+
+  function renderActiveChips() {
+    const row = document.getElementById('activePrefsRow');
+    if (!row) return;
+    row.innerHTML = '';
+    const activeKeys = Object.keys(PREF_META).filter(k => prefs[k]);
+    activeKeys.forEach(key => {
+      const chip = document.createElement('span');
+      chip.className = 'pref-active-chip';
+      chip.title = 'Click to turn off ' + PREF_META[key].label;
+      chip.innerHTML = `${PREF_META[key].label}<span class="chip-x">✕</span>`;
+      chip.addEventListener('click', () => FP.toggle(key));
+      row.appendChild(chip);
+    });
+    if (prefs.activePreset && prefs.activePreset !== 'clear') {
+      const chip = document.createElement('span');
+      chip.className = 'pref-active-chip';
+      chip.style.background = '#e0e7ff';
+      chip.style.color = '#3730a3';
+      chip.innerHTML = `📋 Preset: ${prefs.activePreset}<span class="chip-x">✕</span>`;
+      chip.addEventListener('click', () => FP.applyPreset('clear'));
+      row.appendChild(chip);
+    }
+  }
+
+  function refreshCardsConfidence() {
+    // Re-render cards to pick up new confidence scores
+    if (typeof window.renderPaginatedCards === 'function') {
+      window.renderPaginatedCards();
+    } else if (typeof window.applyFilters === 'function') {
+      window.applyFilters();
+    }
+  }
+
+  function updateInboxBadge() {
+    const badge = document.getElementById('qaInboxCount');
+    if (!badge) return;
+    const count = loadInbox().length;
+    badge.textContent = String(count);
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+
+  // ─── Toggle panel open/close ─────────────────────────────────────────────
+  function togglePanel() {
+    const card = document.getElementById('familyPrefsCard');
+    if (card) card.classList.toggle('collapsed');
+  }
+
+  // ─── Toggle individual pref ──────────────────────────────────────────────
+  function toggle(key) {
+    if (prefs[key] === undefined) return;
+    prefs[key] = !prefs[key];
+    // Clear active preset when user manually adjusts a toggle
+    prefs.activePreset = null;
+    savePrefs(prefs);
+    refreshToggleUI();
+    refreshCardsConfidence();
+
+    // If freeOnly turned ON, also apply cost filter
+    if (key === 'freeOnly' && prefs.freeOnly) {
+      const costInput = document.getElementById('filterCost');
+      if (costInput && !costInput.value) {
+        costInput.value = 'Free';
+        if (typeof window.applyFilters === 'function') window.applyFilters();
+      }
+    } else if (key === 'freeOnly' && !prefs.freeOnly) {
+      const costInput = document.getElementById('filterCost');
+      if (costInput && costInput.value.toLowerCase() === 'free') {
+        costInput.value = '';
+        if (typeof window.applyFilters === 'function') window.applyFilters();
+      }
+    }
+
+    // indoorOnly: filter to indoor tags
+    if (key === 'indoorOnly') {
+      const tagsInput = document.getElementById('filterTags');
+      if (tagsInput) {
+        if (prefs.indoorOnly) {
+          tagsInput.dataset.prevValue = tagsInput.value;
+          tagsInput.value = 'indoor';
+        } else {
+          tagsInput.value = tagsInput.dataset.prevValue || '';
+        }
+        if (typeof window.applyFilters === 'function') window.applyFilters();
+      }
+    }
+  }
+
+  // ─── Apply preset ────────────────────────────────────────────────────────
+  function applyPreset(name) {
+    // Reset all pref keys to false
+    Object.keys(PREF_META).forEach(k => { prefs[k] = false; });
+
+    if (name !== 'clear') {
+      const settings = PRESETS[name] || {};
+      Object.assign(prefs, settings);
+      prefs.activePreset = name;
+    } else {
+      prefs.activePreset = null;
+    }
+
+    savePrefs(prefs);
+    refreshToggleUI();
+
+    // Apply any filter-level changes
+    const costInput = document.getElementById('filterCost');
+    const tagsInput = document.getElementById('filterTags');
+
+    // Reset filters first if clearing
+    if (name === 'clear') {
+      if (costInput) costInput.value = '';
+      if (tagsInput) tagsInput.value = '';
+    }
+
+    if (name === 'free') {
+      if (costInput && !costInput.value) costInput.value = 'Free';
+    }
+    if (name === 'rainy-day') {
+      if (tagsInput && !tagsInput.value) tagsInput.value = 'indoor';
+    }
+    if (name === 'food-plus-1') {
+      if (tagsInput && !tagsInput.value) tagsInput.value = 'restaurant';
+    }
+
+    if (typeof window.applyFilters === 'function') window.applyFilters();
+    refreshCardsConfidence();
+
+    if (typeof window.showToast === 'function') {
+      const labels = {
+        '2hr-nearby': '2-Hour Nearby applied',
+        'half-day': 'Half-Day Trip applied',
+        'rainy-day': 'Rainy Day Indoor applied',
+        'free': 'Free Activities applied',
+        'food-plus-1': 'Food + 1 Activity applied',
+        'clear': 'Preferences cleared'
+      };
+      window.showToast('📋 ' + (labels[name] || name), 'info', 2000);
+    }
+  }
+
+  // ─── Score adventure against preferences ────────────────────────────────
+  function scoreAdventure(rowData) {
+    const active = Object.keys(PREF_META).filter(k => prefs[k]);
+    if (!active.length) return null;
+
+    let score = 0;
+    let possible = 0;
+    const reasons = [];
+
+    const tagsLower = String(rowData.tags || '').toLowerCase();
+    const costLower  = String(rowData.cost || '').toLowerCase();
+    const diffLower  = String(rowData.difficulty || '').toLowerCase();
+    const driveStr   = String(rowData.driveTime || '');
+    const driveMin   = parseDriveMinutes(driveStr);
+
+    if (prefs.freeOnly) {
+      possible += 30;
+      if (costLower === 'free' || costLower === '$0' || costLower === '' ) {
+        score += 30;
+        reasons.push('Free entry');
+      } else if (costLower.includes('free')) {
+        score += 20;
+        reasons.push('Likely free');
+      }
+    }
+
+    if (prefs.budgetMode) {
+      possible += 20;
+      if (['free','$','$0'].includes(costLower) || costLower.includes('free')) {
+        score += 20;
+        reasons.push('Budget-friendly');
+      } else if (costLower === '$$') {
+        score += 10;
+        reasons.push('Moderate cost');
+      }
+    }
+
+    if (prefs.nearbyOnly) {
+      possible += 25;
+      if (driveMin !== null && driveMin <= 60) {
+        score += 25;
+        reasons.push(`${driveMin} min drive`);
+      } else if (driveMin !== null && driveMin <= 90) {
+        score += 12;
+        reasons.push('Under 1.5h');
+      }
+    }
+
+    if (prefs.dayTrip) {
+      possible += 20;
+      if (driveMin !== null && driveMin <= 180) {
+        score += 20;
+        reasons.push('Day-trip range');
+      } else if (driveMin !== null) {
+        score += 5;
+      }
+    }
+
+    if (prefs.petFriendly) {
+      possible += 20;
+      if (tagsLower.includes('pet') || tagsLower.includes('dog') || tagsLower.includes('animal')) {
+        score += 20;
+        reasons.push('Pet-friendly tags');
+      }
+    }
+
+    if (prefs.indoorOnly) {
+      possible += 20;
+      if (tagsLower.includes('indoor') || tagsLower.includes('museum') || tagsLower.includes('aquarium') ||
+          tagsLower.includes('gallery') || tagsLower.includes('mall') || tagsLower.includes('theater')) {
+        score += 20;
+        reasons.push('Indoor activity');
+      }
+    }
+
+    if (prefs.lowWalking) {
+      possible += 20;
+      if (diffLower === 'easy' || diffLower === '') {
+        score += 20;
+        reasons.push('Easy / low walking');
+      } else if (diffLower === 'moderate') {
+        score += 8;
+        reasons.push('Moderate walking');
+      }
+    }
+
+    if (prefs.overnightStay) {
+      possible += 15;
+      if (driveMin !== null && driveMin > 90) {
+        score += 15;
+        reasons.push('Worth the drive');
+      } else {
+        score += 8;
+      }
+    }
+
+    const confidence = possible > 0 ? Math.round((score / possible) * 100) : 0;
+    return { confidence, reasons };
+  }
+
+  function parseDriveMinutes(str) {
+    if (!str) return null;
+    const hMatch = str.match(/(\d+)\s*h/i);
+    const mMatch = str.match(/(\d+)\s*m/i);
+    if (!hMatch && !mMatch) {
+      const plain = parseInt(str, 10);
+      return isNaN(plain) ? null : plain;
+    }
+    return ((hMatch ? parseInt(hMatch[1]) : 0) * 60) + (mMatch ? parseInt(mMatch[1]) : 0);
+  }
+
+  // ─── Quick Add ───────────────────────────────────────────────────────────
+  function openQuickAdd() {
+    document.getElementById('quickAddBackdrop')?.classList.add('open');
+    document.getElementById('quickAddSheet')?.classList.add('open');
+    const nameInput = document.getElementById('qaName');
+    if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+    document.getElementById('qaLink') && (document.getElementById('qaLink').value = '');
+    document.getElementById('qaPhotoUrl') && (document.getElementById('qaPhotoUrl').value = '');
+    document.getElementById('qaNotes') && (document.getElementById('qaNotes').value = '');
+  }
+
+  function closeQuickAdd() {
+    document.getElementById('quickAddBackdrop')?.classList.remove('open');
+    document.getElementById('quickAddSheet')?.classList.remove('open');
+  }
+
+  function saveQuickAdd(e) {
+    e.preventDefault();
+    const name = (document.getElementById('qaName')?.value || '').trim();
+    if (!name) return;
+    const inbox = loadInbox();
+    inbox.unshift({
+      id: Date.now(),
+      name,
+      link: document.getElementById('qaLink')?.value?.trim() || '',
+      photoUrl: document.getElementById('qaPhotoUrl')?.value?.trim() || '',
+      notes: document.getElementById('qaNotes')?.value?.trim() || '',
+      savedAt: new Date().toISOString()
+    });
+    saveInbox(inbox);
+    closeQuickAdd();
+    updateInboxBadge();
+    if (typeof window.showToast === 'function') {
+      window.showToast(`✅ "${name}" saved to inbox (${inbox.length} item${inbox.length !== 1 ? 's' : ''})`, 'success', 3000);
+    }
+  }
+
+  // ─── Public API ──────────────────────────────────────────────────────────
+  const FP = {
+    toggle, applyPreset, scoreAdventure, togglePanel,
+    openQuickAdd, closeQuickAdd, saveQuickAdd,
+    getPrefs: () => Object.assign({}, prefs),
+    getInbox: loadInbox,
+    refreshUI: refreshToggleUI
+  };
+
+  window.FamilyPrefs = FP;
+
+  // ─── Init ────────────────────────────────────────────────────────────────
+  function init() {
+    refreshToggleUI();
+    updateInboxBadge();
+    // Keyboard: Esc closes quick-add sheet
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeQuickAdd();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    // Delay slightly so DOM mutations from other scripts settle
+    setTimeout(init, 200);
+  }
+})();
+</script>
+
+<!-- Quick Add FAB & Sheet -->
+<button class="quick-add-fab" id="quickAddFab" title="Quick Add a place" aria-label="Quick Add a place" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">
+  <span style="pointer-events:none;">＋</span>
+  <span class="qa-inbox-count" id="qaInboxCount" style="display:none;">0</span>
+</button>
+
+<div class="quick-add-backdrop" id="quickAddBackdrop" onclick="FamilyPrefs && FamilyPrefs.closeQuickAdd()"></div>
+<div class="quick-add-sheet" id="quickAddSheet" role="dialog" aria-modal="true" aria-label="Quick Add a place">
+  <div class="quick-add-sheet-handle"></div>
+  <div class="quick-add-sheet-title">⚡ Quick Add</div>
+  <form class="quick-add-form" id="quickAddForm" onsubmit="FamilyPrefs && FamilyPrefs.saveQuickAdd(event)">
+    <div class="qa-field">
+      <label for="qaName">Place Name *</label>
+      <input id="qaName" type="text" placeholder="e.g. Congaree National Park" autocomplete="off" required />
+    </div>
+    <div class="qa-field">
+      <label for="qaLink">Website or Google Maps URL</label>
+      <input id="qaLink" type="url" placeholder="https://..." autocomplete="off" />
+    </div>
+    <div class="qa-field">
+      <label for="qaPhotoUrl">Photo URL (optional)</label>
+      <input id="qaPhotoUrl" type="url" placeholder="https://..." autocomplete="off" />
+    </div>
+    <div class="qa-field">
+      <label for="qaNotes">Quick Note</label>
+      <textarea id="qaNotes" placeholder="Any quick thoughts..."></textarea>
+    </div>
+    <div class="quick-add-actions">
+      <button type="submit" class="qa-save-btn">💾 Save to Inbox</button>
+      <button type="button" class="qa-cancel-btn" onclick="FamilyPrefs && FamilyPrefs.closeQuickAdd()">Cancel</button>
+    </div>
+  </form>
+</div>
+
 </body>
 </html>
 

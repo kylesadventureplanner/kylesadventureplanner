@@ -1133,6 +1133,69 @@
       box-shadow: 0 8px 18px rgba(79, 70, 229, 0.24);
     }
 
+    .loc-family-bar {
+      width: 100%;
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px dashed #e5e7eb;
+    }
+    .loc-family-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .loc-family-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      margin-right: 2px;
+    }
+    .loc-family-btn {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+    .loc-family-btn:hover {
+      border-color: #818cf8;
+      background: #eef2ff;
+      color: #3730a3;
+      transform: translateY(-1px);
+    }
+    .loc-family-btn.is-active {
+      background: linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+      border-color: transparent;
+      color: #ffffff;
+      box-shadow: 0 8px 16px rgba(37, 99, 235, 0.26);
+    }
+    .loc-why-list {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .loc-why-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
     .loc-check-row {
       display: flex;
       align-items: center;
@@ -2262,6 +2325,10 @@
             <button id="locPresetBestValueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="best-value" onclick="applySmartLocPreset('best-value')">💎 Best value</button>
             <button id="locPresetMostUniqueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="most-unique" onclick="applySmartLocPreset('most-unique')">✨ Most unique</button>
           </div>
+          <div id="locFamilyBar" class="loc-family-bar" aria-label="Family planning preferences">
+            <div id="locFamilyPresetRow" class="loc-family-row"></div>
+            <div id="locFamilyToggleRow" class="loc-family-row"></div>
+          </div>
         </div>
         <div class="loc-check-row">
           <label class="loc-check"><input id="locFilterOpenNow" type="checkbox" onchange="applyLocFilters()"> Open now</label>
@@ -2430,6 +2497,7 @@
 
     <div id="locToast" class="loc-toast" role="status" aria-live="polite"></div>
 
+    <script src="../JS Files/family-experience-foundation.js"></script>
     <script>
     // ── City card gradient palette (deterministic by city name) ────────────
     const CITY_CARD_GRADIENTS = [
@@ -2698,6 +2766,8 @@
       resolveNearbyDebugThresholdsFromUrl();
       resolvePrefilterFromUrl();
       syncBulkActionInputHint();
+      familyPreferences = loadFamilyPreferences();
+      renderFamilyExperienceControls();
       renderPrefilterNotice();
       // Load data from sessionStorage or parent window
       if (!loadCityViewerData()) {
@@ -2987,6 +3057,8 @@
     let prefilterLabel = '';
     let prefilterSourceSubtab = '';
     let activeLocSourceFilter = '';
+    let familyPreferences = null;
+    let activeFamilyPreset = '';
     const CITY_VIEWER_NEARBY_CACHE_STORAGE_KEY = '__nearby_attractions_cache_v2';
     const CITY_VIEWER_NEARBY_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24;
     const CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT = 1.25;
@@ -3010,6 +3082,174 @@
     function globalPresetKey() { return 'cityViewer:presets:global:v1'; }
     function cityShortlistKey(cityKey) { return `cityViewer:shortlist:${cityKey}`; }
     function cityEditsKey(cityKey) { return `cityViewer:edits:${cityKey}`; }
+
+    const FAMILY_PREFERENCE_LABELS = {
+      budgetMode: '💰 Budget',
+      freeOnly: '💸 Free',
+      nearbyOnly: '📍 Nearby',
+      dayTrip: '🚗 Day Trip',
+      overnightStay: '🌙 Overnight',
+      petFriendly: '🐾 Pet Friendly',
+      indoorOnly: '🏠 Indoor',
+      lowWalking: '🚶 Low Walking'
+    };
+
+    const FAMILY_PRESET_LABELS = {
+      '2h-nearby': '⏱️ 2-hour nearby',
+      'half-day': '🕓 Half-day',
+      'rainy-indoor': '🌧️ Rainy day indoor',
+      'free-activities': '💸 Free activities',
+      'food-plus-one': '🍽️ Food + 1 activity'
+    };
+
+    function getFamilyFoundation() {
+      return window.FamilyExperienceFoundation && typeof window.FamilyExperienceFoundation === 'object'
+        ? window.FamilyExperienceFoundation
+        : null;
+    }
+
+    function normalizeFamilyPreferences(next) {
+      const foundation = getFamilyFoundation();
+      const defaults = foundation && foundation.DEFAULT_PREFERENCES ? foundation.DEFAULT_PREFERENCES : {
+        budgetMode: false,
+        freeOnly: false,
+        nearbyOnly: true,
+        dayTrip: false,
+        overnightStay: false,
+        petFriendly: false,
+        indoorOnly: false,
+        lowWalking: false
+      };
+      const merged = Object.assign({}, defaults, next || {});
+      if (merged.nearbyOnly) {
+        merged.dayTrip = false;
+        merged.overnightStay = false;
+      } else if (merged.dayTrip) {
+        merged.nearbyOnly = false;
+        merged.overnightStay = false;
+      } else if (merged.overnightStay) {
+        merged.nearbyOnly = false;
+        merged.dayTrip = false;
+      }
+      return merged;
+    }
+
+    function loadFamilyPreferences() {
+      const foundation = getFamilyFoundation();
+      if (!foundation || typeof foundation.loadPreferences !== 'function') {
+        return normalizeFamilyPreferences(familyPreferences);
+      }
+      return normalizeFamilyPreferences(foundation.loadPreferences());
+    }
+
+    function saveFamilyPreferences(next) {
+      const foundation = getFamilyFoundation();
+      const normalized = normalizeFamilyPreferences(next);
+      if (foundation && typeof foundation.savePreferences === 'function') {
+        foundation.savePreferences(normalized);
+      }
+      familyPreferences = normalized;
+      return normalized;
+    }
+
+    function setFamilyPreference(key, value) {
+      const current = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+      const next = Object.assign({}, current, { [key]: Boolean(value) });
+      saveFamilyPreferences(next);
+      activeFamilyPreset = '';
+      renderFamilyExperienceControls();
+      applyLocFilters();
+    }
+
+    function toggleFamilyPreference(key) {
+      const current = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+      setFamilyPreference(key, !Boolean(current[key]));
+    }
+
+    function applyFamilyPreset(presetKey) {
+      const foundation = getFamilyFoundation();
+      const current = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+      let next = current;
+      if (foundation && typeof foundation.applyPreset === 'function') {
+        next = foundation.applyPreset(current, presetKey);
+      }
+      saveFamilyPreferences(next);
+      activeFamilyPreset = String(presetKey || '').trim();
+      renderFamilyExperienceControls();
+      applyLocFilters();
+    }
+
+    function renderFamilyExperienceControls() {
+      const presetRow = document.getElementById('locFamilyPresetRow');
+      const toggleRow = document.getElementById('locFamilyToggleRow');
+      if (!presetRow || !toggleRow) return;
+
+      const foundation = getFamilyFoundation();
+      const prefs = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+      familyPreferences = prefs;
+      const presetKeys = foundation && foundation.PLAN_PRESETS
+        ? Object.keys(foundation.PLAN_PRESETS)
+        : Object.keys(FAMILY_PRESET_LABELS);
+
+      presetRow.innerHTML = '<span class="loc-family-label">Family presets:</span>'
+        + presetKeys.map((key) => {
+          const label = FAMILY_PRESET_LABELS[key] || (foundation && foundation.PLAN_PRESETS && foundation.PLAN_PRESETS[key] && foundation.PLAN_PRESETS[key].label) || key;
+          return `<button type="button" class="loc-family-btn ${activeFamilyPreset === key ? 'is-active' : ''}" onclick="applyFamilyPreset('${escAttr(key)}')">${escHtml(label)}</button>`;
+        }).join('');
+
+      toggleRow.innerHTML = '<span class="loc-family-label">Family filters:</span>'
+        + Object.keys(FAMILY_PREFERENCE_LABELS).map((key) => {
+          return `<button type="button" class="loc-family-btn ${prefs[key] ? 'is-active' : ''}" onclick="toggleFamilyPreference('${escAttr(key)}')">${escHtml(FAMILY_PREFERENCE_LABELS[key])}</button>`;
+        }).join('');
+    }
+
+    function getLocationDriveMinutesForFamily(loc) {
+      const parsed = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
+      return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+    }
+
+    function locationLooksIndoor(loc) {
+      const tags = getLocationTags(loc).join(' ').toLowerCase();
+      const name = String(locVal(loc, 0, 'name') || '').toLowerCase();
+      const desc = String(locVal(loc, 12, 'description') || '').toLowerCase();
+      const haystack = `${tags} ${name} ${desc}`;
+      return /(indoor|museum|arcade|theater|cinema|mall|gallery|aquarium|shopping|coffee|restaurant)/i.test(haystack);
+    }
+
+    function locationLooksPetFriendly(loc) {
+      const tags = getLocationTags(loc).join(' ').toLowerCase();
+      const desc = String(locVal(loc, 12, 'description') || '').toLowerCase();
+      return /(pet|dog|dogs|dog-friendly|pet-friendly|leash)/i.test(`${tags} ${desc}`);
+    }
+
+    function locationLooksLowWalking(loc) {
+      const difficulty = String(locVal(loc, 7, 'difficulty') || '').toLowerCase();
+      const trailLen = Number.parseFloat(String(locVal(loc, 8, 'trailLength') || '').replace(/[^\d.]/g, ''));
+      if (difficulty && /(easy|beginner)/i.test(difficulty)) return true;
+      if (Number.isFinite(trailLen) && trailLen <= 2) return true;
+      return false;
+    }
+
+    function locationLooksBudgetFriendly(loc) {
+      const rank = getLocationCostRank(loc);
+      const costText = String(locVal(loc, 14, 'cost') || '').toLowerCase();
+      return rank <= 1 || /free/.test(costText);
+    }
+
+    function buildFamilyConfidenceItemModel(loc) {
+      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      const driveMinutes = getLocationDriveMinutesForFamily(loc);
+      const costRank = getLocationCostRank(loc);
+      return {
+        driveMinutes: Number.isFinite(driveMinutes) ? driveMinutes : null,
+        openNow: openInfo.isOpen,
+        indoor: locationLooksIndoor(loc),
+        petFriendly: locationLooksPetFriendly(loc),
+        walkingBurden: locationLooksLowWalking(loc) ? 1 : 3,
+        isFree: /free/i.test(String(locVal(loc, 14, 'cost') || '')),
+        costRank: Number.isFinite(costRank) ? costRank : 4
+      };
+    }
 
     function normalizeTagToken(value) {
       return String(value || '').trim().toLowerCase();
@@ -3961,7 +4201,8 @@
         tagFilter: String(activeLocQuickTag || ((document.getElementById('locFilterTag') && document.getElementById('locFilterTag').value) || '')).trim().toLowerCase(),
         openNowOnly: !!(document.getElementById('locFilterOpenNow') && document.getElementById('locFilterOpenNow').checked),
         closingSoonOnly: !!(document.getElementById('locFilterClosingSoon') && document.getElementById('locFilterClosingSoon').checked),
-        sourceFilter: String(activeLocSourceFilter || '').trim().toLowerCase()
+        sourceFilter: String(activeLocSourceFilter || '').trim().toLowerCase(),
+        familyPreferences: normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences())
       };
     }
 
@@ -3981,6 +4222,18 @@
       if (filters.openNowOnly && !openInfo.isOpen) return false;
       if (filters.closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= 120)) return false;
       if (!settings.ignoreSourceFilter && filters.sourceFilter && getLocSourceKey(loc) !== filters.sourceFilter) return false;
+
+      const prefs = normalizeFamilyPreferences(filters.familyPreferences || familyPreferences || loadFamilyPreferences());
+      const driveMinutes = getLocationDriveMinutesForFamily(loc);
+      if (prefs.nearbyOnly && Number.isFinite(driveMinutes) && driveMinutes > 120) return false;
+      if (prefs.dayTrip && Number.isFinite(driveMinutes) && (driveMinutes < 45 || driveMinutes > 240)) return false;
+      if (prefs.overnightStay && Number.isFinite(driveMinutes) && driveMinutes < 150) return false;
+      if (prefs.freeOnly && !/free/i.test(cost)) return false;
+      if (prefs.budgetMode && !locationLooksBudgetFriendly(loc)) return false;
+      if (prefs.indoorOnly && !locationLooksIndoor(loc)) return false;
+      if (prefs.petFriendly && !locationLooksPetFriendly(loc)) return false;
+      if (prefs.lowWalking && !locationLooksLowWalking(loc)) return false;
+
       return true;
     }
 
@@ -4038,7 +4291,9 @@
         sortBy: document.getElementById('locSortBy').value,
         sortOrder: locSortOrder,
         quickTag: activeLocQuickTag,
-        splitView: locSplitView
+        splitView: locSplitView,
+        familyPreferences: normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences()),
+        familyPresetKey: activeFamilyPreset || ''
       };
     }
 
@@ -4059,6 +4314,11 @@
         btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
       });
       setSplitView(Boolean(state.splitView));
+      if (state.familyPreferences && typeof state.familyPreferences === 'object') {
+        saveFamilyPreferences(state.familyPreferences);
+      }
+      activeFamilyPreset = String(state.familyPresetKey || '').trim();
+      renderFamilyExperienceControls();
     }
 
     function saveLastLocState() {
@@ -4738,6 +4998,28 @@
     }
 
     function getLocationConfidenceModel(loc) {
+      const foundation = getFamilyFoundation();
+      const prefs = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+      if (foundation && typeof foundation.confidenceScore === 'function' && typeof foundation.buildWhySuggested === 'function') {
+        const itemModel = buildFamilyConfidenceItemModel(loc);
+        const familyFitParts = [];
+        if (prefs.indoorOnly && itemModel.indoor) familyFitParts.push('indoor match');
+        if (prefs.petFriendly && itemModel.petFriendly) familyFitParts.push('pet-friendly match');
+        if (prefs.lowWalking && itemModel.walkingBurden <= 1) familyFitParts.push('low-walking fit');
+        const familyFitLabel = familyFitParts.length ? familyFitParts.join(', ') : '';
+        const score = foundation.confidenceScore(itemModel, prefs);
+        const reasons = foundation.buildWhySuggested(itemModel, prefs, familyFitLabel ? { familyFitLabel } : null);
+        const level = score >= 75 ? 'high' : score >= 55 ? 'medium' : 'low';
+        const levelLabel = level === 'high' ? 'High confidence' : (level === 'medium' ? 'Medium confidence' : 'Low confidence');
+        return {
+          level,
+          label: `${levelLabel} (${score}%)`,
+          reason: reasons.join(' '),
+          score,
+          reasons
+        };
+      }
+
       const rating = parseFloat(locVal(loc, 13, 'rating'));
       const hours = String(locVal(loc, 5, 'hours') || '').trim();
       const address = String(locVal(loc, 11, 'address') || '').trim();
@@ -4761,20 +5043,23 @@
         return {
           level: 'high',
           label: 'High confidence',
-          reason: 'Strong coverage across ratings, hours, address, links, and map data.'
+          reason: 'Strong coverage across ratings, hours, address, links, and map data.',
+          reasons: ['Strong listing metadata.']
         };
       }
       if (score >= 4) {
         return {
           level: 'medium',
           label: 'Medium confidence',
-          reason: 'Useful listing, but some planning details are still limited.'
+          reason: 'Useful listing, but some planning details are still limited.',
+          reasons: ['Some planning details available.']
         };
       }
       return {
         level: 'low',
         label: 'Low confidence',
-        reason: 'Only partial planning data is available for this location.'
+        reason: 'Only partial planning data is available for this location.',
+        reasons: ['Limited planning metadata.']
       };
     }
 
@@ -4840,12 +5125,14 @@
     function renderLocationInsightsMarkup(loc, cityEntry) {
       const badges = getLocationRankBadgeModels(loc);
       const confidence = getLocationConfidenceModel(loc);
+      const whyReasons = Array.isArray(confidence.reasons) ? confidence.reasons.slice(0, 3) : [];
       return `
         <div class="loc-card-insights" data-location-insights="${escAttr(getLocId(loc))}">
           <div class="loc-rank-badges">
             ${badges.map(badge => `<span class="loc-rank-badge ${escAttr(badge.className)}" data-rank-badge="${escAttr(badge.key)}">${escHtml(badge.label)}</span>`).join('')}
           </div>
           <div class="loc-confidence-indicator ${escAttr(confidence.level)}" data-confidence-indicator="${escAttr(confidence.level)}" title="${escAttr(confidence.reason)}">🧭 ${escHtml(confidence.label)}</div>
+          ${whyReasons.length ? `<div class="loc-why-list">${whyReasons.map((reason) => `<span class="loc-why-chip">💡 ${escHtml(reason)}</span>`).join('')}</div>` : ''}
         </div>`;
     }
 
@@ -6204,6 +6491,7 @@
       const closingSoon = Boolean(document.getElementById('locFilterClosingSoon')?.checked);
       const sourceFilter = String(activeLocSourceFilter || '').trim();
       const sortBy = String(document.getElementById('locSortBy')?.value || 'name').trim();
+      const prefs = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
 
       if (prefilterTag) {
         chips.push({ key: 'prefilter', label: `Adventure subtab: ${getPrefilterLabel()}`, className: 'is-prefilter', buttonLabel: 'Show all' });
@@ -6218,6 +6506,10 @@
       if (openNow) chips.push({ key: 'openNow', label: 'Open now' });
       if (closingSoon) chips.push({ key: 'closingSoon', label: 'Closing within 2h' });
       if (sortBy !== 'name' || locSortOrder !== 'asc') chips.push({ key: 'sort', label: `Sort: ${sortBy} (${locSortOrder})` });
+      if (activeFamilyPreset) chips.push({ key: 'familyPreset', label: `Family preset: ${activeFamilyPreset}` });
+      Object.keys(FAMILY_PREFERENCE_LABELS).forEach((prefKey) => {
+        if (prefs[prefKey]) chips.push({ key: `family:${prefKey}`, label: FAMILY_PREFERENCE_LABELS[prefKey] });
+      });
 
       return chips;
     }
@@ -6244,6 +6536,15 @@
         locSortOrder = 'asc';
         const sortBtn = document.getElementById('locSortOrderBtn');
         if (sortBtn) sortBtn.textContent = '↑';
+      }
+      if (key === 'familyPreset') activeFamilyPreset = '';
+      if (key.startsWith('family:')) {
+        const prefKey = key.slice('family:'.length);
+        const next = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
+        next[prefKey] = false;
+        saveFamilyPreferences(next);
+        activeFamilyPreset = '';
+        renderFamilyExperienceControls();
       }
       applyLocFilters();
     }
@@ -6808,6 +7109,8 @@
     window.scrollToTop = scrollToTop;
     window.filterByCategory = filterByCategory;
     window.openNearbyDiagnosticsFromCityViewer = openNearbyDiagnosticsFromCityViewer;
+    window.toggleFamilyPreference = toggleFamilyPreference;
+    window.applyFamilyPreset = applyFamilyPreset;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

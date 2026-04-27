@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "defaultOrder": [
+    "explore",
+    "open-map",
+    "directions",
+    "log-visit",
+    "batch-tags",
+    "notes"
+  ],
+  "actions": {
+    "explore": {
+      "label": "Explore",
+      "icon": "🔎",
+      "aliases": ["open-explorer", "explore-bike-trails"]
+    },
+    "open-map": {
+      "label": "Open in Map",
+      "icon": "🗺️",
+      "aliases": ["focus-map", "open-city-explorer"]
+    },
+    "directions": {
+      "label": "Directions",
+      "icon": "🧭",
+      "aliases": ["open-directions"]
+    },
+    "log-visit": {
+      "label": "Log Visit",
+      "icon": "📝",
+      "aliases": ["add-visit", "open-visit-log"]
+    },
+    "batch-tags": {
+      "label": "Batch Tags",
+      "icon": "🏷️",
+      "aliases": ["open-batch-tags", "copy-tags-to-selected"]
+    },
+    "notes": {
+      "label": "Notes",
+      "icon": "📌",
+      "aliases": ["add-note", "remove-notes", "edit-notes"]
+    }
+  }
+}
+
