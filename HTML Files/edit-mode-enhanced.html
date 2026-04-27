@@ -1326,6 +1326,43 @@
         <div id="autotag-status"></div>
       </div>
 
+      <div class="card">
+        <div class="card-title">🏷️ Batch Tag Actions (Current Add/Bulk Target)</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Add tags to multiple locations at once, or copy tags from one source location to many target locations.
+        </p>
+
+        <div class="input-group">
+          <label for="batchTagIdentifiers">Target locations (optional; one per line or comma-separated)</label>
+          <textarea id="batchTagIdentifiers" placeholder="Leave blank to target all loaded rows in the selected Add/Bulk target table."></textarea>
+        </div>
+
+        <div class="input-group">
+          <label for="batchTagValues">Tags to add (comma-separated)</label>
+          <input id="batchTagValues" type="text" placeholder="family-friendly, scenic, weekend" />
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" type="button" onclick="submitBatchAddTagsToLocations()">➕ Add Tags to Multiple Locations</button>
+        </div>
+
+        <div class="input-group" style="margin-top: 12px;">
+          <label for="batchTagCopySource">Copy source location (Place ID or exact name)</label>
+          <input id="batchTagCopySource" type="text" placeholder="Source location Place ID or name" />
+        </div>
+
+        <div class="input-group">
+          <label for="batchTagCopyTargets">Copy target locations (optional; one per line or comma-separated)</label>
+          <textarea id="batchTagCopyTargets" placeholder="Leave blank to copy to all loaded rows except the source."></textarea>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" type="button" onclick="submitBatchCopyTagsAcrossLocations()">📋 Copy Source Tags to Multiple Locations</button>
+        </div>
+
+        <div id="batch-tag-status"></div>
+      </div>
+
       <!-- Populate Missing Fields Only -->
       <div class="card">
         <div class="card-title">📝 Populate Missing Fields Only</div>
@@ -2134,8 +2171,8 @@
     const bulkCandidateState = {
       rawInput: '',
       inputType: 'placeName',
-       groups: [],
-       summary: null
+      groups: [],
+      summary: null
     };
     const chainCandidateState = {
       rawInput: '',
@@ -2989,9 +3026,115 @@
       return normalizeEditModeSubtabKey(getEditModeLaunchParam('sourceSubtab'));
     }
 
+    async function runPostAddEnrichmentPipeline() {
+      if (window.__editModePostAddEnrichmentRunning) return;
+      if (window.__disableEditModePostAddEnrichment === true) return;
+      window.__editModePostAddEnrichmentRunning = true;
+      try {
+        const progressHost = document.createElement('div');
+        const runnables = [
+          {
+            label: 'populate-missing-fields',
+            run: async () => {
+              if (typeof window.handlePopulateMissingWithProgress === 'function') {
+                return window.handlePopulateMissingWithProgress(progressHost, false);
+              }
+              if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+                return window.handlePopulateMissingFieldsEnhanced(progressHost, false);
+              }
+              if (window.enhancedAutomation && typeof window.enhancedAutomation.populateMissingFieldsOnly === 'function') {
+                return window.enhancedAutomation.populateMissingFieldsOnly(false);
+              }
+              return null;
+            }
+          },
+          {
+            label: 'update-hours',
+            run: async () => {
+              if (typeof window.handleUpdateHoursWithProgress === 'function') {
+                return window.handleUpdateHoursWithProgress(progressHost, false);
+              }
+              if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
+                return window.handleUpdateHoursOnlyEnhanced(progressHost, false);
+              }
+              if (window.enhancedAutomation && typeof window.enhancedAutomation.updateHoursOnly === 'function') {
+                return window.enhancedAutomation.updateHoursOnly(false);
+              }
+              return null;
+            }
+          },
+          {
+            label: 'update-descriptions',
+            run: async () => {
+              if (typeof window.handleUpdateAllDescriptions === 'function') {
+                const strictModeEnabled = !!document.getElementById('descStrictMode')?.checked;
+                const richOnlyEnabled = !!document.getElementById('descRichOnlyMode')?.checked;
+                return window.handleUpdateAllDescriptions(progressHost, false, false, strictModeEnabled, richOnlyEnabled);
+              }
+              return null;
+            }
+          },
+          {
+            label: 'auto-tag',
+            run: async () => {
+              if (typeof window.handleAutoTagWithProgress === 'function') {
+                return window.handleAutoTagWithProgress(progressHost, false);
+              }
+              if (typeof window.autoTagAllLocationsUnified === 'function') {
+                return window.autoTagAllLocationsUnified({ dryRun: false });
+              }
+              return null;
+            }
+          }
+        ];
+
+        for (const step of runnables) {
+          try {
+            const outcome = await step.run();
+            if (outcome && outcome.success === false) {
+              console.warn(`⚠️ Post-add enrichment step failed (${step.label}):`, outcome.error || outcome);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Post-add enrichment step crashed (${step.label}):`, error && error.message ? error.message : error);
+          }
+        }
+      } finally {
+        window.__editModePostAddEnrichmentRunning = false;
+      }
+    }
+
     async function runPostAddRefreshHooks(result, dryRun) {
       if (!result || !result.success || dryRun) return;
       const host = getMainWindowSafe();
+
+      try {
+        const details = result && result.details && typeof result.details === 'object' ? result.details : null;
+        const placeId = String((result && result.placeId) || (details && details.placeId) || '').trim();
+        const name = String((result && result.placeName) || (details && details.name) || '').trim();
+        const locationData = details ? {
+          name: details.name || name,
+          description: details.description || '',
+          googleRating: details.rating != null ? String(details.rating) : '',
+          city: details.city || '',
+          address: details.address || '',
+          tags: '',
+          notes: ''
+        } : null;
+        const recommendedTags = locationData && typeof window.getTagsForLocationText === 'function'
+          ? window.getTagsForLocationText(locationData)
+          : [];
+        const tagList = Array.isArray(recommendedTags)
+          ? recommendedTags.map((tag) => String(tag || '').trim()).filter(Boolean)
+          : [];
+        if (tagList.length && window.tagManager && typeof window.tagManager.addTagsToPlace === 'function') {
+          const identifier = placeId || name;
+          if (identifier) {
+            window.tagManager.addTagsToPlace(identifier, tagList);
+          }
+        }
+      } catch (_error) {
+        // Never block successful add flow if post-add tag enrichment fails.
+      }
 
       const cacheInvalidators = [
         window.invalidateCityViewerCuratedCache,
@@ -3005,6 +3148,8 @@
           // Keep add flow successful even if cache invalidation fails.
         }
       }
+
+      await runPostAddEnrichmentPipeline();
 
       const sourceSubtab = getEmbeddedSourceSubtabKey();
       if (!sourceSubtab) return;
@@ -3042,10 +3187,12 @@
       const addTarget = getSelectedTarget('actionTargetSelect');
       const autoSingle = getSelectedTarget('automationTargetSelect');
       const autoMulti = getSelectedAutomationTargets();
+      const effective = getAutomationTargetsForRun();
       status.innerHTML = `
         <div class="target-chip"><strong>Add/Bulk:</strong> ${addTarget ? addTarget.label : 'Not selected'}</div>
         <div class="target-chip"><strong>Automation default:</strong> ${autoSingle ? autoSingle.label : 'Not selected'}</div>
         <div class="target-chip"><strong>Automation multi:</strong> ${autoMulti.length ? autoMulti.map((t) => t.tableName).join(', ') : 'None selected'}</div>
+        <div class="target-chip"><strong>Automation run target(s):</strong> ${effective.length ? effective.map((t) => t.tableName).join(', ') : 'None selected'}</div>
       `;
       renderActionSectionTargetIndicators();
     }
@@ -3203,7 +3350,14 @@
         });
       });
       autoSel.addEventListener('change', () => {
+        // Keep multi-target selection aligned with default target until user explicitly customizes multi-select.
+        if (!hasUserTouchedAutomationMultiSelector()) {
+          syncAutomationMultiToSingle();
+        }
         updateActiveTargetBanner(getSelectedTarget('automationTargetSelect'));
+      });
+      multiSel.addEventListener('change', () => {
+        markAutomationMultiSelectorTouched();
       });
       applyLaunchTargetDefaults({ force: true });
       if (!getEmbeddedSourceSubtabKey()) {
@@ -3458,9 +3612,39 @@
       return EDIT_MODE_TARGETS.filter((item) => ids.includes(item.id));
     }
 
+    function hasUserTouchedAutomationMultiSelector() {
+      return document.body && document.body.dataset.editModeAutomationMultiTouched === '1';
+    }
+
+    function markAutomationMultiSelectorTouched() {
+      if (!document.body) return;
+      document.body.dataset.editModeAutomationMultiTouched = '1';
+    }
+
+    function syncAutomationMultiToSingle() {
+      const autoSel = document.getElementById('automationTargetSelect');
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!autoSel || !multiSel) return;
+      const singleId = String(autoSel.value || '').trim();
+      Array.from(multiSel.options).forEach((opt) => {
+        opt.selected = singleId && String(opt.value || '').trim() === singleId;
+      });
+    }
+
+    function getAutomationTargetsForRun() {
+      const single = getSelectedTarget('automationTargetSelect');
+      const multi = getSelectedAutomationTargets();
+      if (!hasUserTouchedAutomationMultiSelector()) {
+        return single ? [single] : [];
+      }
+      if (multi.length) return multi;
+      return single ? [single] : [];
+    }
+
     function selectAllAutomationTargets() {
       const multiSel = document.getElementById('automationTargetMulti');
       if (!multiSel) return;
+      markAutomationMultiSelectorTouched();
       Array.from(multiSel.options).forEach((opt) => {
         opt.selected = true;
       });
@@ -3470,6 +3654,7 @@
     function clearAutomationTargets() {
       const multiSel = document.getElementById('automationTargetMulti');
       if (!multiSel) return;
+      markAutomationMultiSelectorTouched();
       Array.from(multiSel.options).forEach((opt) => {
         opt.selected = false;
       });
@@ -5331,33 +5516,37 @@
     function getSelectedBulkCandidateCount() {
       return bulkCandidateState.groups.reduce((count, group) => {
         if (!group || !Array.isArray(group.candidates) || !group.candidates.length) return count;
-        return Number.isInteger(group.selectedIndex) && group.selectedIndex >= 0 && group.selectedIndex < group.candidates.length
-          ? count + 1
-          : count;
+        const picks = Array.isArray(group.selectedIndexes) ? group.selectedIndexes : [];
+        return count + picks.length;
       }, 0);
     }
 
     function getSelectedBulkCandidateGoogleUrls() {
-      return bulkCandidateState.groups
-        .map((group) => {
-          if (!group || !Array.isArray(group.candidates)) return '';
-          const idx = Number(group.selectedIndex);
-          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return '';
-          const pick = group.candidates[idx];
-          return buildCandidateOpenLinkUrl(pick);
-        })
-        .filter(Boolean);
+      const urls = [];
+      bulkCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const picks = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        picks.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const url = buildCandidateOpenLinkUrl(candidates[idx]);
+          if (url) urls.push(url);
+        });
+      });
+      return urls;
     }
 
     function getSelectedBulkCandidates() {
-      return bulkCandidateState.groups
-        .map((group) => {
-          if (!group || !Array.isArray(group.candidates)) return null;
-          const idx = Number(group.selectedIndex);
-          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return null;
-          return group.candidates[idx] || null;
-        })
-        .filter(Boolean);
+      const picks = [];
+      bulkCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const selectedIndexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        selectedIndexes.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const pick = candidates[idx];
+          if (pick) picks.push(pick);
+        });
+      });
+      return picks;
     }
 
     function openSelectedBulkCandidatesInGoogle() {
@@ -5401,7 +5590,8 @@
           `;
         }
         const cards = candidates.map((candidate, candidateIndex) => {
-          const selectedClass = candidateIndex === group.selectedIndex ? 'selected' : '';
+          const selectedSet = new Set(Array.isArray(group.selectedIndexes) ? group.selectedIndexes : []);
+          const selectedClass = selectedSet.has(candidateIndex) ? 'selected' : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
           const distancePart = renderCandidateDistanceMarkup(candidate);
           const confidenceBadge = renderFestivalConfidenceBadge(candidate);
@@ -5413,6 +5603,7 @@
           return `
             <div class="candidate-item ${selectedClass}" data-bulk-group-index="${groupIndex}" data-bulk-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="selectBulkCandidate(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectBulkCandidate(${groupIndex}, ${candidateIndex});}">
               <div class="candidate-title">${candidate.name}</div>
+              <div class="candidate-meta"><label><input type="checkbox" ${selectedClass ? 'checked' : ''} onclick="event.stopPropagation();selectBulkCandidate(${groupIndex}, ${candidateIndex});"> Select this result</label></div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
               ${confidenceBadge ? `<div class="candidate-meta">${confidenceBadge}</div>` : ''}
@@ -5430,7 +5621,8 @@
           </div>
         `;
       }).join('');
-      container.innerHTML = `${headerHtml}${groupsHtml}`;
+      const footerActionsHtml = `<div class="inline-actions" style="margin-top:12px;position:sticky;bottom:0;padding:10px 0;background:linear-gradient(180deg,rgba(255,255,255,0.92) 0%, #fff 65%);z-index:5;border-top:1px solid #e5e7eb;"><button class="button button-secondary" type="button" onclick="openSelectedBulkCandidatesInGoogle()" ${selectedCount === 0 ? 'disabled' : ''}>🌐 Open Selected in Google</button><button class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" ${selectedCount === 0 ? 'disabled' : ''}>✅ Add Selected Candidates</button></div>`;
+      container.innerHTML = `${headerHtml}${groupsHtml}${footerActionsHtml}`;
     }
 
     function resetBulkCandidateResults() {
@@ -5449,7 +5641,14 @@
       const group = bulkCandidateState.groups[gIdx];
       if (!group || !Array.isArray(group.candidates)) return;
       if (cIdx < 0 || cIdx >= group.candidates.length) return;
-      group.selectedIndex = cIdx;
+      if (!Array.isArray(group.selectedIndexes)) group.selectedIndexes = [];
+      const pos = group.selectedIndexes.indexOf(cIdx);
+      if (pos >= 0) {
+        group.selectedIndexes.splice(pos, 1);
+      } else {
+        group.selectedIndexes.push(cIdx);
+        group.selectedIndexes.sort((a, b) => a - b);
+      }
       renderBulkCandidateResults();
     }
 
@@ -5473,7 +5672,7 @@
 
       bulkCandidateState.rawInput = rawInput;
       bulkCandidateState.inputType = inputType;
-      bulkCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndex: -1 }));
+      bulkCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndexes: [] }));
       renderBulkCandidateResults();
       setBulkCandidateStatus(`<span class="spinner"></span> Searching ${festivalMode ? 'festival events for ' : ''}${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
@@ -5492,7 +5691,7 @@
           const mainWindow = getMainWindowSafe();
           const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
           group.candidates = sortCandidatesForDisplay(filtered.rows);
-          group.selectedIndex = group.candidates.length ? 0 : -1;
+          group.selectedIndexes = group.candidates.length ? [0] : [];
           foundTotal += group.candidates.length ? 1 : 0;
           droppedByStateTotal += filtered.droppedByState;
           droppedByDistanceTotal += filtered.droppedByDistance;
@@ -5501,7 +5700,7 @@
         } catch (error) {
           console.error('❌ Bulk candidate search failed for query:', group.source, error);
           group.candidates = [];
-          group.selectedIndex = -1;
+          group.selectedIndexes = [];
         }
       }
 
@@ -6375,8 +6574,7 @@
     async function submitPopulateMissing() {
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
@@ -6402,8 +6600,7 @@
     async function submitUpdateHours() {
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateHoursWithProgress === 'function') {
@@ -6432,8 +6629,7 @@
     async function submitRefreshPlaceIds() {
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.refreshPlaceIdsWithProgress === 'function') {
@@ -6454,8 +6650,7 @@
     async function submitAutoTagAll() {
       const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleAutoTagWithProgress === 'function') {
@@ -6469,6 +6664,164 @@
       renderAutomationWriteDiagnostics('autotag-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('autotag-write-diagnostics', result);
       return;
+    }
+
+    function setBatchTagStatus(message, isError = false) {
+      const statusDiv = document.getElementById('batch-tag-status');
+      if (!statusDiv) return;
+      const color = isError ? '#7f1d1d' : '#166534';
+      const bg = isError ? '#fee2e2' : '#ecfdf5';
+      const border = isError ? '#fca5a5' : '#86efac';
+      statusDiv.innerHTML = `<div style="margin-top:12px; padding:10px 12px; border:1px solid ${border}; border-radius:8px; background:${bg}; color:${color}; font-size:13px;">${message}</div>`;
+    }
+
+    function parseBatchTagIdentifiers(rawValue) {
+      return Array.from(new Set(String(rawValue || '')
+        .split(/[\n,;]+/)
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)));
+    }
+
+    function getRowIdentifierCatalog(rows) {
+      return (Array.isArray(rows) ? rows : []).map((row, index) => {
+        const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+        const name = String(values[0] || '').trim();
+        const placeId = String(values[1] || '').trim();
+        const rowTags = String(values[3] || '').trim();
+        const identifier = placeId || name || `row:${index + 1}`;
+        return { identifier, name, placeId, rowTags };
+      });
+    }
+
+    function resolveBatchTargetIdentifiers(rawList, catalog, allowAllWhenEmpty = true) {
+      const requested = parseBatchTagIdentifiers(rawList);
+      if (!requested.length && allowAllWhenEmpty) {
+        return catalog.map((entry) => entry.identifier);
+      }
+      const resolved = [];
+      requested.forEach((token) => {
+        const normalizedToken = token.toLowerCase();
+        const exact = catalog.find((entry) => entry.identifier.toLowerCase() === normalizedToken || entry.placeId.toLowerCase() === normalizedToken || entry.name.toLowerCase() === normalizedToken);
+        if (exact) {
+          resolved.push(exact.identifier);
+          return;
+        }
+        const byNameIncludes = catalog.find((entry) => entry.name.toLowerCase().includes(normalizedToken));
+        if (byNameIncludes) {
+          resolved.push(byNameIncludes.identifier);
+          return;
+        }
+        resolved.push(token);
+      });
+      return Array.from(new Set(resolved));
+    }
+
+    function getIdentifierTagsFromCatalog(catalog, identifier) {
+      const id = String(identifier || '').trim();
+      if (!id) return [];
+      if (window.tagManager && typeof window.tagManager.getTagsForPlace === 'function') {
+        const managed = window.tagManager.getTagsForPlace(id) || [];
+        if (Array.isArray(managed) && managed.length) return managed;
+      }
+      const entry = (Array.isArray(catalog) ? catalog : []).find((item) => String(item.identifier || '').trim().toLowerCase() === id.toLowerCase());
+      if (!entry) return [];
+      return parseBatchTagIdentifiers(String(entry.rowTags || ''));
+    }
+
+    async function submitBatchAddTagsToLocations() {
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!target) {
+        setBatchTagStatus('❌ Select an Add/Bulk target table first.', true);
+        return;
+      }
+      if (!window.tagManager || typeof window.tagManager.addTagsToBatchPlaces !== 'function') {
+        setBatchTagStatus('❌ Tag manager is unavailable.', true);
+        return;
+      }
+
+      const tags = parseBatchTagIdentifiers(document.getElementById('batchTagValues')?.value || '');
+      if (!tags.length) {
+        setBatchTagStatus('❌ Enter one or more tags first.', true);
+        return;
+      }
+
+      setBatchTagStatus('⏳ Loading target rows...');
+      const loaded = await loadTargetRows(target);
+      if (!loaded) {
+        setBatchTagStatus('❌ Could not load rows for the selected target table.', true);
+        return;
+      }
+
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const catalog = getRowIdentifierCatalog(rows);
+      const identifiers = resolveBatchTargetIdentifiers(document.getElementById('batchTagIdentifiers')?.value || '', catalog, true);
+      if (!identifiers.length) {
+        setBatchTagStatus('❌ No target locations were resolved.', true);
+        return;
+      }
+
+      const result = typeof window.tagManager.applyTagsToMultiplePlaces === 'function'
+        ? window.tagManager.applyTagsToMultiplePlaces(identifiers, tags)
+        : window.tagManager.addTagsToBatchPlaces(identifiers, tags);
+      const successCount = Array.isArray(result?.successful) ? result.successful.length : 0;
+      const noChangeCount = Array.isArray(result?.noChange) ? result.noChange.length : 0;
+      const failedCount = Array.isArray(result?.failed) ? result.failed.length : 0;
+      setBatchTagStatus(`✅ Batch add complete. Updated: ${successCount} | No change: ${noChangeCount} | Failed: ${failedCount}`);
+    }
+
+    async function submitBatchCopyTagsAcrossLocations() {
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!target) {
+        setBatchTagStatus('❌ Select an Add/Bulk target table first.', true);
+        return;
+      }
+      if (!window.tagManager || typeof window.tagManager.addTagsToBatchPlaces !== 'function') {
+        setBatchTagStatus('❌ Tag manager is unavailable.', true);
+        return;
+      }
+
+      const sourceInput = String(document.getElementById('batchTagCopySource')?.value || '').trim();
+      if (!sourceInput) {
+        setBatchTagStatus('❌ Enter a source location first.', true);
+        return;
+      }
+
+      setBatchTagStatus('⏳ Loading target rows...');
+      const loaded = await loadTargetRows(target);
+      if (!loaded) {
+        setBatchTagStatus('❌ Could not load rows for the selected target table.', true);
+        return;
+      }
+
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const catalog = getRowIdentifierCatalog(rows);
+      const sourceResolved = resolveBatchTargetIdentifiers(sourceInput, catalog, false);
+      const sourceIdentifier = sourceResolved.length ? sourceResolved[0] : '';
+      if (!sourceIdentifier) {
+        setBatchTagStatus('❌ Could not resolve the source location.', true);
+        return;
+      }
+
+      const sourceTags = parseBatchTagIdentifiers(getIdentifierTagsFromCatalog(catalog, sourceIdentifier).join(','));
+      if (!sourceTags.length) {
+        setBatchTagStatus('❌ Source location has no tags to copy.', true);
+        return;
+      }
+
+      const targetIdentifiers = resolveBatchTargetIdentifiers(document.getElementById('batchTagCopyTargets')?.value || '', catalog, true)
+        .filter((identifier) => String(identifier || '').trim().toLowerCase() !== sourceIdentifier.toLowerCase());
+      if (!targetIdentifiers.length) {
+        setBatchTagStatus('❌ No target locations resolved (excluding source).', true);
+        return;
+      }
+
+      const result = typeof window.tagManager.copyTagsFromPlaceToBatch === 'function'
+        ? window.tagManager.copyTagsFromPlaceToBatch(sourceIdentifier, targetIdentifiers)
+        : window.tagManager.addTagsToBatchPlaces(targetIdentifiers, sourceTags);
+      const successCount = Array.isArray(result?.successful) ? result.successful.length : 0;
+      const noChangeCount = Array.isArray(result?.noChange) ? result.noChange.length : 0;
+      const failedCount = Array.isArray(result?.failed) ? result.failed.length : 0;
+      setBatchTagStatus(`✅ Batch copy complete. Copied ${sourceTags.length} tags from source to ${targetIdentifiers.length} target(s). Updated: ${successCount} | No change: ${noChangeCount} | Failed: ${failedCount}`);
     }
 
     /**
@@ -6585,8 +6938,7 @@
       const strictModeEnabled = !!document.getElementById('descStrictMode')?.checked;
       const richOnlyEnabled = !!document.getElementById('descRichOnlyMode')?.checked;
       const statusDiv = document.getElementById('desc-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateAllDescriptions === 'function') {
@@ -6605,8 +6957,7 @@
     async function submitForceUpdateAll() {
       const dryRun = document.getElementById('forceUpdateDryRun').checked;
       const statusDiv = document.getElementById('force-update-status');
-      const single = getSelectedTarget('automationTargetSelect');
-      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+      const targets = getAutomationTargetsForRun();
 
       if (!dryRun) {
         const ok = window.confirm(

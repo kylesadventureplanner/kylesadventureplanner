@@ -236,7 +236,7 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
 
     await page.locator('.loc-select-btn').nth(0).evaluate((node) => node.click());
     await page.locator('.loc-select-btn').nth(1).evaluate((node) => node.click());
-    await page.locator('.loc-select-btn').nth(2).evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'Hidden Tea Garden' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
 
     await page.getByRole('button', { name: 'Build Day Plan' }).click();
 
@@ -304,6 +304,125 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await page.locator('#locBulkActionSelect').selectOption('mark-visited');
     await page.getByRole('button', { name: 'Apply to Selected' }).click();
     await expect(page.locator('.loc-card').first().locator('.loc-visited-chip')).toContainText('Visited');
+  });
+
+  test('bulk copy-tags honors source and merge mode selectors', async ({ page }) => {
+    await openTestCity(page);
+
+    await page.locator('.loc-card', { hasText: 'River Falls' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'Downtown Art House' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'Hidden Tea Garden' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await expect(page.locator('#locShortlistCount')).toContainText('3 selected');
+
+    await page.selectOption('#locBulkActionSelect', 'copy-tags-from-first');
+    await page.selectOption('#locBulkCopySourceMode', 'first');
+    await page.selectOption('#locBulkCopyMergeMode', 'append');
+    await page.getByRole('button', { name: 'Apply to Selected' }).click();
+
+    await expect.poll(async () => {
+      return page.evaluate(() => {
+        const ids = Array.from(getShortlistSet());
+        return ids.map((id) => {
+          const loc = findLocationById(id);
+          return { name: String(loc?.name || ''), tags: getEffectiveLocationTagsById(id).slice().sort() };
+        });
+      });
+    }).toEqual([
+      { name: 'River Falls', tags: ['family', 'scenic', 'waterfall'] },
+      { name: 'Downtown Art House', tags: ['art', 'culture', 'family', 'indoor', 'scenic', 'waterfall'] },
+      { name: 'Hidden Tea Garden', tags: ['family', 'garden', 'hidden', 'quiet', 'scenic', 'waterfall'] }
+    ]);
+
+    await page.selectOption('#locBulkCopySourceMode', 'union');
+    await page.selectOption('#locBulkCopyMergeMode', 'replace');
+    await page.getByRole('button', { name: 'Apply to Selected' }).click();
+
+    await expect.poll(async () => {
+      return page.evaluate(() => {
+        const ids = Array.from(getShortlistSet());
+        return ids.map((id) => {
+          const loc = findLocationById(id);
+          return { name: String(loc?.name || ''), tags: getEffectiveLocationTagsById(id).slice().sort() };
+        });
+      });
+    }).toEqual([
+      { name: 'River Falls', tags: ['art', 'culture', 'family', 'garden', 'hidden', 'indoor', 'quiet', 'scenic', 'waterfall'] },
+      { name: 'Downtown Art House', tags: ['art', 'culture', 'family', 'garden', 'hidden', 'indoor', 'quiet', 'scenic', 'waterfall'] },
+      { name: 'Hidden Tea Garden', tags: ['art', 'culture', 'family', 'garden', 'hidden', 'indoor', 'quiet', 'scenic', 'waterfall'] }
+    ]);
+  });
+
+  test('quick action copy-tags uses configured source and merge modes', async ({ page }) => {
+    await openTestCity(page);
+
+    await page.locator('.loc-card', { hasText: 'Hidden Tea Garden' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await expect(page.locator('#locShortlistCount')).toContainText('1 selected');
+
+    await page.selectOption('#locBulkActionSelect', 'copy-tags-from-first');
+    await page.selectOption('#locBulkCopySourceMode', 'union');
+    await page.selectOption('#locBulkCopyMergeMode', 'replace');
+
+    const sourceLocId = await page.evaluate(() => {
+      const city = citiesData && citiesData[currentCityKey];
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry?.name || '') === 'River Falls')
+        : null;
+      return loc ? getLocId(loc) : '';
+    });
+    await page.evaluate((locId) => {
+      window.runQuickActionByEncodedId(encodeURIComponent(String(locId || '')), 'copy-tags-to-selected');
+    }, sourceLocId);
+
+    await expect.poll(async () => {
+      return page.evaluate(() => {
+        const city = citiesData && citiesData[currentCityKey];
+        const loc = city && Array.isArray(city.locations)
+          ? city.locations.find((entry) => String(entry?.name || '') === 'Hidden Tea Garden')
+          : null;
+        if (!loc) return [];
+        return getEffectiveLocationTagsById(getLocId(loc)).slice().sort();
+      });
+    }).toEqual(['family', 'garden', 'hidden', 'quiet', 'scenic', 'waterfall']);
+  });
+
+  test('quick action copy-tags supports union+append mode across selected targets', async ({ page }) => {
+    await openTestCity(page);
+
+    await page.locator('.loc-card', { hasText: 'Downtown Art House' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await page.locator('.loc-card', { hasText: 'Hidden Tea Garden' }).first().locator('.loc-select-btn').evaluate((node) => node.click());
+    await expect(page.locator('#locShortlistCount')).toContainText('2 selected');
+
+    await page.selectOption('#locBulkActionSelect', 'copy-tags-from-first');
+    await page.selectOption('#locBulkCopySourceMode', 'union');
+    await page.selectOption('#locBulkCopyMergeMode', 'append');
+
+    const sourceLocId = await page.evaluate(() => {
+      const city = citiesData && citiesData[currentCityKey];
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry?.name || '') === 'River Falls')
+        : null;
+      return loc ? getLocId(loc) : '';
+    });
+    await page.evaluate((locId) => {
+      window.runQuickActionByEncodedId(encodeURIComponent(String(locId || '')), 'copy-tags-to-selected');
+    }, sourceLocId);
+
+    await expect.poll(async () => {
+      return page.evaluate(() => {
+        const city = citiesData && citiesData[currentCityKey];
+        const names = ['Downtown Art House', 'Hidden Tea Garden'];
+        return names.map((name) => {
+          const loc = city && Array.isArray(city.locations)
+            ? city.locations.find((entry) => String(entry?.name || '') === name)
+            : null;
+          const tags = loc ? getEffectiveLocationTagsById(getLocId(loc)).slice().sort() : [];
+          return { name, tags };
+        });
+      });
+    }).toEqual([
+      { name: 'Downtown Art House', tags: ['art', 'culture', 'family', 'garden', 'hidden', 'indoor', 'quiet', 'scenic', 'waterfall'] },
+      { name: 'Hidden Tea Garden', tags: ['art', 'culture', 'family', 'garden', 'hidden', 'indoor', 'quiet', 'scenic', 'waterfall'] }
+    ]);
   });
 
   test('per-card quick actions support copy address utility', async ({ page }) => {

@@ -856,6 +856,20 @@
     return getBikeSelectionScope() === 'page' ? 'Current Page' : 'Filtered Results';
   }
 
+  function getBikeCopySourceMode() {
+    const select = document.getElementById('bikeBulkCopySourceMode');
+    return String(select && select.value ? select.value : 'first').trim().toLowerCase() === 'union'
+      ? 'union'
+      : 'first';
+  }
+
+  function getBikeCopyMergeMode() {
+    const select = document.getElementById('bikeBulkCopyMergeMode');
+    return String(select && select.value ? select.value : 'append').trim().toLowerCase() === 'replace'
+      ? 'replace'
+      : 'append';
+  }
+
   function getBikeScopeSourceIndexSet() {
     return getBikeSelectionScope() === 'page'
       ? getCurrentBikePageSourceIndexSet()
@@ -879,7 +893,7 @@
     if (countEl) countEl.textContent = `${pageSelectedCount} on page / ${count} total selected`;
 
     const disable = count === 0 || state.bulkBusy;
-    ['bikeBulkApplyTagsBtn', 'bikeBulkApplyRatingBtn', 'bikeBulkMarkFavoriteBtn', 'bikeBulkUnmarkFavoriteBtn', 'bikeBulkMarkVisitedBtn', 'bikeBulkUnmarkVisitedBtn', 'bikeBulkClearSelectionBtn'].forEach((id) => {
+    ['bikeBulkApplyTagsBtn', 'bikeBulkCopyTagsBtn', 'bikeBulkApplyRatingBtn', 'bikeBulkMarkFavoriteBtn', 'bikeBulkUnmarkFavoriteBtn', 'bikeBulkMarkVisitedBtn', 'bikeBulkUnmarkVisitedBtn', 'bikeBulkClearSelectionBtn'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.disabled = disable;
     });
@@ -2065,6 +2079,87 @@
     });
   }
 
+  async function applyBikeBulkCopyTags() {
+    const targets = Array.from(state.selectedSourceIndexes)
+      .filter((idx) => Number.isInteger(idx) && idx >= 0)
+      .sort((a, b) => a - b);
+    if (targets.length < 2) {
+      showToast?.('Select at least two trails to copy tags.', 'warning', 2200);
+      return;
+    }
+
+    const sourceMode = getBikeCopySourceMode();
+    const mergeMode = getBikeCopyMergeMode();
+    const sourceIndices = sourceMode === 'union' ? targets.slice() : [targets[0]];
+    const sourceSet = new Set(sourceIndices);
+    const effectiveTargets = sourceMode === 'union'
+      ? targets.slice()
+      : targets.filter((idx) => !sourceSet.has(idx));
+
+    if (!window.tagManager || typeof window.tagManager.getTagsForPlace !== 'function' || typeof window.tagManager.addTagsToPlace !== 'function') {
+      showToast?.('Tag manager is unavailable.', 'warning', 2200);
+      return;
+    }
+    if (mergeMode === 'replace' && typeof window.tagManager.setTagsForPlace !== 'function') {
+      showToast?.('Tag replace mode is unavailable in this build.', 'warning', 2400);
+      return;
+    }
+
+    const sourceTagKeys = sourceIndices
+      .map((sourceIndex) => {
+        const sourceTrail = getTrailBySourceIndex(sourceIndex);
+        return getBikeTagKey(sourceTrail);
+      })
+      .filter(Boolean);
+    const sourceTags = typeof window.tagManager.getCopySourceTags === 'function'
+      ? (window.tagManager.getCopySourceTags(sourceTagKeys, { sourceMode }).sourceTags || [])
+      : uniqueTagsCaseInsensitive(sourceIndices.flatMap((sourceIndex) => {
+        const sourceTrail = getTrailBySourceIndex(sourceIndex);
+        const sourceTagKey = getBikeTagKey(sourceTrail);
+        return sourceTagKey ? (window.tagManager.getTagsForPlace(sourceTagKey) || []) : [];
+      }));
+    if (!sourceTags.length) {
+      showToast?.('Source trail has no tags to copy.', 'info', 2200);
+      return;
+    }
+
+    if (!effectiveTargets.length) {
+      showToast?.('No target trails available for copy.', 'info', 2200);
+      return;
+    }
+
+    const sourceLabel = sourceMode === 'union'
+      ? `${sourceIndices.length} selected source${sourceIndices.length === 1 ? '' : 's'}`
+      : (() => {
+        const sourceTrail = getTrailBySourceIndex(sourceIndices[0]);
+        return `"${String(sourceTrail?.name || `#${sourceIndices[0] + 1}`).trim()}"`;
+      })();
+
+    await runBikeBulkOperation(mergeMode === 'replace' ? 'tag copy (replace)' : 'tag copy', async (targetIndex) => {
+      if (!effectiveTargets.includes(targetIndex)) return;
+      const trail = getTrailBySourceIndex(targetIndex);
+      const tagKey = getBikeTagKey(trail);
+      if (!tagKey) throw new Error('Trail tag key is unavailable.');
+      if (typeof window.tagManager.copyTagsBetweenPlaces === 'function') {
+        const copyResult = window.tagManager.copyTagsBetweenPlaces({
+          sourceIdentifiers: sourceTagKeys,
+          targetIdentifiers: [tagKey],
+          sourceMode,
+          mergeMode
+        });
+        if (copyResult && Array.isArray(copyResult.failed) && copyResult.failed.length) {
+          throw new Error(copyResult.failed[0].error || 'Tag copy failed.');
+        }
+      } else if (mergeMode === 'replace') {
+        window.tagManager.setTagsForPlace(tagKey, sourceTags);
+      } else {
+        window.tagManager.addTagsToPlace(tagKey, sourceTags);
+      }
+    });
+
+    showToast?.(`${mergeMode === 'replace' ? 'Replaced with' : 'Copied'} ${sourceTags.length} tag${sourceTags.length === 1 ? '' : 's'} from ${sourceLabel} to ${effectiveTargets.length} trail${effectiveTargets.length === 1 ? '' : 's'}.`, 'success', 2600);
+  }
+
   async function applyBikeBulkRating() {
     const select = document.getElementById('bikeBulkRatingSelect');
     const value = Number(select && select.value);
@@ -2255,6 +2350,14 @@
         withBikeActionGuard(tagsBtn, () => applyBikeBulkTags(), { actionKey: 'bulk:tags' });
       });
       tagsBtn.dataset.bound = '1';
+    }
+
+    const copyTagsBtn = document.getElementById('bikeBulkCopyTagsBtn');
+    if (copyTagsBtn && copyTagsBtn.dataset.bound !== '1') {
+      copyTagsBtn.addEventListener('click', () => {
+        withBikeActionGuard(copyTagsBtn, () => applyBikeBulkCopyTags(), { actionKey: 'bulk:copy-tags' });
+      });
+      copyTagsBtn.dataset.bound = '1';
     }
 
     const ratingBtn = document.getElementById('bikeBulkApplyRatingBtn');

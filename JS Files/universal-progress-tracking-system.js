@@ -574,20 +574,18 @@
     console.log('🏷️ Auto-tagging with progress...');
 
     try {
-      const autoTagCandidates = [
-        window.handleAutoTagAll,
-        window.autoTagAllLocationsUnified
-      ];
-
-      const fn = autoTagCandidates.find((handler) => typeof handler === 'function');
-      if (!fn) {
+      const legacyFn = typeof window.handleAutoTagAll === 'function' ? window.handleAutoTagAll : null;
+      const unifiedFn = typeof window.autoTagAllLocationsUnified === 'function' ? window.autoTagAllLocationsUnified : null;
+      if (!legacyFn && !unifiedFn) {
         const msg = buildStrictWrapperMessage('auto-tag', 'NO_HANDLER');
         renderDelegationStatus(displayElement, msg, true);
         return { success: false, error: msg };
       }
 
       renderDelegationStatus(displayElement, '⏳ Running real auto-tag handler...');
-      const result = await fn(dryRun);
+      const result = legacyFn
+        ? await legacyFn(dryRun)
+        : await unifiedFn({ dryRun: !!dryRun });
       if (result && typeof result === 'object') return result;
 
       const failMsg = buildStrictWrapperMessage('auto-tag', 'NON_OBJECT_RESULT');

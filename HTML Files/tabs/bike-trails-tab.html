@@ -58,7 +58,20 @@
     <div class="filter-item">
       <label for="bikeBulkTagsInput">Add Tags (comma separated)</label>
       <input id="bikeBulkTagsInput" class="filter-input" type="text" placeholder="scenic, family, sunset" />
-      <button id="bikeBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
+      <label for="bikeBulkCopySourceMode">Copy Tags Source Mode</label>
+      <select id="bikeBulkCopySourceMode" class="filter-select" aria-label="Copy tags source mode">
+        <option value="first" selected>First selected trail</option>
+        <option value="union">Union of selected trails</option>
+      </select>
+      <label for="bikeBulkCopyMergeMode">Copy Tags Merge Mode</label>
+      <select id="bikeBulkCopyMergeMode" class="filter-select" aria-label="Copy tags merge mode">
+        <option value="append" selected>Append to existing tags</option>
+        <option value="replace">Replace existing tags</option>
+      </select>
+      <div class="ui-action-rail">
+        <button id="bikeBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
+        <button id="bikeBulkCopyTagsBtn" type="button" class="pill-button" title="Copy tags using the selected source and merge modes">Copy Tags to Others</button>
+      </div>
     </div>
     <div class="filter-item">
       <label for="bikeBulkRatingSelect">Set Rating</label>

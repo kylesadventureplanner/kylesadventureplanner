@@ -58,7 +58,20 @@
     <div class="filter-item">
       <label for="adventureBulkTagsInput">Add Tags (comma separated)</label>
       <input id="adventureBulkTagsInput" class="filter-input" type="text" placeholder="outdoor, brunch, scenic" />
-      <button id="adventureBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
+      <label for="adventureBulkCopySourceMode">Copy Tags Source Mode</label>
+      <select id="adventureBulkCopySourceMode" class="filter-select" aria-label="Copy tags source mode">
+        <option value="first" selected>First selected card</option>
+        <option value="union">Union of selected cards</option>
+      </select>
+      <label for="adventureBulkCopyMergeMode">Copy Tags Merge Mode</label>
+      <select id="adventureBulkCopyMergeMode" class="filter-select" aria-label="Copy tags merge mode">
+        <option value="append" selected>Append to existing tags</option>
+        <option value="replace">Replace existing tags</option>
+      </select>
+      <div class="ui-action-rail">
+        <button id="adventureBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
+        <button id="adventureBulkCopyTagsBtn" type="button" class="pill-button" title="Copy tags using the selected source and merge modes">Copy Tags to Others</button>
+      </div>
     </div>
     <div class="filter-item">
       <label for="adventureBulkRatingSelect">Set Rating</label>

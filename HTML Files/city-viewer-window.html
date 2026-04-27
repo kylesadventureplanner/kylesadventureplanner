@@ -2235,10 +2235,19 @@
           <select id="locBulkActionSelect" class="loc-bulk-action-select" onchange="syncBulkActionInputHint()" aria-label="Bulk action for selected locations">
             <option value="add-tags">Add tags to selected</option>
             <option value="remove-tags">Remove tags from selected</option>
+            <option value="copy-tags-from-first">Copy tags across selected (use source/mode controls)</option>
             <option value="add-note">Add note to selected</option>
             <option value="remove-notes">Remove notes from selected</option>
             <option value="mark-visited">Mark selected as visited</option>
             <option value="add-visit">Add a visit to selected</option>
+          </select>
+          <select id="locBulkCopySourceMode" class="loc-bulk-action-select" aria-label="Copy tags source mode">
+            <option value="first" selected>Copy source: first selected</option>
+            <option value="union">Copy source: union of selected</option>
+          </select>
+          <select id="locBulkCopyMergeMode" class="loc-bulk-action-select" aria-label="Copy tags merge mode">
+            <option value="append" selected>Copy mode: append</option>
+            <option value="replace">Copy mode: replace</option>
           </select>
           <input id="locBulkActionValue" class="loc-bulk-action-input" type="text" placeholder="Tags or note text..." aria-label="Bulk action value">
           <button class="loc-mini-btn" onclick="applyBulkSelectionAction()" title="Apply selected bulk action">Apply to Selected</button>
@@ -4273,12 +4282,15 @@
     function syncBulkActionInputHint() {
       const select = document.getElementById('locBulkActionSelect');
       const input = document.getElementById('locBulkActionValue');
+      const sourceModeSelect = document.getElementById('locBulkCopySourceMode');
+      const mergeModeSelect = document.getElementById('locBulkCopyMergeMode');
       if (!select || !input) return;
       const action = String(select.value || '');
+      const isCopyAction = action === 'copy-tags-from-first';
       if (action === 'add-note') {
         input.placeholder = 'Note to add to selected locations...';
         input.disabled = false;
-      } else if (action === 'remove-notes' || action === 'mark-visited' || action === 'add-visit') {
+      } else if (action === 'remove-notes' || action === 'mark-visited' || action === 'add-visit' || action === 'copy-tags-from-first') {
         input.placeholder = 'No additional text required for this action';
         input.value = '';
         input.disabled = true;
@@ -4286,6 +4298,96 @@
         input.placeholder = 'Comma-separated tags (example: featured, weekend)';
         input.disabled = false;
       }
+      if (sourceModeSelect) sourceModeSelect.disabled = !isCopyAction;
+      if (mergeModeSelect) mergeModeSelect.disabled = !isCopyAction;
+    }
+
+    function getBulkCopySourceMode() {
+      const select = document.getElementById('locBulkCopySourceMode');
+      return String(select && select.value ? select.value : 'first').trim().toLowerCase() === 'union'
+        ? 'union'
+        : 'first';
+    }
+
+    function getBulkCopyMergeMode() {
+      const select = document.getElementById('locBulkCopyMergeMode');
+      return String(select && select.value ? select.value : 'append').trim().toLowerCase() === 'replace'
+        ? 'replace'
+        : 'append';
+    }
+
+    function buildBulkCopyPlan(ids, preferredSourceId) {
+      const normalized = Array.from(new Set((ids || [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)));
+      const preferred = String(preferredSourceId || '').trim();
+      const sourceMode = getBulkCopySourceMode();
+      const mergeMode = getBulkCopyMergeMode();
+      const sourceIds = sourceMode === 'union'
+        ? Array.from(new Set((preferred ? [preferred] : []).concat(normalized)))
+        : [preferred || normalized[0]].filter(Boolean);
+      const sourceSet = new Set(sourceIds);
+      const targetIds = sourceMode === 'union'
+        ? normalized.slice()
+        : normalized.filter((id) => !sourceSet.has(id));
+      return { sourceIds, targetIds, sourceMode, mergeMode };
+    }
+
+    function replaceLocationDraftTags(locId, nextTags) {
+      const location = findLocationById(locId);
+      if (!location) return;
+      const baseTags = parseTagTokens(locVal(location, 3, 'tags'));
+      const next = parseTagTokens((Array.isArray(nextTags) ? nextTags : []).join(','));
+      updateLocationEditState(locId, (draft) => {
+        draft.addedTags = next.filter((tag) => !baseTags.includes(tag));
+        draft.removedTags = baseTags.filter((tag) => !next.includes(tag));
+      });
+    }
+
+    function getEffectiveLocationTagsById(locId) {
+      const normalizedId = String(locId || '').trim();
+      if (!normalizedId) return [];
+      const loc = findLocationById(normalizedId);
+      if (!loc) return [];
+      const baseTags = parseTagTokens(locVal(loc, 3, 'tags'));
+      const draft = getLocationEditState(normalizedId);
+      const removed = new Set((draft.removedTags || []).map((tag) => String(tag || '').trim().toLowerCase()).filter(Boolean));
+      const combined = parseTagTokens([...baseTags, ...(draft.addedTags || [])].join(','));
+      return combined.filter((tag) => !removed.has(String(tag || '').trim().toLowerCase()));
+    }
+
+    function copyTagsFromLocationToTargets(sourceIds, targetIds, options = {}) {
+      const sources = Array.from(new Set((Array.isArray(sourceIds) ? sourceIds : [sourceIds])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)));
+      const sourceSet = new Set(sources);
+      const targets = Array.from(new Set((targetIds || []).map((id) => String(id || '').trim()).filter(Boolean)));
+      const mergeMode = String(options.mergeMode || 'append').trim().toLowerCase() === 'replace' ? 'replace' : 'append';
+      if (!sources.length || !targets.length) {
+        showRouteToast('Select one source and at least one different target location.', true);
+        return null;
+      }
+
+      const sourceTags = parseTagTokens(sources.map((source) => getEffectiveLocationTagsById(source).join(',')).join(','));
+      if (!sourceTags.length) {
+        showRouteToast('Source location has no tags to copy.', true);
+        return null;
+      }
+
+      targets.forEach((locId) => {
+        if (mergeMode === 'replace') {
+          replaceLocationDraftTags(locId, sourceTags);
+          return;
+        }
+        updateLocationEditState(locId, (draft) => {
+          sourceTags.forEach((token) => {
+            if (!draft.addedTags.includes(token)) draft.addedTags.push(token);
+            draft.removedTags = draft.removedTags.filter((tag) => tag !== token);
+          });
+        });
+      });
+
+      return { targets, sourceTags, sourceIds: sources, mergeMode, sourceMode: sourceSet.size > 1 ? 'union' : 'first' };
     }
 
     function applyBulkActionToIds(action, ids, valueText) {
@@ -4306,34 +4408,50 @@
         return;
       }
 
-      targets.forEach((locId) => {
-        updateLocationEditState(locId, (draft) => {
-          if (normalizedAction === 'add-tags') {
-            tagTokens.forEach((token) => {
-              if (!draft.addedTags.includes(token)) draft.addedTags.push(token);
-              draft.removedTags = draft.removedTags.filter((tag) => tag !== token);
-            });
-          } else if (normalizedAction === 'remove-tags') {
-            tagTokens.forEach((token) => {
-              if (!draft.removedTags.includes(token)) draft.removedTags.push(token);
-              draft.addedTags = draft.addedTags.filter((tag) => tag !== token);
-            });
-          } else if (normalizedAction === 'add-note') {
-            draft.note = noteText;
-          } else if (normalizedAction === 'remove-notes') {
-            draft.note = '';
-          } else if (normalizedAction === 'mark-visited') {
-            draft.visited = true;
-            if (draft.visitCount < 1) draft.visitCount = 1;
-          } else if (normalizedAction === 'add-visit') {
-            draft.visited = true;
-            draft.visitCount = Math.max(1, draft.visitCount + 1);
-          }
-        });
-      });
+      let syncTargets = targets.slice();
+      if (normalizedAction === 'copy-tags-from-first') {
+        if (targets.length < 2) {
+          showRouteToast('Select at least two locations to copy tags.', true);
+          return;
+        }
+        const copyPlan = buildBulkCopyPlan(targets);
+        const copyResult = copyTagsFromLocationToTargets(copyPlan.sourceIds, copyPlan.targetIds, { mergeMode: copyPlan.mergeMode });
+        if (!copyResult) return;
+        syncTargets = copyResult.targets;
+        const verb = copyResult.mergeMode === 'replace' ? 'Replaced with' : 'Copied';
+        const sourceLabel = copyPlan.sourceMode === 'union' ? `${copyResult.sourceIds.length} selected sources` : 'first selected source';
+        showRouteToast(`${verb} ${copyResult.sourceTags.length} tag${copyResult.sourceTags.length === 1 ? '' : 's'} from ${sourceLabel} to ${copyResult.targets.length} selected location${copyResult.targets.length === 1 ? '' : 's'}.`, false);
+      } else {
 
-      const label = normalizedAction.replace('-', ' ');
-      showRouteToast(`Applied ${label} to ${targets.length} location${targets.length === 1 ? '' : 's'}.`, false);
+        targets.forEach((locId) => {
+          updateLocationEditState(locId, (draft) => {
+            if (normalizedAction === 'add-tags') {
+              tagTokens.forEach((token) => {
+                if (!draft.addedTags.includes(token)) draft.addedTags.push(token);
+                draft.removedTags = draft.removedTags.filter((tag) => tag !== token);
+              });
+            } else if (normalizedAction === 'remove-tags') {
+              tagTokens.forEach((token) => {
+                if (!draft.removedTags.includes(token)) draft.removedTags.push(token);
+                draft.addedTags = draft.addedTags.filter((tag) => tag !== token);
+              });
+            } else if (normalizedAction === 'add-note') {
+              draft.note = noteText;
+            } else if (normalizedAction === 'remove-notes') {
+              draft.note = '';
+            } else if (normalizedAction === 'mark-visited') {
+              draft.visited = true;
+              if (draft.visitCount < 1) draft.visitCount = 1;
+            } else if (normalizedAction === 'add-visit') {
+              draft.visited = true;
+              draft.visitCount = Math.max(1, draft.visitCount + 1);
+            }
+          });
+        });
+
+        const label = normalizedAction.replace('-', ' ');
+        showRouteToast(`Applied ${label} to ${targets.length} location${targets.length === 1 ? '' : 's'}.`, false);
+      }
       buildQuickTagPills(citiesData[currentCityKey]?.locations || []);
       populateTagDatalist(citiesData[currentCityKey]?.locations || []);
       applyLocFilters();
@@ -4341,7 +4459,7 @@
         const detailLoc = findLocationById(activeLocationDetailId);
         if (detailLoc) renderLocationDetail(detailLoc);
       }
-      Promise.all(targets.map((locId) => syncLocationEditsToGraph(locId))).then((results) => {
+      Promise.all(syncTargets.map((locId) => syncLocationEditsToGraph(locId))).then((results) => {
         if (results.some(Boolean)) {
           showRouteToast('Changes synced to Excel.', false);
         } else {
@@ -4379,6 +4497,7 @@
           <div class="loc-quick-actions-menu" role="menu" aria-label="Quick actions">
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-tags')">Add tags</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'remove-tags')">Remove tags</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'copy-tags-to-selected')">Copy this location tags to selected</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-note')">Add note</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'remove-notes')">Remove note</button>
             <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'mark-visited')">Mark visited</button>
@@ -4410,6 +4529,22 @@
           return;
         }
         window.open(googleUrl, '_blank', 'noopener');
+        return;
+      }
+      if (actionKey === 'copy-tags-to-selected') {
+        const selectedIds = Array.from(getShortlistSet());
+        const copyPlan = buildBulkCopyPlan(selectedIds, locId);
+        const copyResult = copyTagsFromLocationToTargets(copyPlan.sourceIds, copyPlan.targetIds, { mergeMode: copyPlan.mergeMode });
+        if (!copyResult) return;
+        buildQuickTagPills(citiesData[currentCityKey]?.locations || []);
+        populateTagDatalist(citiesData[currentCityKey]?.locations || []);
+        applyLocFilters();
+        Promise.all(copyResult.targets.map((targetId) => syncLocationEditsToGraph(targetId))).catch((error) => {
+          console.warn('⚠️ City Explorer copy-tags sync failed:', error && error.message ? error.message : error);
+        });
+        const verb = copyResult.mergeMode === 'replace' ? 'Replaced with' : 'Copied';
+        const sourceLabel = copyPlan.sourceMode === 'union' ? `${copyResult.sourceIds.length} selected sources` : 'selected source';
+        showRouteToast(`${verb} ${copyResult.sourceTags.length} tag${copyResult.sourceTags.length === 1 ? '' : 's'} from ${sourceLabel} to ${copyResult.targets.length} selected location${copyResult.targets.length === 1 ? '' : 's'}.`, false);
         return;
       }
 

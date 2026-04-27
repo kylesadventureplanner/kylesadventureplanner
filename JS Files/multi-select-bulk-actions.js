@@ -210,6 +210,20 @@
     return getAdventureSelectionScope() === 'page' ? 'Current Page' : 'Filtered Results';
   }
 
+  function getAdventureCopySourceMode() {
+    const select = document.getElementById('adventureBulkCopySourceMode');
+    return String(select && select.value ? select.value : 'first').trim().toLowerCase() === 'union'
+      ? 'union'
+      : 'first';
+  }
+
+  function getAdventureCopyMergeMode() {
+    const select = document.getElementById('adventureBulkCopyMergeMode');
+    return String(select && select.value ? select.value : 'append').trim().toLowerCase() === 'replace'
+      ? 'replace'
+      : 'append';
+  }
+
   function getAdventureScopeSourceIndexSet() {
     return getAdventureSelectionScope() === 'page'
       ? getAdventureCurrentPageSourceIndexSet()
@@ -244,7 +258,7 @@
     const disable = count === 0 || adventureState.busy;
     debugLog(`  → Button disable state: ${disable} (count=${count}, busy=${adventureState.busy})`);
 
-    ['adventureBulkApplyTagsBtn', 'adventureBulkApplyRatingBtn', 'adventureBulkMarkFavoriteBtn', 'adventureBulkUnmarkFavoriteBtn', 'adventureBulkMarkVisitedBtn', 'adventureBulkUnmarkVisitedBtn', 'adventureBulkClearSelectionBtn'].forEach((id) => {
+    ['adventureBulkApplyTagsBtn', 'adventureBulkCopyTagsBtn', 'adventureBulkApplyRatingBtn', 'adventureBulkMarkFavoriteBtn', 'adventureBulkUnmarkFavoriteBtn', 'adventureBulkMarkVisitedBtn', 'adventureBulkUnmarkVisitedBtn', 'adventureBulkClearSelectionBtn'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.disabled = disable;
@@ -671,6 +685,85 @@
     });
   }
 
+  async function applyAdventureBulkCopyTags() {
+    const targets = Array.from(adventureState.selectedSourceIndexes)
+      .filter((idx) => Number.isInteger(idx) && idx >= 0)
+      .sort((a, b) => a - b);
+    if (targets.length < 2) {
+      window.showToast?.('Select at least two locations to copy tags.', 'warning', 2200);
+      return;
+    }
+
+    const sourceMode = getAdventureCopySourceMode();
+    const mergeMode = getAdventureCopyMergeMode();
+    const sourceIndices = sourceMode === 'union' ? targets.slice() : [targets[0]];
+    const sourceSet = new Set(sourceIndices);
+    const effectiveTargets = sourceMode === 'union'
+      ? targets.slice()
+      : targets.filter((idx) => !sourceSet.has(idx));
+
+    if (!window.tagManager || typeof window.tagManager.getTagsForPlace !== 'function' || typeof window.tagManager.addTagsToPlace !== 'function') {
+      window.showToast?.('Tag manager is unavailable.', 'warning', 2200);
+      return;
+    }
+    if (mergeMode === 'replace' && typeof window.tagManager.setTagsForPlace !== 'function') {
+      window.showToast?.('Tag replace mode is unavailable in this build.', 'warning', 2400);
+      return;
+    }
+
+    const sourcePlaceIds = sourceIndices.map((sourceIndex) => getAdventurePlaceId(sourceIndex));
+    const sourceTags = typeof window.tagManager.getCopySourceTags === 'function'
+      ? (window.tagManager.getCopySourceTags(sourcePlaceIds, { sourceMode }).sourceTags || [])
+      : parseTagsInput(sourceIndices
+        .map((sourceIndex) => {
+          const sourcePlaceId = getAdventurePlaceId(sourceIndex);
+          return (window.tagManager.getTagsForPlace(sourcePlaceId) || []).join(',');
+        })
+        .join(','));
+    if (!sourceTags.length) {
+      window.showToast?.('Source location has no tags to copy.', 'info', 2200);
+      return;
+    }
+
+    if (!effectiveTargets.length) {
+      window.showToast?.('No target locations available for copy.', 'info', 2200);
+      return;
+    }
+
+    const sourceLabel = sourceMode === 'union'
+      ? `${sourceIndices.length} selected source${sourceIndices.length === 1 ? '' : 's'}`
+      : (() => {
+        const row = getAdventureRow(sourceIndices[0]);
+        const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+        return `"${String(values[0] || `#${sourceIndices[0] + 1}`).trim()}"`;
+      })();
+
+    await runAdventureBulkOperation(mergeMode === 'replace' ? 'tag copy (replace)' : 'tag copy', async (targetIndex) => {
+      if (!effectiveTargets.includes(targetIndex)) return;
+      const placeId = getAdventurePlaceId(targetIndex);
+      if (typeof window.tagManager.copyTagsBetweenPlaces === 'function') {
+        const copyResult = window.tagManager.copyTagsBetweenPlaces({
+          sourceIdentifiers: sourcePlaceIds,
+          targetIdentifiers: [placeId],
+          sourceMode,
+          mergeMode
+        });
+        if (copyResult && Array.isArray(copyResult.failed) && copyResult.failed.length) {
+          throw new Error(copyResult.failed[0].error || 'Tag copy failed.');
+        }
+      } else if (mergeMode === 'replace') {
+        window.tagManager.setTagsForPlace(placeId, sourceTags);
+      } else {
+        window.tagManager.addTagsToPlace(placeId, sourceTags);
+      }
+    }, {
+      undoLabel: 'tag copy',
+      snapshotBefore: snapshotAdventureTagValues
+    });
+
+    window.showToast?.(`${mergeMode === 'replace' ? 'Replaced with' : 'Copied'} ${sourceTags.length} tag${sourceTags.length === 1 ? '' : 's'} from ${sourceLabel} to ${effectiveTargets.length} location${effectiveTargets.length === 1 ? '' : 's'}.`, 'success', 2600);
+  }
+
   async function applyAdventureBulkRating() {
     const select = document.getElementById('adventureBulkRatingSelect');
     const value = Number(select && select.value);
@@ -772,6 +865,13 @@
     if (tagsBtn) {
       tagsBtn.addEventListener('click', () => {
         applyAdventureBulkTags();
+      });
+    }
+
+    const copyTagsBtn = document.getElementById('adventureBulkCopyTagsBtn');
+    if (copyTagsBtn) {
+      copyTagsBtn.addEventListener('click', () => {
+        applyAdventureBulkCopyTags();
       });
     }
 

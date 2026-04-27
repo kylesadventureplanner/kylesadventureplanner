@@ -1,0 +1,14 @@
+{
+  "name": "kylesadventureplanner-device-auth-api",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Azure Functions broker for Microsoft Device Code Flow",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "check": "node --check deviceAuthStart/index.js && node --check deviceAuthPoll/index.js && node --check shared/device-flow-crypto.js"
+  }
+}
+

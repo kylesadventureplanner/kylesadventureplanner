@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AAD_TENANT_ID": "<tenant-id>",
+    "AAD_DEVICE_CLIENT_ID": "<client-id>",
+    "AAD_DEVICE_CLIENT_SECRET": "<optional-client-secret>",
+    "AAD_DEVICE_SCOPES": "User.Read Files.ReadWrite openid profile",
+    "DEVICE_FLOW_SIGNING_SECRET": "replace-with-long-random-secret"
+  }
+}

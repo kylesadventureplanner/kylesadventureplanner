@@ -32,8 +32,10 @@
     };
   </script>
 
-  <!-- MSAL Browser Library - Required for Microsoft Authentication -->
-  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+    <!-- MSAL Browser Library - Required for Microsoft Authentication -->
+    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+    <!-- Secure Microsoft Device Code Flow client (backend-brokered) -->
+    <script src="JS Files/device-auth-system.js"></script>
 
     <!-- APP QUALITY SYSTEM - UNIFIED (Reliability + Performance + Debug = All 26 Features) -->
     <script src="JS Files/app-quality-system.js"></script>
@@ -7268,10 +7270,12 @@
            function updateUI(account) {
              const authStatus = document.getElementById('authStatus');
              const signInBtn  = document.getElementById('signInBtn');
+             const deviceSignInBtn = document.getElementById('deviceSignInBtn');
              const signOutBtn = document.getElementById('signOutBtn');
              const signInRequiredBanner = document.getElementById('signInRequiredBanner');
              if (authStatus) authStatus.textContent = account ? `Signed in as ${account.username}` : 'Not signed in';
              if (signInBtn)  signInBtn.style.display  = account ? 'none' : '';
+             if (deviceSignInBtn) deviceSignInBtn.style.display = account ? 'none' : '';
              if (signOutBtn) signOutBtn.style.display = account ? '' : 'none';
              if (signInRequiredBanner) signInRequiredBanner.hidden = Boolean(account);
              if (typeof window.updateConnectionStatus === 'function') window.updateConnectionStatus(!!account);
@@ -8599,6 +8603,7 @@
       <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
+      <button id="deviceSignInBtn" class="auth-btn" title="Sign in using device code flow on another device">Sign In via Device</button>
       <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
     </div>
     <span id="authStatus" class="auth-status-line">Not signed in</span>
@@ -20211,7 +20216,25 @@ COMMON ISSUES:
       if (/restaurant|bistro|grill/.test(text)) tags.add('Restaurant');
       return Array.from(tags).join(', ');
     };
-    const tags = buildTagsFromDetails(details);
+    const baseTags = buildTagsFromDetails(details);
+    const recommendedTags = (typeof window.getTagsForLocationText === 'function')
+      ? window.getTagsForLocationText({
+        name,
+        description,
+        googleRating: details && details.rating != null ? String(details.rating) : '',
+        city: cityState.city,
+        address,
+        tags: baseTags,
+        notes: ''
+      })
+      : [];
+    const tags = Array.from(new Set(
+      String(baseTags || '')
+        .split(',')
+        .concat(Array.isArray(recommendedTags) ? recommendedTags : [])
+        .map((t) => String(t || '').trim())
+        .filter(Boolean)
+    )).join(', ');
 
     const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
     const setByName = (names, value) => {
@@ -25782,6 +25805,29 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }, true);
   }
 
+  function wireDeviceSignInButton() {
+    const btn = getCleanButton('deviceSignInBtn');
+    if (!btn || btn._authWired) return;
+    btn._authWired = true;
+
+    btn.addEventListener('click', async function handleDeviceSignIn(e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      if (window.DeviceAuthSystem && typeof window.DeviceAuthSystem.start === 'function') {
+        window.DeviceAuthSystem.start();
+        return;
+      }
+
+      if (isUsableAuthFn(window.realSignIn)) {
+        try { await window.realSignIn(); } catch (err) { showAuthError(err); }
+        return;
+      }
+
+      showAuthError(new Error('Device sign-in is unavailable right now. Please use standard sign-in.'));
+    }, true);
+  }
+
   function wireSignOutButton() {
     const btn = getCleanButton('signOutBtn');
     if (!btn || btn._authWired) return;
@@ -25790,6 +25836,13 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     btn.addEventListener('click', async function handleSignOut(e) {
       e.preventDefault();
       e.stopImmediatePropagation();
+
+      if (window.__deviceFlowSession === true && typeof window.clearDeviceFlowSession === 'function') {
+        window.clearDeviceFlowSession();
+        if (typeof window.showToast === 'function') window.showToast('Signed out', 'info', 2000);
+        return;
+      }
+
       if (typeof window.realSignOut === 'function') {
         try { await window.realSignOut(); } catch (err) { console.error('Sign-out error:', err); }
         return;
@@ -25824,10 +25877,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   function updateAuthUI(account) {
     const status  = document.getElementById('authStatus');
     const signIn  = document.getElementById('signInBtn');
+    const deviceSignIn = document.getElementById('deviceSignInBtn');
     const signOut = document.getElementById('signOutBtn');
     if (status)  status.textContent = account ? 'Signed in as ' + account.username : 'Not signed in';
     if (signIn)  signIn.style.display  = account ? 'none' : '';
     if (signIn)  signIn.classList.toggle('is-needs-signin', !account);
+    if (deviceSignIn) deviceSignIn.style.display = account ? 'none' : '';
     if (signOut) signOut.style.display = account ? ''     : 'none';
     syncSignInRequiredBannerAuthState(account);
     if (typeof window.updateConnectionStatus === 'function') window.updateConnectionStatus(!!account);
@@ -25860,6 +25915,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
   // Wire once; getCleanButton handles late rendering safely.
   wireSignInButton();
+  wireDeviceSignInButton();
   wireSignOutButton();
 
   const initialAccount = window.activeAccount || window.msalInstance?.getActiveAccount?.() || null;

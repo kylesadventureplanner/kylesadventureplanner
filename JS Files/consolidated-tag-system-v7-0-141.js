@@ -821,6 +821,100 @@ class TagManager {
   }
 
   /**
+   * Normalize and add tags across many places with a stable response contract.
+   */
+  applyTagsToMultiplePlaces(placeIdentifiers, tagsToAdd) {
+    const targetIds = Array.from(new Set((Array.isArray(placeIdentifiers) ? placeIdentifiers : [])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean)));
+    const tags = Array.from(new Set((Array.isArray(tagsToAdd) ? tagsToAdd : [])
+      .map((tag) => String(tag || '').trim())
+      .filter(Boolean)));
+    return this.addTagsToBatchPlaces(targetIds, tags);
+  }
+
+  normalizeIdentifiers(input) {
+    return Array.from(new Set((Array.isArray(input) ? input : [input])
+      .map((id) => String(id || '').trim())
+      .filter(Boolean)));
+  }
+
+  normalizeTags(tags) {
+    return Array.from(new Set((Array.isArray(tags) ? tags : [])
+      .map((tag) => String(tag || '').trim())
+      .filter(Boolean)));
+  }
+
+  getCopySourceTags(sourceIdentifiers, options = {}) {
+    const sourceMode = String(options.sourceMode || 'first').trim().toLowerCase() === 'union' ? 'union' : 'first';
+    const sources = this.normalizeIdentifiers(sourceIdentifiers);
+    const effectiveSources = sourceMode === 'union' ? sources : sources.slice(0, 1);
+    const sourceTags = this.normalizeTags(effectiveSources.flatMap((sourceId) => this.getTagsForPlace(sourceId) || []));
+    return {
+      sourceMode,
+      sourceIds: effectiveSources,
+      sourceTags
+    };
+  }
+
+  copyTagsBetweenPlaces(options = {}) {
+    const sourceMode = String(options.sourceMode || 'first').trim().toLowerCase() === 'union' ? 'union' : 'first';
+    const mergeMode = String(options.mergeMode || 'append').trim().toLowerCase() === 'replace' ? 'replace' : 'append';
+    const sourceInfo = this.getCopySourceTags(options.sourceIdentifiers || [], { sourceMode });
+    const sourceIds = sourceInfo.sourceIds;
+    const sourceTags = sourceInfo.sourceTags;
+    const sourceSet = new Set(sourceIds);
+    const targetsRaw = this.normalizeIdentifiers(options.targetIdentifiers || []);
+    const targetIds = sourceMode === 'union'
+      ? targetsRaw
+      : targetsRaw.filter((id) => !sourceSet.has(id));
+
+    if (!sourceIds.length) {
+      return { successful: [], failed: [{ placeId: '', error: 'Missing source identifier' }], noChange: [], sourceIds: [], sourceTags: [], targetIds: [], sourceMode, mergeMode };
+    }
+    if (!sourceTags.length) {
+      return { successful: [], failed: [{ placeId: sourceIds[0], error: 'Source has no tags' }], noChange: [], sourceIds, sourceTags: [], targetIds, sourceMode, mergeMode };
+    }
+    if (!targetIds.length) {
+      return { successful: [], failed: [], noChange: [], sourceIds, sourceTags, targetIds: [], sourceMode, mergeMode };
+    }
+
+    if (mergeMode === 'append') {
+      const batch = this.addTagsToBatchPlaces(targetIds, sourceTags);
+      return { ...batch, sourceIds, sourceTags, targetIds, sourceMode, mergeMode };
+    }
+
+    const results = { successful: [], failed: [], noChange: [] };
+    targetIds.forEach((targetId) => {
+      try {
+        const existing = this.normalizeTags(this.getTagsForPlace(targetId) || []);
+        const same = existing.length === sourceTags.length && existing.every((tag, idx) => tag === sourceTags[idx]);
+        if (same) {
+          results.noChange.push(targetId);
+          return;
+        }
+        this.setTagsForPlace(targetId, sourceTags.slice());
+        results.successful.push(targetId);
+      } catch (error) {
+        results.failed.push({ placeId: targetId, error: error && error.message ? error.message : String(error) });
+      }
+    });
+    return { ...results, sourceIds, sourceTags, targetIds, sourceMode, mergeMode };
+  }
+
+  /**
+   * Copy tags from a source place to one or more target places (append mode).
+   */
+  copyTagsFromPlaceToBatch(sourceIdentifier, targetIdentifiers) {
+    return this.copyTagsBetweenPlaces({
+      sourceIdentifiers: [sourceIdentifier],
+      targetIdentifiers,
+      sourceMode: 'first',
+      mergeMode: 'append'
+    });
+  }
+
+  /**
    * Batch remove tags from multiple places
    */
   removeTagsFromBatchPlaces(placeIdentifiers, tagsToRemove) {

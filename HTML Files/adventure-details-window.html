@@ -4216,7 +4216,9 @@
       }
       if (getActiveDetailTabId() === 'map') renderDetailMap(data);
       syncBestParkingAction(data);
-      showDetailToast(ranked.length ? '✅ Parking options refreshed.' : 'ℹ️ No parking options found in the current radius.', ranked.length ? 'success' : 'info', 2600);
+      if (ranked.length) {
+        showDetailToast('✅ Parking options refreshed.', 'success', 2600);
+      }
     } catch (_err) {
       showDetailToast('⚠️ Could not refresh parking intelligence right now.', 'error', 3200);
     } finally {
