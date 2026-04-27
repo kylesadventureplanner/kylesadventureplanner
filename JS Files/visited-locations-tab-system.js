@@ -4802,6 +4802,64 @@
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
   }
 
+  function isExplorerPlaceholderText(value) {
+    const text = String(value || '').trim().toLowerCase();
+    if (!text) return true;
+    return ['n/a', 'na', 'none', 'null', 'undefined', 'skip', 'unavailable', 'not available', '(empty)'].includes(text);
+  }
+
+  function normalizeExplorerExternalUrl(rawValue) {
+    const raw = String(rawValue || '').trim();
+    if (!raw || isExplorerPlaceholderText(raw)) return '';
+    const lower = raw.toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('data:')) return '';
+    if (lower.startsWith('http://') || lower.startsWith('https://')) return raw;
+    if (raw.startsWith('//')) return `https:${raw}`;
+    if (/^[a-z0-9.-]+\.[a-z]{2,}(?:\/|$)/i.test(raw)) return `https://${raw}`;
+    return '';
+  }
+
+  function isLikelyExplorerPlaceId(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value || isExplorerPlaceholderText(value)) return false;
+    if (/\s/.test(value)) return false;
+    return value.length >= 8;
+  }
+
+  function buildExplorerGoogleOpenUrl(item) {
+    if (!item) return '';
+    const directUrl = normalizeExplorerExternalUrl(item.googleUrl);
+    if (directUrl) return directUrl;
+
+    const placeId = String(item.placeId || '').trim();
+    const name = String(item.title || '').trim();
+    const address = [item.address, item.city, item.state]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .join(', ');
+    const lat = Number(item.latitude);
+    const lng = Number(item.longitude);
+
+    if (isLikelyExplorerPlaceId(placeId)) {
+      const params = new URLSearchParams({
+        api: '1',
+        query: address || name || placeId,
+        query_place_id: placeId
+      });
+      return `https://www.google.com/maps/search/?${params.toString()}`;
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      const params = new URLSearchParams({ api: '1', query: `${lat},${lng}` });
+      return `https://www.google.com/maps/search/?${params.toString()}`;
+    }
+
+    const fallbackQuery = address || name;
+    if (!fallbackQuery) return '';
+    const params = new URLSearchParams({ api: '1', query: fallbackQuery });
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  }
+
   function getExplorerRouteSelectionSet(subtabKey) {
     const explorerState = getExplorerState(subtabKey);
     const values = Array.isArray(explorerState.routeSelectionIds) ? explorerState.routeSelectionIds : [];
@@ -8707,8 +8765,10 @@
             const subtabKey = String(explorerGoogleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerGoogleBtn.getAttribute('data-visited-explorer-open-google') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
-            if (item && item.googleUrl) {
-              window.open(item.googleUrl, '_blank', 'noopener');
+            const googleUrl = buildExplorerGoogleOpenUrl(item);
+            if (googleUrl) {
+              const opened = window.open(googleUrl, '_blank', 'noopener');
+              if (opened && typeof opened.focus === 'function') opened.focus();
             } else if (typeof window.showToast === 'function') {
               window.showToast('Google URL is unavailable for this location.', 'info', 2200);
             }

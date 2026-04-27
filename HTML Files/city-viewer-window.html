@@ -1715,9 +1715,14 @@
       font-size: 13px;
       color: #0891b2;
       font-weight: 600;
-      margin-top: 8px;
+      min-height: 30px;
       padding-top: 8px;
       border-top: 1px solid #e5e7eb;
+    }
+    .city-drive-time.is-empty {
+      color: transparent;
+      border-top-color: transparent;
+      user-select: none;
     }
     .loc-select-btn.active {
       background: #1d4ed8;
@@ -1865,7 +1870,8 @@
       padding: 14px 18px 18px;
       display: flex;
       flex-direction: column;
-      gap: 0;
+      gap: 10px;
+      flex: 1;
     }
 
     /* Gradient stat value */
@@ -1898,7 +1904,12 @@
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
-      margin-bottom: 12px;
+      min-height: 44px;
+      align-content: flex-start;
+    }
+    .city-source-chips.is-empty {
+      visibility: hidden;
+      pointer-events: none;
     }
     .city-source-chip {
       padding: 2px 8px;
@@ -1921,6 +1932,7 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border-radius: 10px;
       letter-spacing: 0.01em;
+      margin-top: auto;
     }
     .city-btn:hover {
       background: linear-gradient(135deg, #5568d3 0%, #6a3e94 100%);
@@ -2803,8 +2815,8 @@
       }
 
       grid.innerHTML = citiesArray.map((city, idx) => {
-        const driveTimeHtml = city.distance !== undefined
-          ? `<div class="city-drive-time">🚗 ${city.driveTime || 'calculating...'}</div>`
+        const driveTimeText = city.distance !== undefined
+          ? `🚗 ${city.driveTime || 'calculating...'}`
           : '';
 
         const gradient = cityCardGradient(city.city);
@@ -2848,7 +2860,7 @@
               <div class="city-card-initial">${initial}</div>
             </div>
             <div class="city-card-body">
-              ${sourceChipsHtml ? `<div class="city-source-chips">${sourceChipsHtml}</div>` : ''}
+              <div class="city-source-chips${sourceChipsHtml ? '' : ' is-empty'}">${sourceChipsHtml}</div>
               <div class="city-stats">
                 <div class="stat">
                   <div class="stat-label">📍 Locations</div>
@@ -2856,7 +2868,7 @@
                   <div class="city-stat-bar"><div class="city-stat-bar-fill" style="width:${barWidth}%"></div></div>
                 </div>
               </div>
-              ${driveTimeHtml}
+              <div class="city-drive-time${driveTimeText ? '' : ' is-empty'}">${driveTimeText || '&nbsp;'}</div>
               <button class="city-btn">Explore → </button>
             </div>
           </div>
