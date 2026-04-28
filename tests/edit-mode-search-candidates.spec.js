@@ -23,6 +23,26 @@ function buildResolvedByPlaceId(placeId) {
 
 async function installMocks(context, graphCalls, options = {}) {
   const postDelayMs = Math.max(0, Number(options.postDelayMs) || 0);
+
+  // Keep reliability fixture strict by stubbing cross-origin Places RPCs that can
+  // emit non-deterministic 400s in CI when fallback flows still trigger probes.
+  await context.route('https://places.googleapis.com/$rpc/google.maps.places.v1.Places/GetPlace**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: {
+        'access-control-allow-origin': '*'
+      },
+      body: JSON.stringify({
+        id: 'playwright-mocked-place',
+        displayName: { text: 'Playwright Mock Place' },
+        formattedAddress: '100 Mock St, Hendersonville, NC 28792',
+        location: { latitude: 35.3187, longitude: -82.4609 },
+        businessStatus: 'OPERATIONAL'
+      })
+    });
+  });
+
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
     const method = request.method();
