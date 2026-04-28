@@ -2439,6 +2439,43 @@
       transition: all 0.15s;
     }
     .loc-filter-toggle-btn:hover { border-color: #667eea; color: #667eea; }
+
+    .loc-filter-toggle-caret {
+      display: inline-block;
+      font-size: 11px;
+      line-height: 1;
+      transform: rotate(0deg);
+      transition: transform 0.2s ease;
+      transform-origin: 50% 50%;
+    }
+
+    .loc-filter-toggle-label {
+      display: inline-block;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      will-change: opacity, transform;
+    }
+
+    .loc-filter-toggle-label.is-swapping-up {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+
+    .loc-filter-toggle-label.is-swapping-down {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+
+    .loc-filter-toggle-btn:not(.is-collapsed) .loc-filter-toggle-caret {
+      transform: rotate(180deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loc-filter-toggle-caret { transition: none; }
+      .loc-filter-toggle-label { transition: none; }
+    }
+
     .loc-filter-collapsible {
       overflow: hidden;
       transition: max-height 0.32s ease, opacity 0.28s ease;
@@ -2562,7 +2599,7 @@
             <span class="loc-filter-section-label">Quick Find</span>
             <div class="loc-filter-subcopy">Start with search, tags, or sort. Open advanced filters only when you need more control.</div>
           </div>
-          <button type="button" class="loc-filter-toggle-btn" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="false" title="Collapse/expand advanced filters">▼ More Filters</button>
+          <button type="button" class="loc-filter-toggle-btn is-collapsed" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="false" title="Collapse/expand advanced filters"><span class="loc-filter-toggle-caret" aria-hidden="true">▾</span><span class="loc-filter-toggle-label">More Filters</span></button>
         </div>
         <div class="loc-primary-toolbar">
           <div class="loc-primary-main">
@@ -7122,6 +7159,35 @@
     let locFilterPanelCollapsed = LOC_FILTER_DEFAULT_COLLAPSED;
     let locFilterPanelManualOverride = false;
 
+    function setLocFilterToggleLabel(toggleBtn, text, options = {}) {
+      const label = toggleBtn && toggleBtn.querySelector('.loc-filter-toggle-label');
+      if (!label) return;
+      const nextText = String(text || '');
+      const shouldAnimate = Boolean(options.animate);
+      const direction = options.direction === 'down' ? 'down' : 'up';
+      const swapClass = direction === 'down' ? 'is-swapping-down' : 'is-swapping-up';
+      if (label.__swapTimer) {
+        window.clearTimeout(label.__swapTimer);
+        label.__swapTimer = null;
+      }
+      if (!shouldAnimate) {
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        label.textContent = nextText;
+        return;
+      }
+      if (label.textContent === nextText) {
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        return;
+      }
+      label.classList.remove('is-swapping-up', 'is-swapping-down');
+      label.classList.add(swapClass);
+      label.__swapTimer = window.setTimeout(() => {
+        label.textContent = nextText;
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        label.__swapTimer = null;
+      }, 90);
+    }
+
     function syncLocFilterPanelState(options = {}) {
       const { force = false } = options || {};
       const collapsible = document.getElementById('locFilterCollapsible');
@@ -7130,7 +7196,8 @@
       if (!force && locFilterPanelManualOverride) return;
       locFilterPanelCollapsed = LOC_FILTER_DEFAULT_COLLAPSED;
       collapsible.classList.toggle('collapsed', locFilterPanelCollapsed);
-      toggleBtn.textContent = locFilterPanelCollapsed ? '▼ More Filters' : '▲ Hide Advanced';
+      toggleBtn.classList.toggle('is-collapsed', locFilterPanelCollapsed);
+      setLocFilterToggleLabel(toggleBtn, locFilterPanelCollapsed ? 'More Filters' : 'Hide Advanced', { animate: false });
       toggleBtn.setAttribute('aria-expanded', String(!locFilterPanelCollapsed));
     }
 
@@ -7190,8 +7257,10 @@
       if (!collapsible || !toggleBtn) return;
       locFilterPanelManualOverride = true;
       locFilterPanelCollapsed = !locFilterPanelCollapsed;
+      const direction = locFilterPanelCollapsed ? 'down' : 'up';
       collapsible.classList.toggle('collapsed', locFilterPanelCollapsed);
-      toggleBtn.textContent = locFilterPanelCollapsed ? '▼ More Filters' : '▲ Hide Advanced';
+      toggleBtn.classList.toggle('is-collapsed', locFilterPanelCollapsed);
+      setLocFilterToggleLabel(toggleBtn, locFilterPanelCollapsed ? 'More Filters' : 'Hide Advanced', { animate: true, direction });
       toggleBtn.setAttribute('aria-expanded', String(!locFilterPanelCollapsed));
     }
 
