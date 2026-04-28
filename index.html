@@ -10899,6 +10899,195 @@
     return err;
   }
 
+  function resolvePlaceDisplayName(place) {
+    if (!place) return '';
+    if (place.displayName && typeof place.displayName === 'object' && place.displayName.text) {
+      return String(place.displayName.text).trim();
+    }
+    if (typeof place.displayName === 'string') {
+      return String(place.displayName).trim();
+    }
+    if (typeof place.name === 'string') {
+      return String(place.name).trim();
+    }
+    return '';
+  }
+
+  function truncatePlacesDiagnosticText(value, maxLength = 220) {
+    const normalized = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized;
+  }
+
+  function buildPlacesHealthAdvice(operation, error, context = {}) {
+    const details = classifyPlacesError(error);
+    if (details.permissionDenied) {
+      return details.advice;
+    }
+
+    if (operation === 'importLibrary') {
+      return 'Reload the main app so the Google Maps JavaScript loader runs, then verify the script tag key still loads successfully for this origin.';
+    }
+
+    if (operation === 'searchByText' || operation === 'searchPlaces') {
+      const queryText = truncatePlacesDiagnosticText(context.query || '', 90);
+      return queryText
+        ? `Try a more specific query than "${queryText}", confirm Places API (New) is enabled, and verify the current API key allows Places requests from this origin.`
+        : 'Confirm Places API (New) is enabled and that the current API key allows Places requests from this origin.';
+    }
+
+    if (operation === 'getPlaceDetails') {
+      return context.placeId
+        ? `If Place ID ${context.placeId} came from an existing row, it may be stale. Run Refresh Place IDs for that row/table, then retry.`
+        : 'If an existing row fails detail fetches, the saved Google Place ID may be stale. Run Refresh Place IDs, then retry.';
+    }
+
+    return 'Reload the app and verify the Google Maps JavaScript API and Places API (New) are enabled in the same Google Cloud project.';
+  }
+
+  async function runPlacesHealthCheck(options = {}) {
+    const start = Date.now();
+    const requestedQuery = String(options.query || options.testQuery || '').trim();
+    const requestedPlaceId = String(options.placeId || options.testPlaceId || '').trim();
+    const query = requestedQuery || 'Starbucks Columbia SC';
+    const result = {
+      ok: false,
+      status: 'error',
+      summary: '',
+      query,
+      requestedPlaceId,
+      placeIdUsed: requestedPlaceId,
+      startedAt: new Date(start).toISOString(),
+      finishedAt: '',
+      durationMs: 0,
+      steps: []
+    };
+
+    function addStep(key, label) {
+      const step = { key, label, status: 'pending', detail: '', advice: '', sample: null };
+      result.steps.push(step);
+      return step;
+    }
+
+    function finish() {
+      result.durationMs = Date.now() - start;
+      result.finishedAt = new Date().toISOString();
+      const hasError = result.steps.some((step) => step.status === 'error');
+      const hasWarn = result.steps.some((step) => step.status === 'warn');
+      const okCount = result.steps.filter((step) => step.status === 'ok').length;
+      result.status = hasError ? 'error' : (hasWarn ? 'warn' : 'ok');
+      result.ok = !hasError;
+      if (result.status === 'ok') {
+        result.summary = `Places health check passed (${okCount}/${result.steps.length} checks).`;
+      } else if (result.status === 'warn') {
+        result.summary = `Places health check passed with warnings (${okCount}/${result.steps.length} checks fully passed).`;
+      } else {
+        const failedStep = result.steps.find((step) => step.status === 'error');
+        result.summary = failedStep
+          ? `Places health check failed during ${failedStep.label}.`
+          : 'Places health check failed.';
+      }
+      return result;
+    }
+
+    let currentStep = null;
+
+    try {
+      currentStep = addStep('importLibrary', 'Load Google Places via importLibrary("places")');
+      if (typeof google === 'undefined' || !google.maps || typeof google.maps.importLibrary !== 'function') {
+        throw new Error('Google Maps JS API not loaded');
+      }
+      const placesLib = await google.maps.importLibrary('places');
+      const Place = placesLib && placesLib.Place;
+      if (typeof Place !== 'function') {
+        throw new Error('Google Places library unavailable after importLibrary("places")');
+      }
+      currentStep.status = 'ok';
+      currentStep.detail = 'Place class loaded successfully from the Maps JS loader.';
+
+      currentStep = addStep('searchByText', `Run raw Place.searchByText for "${truncatePlacesDiagnosticText(query, 80)}"`);
+      if (typeof Place.searchByText !== 'function') {
+        throw new Error('Google Places searchByText unavailable after importLibrary("places")');
+      }
+      const rawSearchResponse = await Place.searchByText({
+        textQuery: query,
+        fields: ['displayName', 'formattedAddress', 'id'],
+        language: 'en'
+      });
+      const rawPlaces = Array.isArray(rawSearchResponse && rawSearchResponse.places) ? rawSearchResponse.places : [];
+      const rawTopMatch = rawPlaces[0] || null;
+      if (!rawPlaces.length) {
+        currentStep.status = 'warn';
+        currentStep.detail = `Place.searchByText returned 0 results for "${truncatePlacesDiagnosticText(query, 80)}".`;
+        currentStep.advice = buildPlacesHealthAdvice('searchByText', new Error('No search results returned'), { query });
+      } else {
+        const rawName = resolvePlaceDisplayName(rawTopMatch) || '(unnamed place)';
+        currentStep.status = 'ok';
+        currentStep.detail = `Received ${rawPlaces.length} result${rawPlaces.length === 1 ? '' : 's'}; top match is "${truncatePlacesDiagnosticText(rawName, 80)}".`;
+        currentStep.sample = {
+          placeId: rawTopMatch.id || '',
+          name: rawName,
+          address: truncatePlacesDiagnosticText(rawTopMatch.formattedAddress || '', 120)
+        };
+      }
+
+      currentStep = addStep('searchPlaces', 'Run app searchPlaces helper');
+      const helperResults = await searchPlaces(query);
+      const helperTopMatch = Array.isArray(helperResults) && helperResults.length ? helperResults[0] : null;
+      if (!helperTopMatch) {
+        currentStep.status = 'warn';
+        currentStep.detail = `searchPlaces returned 0 results for "${truncatePlacesDiagnosticText(query, 80)}".`;
+        currentStep.advice = buildPlacesHealthAdvice('searchPlaces', new Error('No helper search results returned'), { query });
+      } else {
+        currentStep.status = 'ok';
+        currentStep.detail = `searchPlaces returned ${helperResults.length} result${helperResults.length === 1 ? '' : 's'}; top match is "${truncatePlacesDiagnosticText(helperTopMatch.name || '', 80)}".`;
+        currentStep.sample = {
+          placeId: helperTopMatch.placeId || '',
+          name: helperTopMatch.name || '',
+          address: truncatePlacesDiagnosticText(helperTopMatch.address || '', 120)
+        };
+      }
+
+      const resolvedPlaceId = requestedPlaceId || (helperTopMatch && helperTopMatch.placeId) || (rawTopMatch && rawTopMatch.id) || '';
+      result.placeIdUsed = resolvedPlaceId;
+      currentStep = addStep('getPlaceDetails', resolvedPlaceId ? `Run app getPlaceDetails for ${resolvedPlaceId}` : 'Run app getPlaceDetails helper');
+
+      if (!resolvedPlaceId) {
+        currentStep.status = 'warn';
+        currentStep.detail = 'Skipped getPlaceDetails because no place ID was available from the search steps.';
+        currentStep.advice = buildPlacesHealthAdvice('getPlaceDetails', new Error('No place ID available for details lookup'), { query });
+        return finish();
+      }
+
+      const details = await getPlaceDetails(resolvedPlaceId);
+      if (!details) {
+        currentStep.status = 'warn';
+        currentStep.detail = `getPlaceDetails returned no data for Place ID ${resolvedPlaceId}.`;
+        currentStep.advice = buildPlacesHealthAdvice('getPlaceDetails', new Error('No details returned'), { placeId: resolvedPlaceId });
+      } else {
+        currentStep.status = 'ok';
+        currentStep.detail = `Fetched details for "${truncatePlacesDiagnosticText(details.name || resolvedPlaceId, 80)}".`;
+        currentStep.sample = {
+          placeId: resolvedPlaceId,
+          name: details.name || '',
+          address: truncatePlacesDiagnosticText(details.address || '', 120),
+          website: truncatePlacesDiagnosticText(details.website || '', 120)
+        };
+      }
+
+      return finish();
+    } catch (error) {
+      const failedStep = currentStep || addStep('unknown', 'Places health check');
+      failedStep.status = 'error';
+      failedStep.detail = truncatePlacesDiagnosticText(error && error.message ? error.message : String(error || 'Unknown Places health-check error'), 220);
+      failedStep.advice = buildPlacesHealthAdvice(failedStep.key, error, {
+        query,
+        placeId: result.placeIdUsed || requestedPlaceId
+      });
+      return finish();
+    }
+  }
+
   /**
    * Initialize Google Maps services
    * Call this after Google Maps API is loaded
@@ -10950,15 +11139,19 @@
         return null;
       }
 
-      if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-        throw new Error("Google Maps Places API not loaded");
+      if (typeof google === 'undefined' || !google.maps || typeof google.maps.importLibrary !== 'function') {
+        throw new Error("Google Maps JS API not loaded");
       }
 
-      // Use NEW Place class instead of deprecated PlacesService
-      const { Place } = await google.maps.importLibrary("places");
+      // Use NEW Place class via importLibrary; this works even before google.maps.places namespace is hydrated.
+      const placesLib = await google.maps.importLibrary("places");
+      const Place = placesLib && placesLib.Place;
+      if (typeof Place !== 'function') {
+        throw new Error("Google Maps Places API unavailable after importLibrary('places')");
+      }
 
       const place = new Place({
-        id: placeId,
+        id: normalizedPlaceId,
         requestedLanguage: 'en'
       });
 
@@ -11012,9 +11205,7 @@
 
       // Return formatted place details
       // displayName can be a PlaceName object {text, languageCode} in newer SDK versions
-      const resolvedDisplayName = (place.displayName && typeof place.displayName === 'object' && place.displayName.text)
-        ? place.displayName.text
-        : (typeof place.displayName === 'string' ? place.displayName : (place.name || ''));
+      const resolvedDisplayName = resolvePlaceDisplayName(place);
       const resolvedAddress = place.formattedAddress || '';
 
       // If the new Places API returned incomplete data, try legacy PlacesService as fallback
@@ -11137,12 +11328,16 @@
    */
   async function searchPlaces(query) {
     try {
-      if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-        throw new Error("Google Maps Places API not loaded");
+      if (typeof google === 'undefined' || !google.maps || typeof google.maps.importLibrary !== 'function') {
+        throw new Error("Google Maps JS API not loaded");
       }
 
-      // Use NEW searchByText method
-      const { Place } = await google.maps.importLibrary("places");
+      // Use NEW searchByText method via importLibrary to avoid relying on namespace timing.
+      const placesLib = await google.maps.importLibrary("places");
+      const Place = placesLib && placesLib.Place;
+      if (!Place || typeof Place.searchByText !== 'function') {
+        throw new Error("Google Maps Places API search unavailable after importLibrary('places')");
+      }
 
       const request = {
         textQuery: query,
@@ -11171,6 +11366,8 @@
       // Format results with enhanced data and rank by relevance
       const formattedResults = places
         .map(place => {
+          const resolvedDisplayName = resolvePlaceDisplayName(place);
+
           // Calculate relevance score for ranking
           let relevanceScore = 0;
 
@@ -11189,7 +11386,7 @@
 
           return {
             placeId: place.id,
-            name: place.displayName || '',
+            name: resolvedDisplayName,
             address: place.formattedAddress || '',
             coordinates: place.location ? {
               lat: place.location.lat(),
@@ -14089,6 +14286,8 @@
   // scripts can call them after authentication.
   window.loadTable = loadTable;
   window.getPlaceDetails = getPlaceDetails;
+  window.searchPlaces = searchPlaces;
+  window.runPlacesHealthCheck = runPlacesHealthCheck;
 
   /**
    * Show skeleton loading cards while data is being fetched
@@ -23804,34 +24003,18 @@ COMMON ISSUES:
     console.log('🧪 Testing Google Places API...');
 
     try {
-      if (!window.google || !window.google.maps) {
-        console.error('❌ Google Maps API not loaded');
-        if (typeof showToast === 'function') {
-          showToast('❌ Google Maps API not loaded', 'error', 3000);
-        }
-        return false;
+      const health = await runPlacesHealthCheck();
+      console.log('📋 Places health check result:', health);
+
+      if (typeof showToast === 'function') {
+        const toastMessage = health.status === 'ok'
+          ? '✅ Places health check passed'
+          : (health.status === 'warn' ? '⚠️ Places health check completed with warnings' : `❌ ${health.summary}`);
+        const toastType = health.status === 'ok' ? 'success' : (health.status === 'warn' ? 'warning' : 'error');
+        showToast(toastMessage, toastType, 3500);
       }
 
-      // Test with a known place ID (Starbucks Times Square)
-      const testPlaceId = 'ChIJV2xW2Z3iWYgR7p8y7Z9E9nA';
-
-      console.log(`Testing with Place ID: ${testPlaceId}`);
-      const details = await window.lookupPlaceDetails(testPlaceId);
-
-      console.log('📋 API Response:', details);
-
-      if (details.name) {
-        if (typeof showToast === 'function') {
-          showToast(`✅ API Working! Found: ${details.name}`, 'success', 3000);
-        }
-        console.log('✅ Google Places API is working!');
-        return true;
-      } else {
-        if (typeof showToast === 'function') {
-          showToast('⚠️ API responded but missing data', 'warning', 3000);
-        }
-        return false;
-      }
+      return health.ok;
     } catch (err) {
       console.error('❌ API Test failed:', err);
       if (typeof showToast === 'function') {
@@ -26981,6 +27164,151 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   }
 })();
 </script>
+
+<!-- Quick Add FAB & Sheet – styles -->
+<style>
+/* ── Quick-Add FAB ────────────────────────────────────────────── */
+.quick-add-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1200;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(102,126,234,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.quick-add-fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(102,126,234,.55); }
+.quick-add-fab:active { transform: scale(.96); }
+
+.qa-inbox-count {
+  position: absolute;
+  top: 4px; right: 4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px; height: 18px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* ── Backdrop ─────────────────────────────────────────────────── */
+.quick-add-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.quick-add-backdrop.open { display: block; }
+
+/* ── Bottom sheet ─────────────────────────────────────────────── */
+.quick-add-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 1400;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 12px 20px 32px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,.18);
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.32,1.1,.64,1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.quick-add-sheet.open { transform: translateY(0); }
+
+.quick-add-sheet-handle {
+  width: 40px; height: 5px;
+  border-radius: 999px;
+  background: #d1d5db;
+  margin: 0 auto 14px;
+}
+
+.quick-add-sheet-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* ── Form fields ──────────────────────────────────────────────── */
+.quick-add-form { display: flex; flex-direction: column; gap: 12px; }
+
+.qa-field { display: flex; flex-direction: column; gap: 4px; }
+.qa-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.qa-field input,
+.qa-field textarea {
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #f9fafb;
+  transition: border-color .15s;
+  font-family: inherit;
+  resize: vertical;
+}
+.qa-field input:focus,
+.qa-field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: #fff;
+}
+.qa-field textarea { min-height: 72px; }
+
+/* ── Action buttons ───────────────────────────────────────────── */
+.quick-add-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.qa-save-btn {
+  flex: 1;
+  padding: 10px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.qa-save-btn:hover { opacity: .9; }
+.qa-cancel-btn {
+  padding: 10px 18px;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+}
+.qa-cancel-btn:hover { background: #e5e7eb; }
+</style>
 
 <!-- Quick Add FAB & Sheet -->
 <button class="quick-add-fab" id="quickAddFab" title="Quick Add a place" aria-label="Quick Add a place" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">

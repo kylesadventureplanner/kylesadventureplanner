@@ -2,7 +2,7 @@
   'use strict';
 
   var TAB_ID = 'diagnostics-hub';
-  var SECTION_KEYS = ['overview', 'storage', 'sync', 'setup', 'nearby'];
+  var SECTION_KEYS = ['overview', 'storage', 'sync', 'setup', 'nearby', 'places'];
   var STORAGE_REASON_CATALOG = [
     {
       test: function (key) { return /^cityViewer:edits:/i.test(key); },
@@ -255,6 +255,29 @@
       try { return window.getNatureChallengeDiagnosticsSnapshot() || readNatureFallbackSnapshot(); } catch (_error) {}
     }
     return readNatureFallbackSnapshot();
+  }
+
+  function getPlacesHealthSnapshot() {
+    if (typeof window.runPlacesHealthCheck === 'function') {
+      try {
+        var result = {};
+        return Promise.resolve(window.runPlacesHealthCheck({ query: '', placeId: '' })).then(function(health) {
+          result.available = health && health.ok !== false;
+          result.status = health && health.status ? health.status : 'unknown';
+          result.ok = health && health.ok ? health.ok : false;
+          result.summary = health && health.summary ? health.summary : 'Not tested';
+          result.query = health && health.query ? health.query : '';
+          result.placeIdUsed = health && health.placeIdUsed ? health.placeIdUsed : '';
+          result.steps = Array.isArray(health && health.steps) ? health.steps : [];
+          return result;
+        }).catch(function(_error) {
+          return { available: false, status: 'error', ok: false, summary: 'Health check failed', query: '', placeIdUsed: '', steps: [] };
+        });
+      } catch (_error) {
+        return Promise.resolve({ available: false, status: 'error', ok: false, summary: 'Health check unavailable', query: '', placeIdUsed: '', steps: [] });
+      }
+    }
+    return Promise.resolve({ available: false, status: 'unknown', ok: false, summary: 'Places API not loaded', query: '', placeIdUsed: '', steps: [] });
   }
 
   function classifyQueueIssue(item) {
@@ -650,13 +673,60 @@
     ].join('');
   }
 
+  function renderPlacesHealthSection(snapshot) {
+    var places = snapshot.placesHealth || { available: false, status: 'unknown', ok: false, summary: 'Not tested', steps: [] };
+    var statusColor = places.ok ? '#047857' : (places.status === 'unknown' ? '#64748b' : '#b45309');
+    var statusLabel = places.ok ? '✓ Healthy' : (places.status === 'unknown' ? '? Not tested' : '⚠ Issues detected');
+    var stepsHtml = (Array.isArray(places.steps) ? places.steps : []).map(function(step) {
+      var stepStatus = step.status === 'pass' ? '✓' : (step.status === 'fail' ? '✕' : '•');
+      var stepColor = step.status === 'pass' ? '#047857' : (step.status === 'fail' ? '#dc2626' : '#64748b');
+      return [
+        '<div class="diagnostics-hub-list-item" style="border-left:3px solid ' + escHtml(stepColor) + ';">',
+        '<div style="font-weight:700;color:' + escHtml(stepColor) + ';">' + escHtml(stepStatus) + ' ' + escHtml(step.key || 'step') + '</div>',
+        '<div class="diagnostics-hub-note">' + escHtml(step.detail || '') + '</div>',
+        (step.advice ? '<div class="diagnostics-hub-note"><strong>💡 Suggestion:</strong> ' + escHtml(step.advice) + '</div>' : ''),
+        '</div>'
+      ].join('');
+    }).join('');
+
+    return [
+      '<div class="diagnostics-hub-grid">',
+      '<section class="diagnostics-hub-card">',
+      '<div class="diagnostics-hub-card-title">🌍 Places API Status</div>',
+      '<div class="diagnostics-hub-kpi ' + (places.ok ? 'is-good' : places.status === 'unknown' ? '' : 'is-warn') + '" style="color:' + escHtml(statusColor) + ';">' + escHtml(statusLabel) + '</div>',
+      '<div class="diagnostics-hub-note">Overall status: ' + escHtml(places.summary || 'Not available') + '</div>',
+      '</section>',
+      '<section class="diagnostics-hub-card">',
+      '<div class="diagnostics-hub-card-title">Test Details</div>',
+      '<div class="diagnostics-hub-note"><strong>Query:</strong> ' + escHtml(places.query || 'Not specified') + '</div>',
+      '<div class="diagnostics-hub-note"><strong>Place ID:</strong> ' + escHtml(places.placeIdUsed || 'Not used') + '</div>',
+      '<div class="diagnostics-hub-note"><strong>Test Status:</strong> ' + escHtml(places.status || 'unknown') + '</div>',
+      '</section>',
+      '</div>',
+      '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
+      '<div class="diagnostics-hub-card-title">Health Check Steps</div>',
+      (stepsHtml ? stepsHtml : '<div class="diagnostics-hub-empty">No health check data available. Run the Places API health test.</div>'),
+      '</section>',
+      '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
+      '<div class="diagnostics-hub-card-title">About Places API Health</div>',
+      '<ul class="diagnostics-hub-bullets">',
+      '<li>This section validates your Google Places API key configuration and connectivity.</li>',
+      '<li>The health check tests Place search, Place details retrieval, and Google Maps library availability.</li>',
+      '<li>If any step fails, check your API key in the browser console and ensure the required APIs are enabled in Google Cloud Console.</li>',
+      '<li>To run a full health check in the browser, use the Places API test in the automation panel or the developer console.</li>',
+      '</ul>',
+      '</section>'
+    ].join('');
+  }
+
   function renderNav(state) {
     var labels = {
       overview: 'Overview',
       storage: 'Local-only data',
       sync: 'Sync recovery',
       setup: 'Setup guide',
-      nearby: 'Nearby & City Explorer'
+      nearby: 'Nearby & City Explorer',
+      places: 'Places API health'
     };
     return SECTION_KEYS.map(function (key) {
       var active = state.currentSection === key;
@@ -673,6 +743,7 @@
     else if (state.currentSection === 'sync') sectionHtml = renderSyncSection(snapshot);
     else if (state.currentSection === 'setup') sectionHtml = renderSetupSection(snapshot);
     else if (state.currentSection === 'nearby') sectionHtml = renderNearbySection(snapshot);
+    else if (state.currentSection === 'places') sectionHtml = renderPlacesHealthSection(snapshot);
     else sectionHtml = renderOverviewSection(snapshot);
 
     host.innerHTML = [
@@ -732,15 +803,18 @@
   function collectSnapshot() {
     var state = getState();
     return collectOfflineSnapshot().then(function (offline) {
-      return {
-        offline: offline,
-        adventure: getAdventureSnapshot(),
-        nature: getNatureSnapshot(),
-        storageInventory: buildStorageInventory(),
-        reliability: readReliabilitySnapshot(),
-        knownGood: readKnownGoodInfo(),
-        source: state.source
-      };
+      return getPlacesHealthSnapshot().then(function(placesHealth) {
+        return {
+          offline: offline,
+          adventure: getAdventureSnapshot(),
+          nature: getNatureSnapshot(),
+          placesHealth: placesHealth,
+          storageInventory: buildStorageInventory(),
+          reliability: readReliabilitySnapshot(),
+          knownGood: readKnownGoodInfo(),
+          source: state.source
+        };
+      });
     });
   }
 

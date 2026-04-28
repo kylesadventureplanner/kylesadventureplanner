@@ -222,6 +222,24 @@ async function openTestCity(page) {
   await expect(page.locator('#locationsPageTitle')).toContainText('Testville');
 }
 
+async function expandAdvancedFilters(page) {
+  const toggle = page.locator('#locFilterToggleBtn');
+  const expanded = await toggle.getAttribute('aria-expanded');
+  if (expanded !== 'true') {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  }
+}
+
+async function expandSourceDiagnostics(page) {
+  const toggle = page.locator('#locStatusToggleBtn');
+  const expanded = await toggle.getAttribute('aria-expanded');
+  if (expanded !== 'true') {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  }
+}
+
 test.describe('City Explorer Phase 1 and 2 enhancements', () => {
   async function readLastExportedRouteJson(page) {
     return page.evaluate(() => String(window.__lastExportedRouteJson || ''));
@@ -242,8 +260,18 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     expect(computedPosition).not.toBe('sticky');
   });
 
+  test('advanced and source diagnostics sections are collapsed by default', async ({ page }) => {
+    await openTestCity(page);
+
+    await expect(page.locator('#locFilterToggleBtn')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#locFilterCollapsible')).toHaveClass(/collapsed/);
+    await expect(page.locator('#locStatusToggleBtn')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#locStatusCollapsible')).toHaveClass(/collapsed/);
+  });
+
   test('active filter chips appear and individual chip removal updates filters', async ({ page }) => {
     await openTestCity(page);
+    await expandAdvancedFilters(page);
 
     await page.locator('#locSearchName').fill('falls');
     await page.locator('#locFilterDifficulty').selectOption('moderate');
@@ -274,6 +302,8 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
   test('mixed nearby cache rows blend with saved results using saved-first ranking and source chips', async ({ page }) => {
     await seedCityViewer(page, { withNearbyCache: true });
     await openTestCity(page);
+    await expandSourceDiagnostics(page);
+    await expandAdvancedFilters(page);
 
     await expect(page.locator('#locSourceFilters [data-source-filter="saved"]')).toContainText('(4)');
     await expect(page.locator('#locSourceFilters [data-source-filter="web"]')).toContainText('(2)');
@@ -360,6 +390,7 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Dedupe skipped: 1');
     await expect(page.locator('#locMixedSourceDiagnostics')).toContainText('Thresholds: geo ≤ 0.05mi');
 
+    await expandAdvancedFilters(page);
     await page.locator('#locSourceFilters [data-source-filter="web"]').click();
     await expect(page.locator('.loc-card')).toHaveCount(1);
     await expect(page.locator('.loc-card').first()).toContainText('Downtown Art House');
@@ -369,6 +400,7 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await seedCityViewer(page, { withNearbyCache: true });
     await openTestCity(page);
 
+    await expandAdvancedFilters(page);
     await page.locator('#locSourceFilters [data-source-filter="web"]').click();
     await expect(page.locator('#locResultsCount')).toContainText('2 locations');
     await expect(page.locator('.loc-card')).toHaveCount(2);

@@ -5891,6 +5891,7 @@
     }
 
     syncExplorerFilterOptions(subtabKey, explorerState);
+    renderExplorerTagBar(root, subtabKey);
     const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
     renderExplorerRoutePlannerUi(root, subtabKey, filtered);
     const visitMap = state.latestVisitMap || getVisitMap();
@@ -5988,6 +5989,71 @@
 
   function normalizeExplorerFilterToken(value) {
     return norm(String(value || ''));
+  }
+
+  /**
+   * Render (or refresh) the top-tag quick-filter bar for a subtab.
+   * Computes the most-used tags across all loaded items and renders
+   * them as clickable chips that toggle tagInclude in explorerState.
+   */
+  function renderExplorerTagBar(root, subtabKey) {
+    const barEl = document.getElementById(`visitedExplorerTagBar-${subtabKey}`);
+    if (!barEl) return;
+
+    const explorerState = getExplorerState(subtabKey);
+    const items = explorerState.items || [];
+    if (!items.length) { barEl.innerHTML = ''; return; }
+
+    // Count tag frequencies.
+    const freq = new Map();
+    items.forEach((item) => {
+      const tags = Array.isArray(item.tags) ? item.tags : [];
+      tags.forEach((tag) => {
+        const t = String(tag || '').trim();
+        if (t) freq.set(t, (freq.get(t) || 0) + 1);
+      });
+    });
+
+    // Sort by frequency desc, take top 15.
+    const topTags = Array.from(freq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([tag, count]) => ({ tag, count }));
+
+    if (!topTags.length) { barEl.innerHTML = ''; return; }
+
+    const activeIncludes = new Set(normalizeExplorerFilterTokenList(explorerState.tagInclude));
+
+    barEl.innerHTML = topTags.map(({ tag, count }) => {
+      const isActive = activeIncludes.has(normalizeExplorerFilterToken(tag));
+      return `<button type="button"
+        class="visited-explorer-tag-bar-chip${isActive ? ' visited-explorer-tag-bar-chip--active' : ''}"
+        data-explorer-tag-bar-chip="${escapeHtml(subtabKey)}"
+        data-explorer-tag-bar-value="${escapeHtml(tag)}"
+        aria-pressed="${isActive}"
+        title="${isActive ? 'Remove' : 'Add'} tag filter: ${escapeHtml(tag)}"
+      >${escapeHtml(tag)}<span class="chip-count">${count}</span></button>`;
+    }).join('');
+
+    // Bind click handlers if not already bound.
+    if (!barEl.dataset.barBound) {
+      barEl.dataset.barBound = '1';
+      barEl.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-explorer-tag-bar-chip]');
+        if (!chip) return;
+        const key = chip.dataset.explorerTagBarChip;
+        const tag = chip.dataset.explorerTagBarValue;
+        const state = getExplorerState(key);
+        const normTag = normalizeExplorerFilterToken(tag);
+        const existing = normalizeExplorerFilterTokenList(state.tagInclude);
+        if (existing.includes(normTag)) {
+          state.tagInclude = existing.filter((t) => t !== normTag);
+        } else {
+          state.tagInclude = existing.concat([tag]);
+        }
+        renderExplorerList(root, key);
+      });
+    }
   }
 
   function normalizeExplorerFilterTokenList(values) {

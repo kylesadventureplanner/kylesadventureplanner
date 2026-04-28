@@ -5,10 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/PLACES_HEALTH_INTEGRATION.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/places-health-check-live.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/visited-locations-tab.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/visited-locations-tab.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-adventure-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-bike-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-city-viewer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-edit-mode-new.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-find-near-me-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-trail-explorer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/index-mobile.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,7 +115,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="105395000" />
+      <workItem from="1777064709892" duration="114862000" />
     </task>
     <servers />
   </component>

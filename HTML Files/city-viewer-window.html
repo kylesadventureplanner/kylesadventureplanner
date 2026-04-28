@@ -726,12 +726,13 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.16s ease;
       color: #374151;
     }
     .loc-tag-btn:hover {
       border-color: #667eea;
       color: #667eea;
+      transform: translateY(-1px);
     }
     .loc-tag-btn.active {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -778,9 +779,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all 0.16s ease;
     }
-    .loc-sort-order-btn:hover { border-color: #667eea; background: #f0f4ff; }
+    .loc-sort-order-btn:hover { border-color: #667eea; background: #f0f4ff; transform: translateY(-1px); }
     .loc-results-count {
       margin-left: auto;
       font-size: 13px;
@@ -796,9 +797,9 @@
       cursor: pointer;
       font-weight: 600;
       font-size: 12px;
-      transition: all 0.2s;
+      transition: all 0.16s ease;
     }
-    .loc-reset-btn:hover { background: #fef2f2; }
+    .loc-reset-btn:hover { background: #fef2f2; transform: translateY(-1px); }
 
     /* Location Cards */
     .locations-grid {
@@ -1033,11 +1034,11 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.16s ease;
       color: #374151;
       text-decoration: none;
     }
-    .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
+    .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; transform: translateY(-1px); }
     .loc-quick-actions {
       margin-left: auto;
       position: relative;
@@ -1090,6 +1091,7 @@
       padding: 7px 9px;
       text-align: left;
       cursor: pointer;
+      transition: all 0.16s ease;
     }
     .loc-quick-actions-menu button:hover {
       border-color: #93c5fd;
@@ -1224,8 +1226,9 @@
       font-weight: 600;
       background: white;
       cursor: pointer;
+      transition: all 0.16s ease;
     }
-    .loc-mini-btn:hover { border-color: #667eea; color: #667eea; }
+    .loc-mini-btn:hover { border-color: #667eea; color: #667eea; transform: translateY(-1px); }
     .loc-mini-btn.success { border-color: #86efac; color: #166534; }
     .loc-smart-presets {
       display: flex;
@@ -1902,10 +1905,12 @@
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
+      transition: all 0.16s ease;
     }
     .loc-route-variant-btn:hover {
       border-color: #93c5fd;
       color: #dbeafe;
+      background: rgba(255,255,255,0.18);
     }
     .loc-time-window {
       margin-top: 14px;
@@ -2310,6 +2315,100 @@
     .loc-cat-pill.wildlife      { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
     .loc-cat-pill.other         { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
 
+    .loc-cat-wildlife-summary {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+      padding-top: 6px;
+      border-top: 1px dashed #e5e7eb;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .loc-status-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .loc-status-toggle-btn {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .loc-status-toggle-btn:hover { border-color: #667eea; color: #667eea; }
+
+    .loc-status-toggle-caret {
+      display: inline-block;
+      font-size: 11px;
+      line-height: 1;
+      transform: rotate(0deg);
+      transition: transform 0.2s ease;
+      transform-origin: 50% 50%;
+    }
+
+    .loc-status-toggle-label {
+      display: inline-block;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      will-change: opacity, transform;
+    }
+
+    .loc-status-toggle-label.is-swapping-up {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+
+    .loc-status-toggle-label.is-swapping-down {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+
+    .loc-status-toggle-btn:not(.is-collapsed) .loc-status-toggle-caret {
+      transform: rotate(180deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loc-status-toggle-caret {
+        transition: none;
+      }
+
+      .loc-status-toggle-label {
+        transition: none;
+      }
+    }
+
+    .loc-status-collapsible {
+      overflow: hidden;
+      transition: max-height 0.28s ease, opacity 0.24s ease;
+      max-height: 800px;
+      opacity: 1;
+      display: grid;
+      gap: 2px;
+    }
+
+    .loc-status-collapsible.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+    }
+
     /* Filter panel collapse toggle */
     .loc-filter-header {
       display: flex;
@@ -2463,7 +2562,7 @@
             <span class="loc-filter-section-label">Quick Find</span>
             <div class="loc-filter-subcopy">Start with search, tags, or sort. Open advanced filters only when you need more control.</div>
           </div>
-          <button type="button" class="loc-filter-toggle-btn" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="true" title="Collapse/expand advanced filters">▲ Hide Advanced</button>
+          <button type="button" class="loc-filter-toggle-btn" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="false" title="Collapse/expand advanced filters">▼ More Filters</button>
         </div>
         <div class="loc-primary-toolbar">
           <div class="loc-primary-main">
@@ -2583,9 +2682,14 @@
       </div>
 
       <div class="loc-status-strip">
-        <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
-        <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
-        <div id="wildlifeDiagnosticsStrip" class="wildlife-diagnostics-strip" aria-live="polite"></div>
+        <div class="loc-status-header">
+          <span class="loc-filter-section-label">Source diagnostics</span>
+          <button type="button" class="loc-status-toggle-btn is-collapsed" id="locStatusToggleBtn" onclick="toggleLocStatusPanel()" aria-expanded="false" title="Collapse/expand source diagnostics"><span class="loc-status-toggle-caret" aria-hidden="true">▾</span><span class="loc-status-toggle-label">Show Details</span></button>
+        </div>
+        <div id="locStatusCollapsible" class="loc-status-collapsible collapsed">
+          <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
+          <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
+        </div>
         <div class="loc-group-actions">
           <button type="button" class="loc-mini-btn" onclick="openNearbyDiagnosticsFromCityViewer()">🩺 Nearby Diagnostics</button>
         </div>
@@ -2961,6 +3065,7 @@
       resolveNearbyDebugThresholdsFromUrl();
       resolvePrefilterFromUrl();
       syncLocFilterPanelState({ force: true });
+      syncLocStatusPanelState({ force: true });
       syncBulkActionInputHint();
       familyPreferences = loadFamilyPreferences();
       renderFamilyExperienceControls();
@@ -6802,47 +6907,16 @@
       return ['wildlife', 'wildlife-animals', 'wildlife_animals', 'animals', 'animal'].includes(String(prefilterTag || '').toLowerCase());
     }
 
-    function renderWildlifeDiagnosticsStrip(cityEntry, visibleResults) {
-      const strip = document.getElementById('wildlifeDiagnosticsStrip');
-      if (!strip) return;
-
-      const cityLocations = getCityLocationsForView(cityEntry);
-      if (!isWildlifePrefilterActive() || !cityEntry || !cityLocations.length) {
-        strip.classList.remove('visible');
-        strip.innerHTML = '';
-        return;
-      }
-
-      const allInCity = cityLocations;
-      const wildlifeMatches = allInCity.filter(function (loc) { return locationMatchesPrefilter(loc); });
-      const visible = Array.isArray(visibleResults) ? visibleResults : [];
-      const hiddenByFilters = Math.max(0, wildlifeMatches.length - visible.length);
-      const filters = getLocFilterSnapshot();
-      const breakdown = computeWildlifeFilterBreakdown(wildlifeMatches, filters);
-
-      var helperText = '';
-      if (!wildlifeMatches.length) {
-        helperText = 'No wildlife rows matched this city prefilter. Try "Show all places" above.';
-      } else if (!visible.length) {
-        helperText = 'All wildlife matches are currently filtered out. Reset filters to see everything.';
-      } else if (hiddenByFilters > 0) {
-        helperText = hiddenByFilters + ' wildlife location' + (hiddenByFilters === 1 ? ' is' : 's are') + ' hidden by active filters.';
-      }
-
-      strip.classList.add('visible');
-      const reasons = [];
-      if (breakdown.openNow) reasons.push('Open now: ' + breakdown.openNow);
-      if (breakdown.closingSoon) reasons.push('Closing soon: ' + breakdown.closingSoon);
-      if (breakdown.tag) reasons.push('Tag filter: ' + breakdown.tag);
-      if (breakdown.search) reasons.push('Search: ' + breakdown.search);
-      if (breakdown.cost) reasons.push('Cost: ' + breakdown.cost);
-      if (breakdown.difficulty) reasons.push('Difficulty: ' + breakdown.difficulty);
-      strip.innerHTML =
+    function buildWildlifeInViewSummaryMarkup(allCityLocs, visibleLocs) {
+      if (!isWildlifePrefilterActive() || !Array.isArray(allCityLocs) || !allCityLocs.length) return '';
+      const wildlifeMatches = allCityLocs.filter(function (loc) { return locationMatchesPrefilter(loc); });
+      if (!wildlifeMatches.length) return '';
+      const visible = Array.isArray(visibleLocs) ? visibleLocs : [];
+      return '<div class="loc-cat-wildlife-summary">' +
         '<span>Loaded <strong>' + wildlifeMatches.length + '</strong> wildlife rows, showing <strong>' + visible.length + '</strong> after filters.</span>' +
-        '<span class="wildlife-diagnostics-meta">City total: ' + allInCity.length + '</span>' +
-        (reasons.length ? '<span class="wildlife-diagnostics-meta">Hidden by filters → ' + escHtml(reasons.join(' · ')) + '</span>' : '') +
-        (helperText ? '<span class="wildlife-diagnostics-meta">' + escHtml(helperText) + '</span>' : '') +
-        '<button type="button" class="loc-mini-btn" onclick="resetLocFilters()">Reset Filters</button>';
+        '<span class="wildlife-diagnostics-meta">City total: ' + allCityLocs.length + '</span>' +
+        '<button type="button" class="loc-mini-btn" onclick="resetLocFilters()">Reset Filters</button>' +
+      '</div>';
     }
 
     function applyLocFilters() {
@@ -6865,7 +6939,6 @@
       renderSmartPresetState();
       renderDataFreshnessBadge();
       renderMixedSourceDiagnosticsPanel(cityEntry, baseResults, results);
-      renderWildlifeDiagnosticsStrip(cityEntry, results);
       renderCategoryBar(cityLocations, results);
       renderLocationCards(results);
       renderLocMap(results);
@@ -7009,6 +7082,7 @@
       setSplitView(false);
       locFilterPanelManualOverride = false;
       syncLocFilterPanelState({ force: true });
+      syncLocStatusPanelState({ force: true });
 
       buildQuickTagPills(viewLocations);
       populateTagDatalist(viewLocations);
@@ -7035,11 +7109,6 @@
       currentCityKey = null;
       activeLocId = null;
       activeLocationDetailId = null;
-      const wildlifeStrip = document.getElementById('wildlifeDiagnosticsStrip');
-      if (wildlifeStrip) {
-        wildlifeStrip.classList.remove('visible');
-        wildlifeStrip.innerHTML = '';
-      }
       const catBar = document.getElementById('locCategoryBar');
       if (catBar) { catBar.classList.remove('visible'); catBar.innerHTML = ''; }
       document.getElementById('locationsPage').style.display = 'none';
@@ -7049,13 +7118,9 @@
     }
 
     // ── Filter panel collapse toggle ──────────────────────────────────────
-    const MOBILE_ADVANCED_FILTER_MAX_WIDTH = 768;
-    let locFilterPanelCollapsed = false;
+    const LOC_FILTER_DEFAULT_COLLAPSED = true;
+    let locFilterPanelCollapsed = LOC_FILTER_DEFAULT_COLLAPSED;
     let locFilterPanelManualOverride = false;
-
-    function isMobileAdvancedFilterViewport() {
-      return window.innerWidth <= MOBILE_ADVANCED_FILTER_MAX_WIDTH;
-    }
 
     function syncLocFilterPanelState(options = {}) {
       const { force = false } = options || {};
@@ -7063,10 +7128,60 @@
       const toggleBtn = document.getElementById('locFilterToggleBtn');
       if (!collapsible || !toggleBtn) return;
       if (!force && locFilterPanelManualOverride) return;
-      locFilterPanelCollapsed = isMobileAdvancedFilterViewport();
+      locFilterPanelCollapsed = LOC_FILTER_DEFAULT_COLLAPSED;
       collapsible.classList.toggle('collapsed', locFilterPanelCollapsed);
       toggleBtn.textContent = locFilterPanelCollapsed ? '▼ More Filters' : '▲ Hide Advanced';
       toggleBtn.setAttribute('aria-expanded', String(!locFilterPanelCollapsed));
+    }
+
+    let locStatusPanelCollapsed = true;
+
+    function setLocStatusToggleLabel(toggleBtn, text, options = {}) {
+      const label = toggleBtn && toggleBtn.querySelector('.loc-status-toggle-label');
+      if (!label) return;
+      const nextText = String(text || '');
+      const shouldAnimate = Boolean(options.animate);
+      const direction = options.direction === 'down' ? 'down' : 'up';
+      const swapClass = direction === 'down' ? 'is-swapping-down' : 'is-swapping-up';
+      if (label.__swapTimer) {
+        window.clearTimeout(label.__swapTimer);
+        label.__swapTimer = null;
+      }
+      if (!shouldAnimate) {
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        label.textContent = nextText;
+        return;
+      }
+      if (label.textContent === nextText) {
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        return;
+      }
+      label.classList.remove('is-swapping-up', 'is-swapping-down');
+      label.classList.add(swapClass);
+      label.__swapTimer = window.setTimeout(() => {
+        label.textContent = nextText;
+        label.classList.remove('is-swapping-up', 'is-swapping-down');
+        label.__swapTimer = null;
+      }, 90);
+    }
+
+    function syncLocStatusPanelState(options = {}) {
+      const { force = false, direction = 'up' } = options || {};
+      const collapsible = document.getElementById('locStatusCollapsible');
+      const toggleBtn = document.getElementById('locStatusToggleBtn');
+      if (!collapsible || !toggleBtn) return;
+      if (force) locStatusPanelCollapsed = true;
+      collapsible.classList.toggle('collapsed', locStatusPanelCollapsed);
+      toggleBtn.classList.toggle('is-collapsed', locStatusPanelCollapsed);
+      setLocStatusToggleLabel(toggleBtn, locStatusPanelCollapsed ? 'Show Details' : 'Hide Details', { animate: !force, direction: direction });
+      toggleBtn.setAttribute('aria-expanded', String(!locStatusPanelCollapsed));
+    }
+
+    function toggleLocStatusPanel() {
+      const nextCollapsed = !locStatusPanelCollapsed;
+      const direction = nextCollapsed ? 'down' : 'up';
+      locStatusPanelCollapsed = nextCollapsed;
+      syncLocStatusPanelState({ direction: direction });
     }
 
     function toggleLocFilterPanel() {
@@ -7122,7 +7237,8 @@
         counts[t] = (counts[t] || 0) + 1;
       });
       const totalVisible = visibleLocs.length;
-      if (!totalVisible) { bar.classList.remove('visible'); return; }
+      const wildlifeSummary = buildWildlifeInViewSummaryMarkup(allCityLocs, visibleLocs);
+      if (!totalVisible && !wildlifeSummary) { bar.classList.remove('visible'); return; }
 
       const pills = Object.entries(counts)
         .sort((a, b) => b[1] - a[1])
@@ -7131,7 +7247,7 @@
           return `<span class="loc-cat-pill ${meta.cls}" title="Filter by ${meta.label}" onclick="filterByCategory('${type}')">${meta.label} <strong>${count}</strong></span>`;
         }).join('');
 
-      bar.innerHTML = `<span class="loc-cat-bar-label">In view</span>${pills}`;
+      bar.innerHTML = `<span class="loc-cat-bar-label">In view</span>${pills}${wildlifeSummary}`;
       bar.classList.add('visible');
     }
 
@@ -7233,6 +7349,7 @@
     window.handleLocCardKeydown = handleLocCardKeydown;
     window.goBackToLocationResults = goBackToLocationResults;
     window.toggleLocFilterPanel = toggleLocFilterPanel;
+    window.toggleLocStatusPanel = toggleLocStatusPanel;
     window.scrollToTop = scrollToTop;
     window.filterByCategory = filterByCategory;
     window.openNearbyDiagnosticsFromCityViewer = openNearbyDiagnosticsFromCityViewer;

@@ -1185,15 +1185,18 @@
 
     <!-- Automation Tab -->
     <div id="automation-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-automation" tabindex="0" hidden>
-      <!-- Test Google API Button -->
+      <!-- Places Health Check -->
       <div class="card">
-        <div class="card-title">🧪 API Test</div>
+        <div class="card-title">🩺 Places Health Check</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Test your Google Places API connection. This will verify your API key is correctly configured.
+          Run a one-click Google Places health check. This validates <code>importLibrary("places")</code>, raw <code>searchByText</code>, your app's <code>searchPlaces</code> helper, and <code>getPlaceDetails</code> with actionable error guidance.
+        </p>
+        <p style="color: #6b7280; margin: -8px 0 16px; line-height: 1.6; font-size: 13px;">
+          If the Add Single input contains a place name, address, or Place ID, the check uses that context. Otherwise it falls back to a safe default query.
         </p>
 
         <div class="button-group">
-          <button class="button button-secondary" onclick="testGooglePlacesAPI()">🧪 Test API Connection</button>
+          <button class="button button-secondary" onclick="testGooglePlacesAPI()">🩺 Run Places Health Check</button>
         </div>
 
         <div id="api-test-status"></div>
@@ -4416,90 +4419,106 @@
       return summary;
     }
 
+    function escapeApiTestHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getPlacesHealthCheckContext() {
+      const inputValue = String(document.getElementById('singleInput')?.value || '').trim();
+      const inputType = String(document.getElementById('singleInputType')?.value || '').trim();
+      const placeId = inputType === 'placeId' ? inputValue : '';
+      const usesDirectQuery = inputValue && ['placeName', 'address', 'placeNameCity'].includes(inputType);
+      return {
+        query: usesDirectQuery ? inputValue : 'Starbucks Columbia SC',
+        placeId,
+        sourceLabel: inputValue
+          ? (placeId ? 'Using current Add Single Place ID.' : (usesDirectQuery ? 'Using current Add Single search text.' : 'Current Add Single input is a URL-style input, so the health check is using a default text query.'))
+          : 'No Add Single input detected, so the health check is using a default text query.'
+      };
+    }
+
+    function formatPlacesHealthCheckResult(result, context) {
+      const safeResult = result && typeof result === 'object' ? result : {};
+      const statusClass = safeResult.status === 'ok' ? 'status-success' : (safeResult.status === 'warn' ? 'status-warning' : 'status-error');
+      const statusIcon = safeResult.status === 'ok' ? '✅' : (safeResult.status === 'warn' ? '⚠️' : '❌');
+      const steps = Array.isArray(safeResult.steps) ? safeResult.steps : [];
+      const stepsHtml = steps.map((step) => {
+        const stepIcon = step.status === 'ok' ? '✅' : (step.status === 'warn' ? '⚠️' : (step.status === 'error' ? '❌' : '⏳'));
+        const sample = step && step.sample && typeof step.sample === 'object' ? Object.entries(step.sample).filter((entry) => String(entry[1] || '').trim()) : [];
+        const sampleHtml = sample.length
+          ? `<div style="margin-top:6px; font-size:12px; color:#374151;"><strong>Sample:</strong> ${sample.map(([key, value]) => `${escapeApiTestHtml(key)}=${escapeApiTestHtml(value)}`).join(' • ')}</div>`
+          : '';
+        const adviceHtml = step.advice
+          ? `<div style="margin-top:6px; font-size:12px; color:#92400e;"><strong>Next step:</strong> ${escapeApiTestHtml(step.advice)}</div>`
+          : '';
+        return `
+          <li style="margin:0 0 10px 18px;">
+            <div style="font-weight:700; color:#111827;">${stepIcon} ${escapeApiTestHtml(step.label || step.key || 'Health check step')}</div>
+            <div style="margin-top:4px; color:#374151;">${escapeApiTestHtml(step.detail || 'No detail returned.')}</div>
+            ${sampleHtml}
+            ${adviceHtml}
+          </li>
+        `;
+      }).join('');
+
+      const contextLine = [
+        context && context.sourceLabel ? context.sourceLabel : '',
+        safeResult.query ? `Query: ${safeResult.query}` : '',
+        safeResult.placeIdUsed ? `Place ID: ${safeResult.placeIdUsed}` : '',
+        Number.isFinite(safeResult.durationMs) && safeResult.durationMs >= 0 ? `Duration: ${Math.max(1, Math.round(safeResult.durationMs))} ms` : ''
+      ].filter(Boolean).join(' • ');
+
+      return `
+        <div class="status-message ${statusClass}">
+          <div style="font-weight:700; margin-bottom:8px;">${statusIcon} ${escapeApiTestHtml(safeResult.summary || 'Places health check complete.')}</div>
+          ${contextLine ? `<div style="font-size:12px; color:#4b5563; margin-bottom:10px;">${escapeApiTestHtml(contextLine)}</div>` : ''}
+          ${stepsHtml ? `<ol style="margin:0; padding-left:0;">${stepsHtml}</ol>` : '<div style="font-size:12px; color:#4b5563;">No step diagnostics were returned.</div>'}
+        </div>
+      `;
+    }
+
     /**
      * Test Google Places API Connection
      */
-    function testGooglePlacesAPI() {
+    async function testGooglePlacesAPI() {
       const statusDiv = document.getElementById('api-test-status');
-      statusDiv.innerHTML = '<div class="status-message" style="background: #f3f4f6; color: #1f2937;"><span class="spinner"></span> Testing API connection...</div>';
+      statusDiv.innerHTML = '<div class="status-message" style="background: #f3f4f6; color: #1f2937;"><span class="spinner"></span> Running Places health check...</div>';
 
       try {
-        // Get API key from multiple sources
-        let hasApiKey = null;
+        const mainWindow = getMainWindowSafe();
+        const runner = typeof mainWindow.runPlacesHealthCheck === 'function'
+          ? mainWindow.runPlacesHealthCheck.bind(mainWindow)
+          : (typeof window.runPlacesHealthCheck === 'function' ? window.runPlacesHealthCheck.bind(window) : null);
 
-        // Try multiple sources for the API key
-        if (window.opener && !window.opener.closed) {
-          hasApiKey = window.opener.GOOGLE_PLACES_API_KEY ||
-                     window.opener.googlePlacesApiKey ||
-                     window.opener.GOOGLE_API_KEY;
+        if (!runner) {
+          throw new Error('Places health check is only available after the main app finishes loading. Open Edit Mode from `index.html`, then retry.');
         }
 
-        // If not in opener, check parent window
-        if (!hasApiKey && window.parent && window.parent !== window) {
-          hasApiKey = window.parent.GOOGLE_PLACES_API_KEY ||
-                     window.parent.googlePlacesApiKey ||
-                     window.parent.GOOGLE_API_KEY;
-        }
-
-        // If still not found, try looking in the main window's script tags
-        if (!hasApiKey && window.opener) {
-          const scripts = window.opener.document.querySelectorAll('script');
-          for (let script of scripts) {
-            const content = script.textContent;
-            if (content.includes('AIzaSy')) {
-              const match = content.match(/key:\s*['"](AIzaSy[^'"]+)['"]/);
-              if (match) {
-                hasApiKey = match[1];
-                break;
-              }
-            }
-          }
-        }
-
-        if (!hasApiKey) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No Google API key found.<br><br>💡 To fix this:<br>1. The main window (index.html) needs to load with a valid API key<br>2. Look for: key: "AIzaSy..."<br>3. If missing, get your key from <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a><br>4. Reload the page and try again</div>';
-          console.error('❌ No Google API key found');
-          return;
-        }
-
-        // Test 2: Simple fetch test to verify API endpoint
-        console.log('🧪 Testing Google Places API endpoint...');
-
-        const testUrl = 'https://places.googleapis.com/v1/places:searchText?key=' + hasApiKey;
-
-        fetch(testUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-FieldMask': 'places.displayName'
-          },
-          body: JSON.stringify({
-            textQuery: 'Starbucks'
-          })
-        })
-        .then(response => {
-          if (response.status === 403 || response.status === 401) {
-            throw new Error('API key invalid or not activated. Check Google Cloud Console.');
-          }
-          if (response.status === 400) {
-            throw new Error('Bad request. Check API configuration.');
-          }
-          if (!response.ok) {
-            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log('✅ Google Places API is working!', data);
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Success! Google Places API is connected and working correctly.</div>';
-        })
-        .catch(error => {
-          console.error('❌ API Test Error:', error);
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ API Error: ' + error.message + '<br><br>💡 To fix this:<br>1. Go to Google Cloud Console<br>2. Enable "Places API" for your project<br>3. Ensure your API key has the necessary permissions<br>4. Check CORS settings</div>';
+        const context = getPlacesHealthCheckContext();
+        const result = await runner({
+          query: context.query,
+          placeId: context.placeId
         });
+
+        console.log('🩺 Places health check result:', result);
+        statusDiv.innerHTML = formatPlacesHealthCheckResult(result, context);
+
+        const toastType = result.status === 'ok' ? 'success' : (result.status === 'warn' ? 'warning' : 'error');
+        const toastText = result.status === 'ok'
+          ? '✅ Places health check passed'
+          : (result.status === 'warn' ? '⚠️ Places health check completed with warnings' : '❌ Places health check failed');
+        showToast(toastText, toastType, 3500);
+        return result.ok;
       } catch (err) {
         console.error('❌ Test error:', err);
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: ' + err.message + '</div>';
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${escapeApiTestHtml(err.message || 'Unknown Places health check error')}</div>`;
+        showToast('❌ Places health check failed', 'error', 3500);
+        return false;
       }
     }
 

@@ -98,12 +98,18 @@
             <div class="card-subtitle">Directory sourced from <code>Nature_Locations.xlsx</code> / <code>Nature_Locations</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-outdoors" class="filter-input" type="text" placeholder="Search outdoor locations..." aria-label="Search outdoor locations" />
-          <select id="visitedExplorerSort-outdoors" class="filter-select" aria-label="Sort outdoor locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-outdoors" class="filter-select" aria-label="Filter outdoor locations by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-outdoors" class="filter-select" aria-label="Filter outdoor locations by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-outdoors" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search outdoor locations" />
+          <div id="visitedExplorerTagBar-outdoors" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-outdoors" class="filter-select" aria-label="Sort outdoor locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-outdoors" class="filter-select" aria-label="Filter outdoor locations by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-outdoors" class="filter-select" aria-label="Filter outdoor locations by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-outdoors" class="card-subtitle" style="margin-top:8px;">Loading outdoor locations...</div>
       </div>
       <div id="visitedExplorerList-outdoors" class="adventure-cards-grid" aria-live="polite"></div>
@@ -139,12 +145,18 @@
             <div class="card-subtitle">Directory of entertainment locations from <code>Entertainment_Locations.xlsx</code> / <code>General_Entertainment</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-entertainment" class="filter-input" type="text" placeholder="Search entertainment locations..." aria-label="Search entertainment locations" />
-          <select id="visitedExplorerSort-entertainment" class="filter-select" aria-label="Sort entertainment locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-entertainment" class="filter-select" aria-label="Filter entertainment by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-entertainment" class="filter-select" aria-label="Filter entertainment by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-entertainment" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search entertainment locations" />
+          <div id="visitedExplorerTagBar-entertainment" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-entertainment" class="filter-select" aria-label="Sort entertainment locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-entertainment" class="filter-select" aria-label="Filter entertainment by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-entertainment" class="filter-select" aria-label="Filter entertainment by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-entertainment" class="card-subtitle" style="margin-top:8px;">Loading entertainment locations...</div>
       </div>
       <div id="visitedExplorerList-entertainment" class="adventure-cards-grid" aria-live="polite"></div>
@@ -180,12 +192,18 @@
             <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> tables <code>Restaurants</code> and <code>Coffee</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-food-drink" class="filter-input" type="text" placeholder="Search food and drink locations..." aria-label="Search food and drink locations" />
-          <select id="visitedExplorerSort-food-drink" class="filter-select" aria-label="Sort food and drink locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-food-drink" class="filter-select" aria-label="Filter food and drink by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-food-drink" class="filter-select" aria-label="Filter food and drink by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-food-drink" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search food and drink locations" />
+          <div id="visitedExplorerTagBar-food-drink" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-food-drink" class="filter-select" aria-label="Sort food and drink locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-food-drink" class="filter-select" aria-label="Filter food and drink by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-food-drink" class="filter-select" aria-label="Filter food and drink by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-food-drink" class="card-subtitle" style="margin-top:8px;">Loading food and drink locations...</div>
       </div>
       <div id="visitedExplorerList-food-drink" class="adventure-cards-grid" aria-live="polite"></div>
@@ -221,12 +239,18 @@
             <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> / <code>Retail</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-retail" class="filter-input" type="text" placeholder="Search retail locations..." aria-label="Search retail locations" />
-          <select id="visitedExplorerSort-retail" class="filter-select" aria-label="Sort retail locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-retail" class="filter-select" aria-label="Filter retail by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-retail" class="filter-select" aria-label="Filter retail by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-retail" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search retail locations" />
+          <div id="visitedExplorerTagBar-retail" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-retail" class="filter-select" aria-label="Sort retail locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-retail" class="filter-select" aria-label="Filter retail by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-retail" class="filter-select" aria-label="Filter retail by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-retail" class="card-subtitle" style="margin-top:8px;">Loading retail locations...</div>
       </div>
       <div id="visitedExplorerList-retail" class="adventure-cards-grid" aria-live="polite"></div>
@@ -262,12 +286,18 @@
             <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Wildlife_Animals</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-wildlife-animals" class="filter-input" type="text" placeholder="Search wildlife and animal locations..." aria-label="Search wildlife and animal locations" />
-          <select id="visitedExplorerSort-wildlife-animals" class="filter-select" aria-label="Sort wildlife and animal locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-wildlife-animals" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search wildlife and animal locations" />
+          <div id="visitedExplorerTagBar-wildlife-animals" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-wildlife-animals" class="filter-select" aria-label="Sort wildlife and animal locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-wildlife-animals" class="card-subtitle" style="margin-top:8px;">Loading wildlife and animal locations...</div>
       </div>
       <div id="visitedExplorerList-wildlife-animals" class="adventure-cards-grid" aria-live="polite"></div>
@@ -302,12 +332,18 @@
             <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Festivals</code>.</div>
           </div>
         </div>
-        <div class="visited-explorer-filter-grid ui-filter-grid">
-          <input id="visitedExplorerSearch-regional-festivals" class="filter-input" type="text" placeholder="Search regional festivals..." aria-label="Search regional festivals" />
-          <select id="visitedExplorerSort-regional-festivals" class="filter-select" aria-label="Sort regional festivals"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
-          <select id="visitedExplorerState-regional-festivals" class="filter-select" aria-label="Filter regional festivals by state"><option value="all">State: All</option></select>
-          <select id="visitedExplorerCity-regional-festivals" class="filter-select" aria-label="Filter regional festivals by city"><option value="all">City: All</option></select>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-regional-festivals" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search regional festivals" />
+          <div id="visitedExplorerTagBar-regional-festivals" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
         </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-regional-festivals" class="filter-select" aria-label="Sort regional festivals"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-regional-festivals" class="filter-select" aria-label="Filter regional festivals by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-regional-festivals" class="filter-select" aria-label="Filter regional festivals by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
         <div id="visitedExplorerMeta-regional-festivals" class="card-subtitle" style="margin-top:8px;">Loading regional festivals...</div>
       </div>
       <div id="visitedExplorerList-regional-festivals" class="adventure-cards-grid" aria-live="polite"></div>
