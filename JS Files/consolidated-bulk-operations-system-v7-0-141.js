@@ -87,6 +87,27 @@ function pushWorkbookWriteDebug(event, details) {
   } catch (_error) {}
 }
 
+function showLiveGoogleUnavailableCachedToast(contextLabel, extraDetail) {
+  try {
+    const context = String(contextLabel || 'bulk-automation').trim() || 'bulk-automation';
+    const now = Date.now();
+    const cooldownMs = 45000;
+    window.__bulkGoogleDiagToastState = window.__bulkGoogleDiagToastState || {};
+    const lastTs = Number(window.__bulkGoogleDiagToastState[context] || 0);
+    if (now - lastTs < cooldownMs) return;
+    window.__bulkGoogleDiagToastState[context] = now;
+
+    const msg = 'Live Google provider unavailable; using cached data';
+    const detail = String(extraDetail || '').trim();
+    if (typeof window.showToast === 'function') {
+      window.showToast(detail ? `${msg} (${detail})` : msg, 'warning', 5200);
+    }
+    console.warn(`⚠️ ${msg}${detail ? ` (${detail})` : ''} [context=${context}]`);
+  } catch (_error) {
+    // Non-blocking diagnostics helper.
+  }
+}
+
 window.getWorkbookWriteDebugLog = function(limit = 50) {
   const cap = Math.max(1, Number(limit) || 50);
   const list = Array.isArray(window.__workbookWriteDebugLog) ? window.__workbookWriteDebugLog : [];
@@ -1215,8 +1236,14 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
   try {
     const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
     const forceRefresh = !!options.forceRefresh;
-    const allowCachedFallback = options.allowCachedFallback !== false;
+    const hasAllowCachedFallbackOption = Object.prototype.hasOwnProperty.call(options || {}, 'allowCachedFallback');
+    // When forceRefresh is requested, default to live-only unless explicitly overridden.
+    const allowCachedFallback = hasAllowCachedFallbackOption
+      ? options.allowCachedFallback !== false
+      : !forceRefresh;
     const helperContext = options.context || 'bulk-automation';
+    const hasMainWindowLookup = !!(mainWindow && typeof mainWindow.getPlaceDetails === 'function');
+    const hasLocalWindowLookup = !!(typeof window.getPlaceDetails === 'function' && window.getPlaceDetails !== mainWindow?.getPlaceDetails);
     const diagBase = {
       placeId: String(placeId || '').trim(),
       context: helperContext,
@@ -1231,7 +1258,7 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       __sourceDiag: { ...diagBase, ...diagPatch }
     });
 
-    if (mainWindow && typeof mainWindow.getPlaceDetails === 'function') {
+    if (hasMainWindowLookup) {
       diagBase.liveLookupAttempted = true;
       diagBase.liveLookupProvider = 'mainWindow.getPlaceDetails';
       try {
@@ -1253,7 +1280,7 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       }
     }
 
-    if (typeof window.getPlaceDetails === 'function' && window.getPlaceDetails !== mainWindow?.getPlaceDetails) {
+    if (hasLocalWindowLookup) {
       diagBase.liveLookupAttempted = true;
       diagBase.liveLookupProvider = 'window.getPlaceDetails';
       try {
@@ -1275,9 +1302,31 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       }
     }
 
+    if (forceRefresh && !hasMainWindowLookup && !hasLocalWindowLookup) {
+      console.warn(`⚠️ Live Google lookup unavailable for ${placeId}; no getPlaceDetails provider was found.`);
+      return withDiag({
+        website: '',
+        phone: '',
+        hours: '',
+        address: '',
+        rating: '',
+        description: '',
+        directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
+      }, {
+        liveLookupStatus: 'provider-unavailable',
+        source: 'live-provider-unavailable',
+        hasMeaningfulDetails: false
+      });
+    }
+
     if (allowCachedFallback) {
       const cached = getCachedPlaceDetailsFromRows(placeId, mainWindow);
       if (hasMeaningfulBulkOpsDetails(cached)) {
+        const liveUnavailable = !diagBase.liveLookupAttempted;
+        const liveFailed = ['error', 'empty-result', 'provider-unavailable', 'helper-error'].includes(String(diagBase.liveLookupStatus || '').trim());
+        if (liveUnavailable || liveFailed) {
+          showLiveGoogleUnavailableCachedToast(helperContext, liveUnavailable ? 'provider unavailable' : 'live lookup returned no usable details');
+        }
         console.log(`✅ Using cached row data for ${placeId}`);
         return withDiag(cached, {
           source: 'cached-row',

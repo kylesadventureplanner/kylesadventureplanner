@@ -40,6 +40,12 @@
     <!-- APP QUALITY SYSTEM - UNIFIED (Reliability + Performance + Debug = All 26 Features) -->
     <script src="JS Files/app-quality-system.js"></script>
 
+    <!-- PERSISTENT DIAGNOSTICS TRACKER - Real-time data provider health metrics -->
+    <script src="JS Files/persistent-diagnostics-tracker.js"></script>
+
+    <!-- DIAGNOSTICS REPORTING UTILITIES - Helper functions for application code -->
+    <script src="JS Files/diagnostics-reporting-utils.js"></script>
+
     <!-- ULTIMATE BUTTON RELIABILITY SYSTEM - Ensures 100% button responsiveness -->
     <script src="JS Files/button-reliability-system.js"></script>
 
@@ -25288,6 +25294,25 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       };
     }
 
+    function normalizeWorkbookCellForCompare(value) {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+      if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+      return String(value).replace(/\r\n/g, '\n').trim();
+    }
+
+    function rowsEquivalentForWorkbookVerification(expectedRow, actualRow) {
+      const left = Array.isArray(expectedRow) ? expectedRow : [];
+      const right = Array.isArray(actualRow) ? actualRow : [];
+      const maxLen = Math.max(left.length, right.length);
+      for (let i = 0; i < maxLen; i += 1) {
+        if (normalizeWorkbookCellForCompare(left[i]) !== normalizeWorkbookCellForCompare(right[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     window.getColumnIndexByName = window.getColumnIndexByName || function(name, aliases = []) {
       const wanted = [name].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
       if (!wanted.length) return -1;
@@ -25515,13 +25540,13 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
          }
 
         let verified = false;
-         let verifyPayload = null;
+        let verifyPayload = null;
         try {
           const verifyResponse = await fetch(updateUrl, {
             headers: {
               Authorization: `Bearer ${token}`,
-               'Content-Type': 'application/json',
-               ...(workbookSessionId ? { 'workbook-session-id': workbookSessionId } : {})
+              'Content-Type': 'application/json',
+              ...(workbookSessionId ? { 'workbook-session-id': workbookSessionId } : {})
             }
           });
           if (verifyResponse.ok) {
@@ -25529,34 +25554,46 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
             const saved = Array.isArray(verifyPayload.values) && Array.isArray(verifyPayload.values[0])
               ? verifyPayload.values[0]
               : [];
-            verified = JSON.stringify(saved) === JSON.stringify(normalizedValues);
+            verified = rowsEquivalentForWorkbookVerification(normalizedValues, saved);
           }
         } catch (_verifyError) {
           verified = false;
         }
 
-         let freshVerifyPayload = null;
-         let freshVerified = false;
-         try {
-           const freshVerifyUrl = `${updateUrl}${updateUrl.includes('?') ? '&' : '?'}_fresh=${Date.now()}`;
-           const freshVerifyResponse = await fetch(freshVerifyUrl, {
-             headers: {
-               Authorization: `Bearer ${token}`,
-               'Content-Type': 'application/json'
-             }
-           });
-           if (freshVerifyResponse.ok) {
-             freshVerifyPayload = await freshVerifyResponse.json().catch(() => ({}));
-             const freshSaved = Array.isArray(freshVerifyPayload.values) && Array.isArray(freshVerifyPayload.values[0])
-               ? freshVerifyPayload.values[0]
-               : [];
-             freshVerified = JSON.stringify(freshSaved) === JSON.stringify(normalizedValues);
-           }
-         } catch (_freshVerifyError) {
-           freshVerified = false;
-         }
+        // Commit the persistent workbook session before fresh verification.
+        await closeWorkbookSession(workbookSessionId);
+        workbookSessionId = '';
 
-         const fullyVerified = verified && freshVerified;
+        let freshVerifyPayload = null;
+        let freshVerified = false;
+        let freshVerifyAttempts = 0;
+        try {
+          for (let attempt = 1; attempt <= 3; attempt += 1) {
+            freshVerifyAttempts = attempt;
+            const freshVerifyUrl = `${updateUrl}${updateUrl.includes('?') ? '&' : '?'}_fresh=${Date.now()}_${attempt}`;
+            const freshVerifyResponse = await fetch(freshVerifyUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            if (freshVerifyResponse.ok) {
+              freshVerifyPayload = await freshVerifyResponse.json().catch(() => ({}));
+              const freshSaved = Array.isArray(freshVerifyPayload.values) && Array.isArray(freshVerifyPayload.values[0])
+                ? freshVerifyPayload.values[0]
+                : [];
+              freshVerified = rowsEquivalentForWorkbookVerification(normalizedValues, freshSaved);
+              if (freshVerified) break;
+            }
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 180 * attempt));
+            }
+          }
+        } catch (_freshVerifyError) {
+          freshVerified = false;
+        }
+
+        const fullyVerified = verified || freshVerified;
 
          if (typeof window.pushWorkbookPatchDiagnostic === 'function') {
             window.pushWorkbookPatchDiagnostic(fullyVerified ? 'success' : 'warn', fullyVerified
@@ -25568,7 +25605,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              rowRef,
              updateUrl,
              columnDiagnostics: writeColumnDiagnostics,
-               detail: `values=${normalizedValues.length} • inSession=${verified ? 'ok' : 'no'} • freshSession=${freshVerified ? 'ok' : 'no'} • description="${writeColumnDiagnostics.descriptionHeader}"@${writeColumnDiagnostics.descriptionIndex} • legacy16Updated=${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`,
+               detail: `values=${normalizedValues.length} • inSession=${verified ? 'ok' : 'no'} • freshSession=${freshVerified ? 'ok' : 'no'} • freshAttempts=${freshVerifyAttempts} • description="${writeColumnDiagnostics.descriptionHeader}"@${writeColumnDiagnostics.descriptionIndex} • legacy16Updated=${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`,
              rawPayload: {
                patchResponse: patchPayload,
                verifyResponse: verifyPayload,

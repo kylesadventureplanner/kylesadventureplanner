@@ -443,45 +443,77 @@
     });
   }
 
-  function renderOverviewSection(snapshot) {
-    var summary = createSyncSummary(snapshot);
-    var reliability = snapshot.reliability;
-    var knownGood = snapshot.knownGood;
-    return [
-      '<div class="diagnostics-hub-grid">',
-      '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Local-only data that still needs backend sync</div>',
-      '<div class="diagnostics-hub-kpi">' + escHtml(String(summary.pendingSyncRecords)) + '</div>',
-      '<div class="diagnostics-hub-note">Includes offline queue items, Adventure Challenge pending tracker rows, and Nature Challenge queued writes.</div>',
-      '</section>',
-      '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Device-only storage entries</div>',
-      '<div class="diagnostics-hub-kpi">' + escHtml(String(summary.deviceOnlyEntries)) + '</div>',
-      '<div class="diagnostics-hub-note">Preferences, caches, drafts, and reliability baselines that intentionally stay on this device.</div>',
-      '</section>',
-      '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Backend readiness</div>',
-      '<div class="diagnostics-hub-kpi ' + (summary.hasSetupIssues ? 'is-warn' : 'is-good') + '">' + escHtml(summary.hasSetupIssues ? 'Needs review' : 'Ready') + '</div>',
-      '<div class="diagnostics-hub-note">Flags missing auth, workbook routing issues, and schema mismatches that can force data to remain local-only.</div>',
-      '</section>',
-      '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Reliability snapshot</div>',
-      '<div class="diagnostics-hub-kpi">' + escHtml(reliability ? String(reliability.errorCount || 0) : '0') + '</div>',
-      '<div class="diagnostics-hub-note">Recent runtime errors. Known-good baselines saved in this browser: ' + escHtml(String(knownGood.count || 0)) + '.</div>',
-      '</section>',
-      '</div>',
-      '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
-      '<div class="diagnostics-hub-card-title">How to use this hub</div>',
-      '<ul class="diagnostics-hub-bullets">',
-      '<li><strong>Overview</strong> gives a quick health check across queues, device-only storage, and reliability.</li>',
-      '<li><strong>Local-only data</strong> lists what is currently stored in this browser and whether it is supposed to sync to Excel.</li>',
-      '<li><strong>Sync recovery</strong> provides one-click retry actions for queue replays and export-ready diagnostics.</li>',
-      '<li><strong>Setup guide</strong> explains why a record may be local only because configuration is missing or mismatched.</li>',
-      '<li><strong>Nearby & City Explorer</strong> explains saved-vs-web recommendation behavior, filters, and map actions.</li>',
-      '</ul>',
-      '</section>'
-    ].join('');
-  }
+   function renderPersistentMetricsCard(snapshot) {
+     var tracker = window.PersistentDiagnosticsTracker || { metrics: {} };
+     var metrics = tracker.getMetrics ? tracker.getMetrics() : tracker.metrics;
+     var lastOpTime = metrics.lastAffectedOperationTime
+       ? formatRelativeAge(metrics.lastAffectedOperationTime)
+       : 'never';
+
+     return [
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">📊 Active Data Provider Health</div>',
+       '<div class="diagnostics-hub-grid" style="grid-template-columns:repeat(3,1fr);gap:12px;">',
+       '<div style="border:1px solid #cbd5e1;padding:10px;border-radius:6px;background:#fff7ed;">',
+       '<div class="diagnostics-hub-kpi is-warn" style="font-size:20px;margin-bottom:4px;">' + escHtml(String(metrics.liveProviderUnavailableCount || 0)) + '</div>',
+       '<div class="diagnostics-hub-note" style="font-size:11px;">Live provider unavailable</div>',
+       '</div>',
+       '<div style="border:1px solid #cbd5e1;padding:10px;border-radius:6px;background:#fff7ed;">',
+       '<div class="diagnostics-hub-kpi is-warn" style="font-size:20px;margin-bottom:4px;">' + escHtml(String(metrics.cachedRowFallbackCount || 0)) + '</div>',
+       '<div class="diagnostics-hub-note" style="font-size:11px;">Cached row fallbacks</div>',
+       '</div>',
+       '<div style="border:1px solid #bfdbfe;padding:10px;border-radius:6px;background:#eff6ff;">',
+       '<div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:4px;">Last operation</div>',
+       '<div class="diagnostics-hub-note" style="font-size:11px;">' + escHtml(metrics.lastAffectedOperation || 'none') + '</div>',
+       '<div class="diagnostics-hub-note" style="font-size:10px;color:#64748b;">' + escHtml(lastOpTime) + '</div>',
+       '</div>',
+       '</div>',
+       '<div class="diagnostics-hub-note" style="margin-top:8px;">These metrics track when data retrieval falls back to cached rows due to live provider unavailability. Each event is logged and can be exported for debugging.</div>',
+       '</section>'
+     ].join('');
+   }
+
+   function renderOverviewSection(snapshot) {
+     var summary = createSyncSummary(snapshot);
+     var reliability = snapshot.reliability;
+     var knownGood = snapshot.knownGood;
+     return [
+       '<div class="diagnostics-hub-grid">',
+       renderPersistentMetricsCard(snapshot),
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">Local-only data that still needs backend sync</div>',
+       '<div class="diagnostics-hub-kpi">' + escHtml(String(summary.pendingSyncRecords)) + '</div>',
+       '<div class="diagnostics-hub-note">Includes offline queue items, Adventure Challenge pending tracker rows, and Nature Challenge queued writes.</div>',
+       '</section>',
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">Device-only storage entries</div>',
+       '<div class="diagnostics-hub-kpi">' + escHtml(String(summary.deviceOnlyEntries)) + '</div>',
+       '<div class="diagnostics-hub-note">Preferences, caches, drafts, and reliability baselines that intentionally stay on this device.</div>',
+       '</section>',
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">Backend readiness</div>',
+       '<div class="diagnostics-hub-kpi ' + (summary.hasSetupIssues ? 'is-warn' : 'is-good') + '">' + escHtml(summary.hasSetupIssues ? 'Needs review' : 'Ready') + '</div>',
+       '<div class="diagnostics-hub-note">Flags missing auth, workbook routing issues, and schema mismatches that can force data to remain local-only.</div>',
+       '</section>',
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">Reliability snapshot</div>',
+       '<div class="diagnostics-hub-kpi">' + escHtml(reliability ? String(reliability.errorCount || 0) : '0') + '</div>',
+       '<div class="diagnostics-hub-note">Recent runtime errors. Known-good baselines saved in this browser: ' + escHtml(String(knownGood.count || 0)) + '.</div>',
+       '</section>',
+       '</div>',
+       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
+       '<div class="diagnostics-hub-card-title">How to use this hub</div>',
+       '<ul class="diagnostics-hub-bullets">',
+       '<li><strong>Overview</strong> gives a quick health check across queues, device-only storage, reliability, and data provider health.</li>',
+       '<li><strong>Local-only data</strong> lists what is currently stored in this browser and whether it is supposed to sync to Excel.</li>',
+       '<li><strong>Sync recovery</strong> provides one-click retry actions for queue replays and export-ready diagnostics.</li>',
+       '<li><strong>Setup guide</strong> explains why a record may be local only because configuration is missing or mismatched.</li>',
+       '<li><strong>Nearby & City Explorer</strong> explains saved-vs-web recommendation behavior, filters, and map actions.</li>',
+       '<li><strong>Data Provider Health</strong> tracks when live data providers become unavailable and when cached row fallbacks occur.</li>',
+       '</ul>',
+       '</section>'
+     ].join('');
+   }
 
   function renderStorageSection(snapshot) {
     var offline = snapshot.offline || { queueItems: [] };
