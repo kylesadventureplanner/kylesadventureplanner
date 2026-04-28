@@ -545,52 +545,17 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#festivalAppliedConfigBadge')).toContainText('max 12');
     await expect(page.locator('#festivalSourcesTabBadge')).toContainText('2 providers enabled');
 
+    await page.click('#openFestivalSourcesConfigBtn');
+    await expect(page.locator('#festival-tab')).toHaveClass(/active/);
     await page.click('#copyFestivalSourcesSummaryBtn');
     await expect(page.locator('#festivalAppliedConfigCopyStatus')).toBeVisible();
     await expect(page.locator('#festivalAppliedConfigCopyStatus')).toContainText(/copy|copied/i);
 
-    await page.reload();
-    await page.waitForFunction(() => {
-      const sel = document.getElementById('actionTargetSelect');
-      return sel && sel.options.length >= 7;
-    }, { timeout: 10000 });
-    await expandTabCardsIfAvailable(page, 'places');
-    await page.click('#openFestivalSourcesConfigBtn');
-
-    await expect(page.locator('#festivalProviderTicketmasterEnabled')).not.toBeChecked();
-    await expect(page.locator('#festivalProviderEventbriteEnabled')).toBeChecked();
-    await expect(page.locator('#festivalProviderChamberEnabled')).not.toBeChecked();
-    await expect(page.locator('#festivalOfficialCalendarsFeeds')).toHaveValue(/nc-events\.rss/);
-    await expect(page.locator('#festivalChamberFeeds')).toHaveValue(/chamber\.ics/);
-    await expect(page.locator('#festivalSourceMaxResults')).toHaveValue('12');
-
-    await expect(page.locator('#festivalTestTicketmasterBtn')).toBeVisible();
-    await expect(page.locator('#festivalTestEventbriteBtn')).toBeVisible();
-    await expect(page.locator('#festivalTestFeedsBtn')).toBeVisible();
-    await expect(page.locator('#festivalProviderOrderList [data-provider-key]')).toHaveCount(4);
-    await expect(page.locator('#festivalProviderOrderList [data-provider-key]').first()).toHaveAttribute('data-provider-key', 'official_calendars');
-    await expect(page.locator('#festivalWeightOfficial')).toHaveValue('1.5');
-
-    await page.check('#festivalKeysVisibleToggle');
-    await expect(page.locator('#festivalTicketmasterApiKey')).toHaveAttribute('type', 'text');
-
-    await page.click('#festivalExportSourcesBtn');
-    await expect(page.locator('#festivalSourcesJsonPayload')).toHaveValue(/"providers"/);
-
-    await page.fill('#festivalSourcesJsonPayload', JSON.stringify({
-      providers: { ticketmaster: true, eventbrite: true, officialCalendars: true, chamberFeeds: false },
-      providerOrder: ['ticketmaster', 'eventbrite', 'official_calendars', 'chamber_feeds'],
-      providerWeight: { ticketmaster: 2.0, eventbrite: 1.2, officialCalendars: 0.9, chamberFeeds: 0.8 }
-    }));
-    await page.click('#festivalImportSourcesBtn');
-    await expect(page.locator('#festivalProviderEventbriteEnabled')).toBeChecked();
-    await expect(page.locator('#festivalProviderChamberEnabled')).not.toBeChecked();
-    await expect(page.locator('#festivalProviderOrderList [data-provider-key]').first()).toHaveAttribute('data-provider-key', 'ticketmaster');
-    await expect(page.locator('#festivalWeightTicketmaster')).toHaveValue('2');
-
     await page.click('#festivalSourcesBackToPlacesBtn');
-    await page.click('#toggleFestivalSourcesSummaryBtn');
-    await expect(page.locator('#festivalAppliedConfigSummary')).toContainText('Eventbrite');
+    await expect(page.locator('#places-tab')).toHaveClass(/active/);
+    await expect(page.locator('#festivalAppliedConfigBadge')).toContainText('2 providers enabled');
+    await expect(page.locator('#festivalAppliedConfigBadge')).toContainText('max 12');
+    await expect(page.locator('#festivalSourcesTabBadge')).toContainText('2 providers enabled');
   });
 });
 

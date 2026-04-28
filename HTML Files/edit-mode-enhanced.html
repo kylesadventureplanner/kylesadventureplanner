@@ -1276,19 +1276,21 @@
     </div>
 
     <div id="festival-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-festival" tabindex="0" hidden>
+      <div id="festivalSourcesConfigPage">
       <div class="card">
         <div class="card-title">🎪 Festival Sources Overview</div>
         <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Festival provider configuration has its own workspace so Add Places stays focused.</p>
         <div class="button-group">
           <button id="toggleFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="toggleFestivalSourcesConfigSummary()">👁️ View Applied Config</button>
           <button id="copyFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="copyFestivalSourcesConfigSummary()">📋 Copy Summary</button>
-          <button id="festivalSourcesBackToPlacesBtn" class="button button-secondary" type="button" onclick="closeFestivalSourcesConfigView()">← Back to Add Places</button>
+          <button id="festivalSourcesBackToPlacesBtn" class="button button-secondary" type="button" onclick="closeFestivalSourcesConfigView()">← Back to Add Places<span id="festivalSourcesBackDirtyDot" class="festival-back-dirty-dot" hidden title="Unsaved changes"></span></button>
         </div>
         <div id="festivalAppliedConfigBadge" class="festival-config-badge">3 providers enabled • max 8</div>
         <div id="festivalAppliedConfigCopyStatus" class="help-text" hidden></div>
         <div id="festivalAppliedConfigSummary" class="help-text" hidden>⏳ Loading applied config. Wait a moment, then review your active settings.</div>
       </div>
       <div id="festivalSourcesConfigMount"></div>
+      </div>
     </div>
 
     <!-- Automation Tab -->
