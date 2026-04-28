@@ -28,6 +28,24 @@ async function gotoEditMode(page, url = '/HTML Files/edit-mode-enhanced.html') {
   }, { timeout: 10000 });
 }
 
+async function expandTabCardsIfAvailable(page, tabName) {
+  const tabPanel = page.locator(`#${tabName}-tab`);
+  const expandAllBtn = tabPanel.locator('.edit-section-visibility-btn', { hasText: /Expand all/i }).first();
+  if (await expandAllBtn.count()) {
+    await expandAllBtn.click();
+    return;
+  }
+
+  const toggleButtons = tabPanel.locator('.edit-card-collapse-btn');
+  const toggleCount = await toggleButtons.count();
+  for (let i = 0; i < toggleCount; i += 1) {
+    const toggleBtn = toggleButtons.nth(i);
+    if (/expand/i.test((await toggleBtn.textContent()) || '')) {
+      await toggleBtn.click();
+    }
+  }
+}
+
 test.describe('Edit Mode – global header button', () => {
   test('header contains #globalEditModeBtn with correct label and handler', async ({ page }) => {
     await page.goto('/');
@@ -42,6 +60,7 @@ test.describe('Edit Mode – global header button', () => {
 test.describe('Edit Mode – target-table selectors', () => {
   test.beforeEach(async ({ page }) => {
     await gotoEditMode(page);
+    await expandTabCardsIfAvailable(page, 'places');
   });
 
   test('action target select has all 7 tables', async ({ page }) => {
@@ -104,6 +123,7 @@ test.describe('Edit Mode – target-table selectors', () => {
 
   test('automation tab exposes dedicated Search Missing Place IDs action', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
+    await expandTabCardsIfAvailable(page, 'automation');
     const searchBtn = page.locator('#searchMissingPlaceIdsBtn');
     await expect(searchBtn).toBeVisible();
     await expect(searchBtn).toHaveText(/Search Missing Place IDs/i);
@@ -423,7 +443,6 @@ test.describe('Edit Mode – target-table selectors', () => {
 
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {
     await expect(page.locator('#openFestivalSourcesConfigBtn')).toBeVisible();
-    await expect(page.locator('#festivalAppliedConfigBadge')).toBeVisible();
     await expect(page.locator('#festivalSourcesTabBadge')).toContainText(/providers enabled/i);
     await expect(page.locator('#dedupeBulkInputNowBtn')).toBeVisible();
     await expect(page.locator('#resetTargetStarterRecommendationsBtn')).toBeVisible();
@@ -453,17 +472,17 @@ test.describe('Edit Mode – target-table selectors', () => {
 
     await page.selectOption('#actionTargetSelect', 'ent_festivals');
     await expect(page.locator('#targetStarterRecommendations')).toHaveValue(/ncapplefestival\.org/i);
-    await expect(page.locator('#festivalSourcesConfigPage')).toBeHidden();
+    await expect(page.locator('#festival-tab')).not.toHaveClass(/active/);
 
+    await page.click('#openFestivalSourcesConfigBtn');
+    await expect(page.locator('#festival-tab')).toHaveClass(/active/);
+    await expandTabCardsIfAvailable(page, 'festival');
+    await expect(page.locator('#festivalAppliedConfigBadge')).toBeVisible();
     await page.click('#toggleFestivalSourcesSummaryBtn');
     await expect(page.locator('#festivalAppliedConfigSummary')).toBeVisible();
     await expect(page.locator('#festivalAppliedConfigSummary')).toContainText('Enabled:');
     await page.click('#toggleFestivalSourcesSummaryBtn');
     await expect(page.locator('#festivalAppliedConfigSummary')).toBeHidden();
-
-    await page.click('#openFestivalSourcesConfigBtn');
-    await expect(page.locator('#festivalSourcesConfigPage')).toBeVisible();
-    await expect(page.locator('#placesMainContent')).toBeHidden();
     await expect(page.locator('#festivalSourcesConfigCard .card-title')).toBeVisible();
     await expect(page.locator('#festivalProviderTicketmasterEnabled')).toBeChecked();
     await expect(page.locator('#festivalProviderOfficialEnabled')).toBeChecked();
@@ -521,8 +540,7 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#festivalSourcesBackDirtyDot')).toBeHidden();
 
     await page.click('#festivalSourcesBackToPlacesBtn');
-    await expect(page.locator('#festivalSourcesConfigPage')).toBeHidden();
-    await expect(page.locator('#placesMainContent')).toBeVisible();
+    await expect(page.locator('#places-tab')).toHaveClass(/active/);
     await expect(page.locator('#festivalAppliedConfigBadge')).toContainText('2 providers enabled');
     await expect(page.locator('#festivalAppliedConfigBadge')).toContainText('max 12');
     await expect(page.locator('#festivalSourcesTabBadge')).toContainText('2 providers enabled');
@@ -536,6 +554,7 @@ test.describe('Edit Mode – target-table selectors', () => {
       const sel = document.getElementById('actionTargetSelect');
       return sel && sel.options.length >= 7;
     }, { timeout: 10000 });
+    await expandTabCardsIfAvailable(page, 'places');
     await page.click('#openFestivalSourcesConfigBtn');
 
     await expect(page.locator('#festivalProviderTicketmasterEnabled')).not.toBeChecked();

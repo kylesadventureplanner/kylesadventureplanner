@@ -20,6 +20,8 @@
       window.__cvMapsQueue = [];
     };
   </script>
+  <link rel="stylesheet" href="../CSS/design-tokens.css">
+  <link rel="stylesheet" href="../CSS/components.css">
   <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
     * {
@@ -32,7 +34,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f9fafb;
       color: #1f2937;
-      padding: 20px;
+      padding: var(--ui-shell-padding, 20px);
     }
 
     .container {
@@ -43,9 +45,9 @@
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 24px;
-      border-radius: 12px;
-      margin-bottom: 24px;
+      padding: var(--ui-space-24, 24px);
+      border-radius: var(--ui-card-radius, 12px);
+      margin-bottom: var(--ui-space-24, 24px);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -53,7 +55,7 @@
 
     .header h1 {
       font-size: 28px;
-      margin-bottom: 4px;
+      margin-bottom: calc(var(--ui-space-8, 8px) / 2);
     }
 
     .header-subtitle {
@@ -84,8 +86,8 @@
 
     .controls {
       display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
+      gap: var(--ui-space-12, 12px);
+      margin-bottom: var(--ui-space-24, 24px);
       flex-wrap: wrap;
     }
 
@@ -93,9 +95,9 @@
       flex-basis: 100%;
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--ui-space-8, 8px);
       align-items: center;
-      margin-top: 2px;
+      margin-top: calc(var(--ui-space-8, 8px) / 4);
     }
 
     .city-prefilter-notice {
@@ -103,8 +105,8 @@
       flex-basis: 100%;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
+      gap: var(--ui-space-12, 12px);
+      padding: var(--ui-space-12, 12px);
       border-radius: 10px;
       border: 1px solid #bfdbfe;
       background: #eff6ff;
@@ -138,7 +140,7 @@
       font-size: 12px;
       font-weight: 700;
       color: #6b7280;
-      margin-right: 2px;
+      margin-right: calc(var(--ui-space-8, 8px) / 4);
     }
 
     .active-source-chip {
@@ -204,7 +206,7 @@
     .city-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
+      gap: var(--ui-shell-gap, 20px);
     }
 
     .city-card {
@@ -325,13 +327,13 @@
     .locations-header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 20px 24px;
+      padding: var(--ui-shell-padding, 20px) var(--ui-space-24, 24px);
       border-radius: 12px;
-      margin-bottom: 20px;
+      margin-bottom: var(--ui-shell-gap, 20px);
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 8px;
+      gap: var(--ui-space-8, 8px);
     }
 
      .back-btn {
@@ -366,8 +368,8 @@
       background: white;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
+      padding: var(--ui-space-12, 12px) var(--ui-card-padding-x, 14px);
+      margin-bottom: var(--ui-space-12, 12px);
       box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
       backdrop-filter: blur(2px);
     }
@@ -375,7 +377,7 @@
     .loc-primary-toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: var(--ui-space-12, 12px);
       align-items: end;
       margin-bottom: 10px;
     }
@@ -1332,8 +1334,8 @@
 
     @media (max-width: 900px) {
       .locations-controls {
-        padding: 10px 12px;
-        margin-bottom: 10px;
+        padding: var(--ui-space-8, 8px) var(--ui-space-12, 12px);
+        margin-bottom: var(--ui-space-8, 8px);
       }
 
       .loc-primary-main {
@@ -1350,8 +1352,8 @@
 
       .locations-controls-grid {
         grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: var(--ui-space-8, 8px);
+        margin-bottom: var(--ui-space-8, 8px);
       }
 
       .loc-presets-row {
@@ -1367,17 +1369,17 @@
 
     @media (max-width: 600px) {
       .locations-controls {
-        padding: 8px 10px;
-        margin-bottom: 8px;
+        padding: var(--ui-space-8, 8px) var(--ui-space-8, 8px);
+        margin-bottom: var(--ui-space-8, 8px);
       }
 
       .loc-primary-toolbar {
-        gap: 8px;
+        gap: var(--ui-space-8, 8px);
       }
 
       .loc-primary-main {
         grid-template-columns: 1fr;
-        gap: 8px;
+        gap: var(--ui-space-8, 8px);
       }
 
       .loc-primary-actions,
@@ -1996,8 +1998,8 @@
     }
     .header-stats {
       display: flex;
-      gap: 10px;
-      margin-top: 10px;
+      gap: var(--ui-space-12, 12px);
+      margin-top: var(--ui-space-12, 12px);
       flex-wrap: wrap;
     }
     .header-stat-pill {
@@ -2236,7 +2238,7 @@
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255,255,255,0.7);
       border-radius: 14px;
-      padding: 14px 16px;
+      padding: var(--ui-card-padding-y, 12px) var(--ui-space-16, 16px);
       box-shadow: 0 4px 20px rgba(102,126,234,0.08);
     }
 
@@ -2594,12 +2596,12 @@
 
       <!-- Filter & Sort Controls (mirrors Adventure Planner) -->
       <div class="locations-controls">
-        <div class="loc-filter-header">
+        <div class="loc-filter-header ui-section-header-row">
           <div>
             <span class="loc-filter-section-label">Quick Find</span>
             <div class="loc-filter-subcopy">Start with search, tags, or sort. Open advanced filters only when you need more control.</div>
           </div>
-          <button type="button" class="loc-filter-toggle-btn is-collapsed" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="false" title="Collapse/expand advanced filters"><span class="loc-filter-toggle-caret" aria-hidden="true">▾</span><span class="loc-filter-toggle-label">More Filters</span></button>
+          <button type="button" class="loc-filter-toggle-btn ui-section-toggle-btn is-collapsed" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="false" title="Collapse/expand advanced filters"><span class="loc-filter-toggle-caret ui-section-toggle-caret" aria-hidden="true">▾</span><span class="loc-filter-toggle-label ui-section-toggle-label">More Filters</span></button>
         </div>
         <div class="loc-primary-toolbar">
           <div class="loc-primary-main">
@@ -2634,8 +2636,8 @@
                 </select>
                 <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
               </div>
-              <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
-              <button id="copyShareBtn" class="loc-mini-btn" onclick="copyShareLink()">Copy Share Link</button>
+              <button class="loc-mini-btn ui-btn ui-btn--mini" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+              <button id="copyShareBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="copyShareLink()">Copy Share Link</button>
               <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
               <div class="loc-results-count" id="locResultsCount">0 locations</div>
             </div>
@@ -2719,16 +2721,16 @@
       </div>
 
       <div class="loc-status-strip">
-        <div class="loc-status-header">
+        <div class="loc-status-header ui-section-header-row">
           <span class="loc-filter-section-label">Source diagnostics</span>
-          <button type="button" class="loc-status-toggle-btn is-collapsed" id="locStatusToggleBtn" onclick="toggleLocStatusPanel()" aria-expanded="false" title="Collapse/expand source diagnostics"><span class="loc-status-toggle-caret" aria-hidden="true">▾</span><span class="loc-status-toggle-label">Show Details</span></button>
+          <button type="button" class="loc-status-toggle-btn ui-section-toggle-btn is-collapsed" id="locStatusToggleBtn" onclick="toggleLocStatusPanel()" aria-expanded="false" title="Collapse/expand source diagnostics"><span class="loc-status-toggle-caret ui-section-toggle-caret" aria-hidden="true">▾</span><span class="loc-status-toggle-label ui-section-toggle-label">Show Details</span></button>
         </div>
         <div id="locStatusCollapsible" class="loc-status-collapsible collapsed">
           <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
           <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
-        </div>
-        <div class="loc-group-actions">
-          <button type="button" class="loc-mini-btn" onclick="openNearbyDiagnosticsFromCityViewer()">🩺 Nearby Diagnostics</button>
+          <div class="loc-group-actions ui-btn-group">
+            <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openNearbyDiagnosticsFromCityViewer()">🩺 Nearby Diagnostics</button>
+          </div>
         </div>
       </div>
 
@@ -2746,12 +2748,12 @@
       <!-- Bulk Actions Toolbar -->
       <div class="loc-bulk-actions mobile-sticky-actions" id="locBulkActions">
         <div class="loc-bulk-title">⚡ Quick Actions</div>
-        <div class="loc-bulk-btn-row">
-          <button class="loc-mini-btn" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
-          <button class="loc-mini-btn" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
-          <button class="loc-mini-btn" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
-          <button class="loc-mini-btn" onclick="openBatchTagActionsFromCityViewer()" title="Open Batch Tag Actions in Edit Mode">🏷️ Batch Tags</button>
-          <button class="loc-mini-btn" onclick="selectAllVisibleLocations()" title="Select all currently visible cards">Select Visible</button>
+        <div class="loc-bulk-btn-row ui-btn-group">
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="openBatchTagActionsFromCityViewer()" title="Open Batch Tag Actions in Edit Mode">🏷️ Batch Tags</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="selectAllVisibleLocations()" title="Select all currently visible cards">Select Visible</button>
           <select id="locBulkActionSelect" class="loc-bulk-action-select" onchange="syncBulkActionInputHint()" aria-label="Bulk action for selected locations">
             <option value="add-tags">Add tags to selected</option>
             <option value="remove-tags">Remove tags from selected</option>
@@ -2770,9 +2772,9 @@
             <option value="replace">Copy mode: replace</option>
           </select>
           <input id="locBulkActionValue" class="loc-bulk-action-input" type="text" placeholder="Tags or note text..." aria-label="Bulk action value">
-          <button class="loc-mini-btn" onclick="applyBulkSelectionAction()" title="Apply selected bulk action">Apply to Selected</button>
-          <button class="loc-mini-btn" onclick="resetLocFilters()" title="Clear all filters">Reset Filters</button>
-          <button class="loc-mini-btn" onclick="clearShortlist()" title="Clear shortlist">Clear Selected</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="applyBulkSelectionAction()" title="Apply selected bulk action">Apply to Selected</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="resetLocFilters()" title="Clear all filters">Reset Filters</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="clearShortlist()" title="Clear shortlist">Clear Selected</button>
         </div>
       </div>
 
@@ -2788,13 +2790,13 @@
       </div>
 
       <div class="loc-shortlist-tray" id="locShortlistTray">
-        <div class="loc-shortlist-top">
+        <div class="loc-shortlist-top ui-btn-group">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
-          <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
-          <button id="openGoogleRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('google')" disabled>Open Google Route</button>
-          <button id="openMapboxRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('mapbox')" disabled>Open Mapbox Route</button>
-          <button id="locExportVariantBtn" class="loc-mini-btn" onclick="exportSelectedOptimizedRoute()" disabled>Export Active Route</button>
-          <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="buildDayPlan()">Build Day Plan</button>
+          <button id="openGoogleRouteBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openDayPlanRoute('google')" disabled>Open Google Route</button>
+          <button id="openMapboxRouteBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openDayPlanRoute('mapbox')" disabled>Open Mapbox Route</button>
+          <button id="locExportVariantBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="exportSelectedOptimizedRoute()" disabled>Export Active Route</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
         <div id="locCompareTray" class="loc-compare-tray"></div>
@@ -2816,7 +2818,7 @@
               <input id="locTimePerStop" class="loc-time-input" type="number" value="60" min="15" max="240">
             </div>
           </div>
-          <button class="loc-mini-btn u-w-full" onclick="calculateRouteQuality()">📊 Calculate Feasibility</button>
+          <button class="loc-mini-btn ui-btn ui-btn--mini u-w-full" onclick="calculateRouteQuality()">📊 Calculate Feasibility</button>
           <div id="locRouteQuality" class="loc-route-quality"></div>
         </div>
 
@@ -2834,7 +2836,17 @@
     <div id="locToast" class="loc-toast" role="status" aria-live="polite"></div>
 
     <script src="../JS Files/family-experience-foundation.js"></script>
+    <script src="../JS Files/ui-status-message-composer.js"></script>
     <script>
+            function composeSharedStatus(options) {
+              if (typeof window.composeStatusMessageHTML === 'function') {
+                return window.composeStatusMessageHTML(options);
+              }
+              const safeText = String(options && options.text ? options.text : '').trim();
+              if (!safeText) return '';
+              return `<div>${safeText}</div>`;
+            }
+
     // ── City card gradient palette (deterministic by city name) ────────────
     const CITY_CARD_GRADIENTS = [
       'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -3115,9 +3127,16 @@
           console.info('ℹ️ Curated-only City Viewer opened with no cached curated rows.');
           grid.innerHTML = `
             <div class="empty-state u-grid-full-span">
-              <div class="empty-state-icon">🗂️</div>
-              <div class="empty-state-text">No curated rows available yet</div>
-              <div class="u-note-muted">Sign in and refresh data in the main app, then open City Explorer again.</div>
+              ${composeSharedStatus({
+                icon: '🗂️',
+                tone: 'info',
+                text: 'No curated rows are available yet.',
+                detail: 'Sign in and refresh data in the main app, then open City Explorer again.',
+                actions: [{
+                  label: 'Close Viewer',
+                  onClick: 'closeViewerWindow()'
+                }]
+              })}
             </div>
           `;
           return;
@@ -3125,9 +3144,16 @@
         console.error('❌ Failed to load adventure data');
         grid.innerHTML = `
           <div class="empty-state u-grid-full-span">
-            <div class="empty-state-icon">❌</div>
-            <div class="empty-state-text">Error loading data</div>
-            <div class="u-note-muted">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
+            ${composeSharedStatus({
+              icon: '❌',
+              tone: 'error',
+              text: 'City data could not be loaded right now.',
+              detail: 'Return to the main window, refresh data, then reopen City Explorer.',
+              actions: [{
+                label: 'Close Viewer',
+                onClick: 'closeViewerWindow()'
+              }]
+            })}
           </div>
         `;
         return;
@@ -4482,7 +4508,7 @@
         <span class="loc-source-filter-label">Source:</span>
         <button type="button" class="loc-tag-btn loc-source-btn ${activeLocSourceFilter === 'saved' ? 'active' : ''}" data-source-filter="saved" onclick="toggleLocSourceFilter('saved')">✅ Saved<span class="loc-tag-count">(${Number(sourceCounts.saved || 0)})</span></button>
         <button type="button" class="loc-tag-btn loc-source-btn ${activeLocSourceFilter === 'web' ? 'active' : ''}" data-source-filter="web" onclick="toggleLocSourceFilter('web')">🔗 Web<span class="loc-tag-count">(${Number(sourceCounts.web || 0)})</span></button>
-        ${activeLocSourceFilter ? '<button type="button" class="loc-mini-btn" onclick="toggleLocSourceFilter(\'\')">Show all</button>' : ''}
+        ${activeLocSourceFilter ? '<button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="toggleLocSourceFilter(\'\')">Show all</button>' : ''}
       `;
     }
 
@@ -6411,8 +6437,8 @@
               </div>
               <div class="loc-compare-tags">${tags.length ? tags.map(tag => `<span class="loc-compare-tag">${escHtml(tag)}</span>`).join('') : '<span class="loc-compare-tag">No tags</span>'}</div>
               <div class="loc-compare-actions">
-                <button type="button" class="loc-mini-btn" onclick="setActiveLocation('${escAttr(locId)}', true)">Focus</button>
-                <button type="button" class="loc-mini-btn" onclick="openLocationDetailByEncodedId('${encodedLocId}')">Details</button>
+                <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="setActiveLocation('${escAttr(locId)}', true)">Focus</button>
+                <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openLocationDetailByEncodedId('${encodedLocId}')">Details</button>
               </div>
             </div>`;
         }).join('')}</div>`;
@@ -6952,7 +6978,7 @@
       return '<div class="loc-cat-wildlife-summary">' +
         '<span>Loaded <strong>' + wildlifeMatches.length + '</strong> wildlife rows, showing <strong>' + visible.length + '</strong> after filters.</span>' +
         '<span class="wildlife-diagnostics-meta">City total: ' + allCityLocs.length + '</span>' +
-        '<button type="button" class="loc-mini-btn" onclick="resetLocFilters()">Reset Filters</button>' +
+        '<button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="resetLocFilters()">Reset Filters</button>' +
       '</div>';
     }
 
@@ -6991,15 +7017,26 @@
       if (!locations.length) {
         const activeChips = getActiveFilterChipModel();
         const hasFilters = activeChips.length > 0;
+        const emptyActions = hasFilters
+          ? [
+            { label: 'Reset Filters', onClick: 'resetLocFilters()' },
+            { label: 'Show Open Now', onClick: 'document.getElementById(\'locFilterOpenNow\').checked = true; applyLocFilters();' }
+          ]
+          : [
+            { label: 'Show Open Now', onClick: 'document.getElementById(\'locFilterOpenNow\').checked = true; applyLocFilters();' }
+          ];
         grid.innerHTML = `
           <div class="loc-empty">
-            <div class="loc-empty-icon">🔍</div>
-            <div class="loc-empty-text">${hasFilters ? 'No locations match your current filters' : 'No locations available right now'}</div>
-            <div class="u-note-sm">${hasFilters ? 'Try removing one filter chip at a time or reset everything.' : 'Try another city or sync additional sources.'}</div>
-            <div class="loc-empty-actions">
-              ${hasFilters ? '<button class="loc-mini-btn" onclick="resetLocFilters()">Reset Filters</button>' : ''}
-              <button class="loc-mini-btn" onclick="document.getElementById(\'locFilterOpenNow\').checked = true; applyLocFilters();">Show Open Now</button>
-            </div>
+            ${composeSharedStatus({
+              icon: '🔍',
+              tone: hasFilters ? 'warning' : 'info',
+              text: hasFilters ? 'No matching locations found.' : 'No locations are available yet.',
+              detail: hasFilters
+                ? 'Remove one filter at a time, then run Reset Filters to widen results.'
+                : 'Pick another city or sync more sources, then refresh this list.',
+              actions: emptyActions,
+              actionsClassName: 'loc-empty-actions ui-btn-group ui-btn-group--center'
+            })}
           </div>`;
         return;
       }

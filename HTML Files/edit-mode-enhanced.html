@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adventure Planner - Edit Mode</title>
   <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
+  <link rel="stylesheet" href="../CSS/design-tokens.css">
+  <link rel="stylesheet" href="../CSS/components.css">
   <link rel="stylesheet" href="../CSS/mobile-standalone-enhancements.css">
   <style>
     * {
@@ -22,15 +24,15 @@
     .container {
       max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
+      padding: var(--ui-shell-padding, 20px);
     }
 
     .header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 24px;
-      border-radius: 12px;
-      margin-bottom: 24px;
+      padding: var(--ui-space-24, 24px);
+      border-radius: var(--ui-card-radius, 12px);
+      margin-bottom: var(--ui-space-24, 24px);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -65,7 +67,7 @@
     .tabs {
       display: flex;
       gap: 8px;
-      margin-bottom: 24px;
+      margin-bottom: var(--ui-space-24, 24px);
       border-bottom: 2px solid #e5e7eb;
       overflow-x: auto;
     }
@@ -122,10 +124,10 @@
 
     .card {
       background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
+      border: 1px solid var(--ui-card-border, #e5e7eb);
+      border-radius: var(--ui-card-radius, 12px);
+      padding: var(--ui-space-16, 16px);
+      margin-bottom: var(--ui-space-16, 16px);
     }
 
     .card-title {
@@ -135,8 +137,100 @@
       color: #1f2937;
     }
 
+    .edit-critical-config-card {
+      position: relative;
+      border: 2px solid #f59e0b;
+      background: linear-gradient(135deg, #fffaf0 0%, #ffffff 75%);
+      box-shadow: 0 10px 24px rgba(245, 158, 11, 0.16);
+      padding-top: 38px;
+    }
+
+    .edit-critical-config-card::before {
+      content: 'Critical configuration';
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid #f59e0b;
+      background: #fffbeb;
+      color: #92400e;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .edit-collapsible-card {
+      position: relative;
+    }
+
+    .edit-card-collapse-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .edit-card-collapse-btn:hover {
+      border-color: #667eea;
+      color: #4338ca;
+      background: #eef2ff;
+    }
+
+    .edit-collapsible-card .card-title {
+      padding-right: 122px;
+    }
+
+    .edit-collapsible-card.is-collapsed .card-title {
+      margin-bottom: 0;
+    }
+
+    .edit-collapsible-card-body {
+      display: block;
+    }
+
+    .edit-collapsible-card.is-collapsed .edit-collapsible-card-body {
+      display: none;
+    }
+
+    .edit-section-visibility-controls {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--ui-space-8, 8px);
+      margin: 0 0 var(--ui-space-12, 12px);
+    }
+
+    .edit-section-visibility-btn {
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .edit-section-visibility-btn:hover {
+      border-color: #667eea;
+      color: #4338ca;
+      background: #eef2ff;
+    }
+
     .input-group {
-      margin-bottom: 12px;
+      margin-bottom: var(--ui-space-12, 12px);
     }
 
     .input-group label {
@@ -176,23 +270,28 @@
 
     .button-group {
       display: flex;
-      gap: 12px;
-      margin-top: 16px;
+      gap: var(--ui-space-12, 12px);
+      margin-top: var(--ui-space-12, 12px);
     }
 
     .button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
+      min-height: var(--ui-action-height, 42px);
+      padding: 0 16px;
+      border: 1px solid transparent;
+      border-radius: var(--ui-action-radius, 12px);
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
       font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .button-primary {
-      background: #667eea;
-      color: white;
+      background: var(--ui-action-primary-bg, #667eea);
+      color: var(--ui-action-primary-text, white);
     }
 
     .button-primary:hover {
@@ -202,9 +301,9 @@
     }
 
     .button-secondary {
-      background: #f3f4f6;
-      color: #1f2937;
-      border: 1px solid #d1d5db;
+      background: var(--ui-action-secondary-bg, #f3f4f6);
+      color: var(--ui-action-secondary-text, #1f2937);
+      border-color: var(--ui-action-secondary-border, #d1d5db);
     }
 
     .button-secondary:hover {
@@ -821,6 +920,10 @@
       vertical-align: middle;
     }
 
+    .festival-tab-dirty-dot {
+      margin-left: 6px;
+    }
+
     .festival-back-dirty-dot[hidden] {
       display: none !important;
     }
@@ -865,14 +968,17 @@
     <!-- Tabs -->
     <div class="tabs" id="editModeTabList" role="tablist" aria-label="Edit mode sections">
       <button id="tab-btn-places" class="tab-btn active" data-tab="places" role="tab" aria-selected="true" aria-controls="places-tab" tabindex="0" type="button">
-        <span class="tab-label-wrap">➕ Add Places <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span></span>
+        <span class="tab-label-wrap">➕ Add Places</span>
+      </button>
+      <button id="tab-btn-festival" class="tab-btn" data-tab="festival" role="tab" aria-selected="false" aria-controls="festival-tab" tabindex="-1" type="button">
+        <span class="tab-label-wrap">🎪 Festival Config <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span><span id="festivalSourcesTabDirtyDot" class="festival-back-dirty-dot festival-tab-dirty-dot" hidden title="Unsaved changes"></span></span>
       </button>
       <button id="tab-btn-automation" class="tab-btn" data-tab="automation" role="tab" aria-selected="false" aria-controls="automation-tab" tabindex="-1" type="button">🔄 Automation</button>
       <button id="tab-btn-backup" class="tab-btn" data-tab="backup" role="tab" aria-selected="false" aria-controls="backup-tab" tabindex="-1" type="button">💾 Backup</button>
       <button id="tab-btn-history" class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-controls="history-tab" tabindex="-1" type="button">📅 History</button>
     </div>
 
-    <div class="card" id="editModeTargetCard">
+    <div class="card edit-critical-config-card" id="editModeTargetCard">
       <div class="card-title" id="editModeTargetCardTitle">🎯 Target Table</div>
       <div class="input-group" data-target-visible-tab="places">
         <label for="actionTargetSelect">Add / Bulk Add target table</label>
@@ -900,16 +1006,11 @@
     <!-- Add Places Tab -->
     <div id="places-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-places" tabindex="0">
       <div class="card">
-        <div class="card-title">🎪 Festival Sources</div>
-        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Manage festival provider sources from Add Places without switching tabs.</p>
+        <div class="card-title">🧭 Target Starter Sources</div>
+        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Starter source suggestions for your selected Add Places target.</p>
         <div class="button-group">
-          <button id="openFestivalSourcesConfigBtn" class="button button-secondary" type="button" onclick="openFestivalSourcesConfigView()">🎪 Open Festival Sources Config</button>
-          <button id="toggleFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="toggleFestivalSourcesConfigSummary()">👁️ View Applied Config</button>
-          <button id="copyFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="copyFestivalSourcesConfigSummary()">📋 Copy Summary</button>
+          <button id="openFestivalSourcesConfigBtn" class="button button-secondary" type="button" onclick="openFestivalSourcesConfigView()">🎪 Open Festival Config Tab</button>
         </div>
-        <div id="festivalAppliedConfigBadge" class="festival-config-badge">3 providers enabled • max 8</div>
-        <div id="festivalAppliedConfigCopyStatus" class="help-text" hidden></div>
-        <div id="festivalAppliedConfigSummary" class="help-text" hidden>Loading applied config...</div>
         <div class="input-group" style="margin-top:12px;">
           <label for="targetStarterRecommendations" style="text-transform:none; letter-spacing:0;">Regional starter sources for selected target</label>
           <label class="inline-slider-toggle" style="margin-bottom:6px;">
@@ -1172,15 +1273,22 @@
 
       </div>
 
-      <div id="festivalSourcesConfigPage" hidden>
-        <div class="card">
-          <div class="button-group" style="margin:0;">
-            <button id="festivalSourcesBackToPlacesBtn" class="button button-secondary" type="button" onclick="closeFestivalSourcesConfigView()">← Back to Add Places<span id="festivalSourcesBackDirtyDot" class="festival-back-dirty-dot" hidden title="Unsaved changes"></span></button>
-          </div>
-        </div>
-        <div id="festivalSourcesConfigMount"></div>
-      </div>
+    </div>
 
+    <div id="festival-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-festival" tabindex="0" hidden>
+      <div class="card">
+        <div class="card-title">🎪 Festival Sources Overview</div>
+        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Festival provider configuration has its own workspace so Add Places stays focused.</p>
+        <div class="button-group">
+          <button id="toggleFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="toggleFestivalSourcesConfigSummary()">👁️ View Applied Config</button>
+          <button id="copyFestivalSourcesSummaryBtn" class="button button-secondary" type="button" onclick="copyFestivalSourcesConfigSummary()">📋 Copy Summary</button>
+          <button id="festivalSourcesBackToPlacesBtn" class="button button-secondary" type="button" onclick="closeFestivalSourcesConfigView()">← Back to Add Places</button>
+        </div>
+        <div id="festivalAppliedConfigBadge" class="festival-config-badge">3 providers enabled • max 8</div>
+        <div id="festivalAppliedConfigCopyStatus" class="help-text" hidden></div>
+        <div id="festivalAppliedConfigSummary" class="help-text" hidden>⏳ Loading applied config. Wait a moment, then review your active settings.</div>
+      </div>
+      <div id="festivalSourcesConfigMount"></div>
     </div>
 
     <!-- Automation Tab -->
@@ -1346,7 +1454,7 @@
           <button id="searchMissingPlaceIdsBtn" class="button button-primary" onclick="submitSearchMissingPlaceIds()">🔍 Search Missing Place IDs</button>
         </div>
 
-          <div id="search-place-ids-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="search-place-ids-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="search-place-ids-status"></div>
       </div>
@@ -1368,7 +1476,7 @@
           <button class="button button-primary" onclick="submitRefreshPlaceIds()">🔄 Refresh Place IDs</button>
         </div>
 
-          <div id="refresh-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="refresh-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="refresh-status"></div>
       </div>
@@ -1390,7 +1498,7 @@
           <button class="button button-primary" onclick="submitAutoTagAll()">🏷️ Auto-Tag All</button>
         </div>
 
-          <div id="autotag-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="autotag-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="autotag-status"></div>
       </div>
@@ -1471,7 +1579,7 @@
           <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
         </div>
 
-          <div id="missing-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="missing-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="missing-status"></div>
       </div>
@@ -1494,7 +1602,7 @@
           <button class="button button-primary" onclick="submitUpdateHours()">🕐 Update Hours</button>
         </div>
 
-          <div id="hours-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="hours-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="hours-status"></div>
       </div>
@@ -1542,7 +1650,7 @@
         </div>
 
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <div id="desc-write-diagnostics" class="help-text" style="margin-top:0;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+            <div id="desc-write-diagnostics" class="help-text" style="margin-top:0;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
             <div style="display:inline-flex;align-items:center;gap:6px;">
               <span id="desc-strict-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;line-height:1;">STRICT: FAIL-CLOSED</span>
               <span id="desc-rich-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:11px;font-weight:700;line-height:1;">RICH: OFF (Google fallbacks enabled)</span>
@@ -1570,7 +1678,7 @@
           <button class="button button-primary" onclick="submitForceUpdateAll()" style="background:#f59e0b;color:#fff;border-color:#d97706;">🔄 Force Update All Fields</button>
         </div>
 
-          <div id="force-update-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div id="force-update-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.</div>
 
         <div id="force-update-status"></div>
       </div>
@@ -1611,6 +1719,7 @@
     </div>
   </div>
 
+  <script src="../JS Files/ui-status-message-composer.js"></script>
   <script>
     /**
      * Tab switching - SIMPLIFIED VERSION
@@ -1659,12 +1768,14 @@
     }
 
     function updateFestivalSourcesDirtyIndicator() {
-      const dot = document.getElementById('festivalSourcesBackDirtyDot');
-      if (!dot) return;
-      dot.hidden = !hasFestivalSourcesUnsavedChanges();
+      const dirty = hasFestivalSourcesUnsavedChanges();
+      const tabDot = document.getElementById('festivalSourcesTabDirtyDot');
+      const backDot = document.getElementById('festivalSourcesBackDirtyDot');
+      if (tabDot) tabDot.hidden = !dirty;
+      if (backDot) backDot.hidden = !dirty;
     }
 
-    function mountFestivalSourcesConfigCardInPlaces() {
+    function mountFestivalSourcesConfigCard() {
       const card = document.getElementById('festivalSourcesConfigCard');
       const mount = document.getElementById('festivalSourcesConfigMount');
       if (!card || !mount) return;
@@ -1690,12 +1801,9 @@
         renderFestivalSourcesConfigSummary(savedConfig);
         updateFestivalSourcesDirtyIndicator();
       }
-      const placesMainContent = document.getElementById('placesMainContent');
-      const configPage = document.getElementById('festivalSourcesConfigPage');
-      if (placesMainContent) placesMainContent.hidden = false;
-      if (configPage) configPage.hidden = true;
       festivalSourcesViewState.configOpen = false;
       updateFestivalSourcesDirtyIndicator();
+      switchTab('places', { focusTab: restoreFocus });
       if (!restoreFocus) return true;
       const focusTarget = document.getElementById(festivalSourcesViewState.lastLauncherId || 'openFestivalSourcesConfigBtn');
       if (focusTarget && typeof focusTarget.focus === 'function') {
@@ -1705,17 +1813,10 @@
     }
 
     function openFestivalSourcesConfigView() {
-      mountFestivalSourcesConfigCardInPlaces();
-      const placesMainContent = document.getElementById('placesMainContent');
-      const configPage = document.getElementById('festivalSourcesConfigPage');
-      if (placesMainContent) placesMainContent.hidden = true;
-      if (configPage) configPage.hidden = false;
+      mountFestivalSourcesConfigCard();
       festivalSourcesViewState.configOpen = true;
       festivalSourcesViewState.lastLauncherId = 'openFestivalSourcesConfigBtn';
-      const backBtn = document.getElementById('festivalSourcesBackToPlacesBtn');
-      if (backBtn && typeof backBtn.focus === 'function') {
-        backBtn.focus();
-      }
+      switchTab('festival', { focusTab: true });
       updateFestivalSourcesDirtyIndicator();
     }
 
@@ -2098,11 +2199,20 @@
     function switchTab(tabName, options = {}) {
       console.log(`🔄 SWITCHING TAB TO: ${tabName}`);
 
-      if (tabName !== 'places' && festivalSourcesViewState.configOpen) {
-        closeFestivalSourcesConfigView({ restoreFocus: false, skipUnsavedCheck: true });
+      if (tabName !== 'festival' && festivalSourcesViewState.configOpen && hasFestivalSourcesUnsavedChanges()) {
+        const shouldDiscard = window.confirm('You have unsaved Festival Sources changes. Leave Festival Config and discard them?');
+        if (!shouldDiscard) {
+          setFestivalSourcesStatus('ℹ️ Kept Festival Sources open so you can save your changes.', 'info');
+          return;
+        }
+        const savedConfig = readFestivalSourcesConfig();
+        applyFestivalSourcesConfigToDom(savedConfig);
+        publishFestivalSourcesConfig(savedConfig);
+        renderFestivalSourcesConfigSummary(savedConfig);
+        updateFestivalSourcesDirtyIndicator();
       }
 
-      if (tabName !== 'places' && hasAnyPlacesDraft()) {
+      if (tabName !== 'places' && tabName !== 'festival' && hasAnyPlacesDraft()) {
         if (!window.confirm('You have unsaved draft content in the Add Places forms. Leave anyway?')) {
           return;
         }
@@ -2147,6 +2257,8 @@
       }
 
       syncTargetCardForTab(tabName);
+      festivalSourcesViewState.configOpen = tabName === 'festival';
+      updateFestivalSourcesDirtyIndicator();
       // Update banner to reflect the correct select for the active tab
       if (tabName === 'automation') {
         updateActiveTargetBanner(getSelectedTarget('automationTargetSelect'));
@@ -2213,6 +2325,99 @@
       syncTargetCardForTab('places');
 
       console.log('✅ Tab listeners initialized successfully');
+    }
+
+    function setEditModeCardCollapsed(card, collapsed) {
+      if (!card) return;
+      const body = card.querySelector(':scope > .edit-collapsible-card-body');
+      const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+      if (!body || !toggleBtn) return;
+      const isCollapsed = Boolean(collapsed);
+      card.classList.toggle('is-collapsed', isCollapsed);
+      body.hidden = isCollapsed;
+      toggleBtn.setAttribute('aria-expanded', String(!isCollapsed));
+      toggleBtn.textContent = isCollapsed ? '▼ Expand' : '▲ Collapse';
+      toggleBtn.title = isCollapsed ? 'Expand section' : 'Collapse section';
+    }
+
+    function initializeEditModeSectionCollapsibles() {
+      const collapsibleCards = Array.from(document.querySelectorAll('#places-tab > .card, #festival-tab > .card, #automation-tab > .card, #backup-tab > .card, #history-tab > .card'));
+      collapsibleCards.forEach((card, index) => {
+        if (card && card.id === 'festivalSourcesConfigCard') return;
+        if (!card || card.dataset.collapsibleBound === 'true') return;
+        const title = card.querySelector(':scope > .card-title');
+        if (!title) return;
+
+        const sectionBody = document.createElement('div');
+        sectionBody.className = 'edit-collapsible-card-body';
+        sectionBody.id = card.id ? `${card.id}-body` : `edit-automation-card-body-${index}`;
+
+        const bodyNodes = Array.from(card.children).filter((node) => node !== title);
+        bodyNodes.forEach((node) => sectionBody.appendChild(node));
+        card.appendChild(sectionBody);
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'edit-card-collapse-btn';
+        toggleBtn.setAttribute('aria-controls', sectionBody.id);
+        toggleBtn.addEventListener('click', () => {
+          const nextCollapsed = !card.classList.contains('is-collapsed');
+          setEditModeCardCollapsed(card, nextCollapsed);
+        });
+
+        card.classList.add('edit-collapsible-card');
+        card.insertBefore(toggleBtn, sectionBody);
+        setEditModeCardCollapsed(card, true);
+        card.dataset.collapsibleBound = 'true';
+      });
+    }
+
+    function getTabCollapsibleCards(tabContent) {
+      if (!tabContent) return [];
+      return Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+    }
+
+    function setTabCardsCollapsed(tabContent, collapsed) {
+      getTabCollapsibleCards(tabContent).forEach((card) => setEditModeCardCollapsed(card, collapsed));
+    }
+
+    function initializeSectionVisibilityControls() {
+      const tabContents = Array.from(document.querySelectorAll('.tab-content'));
+      tabContents.forEach((tabContent) => {
+        if (!tabContent || tabContent.dataset.sectionVisibilityControlsBound === 'true') return;
+        const cards = getTabCollapsibleCards(tabContent);
+        if (cards.length < 2) {
+          tabContent.dataset.sectionVisibilityControlsBound = 'true';
+          return;
+        }
+
+        const controls = document.createElement('div');
+        controls.className = 'edit-section-visibility-controls';
+
+        const expandBtn = document.createElement('button');
+        expandBtn.type = 'button';
+        expandBtn.className = 'edit-section-visibility-btn';
+        expandBtn.textContent = 'Expand all';
+        expandBtn.addEventListener('click', () => setTabCardsCollapsed(tabContent, false));
+
+        const collapseBtn = document.createElement('button');
+        collapseBtn.type = 'button';
+        collapseBtn.className = 'edit-section-visibility-btn';
+        collapseBtn.textContent = 'Collapse all';
+        collapseBtn.addEventListener('click', () => setTabCardsCollapsed(tabContent, true));
+
+        controls.appendChild(expandBtn);
+        controls.appendChild(collapseBtn);
+
+        const firstCard = tabContent.querySelector(':scope > .card');
+        if (firstCard) {
+          tabContent.insertBefore(controls, firstCard);
+        } else {
+          tabContent.appendChild(controls);
+        }
+
+        tabContent.dataset.sectionVisibilityControlsBound = 'true';
+      });
     }
 
     const EDIT_MODE_TARGETS = [
@@ -2509,6 +2714,12 @@
       updateFestivalCredentialVisibility();
     }
 
+    function stripStatusMarkup(message) {
+      const mount = document.createElement('div');
+      mount.innerHTML = String(message || '');
+      return String(mount.textContent || mount.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
     function setFestivalSourcesStatus(message, kind = 'info') {
       const status = document.getElementById('festival-sources-status');
       if (!status) return;
@@ -2516,8 +2727,16 @@
         status.innerHTML = '';
         return;
       }
-      const cls = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : (kind === 'info' ? 'status-warning' : ''));
-      status.innerHTML = `<div class="status-message ${cls}">${message}</div>`;
+      const tone = kind === 'error' ? 'error' : (kind === 'success' ? 'success' : 'info');
+      const statusConfig = message && typeof message === 'object'
+        ? { ...message, tone }
+        : {
+          tone,
+          icon: String(message || '').includes('spinner') ? '⏳' : (tone === 'error' ? '❌' : (tone === 'success' ? '✅' : 'ℹ️')),
+          text: stripStatusMarkup(message)
+        };
+
+      renderEditModeStatus(status, statusConfig, tone);
     }
 
     function publishFestivalSourcesConfig(config) {
@@ -2707,7 +2926,12 @@
       renderFestivalSourcesConfigSummary(config);
       markFestivalSourcesSavedSnapshot(config);
       updateFestivalSourcesDirtyIndicator();
-      setFestivalSourcesStatus('✅ Festival source settings saved and applied.', 'success');
+      setFestivalSourcesStatus({
+        icon: '✅',
+        text: 'Festival source settings are saved and applied.',
+        detail: 'You can run a test now or return to Add Places.',
+        actions: [{ label: 'Run Diagnostics', onClick: 'runFestivalSourceDiagnostics()' }]
+      }, 'success');
     }
 
     function resetFestivalSourcesConfig() {
@@ -2780,10 +3004,19 @@
       const feeds = [...officialFeeds, ...chamberFeeds];
       if (!feeds.length) {
         renderFestivalFeedValidationSummary({ total: 0, live: 0, blocked: 0, empty: 0, rows: [] });
-        setFestivalSourcesStatus('❌ Add at least one feed URL before running Validate Feeds.', 'error');
+        setFestivalSourcesStatus({
+          icon: '❌',
+          text: 'Add at least one feed URL before running Validate Feeds.',
+          detail: 'Load starter feeds first, then validate again.',
+          actions: [{ label: 'Load Starter Feeds', onClick: 'loadFestivalStarterFeeds()' }]
+        }, 'error');
         return;
       }
-      setFestivalSourcesStatus(`<span class="spinner"></span> Validating ${feeds.length} feed URL${feeds.length === 1 ? '' : 's'}...`, 'info');
+      setFestivalSourcesStatus({
+        icon: '⏳',
+        text: `Validating ${feeds.length} feed URL${feeds.length === 1 ? '' : 's'}...`,
+        detail: 'Review the live/blocked/empty counts when validation completes.'
+      }, 'info');
 
       const checks = await Promise.all(feeds.map(async (feed) => {
         const timeoutId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -2831,7 +3064,12 @@
         rows: checks
       };
       renderFestivalFeedValidationSummary(summary);
-      setFestivalSourcesStatus(`✅ Feed validation complete. Live ${summary.live} • Blocked ${summary.blocked} • Empty ${summary.empty}.`, 'success');
+      setFestivalSourcesStatus({
+        icon: '✅',
+        text: `Feed validation complete. Live ${summary.live} • Blocked ${summary.blocked} • Empty ${summary.empty}.`,
+        detail: 'Save settings to keep any feed updates.',
+        actions: [{ label: 'Save Sources', onClick: 'saveFestivalSourcesConfig()' }]
+      }, 'success');
     }
 
     function loadFestivalStarterFeeds() {
@@ -2845,7 +3083,12 @@
       publishFestivalSourcesConfig(updatedConfig);
       renderFestivalSourcesConfigSummary(updatedConfig);
       updateFestivalSourcesDirtyIndicator();
-      setFestivalSourcesStatus('✅ Added regional starter festival feeds. Save to keep them.', 'success');
+      setFestivalSourcesStatus({
+        icon: '✅',
+        text: 'Regional starter festival feeds were added.',
+        detail: 'Validate feeds next, then save to keep these updates.',
+        actions: [{ label: 'Validate Feeds', onClick: 'validateFestivalFeedsDryRun()' }]
+      }, 'success');
     }
 
     async function testFestivalSourcesConfig() {
@@ -2858,7 +3101,12 @@
         ? mainWindow.searchFestivalEvents.bind(mainWindow)
         : (typeof window.searchFestivalEvents === 'function' ? window.searchFestivalEvents.bind(window) : null);
       if (typeof searchFn !== 'function') {
-        setFestivalSourcesStatus('❌ Festival search function is unavailable.', 'error');
+        setFestivalSourcesStatus({
+          icon: '❌',
+          text: 'Festival search is unavailable right now.',
+          detail: 'Reload Edit Mode and try again.',
+          actions: [{ label: 'Reload Page', onClick: 'window.location.reload()' }]
+        }, 'error');
         return;
       }
       saveFestivalSourcesConfig();
@@ -2872,7 +3120,11 @@
       const label = type === 'all'
         ? 'all sources'
         : (type === 'ticketmaster' ? 'Ticketmaster only' : (type === 'eventbrite' ? 'Eventbrite only' : 'feeds only'));
-      setFestivalSourcesStatus(`<span class="spinner"></span> Testing ${label} with query "apple festival"...`, 'info');
+      setFestivalSourcesStatus({
+        icon: '⏳',
+        text: `Testing ${label} with query "apple festival"...`,
+        detail: 'Diagnostics will update when the run finishes.'
+      }, 'info');
       try {
         const results = await searchFn('apple festival', {
           target: getSelectedTarget('actionTargetSelect'),
@@ -2911,14 +3163,22 @@
         navigator.clipboard.writeText(payload).catch(() => {});
       }
       renderFestivalSourcesConfigSummary(config);
-      setFestivalSourcesStatus('✅ Festival source config exported to JSON (and copied when clipboard is available).', 'success');
+      setFestivalSourcesStatus({
+        icon: '✅',
+        text: 'Festival source config was exported to JSON.',
+        detail: 'The payload is also copied when clipboard access is available.'
+      }, 'success');
     }
 
     function importFestivalSourcesConfigJson() {
       const input = document.getElementById('festivalSourcesJsonPayload');
       const raw = String(input && input.value ? input.value : '').trim();
       if (!raw) {
-        setFestivalSourcesStatus('❌ Paste a Festival Sources JSON payload first.', 'error');
+        setFestivalSourcesStatus({
+          icon: '❌',
+          text: 'Paste a Festival Sources JSON payload first.',
+          detail: 'Export a config first if you need a template.'
+        }, 'error');
         return;
       }
       try {
@@ -3433,7 +3693,7 @@
       if (confirmed) return true;
       const message = String(cancelMessage || `ℹ️ Add cancelled. No changes were written to ${formatTargetDestination(target)}.`);
       if (statusDiv) {
-        statusDiv.innerHTML = `<div class="status-message status-warning">${message}</div>`;
+        renderEditModeStatus(statusDiv, message, 'warning');
       }
       return false;
     }
@@ -3789,7 +4049,7 @@
 
     function applyTargetToMainWindow(target, statusDiv) {
       if (!target) {
-        if (statusDiv) statusDiv.innerHTML = '<div class="status-message status-error">❌ Please select a target table first.</div>';
+        if (statusDiv) renderEditModeStatus(statusDiv, 'Please select a target table first.', 'error');
         return false;
       }
       const mainWindow = getMainWindowSafe();
@@ -3990,7 +4250,7 @@
 
     async function runAutomationAcrossTargets(targets, statusDiv, runner) {
       if (!targets.length) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Select one or more automation target tables.</div>';
+        renderEditModeStatus(statusDiv, 'Select one or more automation target tables.', 'error');
         return {
           success: false,
           persisted: false,
@@ -4098,7 +4358,7 @@
           messages.push(`❌ ${target.tableName}: unable to load rows for selected table`);
           continue;
         }
-        statusDiv.innerHTML = `<div class="status-message"><span class="spinner"></span> Processing ${target.label} (${i + 1}/${targets.length})...</div>`;
+        renderEditModeStatus(statusDiv, { icon: '⏳', text: `Processing ${target.label} (${i + 1}/${targets.length})...` }, 'info');
         try {
           const result = await runner(target, i, targets.length);
           const ok = !(result && result.success === false);
@@ -4175,7 +4435,11 @@
         }
       }
       const hasFailure = messages.some((line) => /^❌/.test(String(line || '').trim()));
-      statusDiv.innerHTML = `<div class="status-message ${hasFailure ? 'status-warning' : 'status-success'}">${messages.join('<br>')}</div>`;
+      renderEditModeStatus(statusDiv, {
+        icon: hasFailure ? '⚠️' : '✅',
+        text: hasFailure ? 'Automation run finished with at least one issue.' : 'Automation run finished successfully.',
+        detail: messages.join(' | ')
+      }, hasFailure ? 'warning' : 'success');
 
       // Restore main-window context after multi-target pass.
       mainWindow.filePath = originalContext.filePath;
@@ -4202,7 +4466,7 @@
       const verificationMode = String(safe.verificationMode || '').trim();
       const verificationReason = String(safe.verificationReason || '').trim();
 
-      let text = '💾 Workbook write diagnostics: not run yet.';
+      let text = 'ℹ️ No workbook write diagnostics yet. Run an action to populate this panel.';
       let color = '#64748b';
       if (dryRun) {
         text = `💾 Workbook write diagnostics: dry run only${processedTargets ? ` • ${processedTargets} target${processedTargets === 1 ? '' : 's'}` : ''}`;
@@ -4487,7 +4751,11 @@
      */
     async function testGooglePlacesAPI() {
       const statusDiv = document.getElementById('api-test-status');
-      statusDiv.innerHTML = '<div class="status-message" style="background: #f3f4f6; color: #1f2937;"><span class="spinner"></span> Running Places health check...</div>';
+      renderEditModeStatus(statusDiv, {
+        icon: '⏳',
+        text: 'Running Places health check...',
+        detail: 'This validates search, details, and Places library readiness.'
+      }, 'info');
 
       try {
         const mainWindow = getMainWindowSafe();
@@ -4516,7 +4784,7 @@
         return result.ok;
       } catch (err) {
         console.error('❌ Test error:', err);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${escapeApiTestHtml(err.message || 'Unknown Places health check error')}</div>`;
+        renderEditModeStatus(statusDiv, `Error: ${escapeApiTestHtml(err.message || 'Unknown Places health check error')}`, 'error');
         showToast('❌ Places health check failed', 'error', 3500);
         return false;
       }
@@ -4598,6 +4866,36 @@
       return String(temp.textContent || temp.innerText || '').replace(/\s+/g, ' ').trim();
     }
 
+    function normalizeStatusTone(kind) {
+      if (kind === 'error' || kind === 'success' || kind === 'warning') return kind;
+      return 'info';
+    }
+
+    function renderEditModeStatus(target, message, kind = 'info') {
+      const statusDiv = typeof target === 'string' ? document.getElementById(target) : target;
+      if (!statusDiv) return;
+      if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+      }
+      const tone = normalizeStatusTone(kind);
+      const payload = message && typeof message === 'object'
+        ? { ...message, tone }
+        : {
+          tone,
+          icon: tone === 'error' ? '❌' : (tone === 'success' ? '✅' : (tone === 'warning' ? '⚠️' : 'ℹ️')),
+          text: toStatusAnnouncementText(message)
+        };
+
+      if (typeof window.composeStatusMessageHTML === 'function') {
+        statusDiv.innerHTML = window.composeStatusMessageHTML(payload);
+        return;
+      }
+
+      const fallbackClass = tone === 'error' ? 'status-error' : (tone === 'success' ? 'status-success' : 'status-warning');
+      statusDiv.innerHTML = `<div class="status-message ${fallbackClass}">${payload.icon || ''} ${payload.text || ''}</div>`;
+    }
+
     function setCandidateStatus(statusElementId, liveRegionId, message, kind) {
       const statusDiv = document.getElementById(statusElementId);
       const liveRegion = document.getElementById(liveRegionId);
@@ -4607,8 +4905,7 @@
         if (liveRegion) liveRegion.textContent = '';
         return;
       }
-      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : (kind === 'info' ? 'status-warning' : ''));
-      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+      renderEditModeStatus(statusDiv, message, kind);
       if (liveRegion) {
         const prefix = kind === 'error' ? 'Error: ' : (kind === 'success' ? 'Success: ' : 'Update: ');
         liveRegion.textContent = `${prefix}${toStatusAnnouncementText(message)}`;
@@ -5574,7 +5871,7 @@
       if (!loadedRows) {
         setSingleCandidateStatus(`⚠️ Could not load existing rows for ${formatTargetDestination(target)} — duplicate checking skipped. Proceeding with add.`, 'info');
         if (statusDiv) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.`, 'warning');
         }
       }
 
@@ -5885,7 +6182,7 @@
       if (!loadedRows) {
         setBulkCandidateStatus(`⚠️ Could not load existing rows for ${formatTargetDestination(target)} — duplicate checking skipped. Proceeding with add.`, 'info');
         if (statusDiv) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.`, 'warning');
         }
       }
 
@@ -6272,7 +6569,7 @@
       if (!loadedRows) {
         setChainCandidateStatus(`⚠️ Could not load existing rows for ${formatTargetDestination(target)} — duplicate checking skipped. Proceeding with add.`, 'info');
         if (statusDiv) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.`, 'warning');
         }
       }
 
@@ -6443,7 +6740,7 @@
     function beginSubmitGuard(actionKey, buttonId, statusDiv) {
       if (submitInProgressState[actionKey]) {
         if (statusDiv) {
-          statusDiv.innerHTML = '<div class="status-message status-warning">⏳ This action is already running. Please wait for it to finish.</div>';
+          renderEditModeStatus(statusDiv, 'This action is already running. Please wait for it to finish.', 'warning');
         }
         return null;
       }
@@ -6487,18 +6784,18 @@
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.`, 'warning');
         }
         renderActionTargetDiagnostics();
 
         if (!input.trim()) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
+          renderEditModeStatus(statusDiv, 'Please enter a location.', 'error');
           return { success: false, error: 'Please enter a location.' };
         }
 
         const duplicateMatches = renderPreflightStatus('singlePreflightStatus', target, input, inputType);
         if (duplicateMatches.length) {
-          statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
+          renderEditModeStatus(statusDiv, `Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.`, 'error');
           return { success: false, error: 'Duplicate preflight stopped this save.' };
         }
         if (!dryRun && !confirmAddTargetSelection(target, 1, 'single add', statusDiv)) {
@@ -6519,7 +6816,7 @@
         }
 
         // Fallback to enhanced automation
-        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        renderEditModeStatus(statusDiv, { icon: '⏳', text: 'Processing...' }, 'info');
         if (window.enhancedAutomation) {
           const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun, { target: targetContext });
           window.enhancedAutomation.displayResults(result, statusDiv);
@@ -6532,7 +6829,7 @@
           await runPostAddRefreshHooks(result, dryRun);
           return result;
         } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+          renderEditModeStatus(statusDiv, 'System not ready.', 'error');
           return { success: false, error: 'System not ready' };
         }
       } finally {
@@ -6557,19 +6854,19 @@
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk add will proceed.`, 'warning');
         }
         renderActionTargetDiagnostics();
 
         if (!input.trim()) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
+          renderEditModeStatus(statusDiv, 'Please enter locations.', 'error');
           return { success: false, error: 'Please enter locations.' };
         }
 
         const locations = parseBulkInputValues(input);
 
         if (locations.length === 0) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+          renderEditModeStatus(statusDiv, 'No valid locations.', 'error');
           return { success: false, error: 'No valid locations.' };
         }
 
@@ -6577,11 +6874,11 @@
         const duplicateInputs = new Set(duplicateMatches.map((match) => String(match.matchedInput || '').trim().toLowerCase()).filter(Boolean));
         const filteredLocations = locations.filter((location) => !duplicateInputs.has(String(location || '').trim().toLowerCase()));
         if (!filteredLocations.length && duplicateMatches.length) {
-          statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.</div>`;
+          renderEditModeStatus(statusDiv, `Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.`, 'error');
           return { success: false, error: 'Bulk preflight found only duplicates.' };
         }
         if (filteredLocations.length !== locations.length) {
-          statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
+          renderEditModeStatus(statusDiv, `Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...`, 'info');
         }
         if (!dryRun && !confirmAddTargetSelection(target, filteredLocations.length, 'bulk add', statusDiv)) {
           return { success: false, cancelled: true, message: 'Bulk add cancelled.' };
@@ -6601,7 +6898,7 @@
         }
 
         // Fallback to enhanced automation
-        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        renderEditModeStatus(statusDiv, { icon: '⏳', text: 'Processing...' }, 'info');
         if (window.enhancedAutomation) {
           const result = await window.enhancedAutomation.bulkAddPlaces(filteredLocations.join('\n'), inputType, dryRun, { target: targetContext });
           window.enhancedAutomation.displayResults(result, statusDiv);
@@ -6614,7 +6911,7 @@
           await runPostAddRefreshHooks(result, dryRun);
           return result;
         } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+          renderEditModeStatus(statusDiv, 'System not ready.', 'error');
           return { success: false, error: 'System not ready' };
         }
       } finally {
@@ -6638,18 +6935,18 @@
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
-          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk chain add will proceed.</div>`;
+          renderEditModeStatus(statusDiv, `Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk chain add will proceed.`, 'warning');
         }
 
         if (!input.trim()) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
+          renderEditModeStatus(statusDiv, 'Please enter locations.', 'error');
           return { success: false, error: 'Please enter locations.' };
         }
 
         const locations = input.split('\n').filter(l => l.trim());
 
         if (locations.length === 0) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+          renderEditModeStatus(statusDiv, 'No valid locations.', 'error');
           return { success: false, error: 'No valid locations.' };
         }
         if (!dryRun && !confirmAddTargetSelection(target, locations.length, 'chain add', statusDiv)) {
@@ -6689,7 +6986,7 @@
         // Final fallback: Old system
         if (window.enhancedAutomation) {
           console.log('🔄 Using fallback automation system');
-          statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+          renderEditModeStatus(statusDiv, { icon: '⏳', text: 'Processing...' }, 'info');
           const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
           window.enhancedAutomation.displayResults(result, statusDiv);
           applyAddWriteDiagnostics(result, target, { rowsRequested: locations.length });
@@ -6703,7 +7000,7 @@
           return result;
         }
 
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        renderEditModeStatus(statusDiv, 'System not ready.', 'error');
         return { success: false, error: 'System not ready' };
       } finally {
         endSubmitGuard(guard);
@@ -7548,7 +7845,7 @@
           '⚠️ Force Update All Fields will overwrite existing website, phone, hours, address, rating, and description data for ALL locations in the selected table(s).\n\nProceed?'
         );
         if (!ok) {
-          statusDiv.innerHTML = '<div class="status-message">ℹ️ Force update cancelled.</div>';
+          renderEditModeStatus(statusDiv, 'Force update cancelled.', 'info');
           renderAutomationWriteDiagnostics('force-update-write-diagnostics', { dryRun: false, processedTargets: 0, persisted: false, persistMode: 'cancelled', persistReason: 'cancelled-by-user' });
           return;
         }
@@ -7570,7 +7867,7 @@
      */
     async function submitBackup() {
       const statusDiv = document.getElementById('backup-status');
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Creating backup...</div>';
+      renderEditModeStatus(statusDiv, { icon: '⏳', text: 'Creating backup...' }, 'info');
 
       if (typeof window.backupManager?.performBackup === 'function') {
         const result = await window.backupManager.performBackup();
@@ -7579,7 +7876,7 @@
           statusDiv
         );
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Backup system not available</div>';
+        renderEditModeStatus(statusDiv, 'Backup system not available.', 'error');
       }
     }
 
@@ -7588,17 +7885,17 @@
      */
     function sortHistoryNewest() {
       const statusDiv = document.getElementById('history-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+      renderEditModeStatus(statusDiv, 'Sorted by newest first.', 'success');
     }
 
     function sortHistoryOldest() {
       const statusDiv = document.getElementById('history-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+      renderEditModeStatus(statusDiv, 'Sorted by oldest first.', 'success');
     }
 
     function sortHistoryName() {
       const statusDiv = document.getElementById('history-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted alphabetically</div>';
+      renderEditModeStatus(statusDiv, 'Sorted alphabetically.', 'success');
     }
 
     /**
@@ -7637,6 +7934,8 @@
         document.body.classList.add('embedded-edit-mode');
       }
       initializeTabs();
+      initializeEditModeSectionCollapsibles();
+      initializeSectionVisibilityControls();
       initTargetSelectors();
       initSingleCandidateSearch();
       initBulkCandidateSearch();
@@ -7645,8 +7944,9 @@
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();
       initCandidateGeoFilters();
-      mountFestivalSourcesConfigCardInPlaces();
-      closeFestivalSourcesConfigView({ restoreFocus: false });
+      mountFestivalSourcesConfigCard();
+      festivalSourcesViewState.configOpen = false;
+      updateFestivalSourcesDirtyIndicator();
       initFestivalSourcesConfig();
       restoreAllDrafts();
       initDraftTracking();
@@ -7662,6 +7962,8 @@
         document.body.classList.add('embedded-edit-mode');
       }
       initializeTabs();
+      initializeEditModeSectionCollapsibles();
+      initializeSectionVisibilityControls();
       initTargetSelectors();
       initSingleCandidateSearch();
       initBulkCandidateSearch();
@@ -7670,8 +7972,9 @@
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();
       initCandidateGeoFilters();
-      mountFestivalSourcesConfigCardInPlaces();
-      closeFestivalSourcesConfigView({ restoreFocus: false });
+      mountFestivalSourcesConfigCard();
+      festivalSourcesViewState.configOpen = false;
+      updateFestivalSourcesDirtyIndicator();
       initFestivalSourcesConfig();
       restoreAllDrafts();
       initDraftTracking();

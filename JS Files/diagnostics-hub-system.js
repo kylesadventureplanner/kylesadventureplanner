@@ -97,14 +97,14 @@
     var style = document.createElement('style');
     style.id = 'diagnosticsHubRuntimeStyles';
     style.textContent = [
-      '.diagnostics-hub-shell{display:grid;gap:12px;}',
-      '.diagnostics-hub-header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}',
-      '.diagnostics-hub-summary-pills{display:flex;gap:8px;flex-wrap:wrap;}',
-      '.diagnostics-hub-section-tabs{display:flex;gap:8px;flex-wrap:wrap;}',
-      '.diagnostics-hub-tab{border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;}',
-      '.diagnostics-hub-tab.active{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}',
-      '.diagnostics-hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;}',
-      '.diagnostics-hub-card{border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,.05);}',
+      '.diagnostics-hub-shell{display:grid;gap:var(--ui-space-12,12px);}',
+      '.diagnostics-hub-header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--ui-space-12,12px);flex-wrap:wrap;}',
+      '.diagnostics-hub-summary-pills{display:flex;gap:var(--ui-space-8,8px);flex-wrap:wrap;}',
+      '.diagnostics-hub-section-tabs{display:flex;gap:var(--ui-space-8,8px);flex-wrap:wrap;}',
+      '.diagnostics-hub-tab{border:1px solid var(--ui-chip-border,#d1d5db);background:#fff;color:#374151;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;}',
+      '.diagnostics-hub-tab.active{background:var(--ui-status-info-bg,#eff6ff);border-color:var(--ui-status-info-border,#93c5fd);color:var(--ui-status-info-text,#1d4ed8);}',
+      '.diagnostics-hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--ui-space-12,12px);}',
+      '.diagnostics-hub-card{border:1px solid var(--ui-card-border,#e5e7eb);border-radius:var(--ui-card-radius,12px);background:var(--ui-card-bg,#fff);padding:var(--ui-card-padding-y,12px) var(--ui-card-padding-x,14px);box-shadow:var(--ui-card-shadow,0 1px 2px rgba(15,23,42,.05));}',
       '.diagnostics-hub-card--wide{grid-column:1/-1;}',
       '.diagnostics-hub-card-title{font-size:13px;font-weight:800;color:#1f2937;margin-bottom:6px;}',
       '.diagnostics-hub-kpi{font-size:24px;font-weight:800;line-height:1.1;color:#111827;}',
@@ -112,20 +112,24 @@
       '.diagnostics-hub-kpi.is-good{color:#047857;}',
       '.diagnostics-hub-note{font-size:12px;color:#64748b;line-height:1.4;}',
       '.diagnostics-hub-bullets{margin:0;padding-left:18px;display:grid;gap:6px;font-size:12px;color:#334155;}',
-      '.diagnostics-hub-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}',
-      '.diagnostics-hub-actions-inline{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}',
+      '.diagnostics-hub-action-row{display:flex;gap:var(--ui-space-8,8px);flex-wrap:wrap;margin-top:var(--ui-space-8,8px);}',
+      '.diagnostics-hub-actions-inline{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--ui-space-8,8px);}',
       '.diagnostics-hub-list-item{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;margin-top:8px;}',
       '.diagnostics-hub-list-head{display:flex;justify-content:space-between;gap:8px;align-items:center;}',
       '.diagnostics-hub-badge{display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:11px;font-weight:700;color:#475569;}',
       '.diagnostics-hub-table-wrap{overflow:auto;max-height:440px;}',
       '.diagnostics-hub-table{width:100%;border-collapse:collapse;font-size:12px;}',
       '.diagnostics-hub-table th,.diagnostics-hub-table td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;}',
-      '.diagnostics-hub-empty,.diagnostics-hub-loading{padding:16px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;color:#475569;font-size:12px;}',
+      '.diagnostics-hub-empty,.diagnostics-hub-loading{padding:var(--ui-empty-padding,20px);border:1px dashed var(--ui-empty-border,#cbd5e1);border-radius:var(--ui-card-radius,12px);background:var(--ui-empty-bg,#f8fafc);color:var(--ui-empty-text,#475569);font-size:12px;}',
       '.diagnostics-hub-guide-row{font-size:12px;color:#334155;line-height:1.45;margin-top:6px;}',
       '.diagnostics-tone-error{border-color:#fecaca;background:#fff1f2;}',
       '.diagnostics-tone-warn{border-color:#fed7aa;background:#fff7ed;}',
       '.diagnostics-tone-ok{border-color:#bbf7d0;background:#f0fdf4;}',
-      '.diagnostics-tone-info{border-color:#bfdbfe;background:#eff6ff;}'
+      '.diagnostics-tone-info{border-color:#bfdbfe;background:#eff6ff;}',
+      '.diagnostics-hub-shell .planner-top-btn{min-height:var(--ui-action-height,42px);border-radius:var(--ui-action-radius,12px);}',
+      '.diagnostics-hub-shell .planner-top-btn:not(.planner-top-btn--success):not(.planner-top-btn--accent){border:1px solid var(--ui-action-secondary-border,#cbd5e1);background:var(--ui-action-secondary-bg,#fff);color:var(--ui-action-secondary-text,#334155);}',
+      '.diagnostics-hub-shell .planner-top-btn--success{background:var(--ui-action-primary-bg,linear-gradient(135deg,#667eea 0%,#764ba2 100%));color:var(--ui-action-primary-text,#fff);}',
+      '.diagnostics-hub-shell .planner-top-btn--accent{background:var(--ui-feedback-info-bg,#eff6ff);border-color:var(--ui-feedback-info-border,#bfdbfe);color:var(--ui-feedback-info-text,#1e40af);}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -164,6 +168,25 @@
     if (size < 1024) return size + ' B';
     if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
     return (size / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function composeDiagnosticsStatusHtml(options) {
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    var tone = String(safeOptions.tone || 'info').trim().toLowerCase();
+    if (tone !== 'success' && tone !== 'warning' && tone !== 'error') tone = 'info';
+    var icon = String(safeOptions.icon || (tone === 'success' ? '✅' : tone === 'warning' ? '⚠️' : tone === 'error' ? '❌' : 'ℹ️'));
+    var text = String(safeOptions.text || '').trim();
+    var detail = String(safeOptions.detail || '').trim();
+    if (typeof window.composeStatusMessageHTML === 'function') {
+      return window.composeStatusMessageHTML({
+        tone: tone,
+        icon: icon,
+        text: text,
+        detail: detail,
+        className: 'diagnostics-hub-status'
+      });
+    }
+    return '<div class="diagnostics-hub-note">' + escHtml([icon, text, detail].filter(Boolean).join(' ')) + '</div>';
   }
 
   function describeStorageKey(key) {
@@ -627,7 +650,12 @@
       '<button type="button" class="planner-top-btn" data-diagnostics-action="open-offline-center">Open Offline Readiness Center</button>',
       '<button type="button" class="planner-top-btn planner-top-btn--accent" data-diagnostics-action="download-reliability-bundle">Download reliability bundle</button>',
       '</div>',
-      '<div id="diagnosticsHubActionStatus" class="diagnostics-hub-note" aria-live="polite">Adventure pending: ' + escHtml(String(adventure.pendingLocalOnlyCount || 0)) + ' · Offline queue: ' + escHtml(String(offline.status && offline.status.pendingCount || 0)) + ' · Nature queue: ' + escHtml(String(nature.pendingQueueCount || 0)) + '</div>',
+      '<div id="diagnosticsHubActionStatus" aria-live="polite">' + composeDiagnosticsStatusHtml({
+        tone: 'info',
+        icon: 'ℹ️',
+        text: 'Sync queue snapshot is ready.',
+        detail: 'Adventure pending: ' + String(adventure.pendingLocalOnlyCount || 0) + ' · Offline queue: ' + String(offline.status && offline.status.pendingCount || 0) + ' · Nature queue: ' + String(nature.pendingQueueCount || 0)
+      }) + '</div>',
       '</section>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
       '<div class="diagnostics-hub-card-title">Per-item replay hints</div>',
@@ -748,12 +776,12 @@
 
     host.innerHTML = [
       '<div class="diagnostics-hub-shell">',
-      '<div class="diagnostics-hub-header-row">',
+      '<div class="diagnostics-hub-header-row ui-section-header-row">',
       '<div>',
       '<div class="card-title">🩺 Central Diagnostics Hub</div>',
       '<div class="card-subtitle">Unified visibility into local-only data, queue replay, backend setup issues, and nearby recommendation behavior.</div>',
       '</div>',
-      '<div class="diagnostics-hub-summary-pills">',
+      '<div class="diagnostics-hub-summary-pills ui-section-header-actions">',
       '<span class="offline-badge" data-state="' + (summary.pendingSyncRecords > 0 ? 'syncing' : 'ready') + '">Pending sync: ' + escHtml(String(summary.pendingSyncRecords)) + '</span>',
       '<span class="offline-badge" data-state="' + (summary.authReady ? 'ready' : 'warning') + '">Auth: ' + escHtml(summary.authReady ? 'ready' : 'local only') + '</span>',
       '<span class="offline-badge" data-state="' + (summary.hasSetupIssues ? 'warning' : 'ready') + '">Setup: ' + escHtml(summary.hasSetupIssues ? 'review needed' : 'ready') + '</span>',
@@ -822,20 +850,26 @@
     var state = getState();
     var mount = document.getElementById('diagnosticsHubMount');
     if (!mount) return Promise.resolve(null);
-    mount.innerHTML = '<div class="diagnostics-hub-loading">Refreshing diagnostics…</div>';
+    mount.innerHTML = '<div class="diagnostics-hub-loading ui-loading-state">' + composeDiagnosticsStatusHtml({ tone: 'info', icon: '⏳', text: 'Refreshing diagnostics...', detail: 'Please wait while local and sync snapshots are collected.' }) + '</div>';
     return collectSnapshot().then(function (snapshot) {
       renderHub(snapshot, state);
       window.__diagnosticsHubLastSnapshot = snapshot;
       return snapshot;
     }).catch(function (error) {
-      mount.innerHTML = '<div class="diagnostics-hub-empty">Diagnostics could not be rendered right now. ' + escHtml(String(error && error.message ? error.message : error || 'Unknown error')) + '</div>';
+      mount.innerHTML = '<div class="diagnostics-hub-empty ui-empty-state">' + composeDiagnosticsStatusHtml({ tone: 'error', icon: '❌', text: 'Diagnostics could not be rendered right now.', detail: String(error && error.message ? error.message : error || 'Unknown error') }) + '</div>';
       return null;
     });
   }
 
-  function setActionStatus(text) {
+  function setActionStatus(text, tone, detail) {
     var el = document.getElementById('diagnosticsHubActionStatus');
-    if (el) el.textContent = String(text || '');
+    if (!el) return;
+    el.innerHTML = composeDiagnosticsStatusHtml({
+      tone: tone || 'info',
+      icon: tone === 'error' ? '❌' : (tone === 'success' ? '✅' : (tone === 'warning' ? '⚠️' : 'ℹ️')),
+      text: String(text || '').trim(),
+      detail: String(detail || '').trim()
+    });
   }
 
   function openTab(tabId, source) {
@@ -867,34 +901,34 @@
 
   function runDiagnosticsAction(action, queueId) {
     if (action === 'retry-all-syncs') {
-      setActionStatus('Retrying all sync paths…');
+      setActionStatus('Retrying all sync paths...', 'info');
       return Promise.all([
         window.OfflinePwa && typeof window.OfflinePwa.flushQueue === 'function' ? window.OfflinePwa.flushQueue() : Promise.resolve(null),
         typeof window.runBirdSyncNow === 'function' ? window.runBirdSyncNow() : Promise.resolve(null)
       ]).then(function () {
-        setActionStatus('Retry all syncs finished. Refreshing diagnostics…');
+        setActionStatus('Retry all syncs finished.', 'success', 'Refreshing diagnostics now.');
         return refreshDiagnosticsHub();
       });
     }
     if (action === 'retry-offline-syncs') {
-      setActionStatus('Retrying offline queue…');
+      setActionStatus('Retrying offline queue...', 'info');
       return Promise.resolve(window.OfflinePwa && typeof window.OfflinePwa.flushQueue === 'function' ? window.OfflinePwa.flushQueue() : null)
-        .then(function () { setActionStatus('Offline queue replay finished.'); return refreshDiagnosticsHub(); });
+        .then(function () { setActionStatus('Offline queue replay finished.', 'success'); return refreshDiagnosticsHub(); });
     }
     if (action === 'retry-nature-syncs') {
-      setActionStatus('Retrying Nature Challenge sync…');
+      setActionStatus('Retrying Nature Challenge sync...', 'info');
       return Promise.resolve(typeof window.runBirdSyncNow === 'function' ? window.runBirdSyncNow() : null)
-        .then(function () { setActionStatus('Nature Challenge sync finished.'); return refreshDiagnosticsHub(); });
+        .then(function () { setActionStatus('Nature Challenge sync finished.', 'success'); return refreshDiagnosticsHub(); });
     }
     if (action === 'retry-queue-item' && queueId && window.OfflinePwa && typeof window.OfflinePwa.resolveConflict === 'function') {
-      setActionStatus('Retrying queued item…');
+      setActionStatus('Retrying queued item...', 'info');
       return Promise.resolve(window.OfflinePwa.resolveConflict('retry', queueId))
-        .then(function () { setActionStatus('Queued item retry finished.'); return refreshDiagnosticsHub(); });
+        .then(function () { setActionStatus('Queued item retry finished.', 'success'); return refreshDiagnosticsHub(); });
     }
     if (action === 'keep-local-item' && queueId && window.OfflinePwa && typeof window.OfflinePwa.resolveConflict === 'function') {
-      setActionStatus('Removing queued item from backend replay and keeping local data…');
+      setActionStatus('Keeping queued item local-only...', 'warning', 'This removes it from backend replay attempts.');
       return Promise.resolve(window.OfflinePwa.resolveConflict('keep-local', queueId))
-        .then(function () { setActionStatus('Queued item kept local only.'); return refreshDiagnosticsHub(); });
+        .then(function () { setActionStatus('Queued item was kept local-only.', 'warning'); return refreshDiagnosticsHub(); });
     }
     if (action === 'open-offline-center') {
       if (typeof window.openOfflineModePage === 'function') {

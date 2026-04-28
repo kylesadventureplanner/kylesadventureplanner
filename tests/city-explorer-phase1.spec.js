@@ -468,7 +468,7 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
 
     const emptyState = page.locator('.loc-empty');
     await expect(emptyState).toBeVisible();
-    await expect(emptyState).toContainText('No locations match your current filters');
+    await expect(emptyState).toContainText('No matching locations found.');
 
     await emptyState.getByRole('button', { name: 'Reset Filters' }).click();
 
