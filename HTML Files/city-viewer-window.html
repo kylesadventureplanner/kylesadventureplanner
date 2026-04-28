@@ -372,6 +372,113 @@
       backdrop-filter: blur(2px);
     }
 
+    .loc-primary-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    .loc-primary-main {
+      flex: 1 1 560px;
+      display: grid;
+      grid-template-columns: minmax(240px, 1.5fr) minmax(220px, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .loc-primary-actions {
+      flex: 1 1 320px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .loc-inline-checks {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-height: 40px;
+    }
+
+    .loc-inline-sort {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .loc-inline-sort .loc-sort-label {
+      white-space: nowrap;
+    }
+
+    .loc-quick-picks-row {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border: 1px solid #eef2ff;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fafbff 0%, #ffffff 100%);
+    }
+
+    .loc-filter-group-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .loc-filter-subcopy {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
+      line-height: 1.4;
+    }
+
+    .loc-advanced-sections {
+      display: grid;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .loc-filter-group {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      background: #fcfdff;
+    }
+
+    .loc-filter-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .loc-group-actions {
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .loc-status-strip {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed #e5e7eb;
+    }
+
     .locations-controls-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -421,7 +528,7 @@
       flex-wrap: wrap;
       gap: 6px;
       align-items: center;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     .loc-source-filters.visible {
@@ -437,14 +544,14 @@
 
     .loc-mixed-source-diagnostics {
       display: none;
-      margin-top: 8px;
-      padding: 8px 10px;
+      margin-top: 0;
+      padding: 6px 0;
       border-radius: 10px;
-      border: 1px solid #dbeafe;
-      background: #f8fbff;
-      color: #1e3a8a;
+      border: 0;
+      background: transparent;
+      color: #475569;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
@@ -458,13 +565,13 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 999px;
-      border: 1px solid #bfdbfe;
-      background: #eff6ff;
-      color: #1d4ed8;
+      border: 1px solid #dbeafe;
+      background: #f8fafc;
+      color: #475569;
       font-size: 10px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: 0.01em;
       text-transform: uppercase;
     }
@@ -544,17 +651,17 @@
 
     .wildlife-diagnostics-strip {
       display: none;
-      margin-top: 8px;
-      padding: 9px 11px;
+      margin-top: 0;
+      padding: 6px 0;
       border-radius: 10px;
-      border: 1px solid #fde68a;
-      background: #fffbeb;
-      color: #92400e;
-      font-size: 12px;
+      border: 0;
+      background: transparent;
+      color: #6b7280;
+      font-size: 11px;
       font-weight: 600;
       gap: 8px;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       flex-wrap: wrap;
     }
 
@@ -563,30 +670,30 @@
     }
 
     .wildlife-diagnostics-meta {
-      color: #78350f;
+      color: #6b7280;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .loc-data-freshness-badge {
-      margin-top: 8px;
+      margin-top: 0;
       display: inline-flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
-      padding: 8px 10px;
+      padding: 6px 0;
       border-radius: 10px;
-      border: 1px solid #dbeafe;
-      background: #f8fbff;
-      color: #1e3a8a;
+      border: 0;
+      background: transparent;
+      color: #64748b;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .loc-data-freshness-badge .freshness-pill {
       display: inline-flex;
       align-items: center;
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 999px;
       font-size: 10px;
       font-weight: 800;
@@ -647,9 +754,9 @@
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-      padding: 8px 0 0 0;
-      border-top: 1px solid #f3f4f6;
-      margin-top: 10px;
+      padding: 0;
+      border-top: 0;
+      margin-top: 0;
     }
     .loc-sort-label { font-size: 12px; color: #6b7280; font-weight: 600; }
     .loc-sort-select {
@@ -1093,9 +1200,9 @@
       gap: 6px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #f3f4f6;
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
     }
     .loc-preset-input,
     .loc-preset-select {
@@ -1151,12 +1258,11 @@
     }
 
     .loc-family-bar {
-      width: 100%;
       display: grid;
       gap: 8px;
-      margin-top: 4px;
-      padding-top: 8px;
-      border-top: 1px dashed #e5e7eb;
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
     }
     .loc-family-row {
       display: flex;
@@ -1227,6 +1333,18 @@
         margin-bottom: 10px;
       }
 
+      .loc-primary-main {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .loc-inline-checks {
+        grid-column: 1 / -1;
+      }
+
+      .loc-primary-actions {
+        justify-content: flex-start;
+      }
+
       .locations-controls-grid {
         grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
         gap: 8px;
@@ -1234,13 +1352,13 @@
       }
 
       .loc-presets-row {
-        margin-bottom: 6px;
-        padding-bottom: 6px;
+        margin-bottom: 0;
+        padding-bottom: 0;
       }
 
       .loc-sort-row {
-        margin-top: 8px;
-        padding-top: 6px;
+        margin-top: 0;
+        padding-top: 0;
       }
     }
 
@@ -1250,10 +1368,32 @@
         margin-bottom: 8px;
       }
 
+      .loc-primary-toolbar {
+        gap: 8px;
+      }
+
+      .loc-primary-main {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .loc-primary-actions,
+      .loc-group-actions,
+      .loc-inline-sort,
+      .loc-inline-checks {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .loc-quick-picks-row,
+      .loc-filter-group {
+        padding: 8px 9px;
+      }
+
       .loc-presets-row {
         gap: 5px;
-        margin-bottom: 5px;
-        padding-bottom: 5px;
+        margin-bottom: 0;
+        padding-bottom: 0;
       }
 
       .loc-smart-presets {
@@ -1263,7 +1403,7 @@
 
       .loc-check-row {
         gap: 8px;
-        margin-top: 4px;
+        margin-top: 0;
       }
 
       .locations-controls-grid {
@@ -1295,8 +1435,8 @@
 
       .loc-sort-row {
         gap: 6px;
-        margin-top: 6px;
-        padding-top: 5px;
+        margin-top: 0;
+        padding-top: 0;
       }
 
       .loc-sort-select {
@@ -2173,9 +2313,9 @@
     /* Filter panel collapse toggle */
     .loc-filter-header {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
     }
     .loc-filter-section-label {
       font-size: 11px;
@@ -2203,7 +2343,7 @@
     .loc-filter-collapsible {
       overflow: hidden;
       transition: max-height 0.32s ease, opacity 0.28s ease;
-      max-height: 800px;
+      max-height: 2200px;
       opacity: 1;
     }
     .loc-filter-collapsible.collapsed {
@@ -2319,99 +2459,137 @@
       <!-- Filter & Sort Controls (mirrors Adventure Planner) -->
       <div class="locations-controls">
         <div class="loc-filter-header">
-          <span class="loc-filter-section-label">Filters &amp; Sort</span>
-          <button type="button" class="loc-filter-toggle-btn" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="true" title="Collapse/expand filters">▲ Hide Filters</button>
+          <div>
+            <span class="loc-filter-section-label">Quick Find</span>
+            <div class="loc-filter-subcopy">Start with search, tags, or sort. Open advanced filters only when you need more control.</div>
+          </div>
+          <button type="button" class="loc-filter-toggle-btn" id="locFilterToggleBtn" onclick="toggleLocFilterPanel()" aria-expanded="true" title="Collapse/expand advanced filters">▲ Hide Advanced</button>
         </div>
-        <div class="loc-filter-collapsible" id="locFilterCollapsible">
-        <div class="loc-presets-row">
-          <label class="sr-only" for="locPresetName">Preset name</label>
-          <input id="locPresetName" class="loc-preset-input" type="text" placeholder="Preset name...">
-          <label class="sr-only" for="locPresetScope">Preset scope</label>
-          <select id="locPresetScope" class="loc-preset-select loc-preset-scope">
-            <option value="city">City Preset</option>
-            <option value="global">Global Preset</option>
-          </select>
-          <button class="loc-mini-btn" onclick="saveLocPreset()">Save Preset</button>
-          <label class="sr-only" for="locPresetSelect">Saved presets</label>
-          <select id="locPresetSelect" class="loc-preset-select"></select>
-          <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
-          <button class="loc-mini-btn" onclick="deleteSelectedLocPreset()">Delete</button>
-          <button id="copyShareBtn" class="loc-mini-btn" onclick="copyShareLink()">Copy Share Link</button>
+        <div class="loc-primary-toolbar">
+          <div class="loc-primary-main">
+            <div class="loc-filter-item">
+              <label for="locSearchName">Search by Name</label>
+              <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search locations..." oninput="applyLocFilters()">
+            </div>
+            <div class="loc-filter-item">
+              <label for="locFilterTag">Tag</label>
+              <input id="locFilterTag" class="loc-filter-input" type="text" placeholder="e.g. hiking, restaurant..." list="locTagDatalist" oninput="applyLocFilters()">
+              <datalist id="locTagDatalist"></datalist>
+            </div>
+            <div class="loc-inline-checks">
+              <label class="loc-check"><input id="locFilterOpenNow" type="checkbox" onchange="applyLocFilters()"> Open now</label>
+            </div>
+          </div>
+
+          <div class="loc-primary-actions">
+            <div class="loc-sort-row">
+              <div class="loc-inline-sort">
+                <span class="loc-sort-label">Sort by:</span>
+                <label class="sr-only" for="locSortBy">Sort locations</label>
+                <select id="locSortBy" class="loc-sort-select" onchange="applyLocFilters()">
+                  <option value="name">Name</option>
+                  <option value="driveTime">Drive time</option>
+                  <option value="difficulty">Difficulty</option>
+                  <option value="cost">Cost</option>
+                  <option value="rating">Rating</option>
+                  <option value="tags">Tags</option>
+                  <option value="bestValue">Best value</option>
+                  <option value="mostUnique">Most unique</option>
+                </select>
+                <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
+              </div>
+              <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+              <button id="copyShareBtn" class="loc-mini-btn" onclick="copyShareLink()">Copy Share Link</button>
+              <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
+              <div class="loc-results-count" id="locResultsCount">0 locations</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="loc-quick-picks-row">
+          <div class="loc-filter-group-title">Quick picks</div>
           <div class="loc-smart-presets" aria-label="Smart preset suggestions">
             <button id="locPresetClosestNowBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="closest-now" onclick="applySmartLocPreset('closest-now')">🕒 Closest now</button>
             <button id="locPresetBestValueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="best-value" onclick="applySmartLocPreset('best-value')">💎 Best value</button>
             <button id="locPresetMostUniqueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="most-unique" onclick="applySmartLocPreset('most-unique')">✨ Most unique</button>
           </div>
-          <div id="locFamilyBar" class="loc-family-bar" aria-label="Family planning preferences">
-            <div id="locFamilyPresetRow" class="loc-family-row"></div>
-            <div id="locFamilyToggleRow" class="loc-family-row"></div>
-          </div>
-        </div>
-        <div class="loc-check-row">
-          <label class="loc-check"><input id="locFilterOpenNow" type="checkbox" onchange="applyLocFilters()"> Open now</label>
-          <label class="loc-check"><input id="locFilterClosingSoon" type="checkbox" onchange="applyLocFilters()"> Closing within 2h</label>
-        </div>
-         <div class="locations-controls-grid">
-          <div class="loc-filter-item">
-            <label for="locSearchName">Search by Name</label>
-            <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search locations..." oninput="applyLocFilters()">
-          </div>
-          <div class="loc-filter-item">
-            <label for="locFilterDifficulty">Difficulty</label>
-            <select id="locFilterDifficulty" class="loc-filter-select" onchange="applyLocFilters()">
-              <option value="">Any Difficulty</option>
-              <option value="easy">Easy</option>
-              <option value="moderate">Moderate</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          <div class="loc-filter-item">
-            <label for="locFilterCost">Cost</label>
-            <select id="locFilterCost" class="loc-filter-select" onchange="applyLocFilters()">
-              <option value="">Any Cost</option>
-              <option value="free">Free</option>
-              <option value="$">$</option>
-              <option value="$$">$$</option>
-              <option value="$$$">$$$</option>
-            </select>
-          </div>
-          <div class="loc-filter-item">
-            <label for="locFilterTag">Filter by Tag</label>
-            <input id="locFilterTag" class="loc-filter-input" type="text" placeholder="e.g. hiking, restaurant…" list="locTagDatalist" oninput="applyLocFilters()">
-            <datalist id="locTagDatalist"></datalist>
-          </div>
         </div>
 
-        <!-- Quick Tag Buttons (populated dynamically) -->
-        <div id="locQuickTags" class="loc-quick-tags"></div>
-        <div id="locSourceFilters" class="loc-source-filters" aria-live="polite"></div>
-        <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
         <div id="locActiveFilters" class="loc-active-filters" aria-live="polite"></div>
-        <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
-        <div id="wildlifeDiagnosticsStrip" class="wildlife-diagnostics-strip" aria-live="polite"></div>
-        </div><!-- /loc-filter-collapsible -->
 
-        <!-- Sort Row -->
-        <div class="loc-sort-row">
-          <span class="loc-sort-label">Sort by:</span>
-          <label class="sr-only" for="locSortBy">Sort locations</label>
-          <select id="locSortBy" class="loc-sort-select" onchange="applyLocFilters()">
-            <option value="name">Name</option>
-            <option value="driveTime">Drive time</option>
-            <option value="difficulty">Difficulty</option>
-            <option value="cost">Cost</option>
-            <option value="rating">Rating</option>
-            <option value="tags">Tags</option>
-            <option value="bestValue">Best value</option>
-            <option value="mostUnique">Most unique</option>
-          </select>
-          <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
-          <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+        <div class="loc-filter-collapsible" id="locFilterCollapsible">
+          <div class="loc-advanced-sections">
+            <div class="loc-filter-group">
+              <div class="loc-filter-group-header">
+                <div>
+                  <div class="loc-filter-group-title">Advanced filters</div>
+                  <div class="loc-filter-subcopy">Fine-tune the list with details, tags, family settings, and saved views.</div>
+                </div>
+              </div>
+              <div class="locations-controls-grid">
+                <div class="loc-filter-item">
+                  <label for="locFilterDifficulty">Difficulty</label>
+                  <select id="locFilterDifficulty" class="loc-filter-select" onchange="applyLocFilters()">
+                    <option value="">Any Difficulty</option>
+                    <option value="easy">Easy</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div class="loc-filter-item">
+                  <label for="locFilterCost">Cost</label>
+                  <select id="locFilterCost" class="loc-filter-select" onchange="applyLocFilters()">
+                    <option value="">Any Cost</option>
+                    <option value="free">Free</option>
+                    <option value="$">$</option>
+                    <option value="$$">$$</option>
+                    <option value="$$$">$$$</option>
+                  </select>
+                </div>
+              </div>
+              <div class="loc-check-row">
+                <label class="loc-check"><input id="locFilterClosingSoon" type="checkbox" onchange="applyLocFilters()"> Closing within 2h</label>
+              </div>
+            </div>
+
+            <div class="loc-filter-group">
+              <div>
+                <div class="loc-filter-group-title">Family filters</div>
+                <div class="loc-filter-subcopy">Use family planning presets and preference chips when you want more curated results.</div>
+              </div>
+              <div id="locFamilyBar" class="loc-family-bar" aria-label="Family planning preferences">
+                <div id="locFamilyPresetRow" class="loc-family-row"></div>
+                <div id="locFamilyToggleRow" class="loc-family-row"></div>
+              </div>
+            </div>
+
+            <div class="loc-filter-group">
+              <div>
+                <div class="loc-filter-group-title">Suggested tags</div>
+                <div class="loc-filter-subcopy">Browse common tags if you do not want to type them manually.</div>
+              </div>
+              <div id="locQuickTags" class="loc-quick-tags"></div>
+            </div>
+
+            <div class="loc-filter-group">
+              <div>
+                <div class="loc-filter-group-title">Source filters</div>
+                <div class="loc-filter-subcopy">Limit results to saved rows or nearby web discoveries.</div>
+              </div>
+              <div id="locSourceFilters" class="loc-source-filters" aria-live="polite"></div>
+            </div>
+          </div>
+        </div><!-- /loc-filter-collapsible -->
+      </div>
+
+      <div class="loc-status-strip">
+        <div id="locDataFreshnessBadge" class="loc-data-freshness-badge" aria-live="polite"></div>
+        <div id="locMixedSourceDiagnostics" class="loc-mixed-source-diagnostics" aria-live="polite"></div>
+        <div id="wildlifeDiagnosticsStrip" class="wildlife-diagnostics-strip" aria-live="polite"></div>
+        <div class="loc-group-actions">
           <button type="button" class="loc-mini-btn" onclick="openNearbyDiagnosticsFromCityViewer()">🩺 Nearby Diagnostics</button>
-           <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
-           <div class="loc-results-count" id="locResultsCount">0 locations</div>
-         </div>
-       </div>
+        </div>
+      </div>
 
       <div id="locMainLayout" class="loc-main-layout">
         <div id="locationsGrid" class="locations-grid"></div>
@@ -2782,6 +2960,7 @@
       }
       resolveNearbyDebugThresholdsFromUrl();
       resolvePrefilterFromUrl();
+      syncLocFilterPanelState({ force: true });
       syncBulkActionInputHint();
       familyPreferences = loadFamilyPreferences();
       renderFamilyExperienceControls();
@@ -3095,8 +3274,6 @@
     }
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
-    function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
-    function globalPresetKey() { return 'cityViewer:presets:global:v1'; }
     function cityShortlistKey(cityKey) { return `cityViewer:shortlist:${cityKey}`; }
     function cityEditsKey(cityKey) { return `cityViewer:edits:${cityKey}`; }
 
@@ -4341,96 +4518,6 @@
     function saveLastLocState() {
       if (!currentCityKey) return;
       window.localStorage.setItem(cityStateKey(currentCityKey), JSON.stringify(getLocFilterState()));
-    }
-
-    function getPresetsForCity() {
-      if (!currentCityKey) return {};
-      try { return JSON.parse(window.localStorage.getItem(cityPresetKey(currentCityKey)) || '{}'); }
-      catch (_) { return {}; }
-    }
-
-    function getGlobalPresets() {
-      try { return JSON.parse(window.localStorage.getItem(globalPresetKey()) || '{}'); }
-      catch (_) { return {}; }
-    }
-
-    function setPresetsForCity(presets) {
-      if (!currentCityKey) return;
-      window.localStorage.setItem(cityPresetKey(currentCityKey), JSON.stringify(presets));
-      refreshPresetSelect();
-    }
-
-    function setGlobalPresets(presets) {
-      window.localStorage.setItem(globalPresetKey(), JSON.stringify(presets));
-      refreshPresetSelect();
-    }
-
-    function refreshPresetSelect() {
-      const select = document.getElementById('locPresetSelect');
-      if (!select) return;
-      const cityPresets = getPresetsForCity();
-      const globalPresets = getGlobalPresets();
-      const cityNames = Object.keys(cityPresets).sort();
-      const globalNames = Object.keys(globalPresets).sort();
-      const options = ['<option value="">Saved presets...</option>'];
-      if (cityNames.length) {
-        options.push('<optgroup label="This City">');
-        cityNames.forEach(name => options.push(`<option value="city::${escAttr(name)}">📍 ${escHtml(name)}</option>`));
-        options.push('</optgroup>');
-      }
-      if (globalNames.length) {
-        options.push('<optgroup label="Global">');
-        globalNames.forEach(name => options.push(`<option value="global::${escAttr(name)}">🌐 ${escHtml(name)}</option>`));
-        options.push('</optgroup>');
-      }
-      select.innerHTML = options.join('');
-    }
-
-    function parsePresetOption(value) {
-      const v = String(value || '');
-      if (!v) return null;
-      if (v.startsWith('city::')) return { scope: 'city', name: v.slice(6) };
-      if (v.startsWith('global::')) return { scope: 'global', name: v.slice(8) };
-      return { scope: 'city', name: v }; // backwards compatibility
-    }
-
-    function saveLocPreset() {
-      const name = document.getElementById('locPresetName').value.trim();
-      if (!name) return alert('Enter a preset name first.');
-      const scope = (document.getElementById('locPresetScope')?.value || 'city');
-      if (scope === 'global') {
-        const presets = getGlobalPresets();
-        presets[name] = getLocFilterState();
-        setGlobalPresets(presets);
-      } else {
-        const presets = getPresetsForCity();
-        presets[name] = getLocFilterState();
-        setPresetsForCity(presets);
-      }
-      document.getElementById('locPresetName').value = '';
-    }
-
-    function loadSelectedLocPreset() {
-      const parsed = parsePresetOption(document.getElementById('locPresetSelect').value);
-      if (!parsed) return;
-      const source = parsed.scope === 'global' ? getGlobalPresets() : getPresetsForCity();
-      if (!source[parsed.name]) return;
-      applyLocFilterState(source[parsed.name]);
-      applyLocFilters();
-    }
-
-    function deleteSelectedLocPreset() {
-      const parsed = parsePresetOption(document.getElementById('locPresetSelect').value);
-      if (!parsed) return;
-      if (parsed.scope === 'global') {
-        const presets = getGlobalPresets();
-        delete presets[parsed.name];
-        setGlobalPresets(presets);
-      } else {
-        const presets = getPresetsForCity();
-        delete presets[parsed.name];
-        setPresetsForCity(presets);
-      }
     }
 
     function parseDriveMinutes(value) {
@@ -6920,10 +7007,11 @@
       locSortOrder = 'asc';
       document.getElementById('locSortOrderBtn').textContent = '↑';
       setSplitView(false);
+      locFilterPanelManualOverride = false;
+      syncLocFilterPanelState({ force: true });
 
       buildQuickTagPills(viewLocations);
       populateTagDatalist(viewLocations);
-      refreshPresetSelect();
       renderShortlistTray();
       renderDataFreshnessBadge();
       document.getElementById('locDayPlan').classList.remove('visible');
@@ -6961,14 +7049,34 @@
     }
 
     // ── Filter panel collapse toggle ──────────────────────────────────────
+    const MOBILE_ADVANCED_FILTER_MAX_WIDTH = 768;
     let locFilterPanelCollapsed = false;
+    let locFilterPanelManualOverride = false;
+
+    function isMobileAdvancedFilterViewport() {
+      return window.innerWidth <= MOBILE_ADVANCED_FILTER_MAX_WIDTH;
+    }
+
+    function syncLocFilterPanelState(options = {}) {
+      const { force = false } = options || {};
+      const collapsible = document.getElementById('locFilterCollapsible');
+      const toggleBtn = document.getElementById('locFilterToggleBtn');
+      if (!collapsible || !toggleBtn) return;
+      if (!force && locFilterPanelManualOverride) return;
+      locFilterPanelCollapsed = isMobileAdvancedFilterViewport();
+      collapsible.classList.toggle('collapsed', locFilterPanelCollapsed);
+      toggleBtn.textContent = locFilterPanelCollapsed ? '▼ More Filters' : '▲ Hide Advanced';
+      toggleBtn.setAttribute('aria-expanded', String(!locFilterPanelCollapsed));
+    }
+
     function toggleLocFilterPanel() {
       const collapsible = document.getElementById('locFilterCollapsible');
       const toggleBtn   = document.getElementById('locFilterToggleBtn');
       if (!collapsible || !toggleBtn) return;
+      locFilterPanelManualOverride = true;
       locFilterPanelCollapsed = !locFilterPanelCollapsed;
       collapsible.classList.toggle('collapsed', locFilterPanelCollapsed);
-      toggleBtn.textContent = locFilterPanelCollapsed ? '▼ Show Filters' : '▲ Hide Filters';
+      toggleBtn.textContent = locFilterPanelCollapsed ? '▼ More Filters' : '▲ Hide Advanced';
       toggleBtn.setAttribute('aria-expanded', String(!locFilterPanelCollapsed));
     }
 
@@ -7103,9 +7211,6 @@
     window.resetLocFilters = resetLocFilters;
     window.clearSingleFilterChip = clearSingleFilterChip;
     window.applyLocFilters = applyLocFilters;
-    window.saveLocPreset = saveLocPreset;
-    window.loadSelectedLocPreset = loadSelectedLocPreset;
-    window.deleteSelectedLocPreset = deleteSelectedLocPreset;
     window.applySmartLocPreset = applySmartLocPreset;
     window.toggleSplitView = toggleSplitView;
     window.toggleShortlistByEncodedId = toggleShortlistByEncodedId;
@@ -7140,6 +7245,7 @@
     } else {
       init();
     }
+    window.addEventListener('resize', () => syncLocFilterPanelState());
     updateRouteButtonsState();
 
     // ── Jump-to-top scroll listener ───────────────────────────────────────

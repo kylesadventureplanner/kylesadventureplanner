@@ -447,6 +447,18 @@
       color: #1e3a8a;
     }
 
+    @media (max-width: 640px) {
+      .target-chip-grid {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+      .target-chip {
+        padding: 5px 8px;
+        font-size: 11px;
+        border-radius: 8px;
+      }
+    }
+
     .target-diagnostics-card {
       margin-top: 10px;
       padding: 10px 12px;
@@ -734,6 +746,39 @@
       transition: box-shadow 0.25s ease;
     }
 
+    /* Compact single-row filter bar */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .filter-bar-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1 1 130px;
+      min-width: 100px;
+    }
+    .filter-bar-group label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+    .filter-bar-group select {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    @media (max-width: 520px) {
+      .filter-bar-group {
+        flex: 1 1 100%;
+      }
+    }
+
     .tab-label-wrap {
       display: inline-flex;
       align-items: center;
@@ -828,7 +873,7 @@
     </div>
 
     <div class="card" id="editModeTargetCard">
-      <div class="card-title" id="editModeTargetCardTitle">🎯 Edit Mode Target Tables</div>
+      <div class="card-title" id="editModeTargetCardTitle">🎯 Target Table</div>
       <div class="input-group" data-target-visible-tab="places">
         <label for="actionTargetSelect">Add / Bulk Add target table</label>
         <select id="actionTargetSelect"></select>
@@ -885,61 +930,60 @@
 
       <div id="placesMainContent">
       <div id="candidateSearchFiltersCard" class="card candidate-filter-card">
-        <div class="card-title">🎯 Candidate Search Filters</div>
-        <div class="input-group">
-          <label for="candidateDistanceLimitMiles">Distance from 100 Long John Dr, Hendersonville, NC 28791</label>
-          <select id="candidateDistanceLimitMiles">
-            <option value="no-limit">No distance limit</option>
-            <option value="5">5 miles</option>
-            <option value="10">10 miles</option>
-            <option value="25">25 miles</option>
-            <option value="50">50 miles</option>
-            <option value="75">75 miles</option>
-            <option value="100">100 miles</option>
-            <option value="150">150 miles</option>
-            <option value="250">250 miles</option>
-            <option value="500">500 miles</option>
-          </select>
+        <div class="card-title">🎯 Search Filters</div>
+        <div class="filter-bar">
+          <div class="filter-bar-group">
+            <label for="candidateDistanceLimitMiles">Distance</label>
+            <select id="candidateDistanceLimitMiles">
+              <option value="no-limit">Any distance</option>
+              <option value="5">5 mi</option>
+              <option value="10">10 mi</option>
+              <option value="25">25 mi</option>
+              <option value="50">50 mi</option>
+              <option value="75">75 mi</option>
+              <option value="100">100 mi</option>
+              <option value="150">150 mi</option>
+              <option value="250">250 mi</option>
+              <option value="500">500 mi</option>
+            </select>
+          </div>
+          <div class="filter-bar-group">
+            <label for="candidateStateFilter">State</label>
+            <select id="candidateStateFilter">
+              <option value="">Any state</option>
+              <option value="NC">NC</option>
+              <option value="SC">SC</option>
+              <option value="TN">TN</option>
+              <option value="GA">GA</option>
+              <option value="VA">VA</option>
+              <option value="WV">WV</option>
+              <option value="KY">KY</option>
+            </select>
+          </div>
+          <div class="filter-bar-group">
+            <label for="candidateSortMode">Sort by</label>
+            <select id="candidateSortMode">
+              <option value="nearest">Nearest</option>
+              <option value="best-rated">Best rated</option>
+              <option value="most-reviewed">Most reviewed</option>
+            </select>
+          </div>
         </div>
-        <div class="input-group">
-          <label for="candidateStateFilter">Restrict to state (optional)</label>
-          <select id="candidateStateFilter">
-            <option value="">Any state</option>
-            <option value="NC">NC</option>
-            <option value="SC">SC</option>
-            <option value="TN">TN</option>
-            <option value="GA">GA</option>
-            <option value="VA">VA</option>
-            <option value="WV">WV</option>
-            <option value="KY">KY</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label for="candidateSortMode">Sort candidate results (single + bulk)</label>
-          <select id="candidateSortMode">
-            <option value="nearest">Nearest</option>
-            <option value="best-rated">Best rated</option>
-            <option value="most-reviewed">Most reviewed</option>
-          </select>
-          <div class="help-text">Chain results continue to use chain relevance ranking.</div>
-        </div>
-        <div class="input-group">
-          <label class="inline-slider-toggle" style="display:flex;">
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:6px;">
+          <label class="inline-slider-toggle" style="display:flex; align-items:center; gap:6px; cursor:pointer;">
             <input id="candidateUrlProbeEnabled" type="checkbox">
             <span class="inline-toggle-slider" aria-hidden="true"></span>
-            Probe URL endpoints for non-festival website/place URL search when direct lookup has no match (opt-in)
-            <span title="Browser-only mode may hit CORS blocks on many sites. Turn this on only when URL search needs extra enrichment." style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:700; cursor:help;">i</span>
+            <span style="font-size:12px; color:#374151;">Probe URLs for extra match enrichment</span>
+            <span title="Browser-only mode may hit CORS blocks on many sites. Turn this on only when URL search needs extra enrichment." style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:700; cursor:help; flex-shrink:0;">i</span>
           </label>
-        </div>
-        <div class="button-group">
-          <button id="candidateResetFiltersBtn" class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()">Reset Filters</button>
+          <button id="candidateResetFiltersBtn" class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()" style="padding:6px 14px; font-size:12px;">Reset</button>
         </div>
         <div id="candidateFilterStatus" class="help-text">Applies to Search Candidates, Search Bulk Candidates, and Search Chain Candidates.</div>
       </div>
 
       <!-- Add Single Place -->
       <div class="card">
-        <div class="card-title">➕ Add Single Place</div>
+        <div class="card-title">➕ Add Single</div>
         <div id="singleSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="singleDryRunToggle">
@@ -1013,7 +1057,7 @@
 
       <!-- Bulk Add Places -->
       <div class="card">
-        <div class="card-title">📦 Bulk Add Places</div>
+        <div class="card-title">📦 Bulk Add</div>
         <div id="bulkSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="bulkDryRunToggle">
@@ -1063,7 +1107,7 @@
 
       <!-- Bulk Add Chain Locations -->
       <div class="card">
-        <div class="card-title">⛓️ Bulk Add Chain Locations</div>
+        <div class="card-title">⛓️ Chain Locations</div>
         <div id="chainSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="chainDryRunToggle">
@@ -1143,7 +1187,7 @@
     <div id="automation-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-automation" tabindex="0" hidden>
       <!-- Test Google API Button -->
       <div class="card">
-        <div class="card-title">🧪 Test Google Places API</div>
+        <div class="card-title">🧪 API Test</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Test your Google Places API connection. This will verify your API key is correctly configured.
         </p>
@@ -1283,7 +1327,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">🔍 Search Missing Place IDs</div>
+        <div class="card-title">🔍 Fix Missing Place IDs</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Search Google Places for rows that are missing a Google Place ID and add one when a confident match exists.
         </p>
@@ -1327,7 +1371,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">🏷️ Auto-Tag All Locations</div>
+        <div class="card-title">🏷️ Auto-Tag All</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Automatically recommend and add tags based on Google Places data.
         </p>
@@ -1349,7 +1393,7 @@
       </div>
 
       <div class="card" id="batchTagActionsCard">
-        <div class="card-title">🏷️ Batch Tag Actions (Current Add/Bulk Target)</div>
+        <div class="card-title">🏷️ Batch Tag Actions</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Add tags to multiple locations at once, or copy tags from one source location to many target locations.
         </p>
@@ -1408,7 +1452,7 @@
 
       <!-- Populate Missing Fields Only -->
       <div class="card">
-        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <div class="card-title">📝 Fill Missing Fields</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Use Google Places API to fill in empty fields for all your locations while preserving existing data.
         </p>
@@ -1431,7 +1475,7 @@
 
       <!-- Update Hours Only -->
       <div class="card">
-        <div class="card-title">🕐 Update Hours Only</div>
+        <div class="card-title">🕐 Update Hours</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Use Google Places API to update operating hours for all your locations.
         </p>
@@ -1454,7 +1498,7 @@
 
       <!-- Update All Descriptions -->
       <div class="card">
-        <div class="card-title">📝 Update All Descriptions</div>
+        <div class="card-title">📝 Update Descriptions</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Use Google Places API to fill in description fields. By default only fills empty descriptions — enable "Overwrite" to replace existing ones too.
         </p>
