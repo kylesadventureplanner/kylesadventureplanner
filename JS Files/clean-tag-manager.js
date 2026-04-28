@@ -231,6 +231,45 @@
         border-color: #10b981;
         box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15);
       }
+      .ctm-live-matches {
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        background: #eff6ff;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .ctm-live-match-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #ffffff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+      .ctm-live-match-tag {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e3a8a;
+      }
+      .ctm-live-match-btn {
+        border: 1px solid #60a5fa;
+        border-radius: 8px;
+        background: #dbeafe;
+        color: #1e40af;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+      .ctm-live-match-btn.is-selected {
+        border-color: #93c5fd;
+        background: #f8fafc;
+        color: #334155;
+      }
       .ctm-footer {
         padding: 14px 20px;
         border-top: 1px solid #e5e7eb;
@@ -379,6 +418,7 @@
               <datalist id="ctmTagOptions"></datalist>
               <button id="ctmAdd" class="ctm-btn ctm-btn-primary">Add Tag</button>
             </div>
+            <div id="ctmLiveMatches" class="ctm-live-matches" style="margin-top:8px;"></div>
           </div>
 
           <div>
@@ -414,6 +454,7 @@
         window.cleanTagManager.addTagFromInput();
       }
     });
+    input.addEventListener('input', () => window.cleanTagManager.renderLiveMatches());
   }
 
   window.cleanTagManager = {
@@ -468,6 +509,7 @@
       this.renderCurrentTags();
       this.renderSuggestions();
       this.renderAutocomplete();
+      this.renderLiveMatches();
 
       const backdrop = document.getElementById('cleanTagManagerBackdrop');
       if (backdrop) backdrop.classList.add('visible');
@@ -528,6 +570,46 @@
         : [];
       const filtered = all.filter((tag) => !this.currentTags.includes(tag));
       options.innerHTML = filtered.map((tag) => `<option value="${esc(tag)}"></option>`).join('');
+    },
+
+    renderLiveMatches() {
+      const wrap = document.getElementById('ctmLiveMatches');
+      const input = document.getElementById('ctmInput');
+      if (!wrap || !input) return;
+      const query = String(input.value || '').trim().toLowerCase();
+      if (!query) {
+        wrap.innerHTML = '<span class="ctm-empty">Start typing to see existing tag matches</span>';
+        return;
+      }
+      const all = (window.tagManager && typeof window.tagManager.getAllTags === 'function')
+        ? (window.tagManager.getAllTags() || [])
+        : [];
+      const matches = all
+        .map((tag) => String(tag || '').trim())
+        .filter(Boolean)
+        .filter((tag) => tag.toLowerCase().includes(query))
+        .slice(0, 8);
+      if (!matches.length) {
+        wrap.innerHTML = '<span class="ctm-empty">No existing tag matches</span>';
+        return;
+      }
+      wrap.innerHTML = matches.map((tag) => {
+        const selected = this.currentTags.includes(tag);
+        return `<div class="ctm-live-match-row">` +
+          `<span class="ctm-live-match-tag">${esc(tag)}</span>` +
+          `<button type="button" class="ctm-live-match-btn${selected ? ' is-selected' : ''}" data-live-tag="${esc(tag)}">${selected ? 'Added' : 'Add'}</button>` +
+        `</div>`;
+      }).join('');
+      wrap.querySelectorAll('[data-live-tag]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tag = btn.getAttribute('data-live-tag');
+          if (!tag) return;
+          if (!this.currentTags.includes(tag)) {
+            this.addTag(tag);
+          }
+          this.renderLiveMatches();
+        });
+      });
     },
 
     getRowForCurrentPlace() {
@@ -839,8 +921,12 @@
       this.renderCurrentTags();
       this.renderSuggestions();
       this.renderAutocomplete();
+      this.renderLiveMatches();
       const input = document.getElementById('ctmInput');
-      if (input) input.value = '';
+      if (input) {
+        input.value = '';
+        this.renderLiveMatches();
+      }
     },
 
     addTagFromInput() {
@@ -854,6 +940,7 @@
       this.renderCurrentTags();
       this.renderSuggestions();
       this.renderAutocomplete();
+      this.renderLiveMatches();
     },
 
     clearAllTags() {
@@ -861,6 +948,7 @@
       this.renderCurrentTags();
       this.renderSuggestions();
       this.renderAutocomplete();
+      this.renderLiveMatches();
     },
 
     saveAndClose() {

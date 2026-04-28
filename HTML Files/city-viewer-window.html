@@ -707,11 +707,17 @@
       padding: 18px 20px;
       transition: all 0.2s;
       cursor: pointer;
+      position: relative;
+      z-index: 1;
     }
     .loc-card:hover {
       border-color: #667eea;
       box-shadow: 0 6px 20px rgba(102,126,234,0.15);
       transform: translateY(-2px);
+      z-index: 8;
+    }
+    .loc-card:has(.loc-quick-actions[open]) {
+      z-index: 30;
     }
     .loc-card-header {
       display: flex;
@@ -726,6 +732,13 @@
       font-weight: 700;
       color: #1f2937;
       flex: 1;
+    }
+    .loc-place-id {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #6b7280;
+      letter-spacing: 0.01em;
+      word-break: break-all;
     }
     .loc-card-meta {
       display: flex;
@@ -921,6 +934,7 @@
     .loc-quick-actions {
       margin-left: auto;
       position: relative;
+      z-index: 2;
     }
     .loc-quick-actions > summary {
       list-style: none;
@@ -942,11 +956,14 @@
       color: #1e40af;
       background: #eff6ff;
     }
+    .loc-quick-actions[open] {
+      z-index: 32;
+    }
     .loc-quick-actions-menu {
       position: absolute;
       right: 0;
       top: calc(100% + 6px);
-      z-index: 5;
+      z-index: 40;
       width: 220px;
       display: grid;
       gap: 6px;
@@ -6807,6 +6824,8 @@
         const cost = locVal(loc, 14, 'cost');
         const description = locVal(loc, 12, 'description');
         const googleUrl = locVal(loc, 23, 'googleUrl');
+        const placeId = String(locVal(loc, 1, 'googlePlaceId') || '').trim();
+        const hasPlaceId = placeId && !isPlaceholderText(placeId);
         const isNatureSource = isNatureLocationRecord(loc);
         const originBadge = getLocationOriginBadge(loc);
         const originKey = getLocSourceKey(loc);
@@ -6829,7 +6848,10 @@
         return `
           <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" data-location-origin="${escAttr(originKey)}" role="button" tabindex="0" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
             <div class="loc-card-header">
-              <div class="loc-card-name">${escHtml(name)}</div>
+              <div>
+                <div class="loc-card-name">${escHtml(name)}</div>
+                ${hasPlaceId ? `<div class="loc-place-id">Google Place ID: ${escHtml(placeId)}</div>` : ''}
+              </div>
               <div class="loc-card-meta">
                 <span class="loc-meta-badge ${escAttr(originBadge.className)}">${escHtml(originBadge.label)}</span>
                 ${isNatureSource && difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}

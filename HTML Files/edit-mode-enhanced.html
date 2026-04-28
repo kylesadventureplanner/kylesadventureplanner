@@ -1283,6 +1283,28 @@
       </div>
 
       <div class="card">
+        <div class="card-title">🔍 Search Missing Place IDs</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Search Google Places for rows that are missing a Google Place ID and add one when a confident match exists.
+        </p>
+
+        <div class="dry-run-toggle" id="searchPlaceIdsDryRunToggle">
+          <input type="checkbox" id="searchPlaceIdsDryRun" onchange="updateDryRunToggle(this, 'searchPlaceIds')">
+          <div class="toggle-slider"></div>
+          <label for="searchPlaceIdsDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="searchPlaceIdsDryRunStatus">DISABLED</div>
+        </div>
+
+        <div class="button-group">
+          <button id="searchMissingPlaceIdsBtn" class="button button-primary" onclick="submitSearchMissingPlaceIds()">🔍 Search Missing Place IDs</button>
+        </div>
+
+          <div id="search-place-ids-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+
+        <div id="search-place-ids-status"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">🔄 Refresh Place IDs</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Refresh cached Place IDs from Google Places API.
@@ -1346,11 +1368,21 @@
           </div>
           <div id="batchTagSearchSummary" class="help-text" style="margin-top:6px; color:#64748b;">Search the active Add/Bulk target table and click results to add/remove targets.</div>
           <div id="batchTagSearchResults" class="candidate-results" aria-live="polite"></div>
+          <div id="batchTagSelectedTargets" class="candidate-results" style="margin-top:8px;" aria-live="polite"></div>
         </div>
 
         <div class="input-group">
           <label for="batchTagValues">Tags to add (comma-separated)</label>
           <input id="batchTagValues" type="text" placeholder="family-friendly, scenic, weekend" />
+          <label for="batchTagTagSearchInput" style="margin-top:8px;">Find existing tags and add to list</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <input id="batchTagTagSearchInput" type="text" placeholder="Search existing tags..." style="flex:1; min-width:220px;" />
+            <button class="button" type="button" onclick="searchBatchTagTags()">🔎 Search Tags</button>
+            <button class="button button-secondary" type="button" onclick="clearBatchTagTagSelections()">Clear Selected Tags</button>
+          </div>
+          <div id="batchTagTagSearchSummary" class="help-text" style="margin-top:6px; color:#64748b;">Search existing tags and click Add to include them in this batch operation.</div>
+          <div id="batchTagTagSearchResults" class="candidate-results" aria-live="polite"></div>
+          <div id="batchTagSelectedTags" class="candidate-results" style="margin-top:8px;" aria-live="polite"></div>
         </div>
 
         <div class="button-group">
@@ -6685,9 +6717,35 @@
         if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
           return await window.handleRefreshPlaceIdsWithProgress(document.createElement('div'), dryRun);
         }
+        const host = getMainWindowSafe();
+        if (host && typeof host.runGoogleAutomation === 'function') {
+          return await host.runGoogleAutomation('refreshPlaceIds', dryRun);
+        }
         throw new Error('Refresh system not available');
       });
       renderAutomationWriteDiagnostics('refresh-write-diagnostics', result);
+      return;
+    }
+
+    async function submitSearchMissingPlaceIds() {
+      const dryRun = document.getElementById('searchPlaceIdsDryRun').checked;
+      const statusDiv = document.getElementById('search-place-ids-status');
+      const targets = getAutomationTargetsForRun();
+
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        const host = getMainWindowSafe();
+        if (host && typeof host.searchMissingGooglePlaceIds === 'function') {
+          return await host.searchMissingGooglePlaceIds({ dryRun });
+        }
+        if (host && typeof host.backfillMissingGooglePlaceIds === 'function') {
+          return await host.backfillMissingGooglePlaceIds({ dryRun });
+        }
+        if (host && typeof host.runGoogleAutomation === 'function') {
+          return await host.runGoogleAutomation('searchPlaceIds', dryRun);
+        }
+        throw new Error('Search Missing Place IDs system not available');
+      });
+      renderAutomationWriteDiagnostics('search-place-ids-write-diagnostics', result);
       return;
     }
 
@@ -6732,26 +6790,82 @@
     const batchTagSearchState = {
       catalog: [],
       query: '',
-      results: []
+      results: [],
+      tagCatalog: [],
+      tagQuery: '',
+      tagResults: []
     };
+
+    function getCatalogValueBySchema(values, candidateNames, fallbackIndexes) {
+      const rowValues = Array.isArray(values) ? values : [];
+      const schema = Array.isArray(getMainWindowSafe().__excelSchemaColumns) ? getMainWindowSafe().__excelSchemaColumns : [];
+      const names = Array.isArray(candidateNames)
+        ? candidateNames.map((name) => String(name || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+      if (schema.length && names.length) {
+        const idx = schema.findIndex((name) => names.includes(String(name || '').trim().toLowerCase()));
+        if (idx >= 0 && idx < rowValues.length) {
+          const value = String(rowValues[idx] || '').trim();
+          if (value) return value;
+        }
+      }
+      const indexes = Array.isArray(fallbackIndexes) ? fallbackIndexes : [];
+      for (const idxRaw of indexes) {
+        const idx = Number(idxRaw);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= rowValues.length) continue;
+        const value = String(rowValues[idx] || '').trim();
+        if (value) return value;
+      }
+      return '';
+    }
 
     function getRowIdentifierCatalog(rows) {
       return (Array.isArray(rows) ? rows : []).map((row, index) => {
         const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
-        const name = String(values[0] || '').trim();
-        const placeId = String(values[1] || '').trim();
-        const rowTags = String(values[3] || '').trim();
-        const description = String(values[16] || values[4] || '').trim();
+        const name = getCatalogValueBySchema(values, ['name'], [0]);
+        const placeId = getCatalogValueBySchema(values, ['google place id', 'googleplaceid', 'place id', 'placeid'], [1]);
+        const rowTags = getCatalogValueBySchema(values, ['tags'], [3]);
+        const description = getCatalogValueBySchema(values, ['description', 'notes', 'nearby attractions', 'nearby'], [16, 20, 17, 4]);
+        const managedTags = (placeId && window.tagManager && typeof window.tagManager.getTagsForPlace === 'function')
+          ? (window.tagManager.getTagsForPlace(placeId) || [])
+          : [];
+        const mergedTagText = Array.from(new Set(parseBatchTagIdentifiers([rowTags, Array.isArray(managedTags) ? managedTags.join(',') : ''].join(',')))).join(', ');
         const identifier = placeId || name || `row:${index + 1}`;
         return {
           identifier,
           name,
           placeId,
-          rowTags,
+          rowTags: mergedTagText,
           description,
-          searchableText: [identifier, name, placeId, rowTags, description].join(' ').toLowerCase()
+          searchableText: [identifier, name, placeId, mergedTagText, description].join(' ').toLowerCase()
         };
       });
+    }
+
+    function getSelectedBatchTagTargets(catalog) {
+      const selectedSet = getBatchTagSelectedIdentifierSet(catalog);
+      return (Array.isArray(catalog) ? catalog : []).filter((entry) => selectedSet.has(String(entry && entry.identifier || '').trim().toLowerCase()));
+    }
+
+    function renderBatchTagSelectedTargets() {
+      const selectedEl = document.getElementById('batchTagSelectedTargets');
+      if (!selectedEl) return;
+      const selected = getSelectedBatchTagTargets(batchTagSearchState.catalog);
+      if (!selected.length) {
+        selectedEl.innerHTML = '<div class="help-text" style="padding:8px 2px;">No targets selected yet.</div>';
+        return;
+      }
+      selectedEl.innerHTML =
+        `<div class="candidate-results-head"><span class="candidate-results-summary">Selected targets (${selected.length})</span></div>` +
+        selected.slice(0, 200).map((entry) => {
+          const identifier = String(entry && entry.identifier || '').trim();
+          const encoded = encodeURIComponent(identifier);
+          const label = String(entry && entry.name || identifier || 'Unnamed location');
+          return `<div class="candidate-item selected">` +
+            `<div class="candidate-group"><div class="candidate-title">${escapeHtml(label)}</div></div>` +
+            `<div class="candidate-actions"><button type="button" class="button button-secondary" onclick="toggleBatchTagTargetByEncodedIdentifier('${encoded}')">Remove</button></div>` +
+          `</div>`;
+        }).join('');
     }
 
     function getBatchTagSelectedIdentifierSet(catalog) {
@@ -6817,11 +6931,13 @@
           ? `${selectedCount} target${selectedCount === 1 ? '' : 's'} currently selected. Enter a query to find more targets.`
           : 'Search the active Add/Bulk target table and click results to add/remove targets.';
         resultsEl.innerHTML = '';
+        renderBatchTagSelectedTargets();
         return;
       }
       summaryEl.textContent = `${resultCount} match${resultCount === 1 ? '' : 'es'} for "${query}" • ${selectedCount} selected`;
       if (!resultCount) {
         resultsEl.innerHTML = '<div class="help-text" style="padding:8px 2px;">No matches found in name, description, or tags.</div>';
+        renderBatchTagSelectedTargets();
         return;
       }
       resultsEl.innerHTML = results.map((entry) => {
@@ -6846,6 +6962,7 @@
           `</div>` +
         `</div>`;
       }).join('');
+      renderBatchTagSelectedTargets();
     }
 
     async function searchBatchTagTargets() {
@@ -6869,6 +6986,12 @@
           const haystack = String(entry && entry.searchableText || '');
           return tokens.every((token) => haystack.includes(token));
         });
+        if (!matches.length && tokens.length > 1) {
+          matches = catalog.filter((entry) => {
+            const haystack = String(entry && entry.searchableText || '');
+            return tokens.some((token) => haystack.includes(token));
+          });
+        }
         matches = matches.sort((a, b) => {
           const nameA = String(a && a.name || '').toLowerCase();
           const nameB = String(b && b.name || '').toLowerCase();
@@ -6893,18 +7016,165 @@
       renderBatchTagSearchResults();
     }
 
+    function collectBatchTagCatalogTags() {
+      const fromRows = (Array.isArray(batchTagSearchState.catalog) ? batchTagSearchState.catalog : [])
+        .flatMap((entry) => parseBatchTagIdentifiers(String(entry && entry.rowTags || '')));
+      const fromManager = window.tagManager && typeof window.tagManager.getAllTags === 'function'
+        ? (window.tagManager.getAllTags() || [])
+        : [];
+      const seen = new Set();
+      return [...fromRows, ...fromManager]
+        .map((tag) => String(tag || '').trim())
+        .filter((tag) => {
+          const key = tag.toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => a.localeCompare(b));
+    }
+
+    function getBatchTagSelectedTags() {
+      return parseBatchTagIdentifiers(document.getElementById('batchTagValues')?.value || '');
+    }
+
+    function setBatchTagSelectedTags(nextTags) {
+      const input = document.getElementById('batchTagValues');
+      if (!input) return;
+      input.value = parseBatchTagIdentifiers(Array.isArray(nextTags) ? nextTags.join(', ') : String(nextTags || '')).join(', ');
+    }
+
+    function toggleBatchTagTagByEncodedValue(encodedValue) {
+      const tag = decodeURIComponent(String(encodedValue || ''));
+      if (!tag) return;
+      const selected = getBatchTagSelectedTags();
+      const key = tag.toLowerCase();
+      const next = selected.some((entry) => String(entry || '').toLowerCase() === key)
+        ? selected.filter((entry) => String(entry || '').toLowerCase() !== key)
+        : selected.concat(tag);
+      setBatchTagSelectedTags(next);
+      renderBatchTagTagSearchResults();
+    }
+
+    function renderBatchTagSelectedTags() {
+      const selectedEl = document.getElementById('batchTagSelectedTags');
+      if (!selectedEl) return;
+      const selected = getBatchTagSelectedTags();
+      if (!selected.length) {
+        selectedEl.innerHTML = '<div class="help-text" style="padding:8px 2px;">No tags selected yet.</div>';
+        return;
+      }
+      selectedEl.innerHTML =
+        `<div class="candidate-results-head"><span class="candidate-results-summary">Selected tags (${selected.length})</span></div>` +
+        selected.map((tag) => {
+          const encoded = encodeURIComponent(String(tag));
+          return `<div class="candidate-item selected">` +
+            `<div class="candidate-group"><div class="candidate-title">${escapeHtml(tag)}</div></div>` +
+            `<div class="candidate-actions"><button type="button" class="button button-secondary" onclick="toggleBatchTagTagByEncodedValue('${encoded}')">Remove</button></div>` +
+          `</div>`;
+        }).join('');
+    }
+
+    function renderBatchTagTagSearchResults() {
+      const resultsEl = document.getElementById('batchTagTagSearchResults');
+      const summaryEl = document.getElementById('batchTagTagSearchSummary');
+      if (!resultsEl || !summaryEl) return;
+      const selected = getBatchTagSelectedTags();
+      const selectedSet = new Set(selected.map((tag) => String(tag || '').toLowerCase()));
+      const query = String(batchTagSearchState.tagQuery || '').trim();
+      const results = Array.isArray(batchTagSearchState.tagResults) ? batchTagSearchState.tagResults : [];
+
+      if (!query) {
+        summaryEl.textContent = selected.length
+          ? `${selected.length} tag${selected.length === 1 ? '' : 's'} selected. Enter text to search available tags.`
+          : 'Search existing tags and click Add to include them in this batch operation.';
+        resultsEl.innerHTML = '';
+        renderBatchTagSelectedTags();
+        return;
+      }
+
+      summaryEl.textContent = `${results.length} tag match${results.length === 1 ? '' : 'es'} for "${query}" • ${selected.length} selected`;
+      if (!results.length) {
+        resultsEl.innerHTML = '<div class="help-text" style="padding:8px 2px;">No matching tags found.</div>';
+        renderBatchTagSelectedTags();
+        return;
+      }
+
+      resultsEl.innerHTML = results.map((tag) => {
+        const text = String(tag || '').trim();
+        const key = text.toLowerCase();
+        const selectedTag = selectedSet.has(key);
+        const encoded = encodeURIComponent(text);
+        return `<div class="candidate-item${selectedTag ? ' selected' : ''}">` +
+          `<div class="candidate-group"><div class="candidate-title">${escapeHtml(text)}</div></div>` +
+          `<div class="candidate-actions"><button type="button" class="button ${selectedTag ? 'button-secondary' : 'button-primary'}" onclick="toggleBatchTagTagByEncodedValue('${encoded}')">${selectedTag ? 'Remove' : 'Add'}</button></div>` +
+        `</div>`;
+      }).join('');
+      renderBatchTagSelectedTags();
+    }
+
+    async function searchBatchTagTags() {
+      const input = document.getElementById('batchTagTagSearchInput');
+      if (!input) return;
+      const query = String(input.value || '').trim();
+      batchTagSearchState.tagQuery = query;
+      if (!query) {
+        batchTagSearchState.tagResults = [];
+        renderBatchTagTagSearchResults();
+        return;
+      }
+      try {
+        await ensureBatchTagCatalogLoaded();
+        batchTagSearchState.tagCatalog = collectBatchTagCatalogTags();
+        const q = query.toLowerCase();
+        const tokens = parseBatchTagIdentifiers(query.replace(/\s+/g, ',')).map((token) => token.toLowerCase());
+        let matches = batchTagSearchState.tagCatalog.filter((tag) => {
+          const value = String(tag || '').toLowerCase();
+          return tokens.every((token) => value.includes(token));
+        });
+        if (!matches.length && tokens.length > 1) {
+          matches = batchTagSearchState.tagCatalog.filter((tag) => {
+            const value = String(tag || '').toLowerCase();
+            return tokens.some((token) => value.includes(token));
+          });
+        }
+        batchTagSearchState.tagResults = matches.slice(0, 150);
+        renderBatchTagTagSearchResults();
+      } catch (error) {
+        batchTagSearchState.tagResults = [];
+        setBatchTagStatus(`❌ ${error && error.message ? error.message : 'Tag search failed.'}`, true);
+        renderBatchTagTagSearchResults();
+      }
+    }
+
+    function clearBatchTagTagSelections() {
+      setBatchTagSelectedTags([]);
+      renderBatchTagTagSearchResults();
+    }
+
     function resetBatchTagSearchState() {
       batchTagSearchState.catalog = [];
       batchTagSearchState.query = '';
       batchTagSearchState.results = [];
+      batchTagSearchState.tagCatalog = [];
+      batchTagSearchState.tagQuery = '';
+      batchTagSearchState.tagResults = [];
       const searchInput = document.getElementById('batchTagSearchInput');
       if (searchInput) searchInput.value = '';
+      const tagSearchInput = document.getElementById('batchTagTagSearchInput');
+      if (tagSearchInput) tagSearchInput.value = '';
       renderBatchTagSearchResults();
+      renderBatchTagTagSearchResults();
     }
 
     function initBatchTagSearchUi() {
       const searchInput = document.getElementById('batchTagSearchInput');
       if (searchInput && searchInput.dataset.bound !== '1') {
+        let searchDebounce = 0;
+        searchInput.addEventListener('input', () => {
+          window.clearTimeout(searchDebounce);
+          searchDebounce = window.setTimeout(() => searchBatchTagTargets(), 180);
+        });
         searchInput.addEventListener('keydown', (event) => {
           if (event.key !== 'Enter') return;
           event.preventDefault();
@@ -6919,7 +7189,29 @@
         });
         targetInput.dataset.bound = '1';
       }
+      const tagsInput = document.getElementById('batchTagValues');
+      if (tagsInput && tagsInput.dataset.bound !== '1') {
+        tagsInput.addEventListener('input', () => {
+          renderBatchTagTagSearchResults();
+        });
+        tagsInput.dataset.bound = '1';
+      }
+      const tagSearchInput = document.getElementById('batchTagTagSearchInput');
+      if (tagSearchInput && tagSearchInput.dataset.bound !== '1') {
+        let tagSearchDebounce = 0;
+        tagSearchInput.addEventListener('input', () => {
+          window.clearTimeout(tagSearchDebounce);
+          tagSearchDebounce = window.setTimeout(() => searchBatchTagTags(), 160);
+        });
+        tagSearchInput.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          searchBatchTagTags();
+        });
+        tagSearchInput.dataset.bound = '1';
+      }
       renderBatchTagSearchResults();
+      renderBatchTagTagSearchResults();
     }
 
     function resolveBatchTargetIdentifiers(rawList, catalog, allowAllWhenEmpty = true) {

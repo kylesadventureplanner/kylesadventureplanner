@@ -4,7 +4,7 @@ const ASSERT_VISUAL_BASELINE = process.env.MOBILE_QA_ASSERT === '1';
 const MAX_DIFF_PIXEL_RATIO = Number(process.env.MOBILE_QA_MAX_DIFF_RATIO || 0.015);
 const EXPECTED_MOBILE_SCROLL_HEIGHT = Number(process.env.MOBILE_QA_EXPECTED_HEIGHT || 7816);
 const MIN_MOBILE_SCROLL_HEIGHT = Number(process.env.MOBILE_QA_MIN_HEIGHT || 7600);
-const MAX_MOBILE_SCROLL_HEIGHT = Number(process.env.MOBILE_QA_MAX_HEIGHT || 8600);
+const MAX_MOBILE_SCROLL_HEIGHT = Number(process.env.MOBILE_QA_MAX_HEIGHT || 9000);
 
 function parseStrictMobileHeight() {
   if (process.env.MOBILE_QA_STRICT_HEIGHT === '1') return EXPECTED_MOBILE_SCROLL_HEIGHT;

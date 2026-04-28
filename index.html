@@ -11082,6 +11082,7 @@
       })();
 
       return {
+        placeId: normalizedPlaceId,
         name: resolvedDisplayName || '',
         rating: place.rating || null,
         userRatingsTotal: place.userRatingCount || 0,
@@ -19720,6 +19721,10 @@ COMMON ISSUES:
   }
 
   async function runGoogleAutomation(actionType, isDryRun) {
+    if (actionType === 'searchPlaceIds' || actionType === 'refreshPlaceIds') {
+      return await runPlaceIdBackfillAutomation(actionType, isDryRun);
+    }
+
     const actionTitles = {
       populateMissing: 'Populate Missing Fields',
       refreshHours: 'Refresh Hours Only',
@@ -19865,6 +19870,228 @@ COMMON ISSUES:
       showToast('Automation failed: ' + error.message, 'error', 5000);
     }
   }
+
+  function isMissingPlaceIdValue(value) {
+    const text = String(value || '').trim();
+    if (!text) return true;
+    const upper = text.toUpperCase();
+    return upper === 'SKIP'
+      || upper === 'N/A'
+      || upper === 'NA'
+      || upper === 'NONE'
+      || upper === 'NULL'
+      || upper === 'UNDEFINED'
+      || upper === 'NOT AVAILABLE'
+      || upper === 'UNAVAILABLE';
+  }
+
+  function buildPlaceIdBackfillQueries(rowData, values) {
+    const safe = rowData && typeof rowData === 'object' ? rowData : {};
+    const name = String(safe.name || values?.[0] || '').trim();
+    const city = String(safe.city || values?.[10] || '').trim();
+    const state = String(safe.state || values?.[9] || '').trim();
+    const address = String(safe.address || values?.[11] || '').trim();
+    const website = String(safe.website || values?.[2] || '').trim();
+    const description = String(safe.description || values?.[16] || '').trim();
+
+    const queries = [];
+    const push = (candidate) => {
+      const text = String(candidate || '').trim();
+      if (!text) return;
+      if (!queries.some((entry) => entry.toLowerCase() === text.toLowerCase())) {
+        queries.push(text);
+      }
+    };
+
+    push([name, city, state].filter(Boolean).join(', '));
+    push([name, address].filter(Boolean).join(', '));
+    push(address);
+    push(name);
+    if (website) push(website.replace(/^https?:\/\//i, '').replace(/^www\./i, ''));
+    if (description && name) push(`${name} ${description.split(' ').slice(0, 8).join(' ')}`);
+    return queries;
+  }
+
+  function pickBestPlaceIdBackfillMatch(results, rowData) {
+    const list = Array.isArray(results) ? results : [];
+    if (!list.length) return null;
+    const safe = rowData && typeof rowData === 'object' ? rowData : {};
+    const targetName = String(safe.name || '').trim().toLowerCase();
+    const targetAddress = String(safe.address || '').trim().toLowerCase();
+    const targetCity = String(safe.city || '').trim().toLowerCase();
+    const targetState = String(safe.state || '').trim().toLowerCase();
+
+    const scored = list
+      .map((entry) => {
+        const name = String(entry && entry.name || '').trim().toLowerCase();
+        const address = String(entry && entry.address || '').trim().toLowerCase();
+        const placeId = String(entry && entry.placeId || '').trim();
+        if (!placeId) return null;
+        let score = Number(entry && entry.relevanceScore) || 0;
+        if (targetName && name === targetName) score += 50;
+        else if (targetName && name.includes(targetName)) score += 20;
+        if (targetAddress && address && (address === targetAddress || address.includes(targetAddress) || targetAddress.includes(address))) score += 40;
+        if (targetCity && address.includes(targetCity)) score += 10;
+        if (targetState && address.includes(targetState)) score += 8;
+        return { entry, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.length ? scored[0].entry : null;
+  }
+
+  async function runPlaceIdBackfillAutomation(actionType, isDryRun) {
+    const title = actionType === 'refreshPlaceIds' ? 'Refresh Place IDs' : 'Search Place IDs';
+    showAutomationProgress(title, isDryRun);
+
+    try {
+      if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
+        addAutomationLog('No adventure data loaded. Please sign in and load data first.', 'error');
+        updateAutomationStatus('Error: No data loaded', false, true);
+        return;
+      }
+
+      const rows = window.adventuresData;
+      const totalRows = rows.length;
+      let scanned = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+      let persistedRows = 0;
+
+      addAutomationLog(`Starting ${title.toLowerCase()} across ${totalRows} rows...`, 'info');
+      if (isDryRun) addAutomationLog('DRY RUN MODE: no row writes will be committed.', 'warning');
+      setAutomationProgress(0, totalRows);
+
+      for (let i = 0; i < totalRows; i += 1) {
+        const row = rows[i];
+        const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+        const rowData = typeof buildAdventureRowData === 'function' ? buildAdventureRowData(values) : null;
+        const rowName = String(rowData && rowData.name || values[0] || `Row ${i + 1}`).trim();
+        const currentPlaceId = String(rowData && rowData.googlePlaceId || values[1] || '').trim();
+
+        scanned += 1;
+        setAutomationProgress(scanned, totalRows);
+        updateAutomationStatus(`Processed ${scanned} of ${totalRows} rows...`);
+
+        if (actionType === 'searchPlaceIds' && !isMissingPlaceIdValue(currentPlaceId)) {
+          skipped += 1;
+          addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → already has Place ID`, 'info');
+          continue;
+        }
+
+        try {
+          const queries = buildPlaceIdBackfillQueries(rowData, values);
+          if (!queries.length) {
+            skipped += 1;
+            addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → skipped (not enough data to search)`, 'warning');
+            continue;
+          }
+
+          let best = null;
+          for (const query of queries) {
+            const found = await searchPlaces(query);
+            if (!Array.isArray(found) || !found.length) continue;
+            const match = pickBestPlaceIdBackfillMatch(found, rowData);
+            if (match && String(match.placeId || '').trim()) {
+              best = match;
+              break;
+            }
+          }
+
+          const resolvedPlaceId = String(best && best.placeId || '').trim();
+          if (!resolvedPlaceId) {
+            skipped += 1;
+            addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → no confident Place ID match`, 'warning');
+            continue;
+          }
+
+          if (String(currentPlaceId).trim() === resolvedPlaceId) {
+            skipped += 1;
+            addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → Place ID unchanged`, 'info');
+            continue;
+          }
+
+          if (isDryRun) {
+            updated += 1;
+            addAutomationLog(`[${scanned}/${totalRows}] [DRY RUN] ${rowName} → ${resolvedPlaceId}`, 'warning');
+            continue;
+          }
+
+          const nextValues = values.slice();
+          while (nextValues.length <= 23) nextValues.push('');
+          nextValues[1] = resolvedPlaceId;
+          if (!String(nextValues[23] || '').trim()) {
+            const q = encodeURIComponent(String(best.address || rowName || resolvedPlaceId));
+            nextValues[23] = `https://www.google.com/maps/search/?api=1&query=${q}&query_place_id=${encodeURIComponent(resolvedPlaceId)}`;
+          }
+
+          if (row && row.rowId && typeof window.saveToExcel === 'function') {
+            await window.saveToExcel(row.rowId, nextValues);
+          }
+          if (row && row.values) row.values = [nextValues];
+
+          updated += 1;
+          persistedRows += 1;
+          addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → updated Place ID`, 'success');
+        } catch (error) {
+          errors += 1;
+          addAutomationLog(`[${scanned}/${totalRows}] ${rowName} → error: ${error && error.message ? error.message : error}`, 'error');
+        }
+      }
+
+      addAutomationLog('', 'info');
+      addAutomationLog('=== PLACE ID SUMMARY ===', 'info');
+      addAutomationLog(`Scanned: ${scanned}`, 'success');
+      addAutomationLog(`${isDryRun ? 'Would update' : 'Updated'}: ${updated}`, isDryRun ? 'warning' : 'success');
+      addAutomationLog(`Skipped: ${skipped}`, 'info');
+      addAutomationLog(`Errors: ${errors}`, errors ? 'error' : 'success');
+
+      const completed = errors === 0;
+      updateAutomationStatus(`${title} complete${isDryRun ? ' (dry run)' : ''}`, completed, !completed);
+      if (!isDryRun && updated > 0 && typeof window.loadTable === 'function') {
+        await window.loadTable();
+      }
+      showToast(`${title} complete: ${updated} ${isDryRun ? 'would be updated' : 'updated'}.`, completed ? 'success' : 'warning', 3500);
+      return {
+        success: completed,
+        message: `${title} complete: ${updated} ${isDryRun ? 'would be updated' : 'updated'}.`,
+        scanned,
+        updated,
+        skipped,
+        errors,
+        dryRun: Boolean(isDryRun),
+        processedTargets: 1,
+        persistedTargets: !isDryRun && persistedRows > 0 ? 1 : 0,
+        failedTargets: errors > 0 ? 1 : 0,
+        rowsChanged: updated,
+        persistedRows: isDryRun ? 0 : persistedRows,
+        verifiedRowsChanged: 0,
+        persisted: !isDryRun && persistedRows > 0,
+        persistMode: isDryRun ? 'dry-run' : (persistedRows > 0 ? 'saveToExcel-row-patch' : ''),
+        persistReason: !isDryRun && persistedRows === 0 ? 'no-updates' : '',
+        postWriteVerified: false,
+        verificationMode: '',
+        verificationReason: ''
+      };
+    } catch (error) {
+      addAutomationLog(`Error: ${error && error.message ? error.message : error}`, 'error');
+      updateAutomationStatus('Error occurred', false, true);
+      showToast(`${title} failed: ${error && error.message ? error.message : error}`, 'error', 5000);
+      throw error;
+    }
+  }
+
+  window.backfillMissingGooglePlaceIds = async function backfillMissingGooglePlaceIds(options = {}) {
+    const opts = options && typeof options === 'object' ? options : {};
+    return await runPlaceIdBackfillAutomation('searchPlaceIds', Boolean(opts.dryRun));
+  };
+
+  window.searchMissingGooglePlaceIds = async function searchMissingGooglePlaceIds(options = {}) {
+    const opts = options && typeof options === 'object' ? options : {};
+    return await runPlaceIdBackfillAutomation('searchPlaceIds', Boolean(opts.dryRun));
+  };
 
   // ============================================================
   // INITIALIZE AUTOMATION BUTTONS
@@ -20986,8 +21213,13 @@ COMMON ISSUES:
           };
         }
 
+        const resolvedPlaceId = strVal(details && details.placeId) || strVal(placeId);
+        if (!resolvedPlaceId) {
+          throw new Error('Could not resolve a Google Place ID for this location.');
+        }
+
         setAddPlaceStatus("📝 Building row with Google data...", "info");
-        const row = buildExcelRow(placeId, details);
+        const row = buildExcelRow(resolvedPlaceId, details);
         applySmartTagsAndCostToRow(row, details);
 
         // ── Enhanced drive time calculation ──────────────────────────────────

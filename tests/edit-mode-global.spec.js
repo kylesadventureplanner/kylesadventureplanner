@@ -102,6 +102,73 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#places-tab')).not.toHaveClass(/active/);
   });
 
+  test('automation tab exposes dedicated Search Missing Place IDs action', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    const searchBtn = page.locator('#searchMissingPlaceIdsBtn');
+    await expect(searchBtn).toBeVisible();
+    await expect(searchBtn).toHaveText(/Search Missing Place IDs/i);
+
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Missing Place ID Cafe';
+      row[9] = 'NC';
+      row[10] = 'Durham';
+      row[11] = '123 Missing Id Ln, Durham, NC 27701';
+      window.adventuresData = [{ rowId: 'row-1', values: [row] }];
+      window.__excelColumnCount = header.length;
+      window.__excelLoadedRowCount = 1;
+      window.__excelSchemaColumns = header.map((name, index) => ({ name, index }));
+      window.probeTargetSchema = async () => true;
+      window.loadTargetRows = async () => true;
+      window.showToast = () => {};
+      window.__searchMissingPlaceIdsCalls = [];
+      window.searchMissingGooglePlaceIds = async (options = {}) => {
+        window.__searchMissingPlaceIdsCalls.push({ ...options });
+        return {
+          success: true,
+          message: 'stub search complete',
+          dryRun: !!options.dryRun,
+          processedTargets: 1,
+          persistedTargets: 0,
+          failedTargets: 0,
+          rowsChanged: 0,
+          persistedRows: 0,
+          verifiedRowsChanged: 0,
+          persisted: false,
+          persistMode: 'dry-run',
+          persistReason: '',
+          postWriteVerified: false,
+          verificationMode: '',
+          verificationReason: ''
+        };
+      };
+    });
+
+    await page.evaluate(() => {
+      const checkbox = document.getElementById('searchPlaceIdsDryRun');
+      if (!checkbox) throw new Error('searchPlaceIdsDryRun checkbox missing');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await searchBtn.click();
+
+    await expect.poll(() => page.evaluate(() => window.__searchMissingPlaceIdsCalls.length), { timeout: 10000 }).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.__searchMissingPlaceIdsCalls[0]), { timeout: 10000 })
+      .toMatchObject({ dryRun: true });
+    await expect(page.locator('#search-place-ids-write-diagnostics')).toContainText(/dry run only/i);
+  });
+
   test('Update Descriptions automation fills blank descriptions from Google details', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
     await page.evaluate(() => {
