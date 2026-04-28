@@ -500,6 +500,21 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const frameHandle = await detailsFrame.elementHandle();
     const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(liveFrame).not.toBeNull();
+
+    // Reset persisted nearby filters so prior test state cannot hide fresh results.
+    await liveFrame.evaluate(() => {
+      var defaults = { radiusMiles: 5, category: 'all', minRating: 0, openNow: false, timeBudgetHours: 0 };
+      try {
+        localStorage.removeItem('__detail_nearby_ui_prefs_v3');
+      } catch (_storageErr) {
+        // Ignore storage availability issues in hardened test environments.
+      }
+      if (typeof window.persistNearbyUiState === 'function') {
+        window.persistNearbyUiState(defaults);
+      } else {
+        window.__detailNearbyUiState = defaults;
+      }
+    });
     await liveFrame.evaluate(() => {
       if (window.__detailEnrichModalState && window.__detailEnrichModalState.data) {
         window.__detailEnrichModalState.data.googlePlaceId = 'ChIJPlaywrightEnrich123';
@@ -649,7 +664,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(secondSavedTagsCsv).toContain('Playwright-Rec-B');
   });
 
-  test('nearby refresh returns cards from Google/local URL-derived coords and empty refresh is non-destructive', async ({ page }) => {
+  test('nearby refresh returns cards from Google/local URL-derived coords and empty refresh is non-destructive', async ({ page }, testInfo) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);
 
@@ -695,85 +710,163 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await details.locator('#tabs .tab-btn[data-tab="additional"]').click();
     await expect(details.locator('#pane-additional')).toBeVisible();
+    const nearbyPane = details.locator('#nearbyAttractionsValue');
+    const refreshNearbyBtn = details.locator('#refreshNearbyBtn');
 
-    // Ensure center point is resolvable without relying on geocoding in this test.
-    await liveFrame.evaluate(() => {
-      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
-        window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.3995,-82.4521,15z';
-      }
-    });
+    async function refreshNearbyAndWaitForState() {
+      const previousUpdatedAt = await liveFrame.evaluate(() => Number(window.__detailNearbyState?.updatedAt || 0));
+      await refreshNearbyBtn.click();
+      await expect.poll(async () => {
+        return liveFrame.evaluate((prev) => {
+          const state = window.__detailNearbyState || {};
+          const updatedAt = Number(state.updatedAt || 0);
+          if (!(updatedAt > Number(prev || 0))) return -1;
+          const attractions = Array.isArray(state.attractions) ? state.attractions : [];
+          return attractions.length;
+        }, previousUpdatedAt);
+      }, { timeout: 15000 }).toBeGreaterThanOrEqual(0);
+    }
 
-    // Phase 1: Google-backed nearby search returns a renderable card.
-    await details.locator('#refreshNearbyBtn').click();
-    await expect(details.locator('#nearbyAttractionsValue .card').first()).toBeVisible({ timeout: 12000 });
-    await expect(details.locator('#nearbyAttractionsValue')).toContainText('Playwright Coffee Roasters');
-    await expect(details.locator('#nearbyAttractionsValue [data-nearby-quick-add="1"]').first()).toBeVisible();
-
-    // Phase 2: No Google key + local list built from URL-derived coordinates should still produce cards.
-    await page.evaluate(() => {
-      window.GOOGLE_PLACES_API_KEY = '';
-    });
-
-    await liveFrame.evaluate(() => {
-      const toLoc = (name, url, sourceIndex) => {
-        const parsed = typeof window.parseCoordsFromGoogleUrl === 'function'
-          ? window.parseCoordsFromGoogleUrl(url)
-          : null;
-        return {
-          id: 'pw-local-' + String(sourceIndex),
-          __sourceIndex: sourceIndex,
-          name: name,
-          description: 'Playwright local URL-derived fixture',
-          latitude: parsed ? Number(parsed.lat) : null,
-          longitude: parsed ? Number(parsed.lng) : null
+    async function attachNearbyFailureDump(stage, error) {
+      const snapshot = await liveFrame.evaluate(() => {
+        const safe = (value, fallback) => {
+          if (value === undefined || value === null) return fallback;
+          return value;
         };
+
+        let rawPrefs = '';
+        try {
+          rawPrefs = localStorage.getItem('__detail_nearby_ui_prefs_v3') || '';
+        } catch (_storageError) {
+          rawPrefs = '';
+        }
+
+        let parsedPrefs = null;
+        if (rawPrefs) {
+          try {
+            parsedPrefs = JSON.parse(rawPrefs);
+          } catch (_parseError) {
+            parsedPrefs = null;
+          }
+        }
+
+        const nearbyState = window.__detailNearbyState || {};
+        const attractions = Array.isArray(nearbyState.attractions) ? nearbyState.attractions : [];
+
+        return {
+          rawPrefs,
+          parsedPrefs,
+          nearbyUiState: safe(window.__detailNearbyUiState, null),
+          nearbyState: {
+            updatedAt: Number(nearbyState.updatedAt || 0),
+            loading: Boolean(nearbyState.loading),
+            error: String(nearbyState.error || ''),
+            center: safe(nearbyState.center, null),
+            attractionCount: attractions.length,
+            attractionNames: attractions.slice(0, 10).map((entry) => String(entry && entry.name || ''))
+          }
+        };
+      });
+
+      const payload = {
+        stage,
+        errorMessage: error instanceof Error ? error.message : String(error || ''),
+        snapshot
       };
-      window.getNearbyFinderAppLocations = function () {
-        return [
-          toLoc('Playwright Nearby Local A', 'https://maps.google.com/@35.4001,-82.4512,15z', 1001),
-          toLoc('Playwright Nearby Local B', 'https://maps.google.com/@35.4010,-82.4530,15z', 1002)
-        ];
-      };
-      if (window.nearbyAttractionsFinder && typeof window.nearbyAttractionsFinder.clearCache === 'function') {
-        window.nearbyAttractionsFinder.clearCache();
-      }
-      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
-        window.__detailInlineEditState.data.name = 'Playwright Nearby Center';
-        window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.4000,-82.4520,15z';
-      }
-    });
 
-    await details.locator('#refreshNearbyBtn').click();
-    await expect(details.locator('#nearbyAttractionsValue .card').first()).toBeVisible({ timeout: 12000 });
-    await expect(details.locator('#nearbyAttractionsValue')).toContainText('✅ In App');
-    await expect(details.locator('#nearbyAttractionsValue')).toContainText('Playwright Nearby Local');
+      await testInfo.attach('nearby-failure-dump', {
+        contentType: 'application/json',
+        body: Buffer.from(JSON.stringify(payload, null, 2), 'utf8')
+      });
+    }
 
-    // Phase 3: Empty refresh should not wipe saved nearby text or push destructive sync.
-    await liveFrame.evaluate(() => {
-      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
-        window.__detailInlineEditState.data.nearby = 'Saved Nearby Snapshot - Preserve Me';
-      }
-      if (window.nearbyAttractionsFinder) {
-        window.nearbyAttractionsFinder.getFormattedNearbyAttractions = async function () { return []; };
-      }
-    });
+    try {
+      // Ensure center point is resolvable without relying on geocoding in this test.
+      await liveFrame.evaluate(() => {
+        if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+          window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.3995,-82.4521,15z';
+        }
+      });
 
-    const syncCountBeforeEmptyRefresh = await page.evaluate(() => {
-      const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
-      return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
-    });
+      // Phase 1: Google-backed nearby search returns a renderable card.
+      await refreshNearbyAndWaitForState();
+      await expect.poll(async () => liveFrame.evaluate(() => {
+        const list = Array.isArray(window.__detailNearbyState?.attractions) ? window.__detailNearbyState.attractions : [];
+        return list.some((entry) => String(entry && entry.name || '').includes('Playwright Coffee Roasters'));
+      }), { timeout: 12000 }).toBe(true);
+      await expect(nearbyPane.locator('.card').first()).toBeVisible({ timeout: 12000 });
+      await expect(nearbyPane).toContainText('Playwright Coffee Roasters');
+      await expect(nearbyPane.locator('[data-nearby-quick-add="1"]').first()).toBeVisible();
 
-    await details.locator('#refreshNearbyBtn').click();
-    await expect(details.locator('#nearbyAttractionsValue')).toContainText(/No nearby attractions (found|detected) yet\.?/i, { timeout: 12000 });
+      // Phase 2: No Google key + local list built from URL-derived coordinates should still produce cards.
+      await page.evaluate(() => {
+        window.GOOGLE_PLACES_API_KEY = '';
+      });
 
-    const nearbyAfterEmptyRefresh = await liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.nearby || ''));
-    expect(nearbyAfterEmptyRefresh).toBe('Saved Nearby Snapshot - Preserve Me');
+      await liveFrame.evaluate(() => {
+        const toLoc = (name, url, sourceIndex) => {
+          const parsed = typeof window.parseCoordsFromGoogleUrl === 'function'
+            ? window.parseCoordsFromGoogleUrl(url)
+            : null;
+          return {
+            id: 'pw-local-' + String(sourceIndex),
+            __sourceIndex: sourceIndex,
+            name: name,
+            description: 'Playwright local URL-derived fixture',
+            latitude: parsed ? Number(parsed.lat) : null,
+            longitude: parsed ? Number(parsed.lng) : null
+          };
+        };
+        window.getNearbyFinderAppLocations = function () {
+          return [
+            toLoc('Playwright Nearby Local A', 'https://maps.google.com/@35.4001,-82.4512,15z', 1001),
+            toLoc('Playwright Nearby Local B', 'https://maps.google.com/@35.4010,-82.4530,15z', 1002)
+          ];
+        };
+        if (window.nearbyAttractionsFinder && typeof window.nearbyAttractionsFinder.clearCache === 'function') {
+          window.nearbyAttractionsFinder.clearCache();
+        }
+        if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+          window.__detailInlineEditState.data.name = 'Playwright Nearby Center';
+          window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.4000,-82.4520,15z';
+        }
+      });
 
-    const syncCountAfterEmptyRefresh = await page.evaluate(() => {
-      const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
-      return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
-    });
-    expect(syncCountAfterEmptyRefresh).toBe(syncCountBeforeEmptyRefresh);
+      await refreshNearbyAndWaitForState();
+      await expect(nearbyPane.locator('.card').first()).toBeVisible({ timeout: 12000 });
+      await expect(nearbyPane).toContainText('✅ In App');
+      await expect(nearbyPane).toContainText('Playwright Nearby Local');
+
+      // Phase 3: Empty refresh should not wipe saved nearby text or push destructive sync.
+      await liveFrame.evaluate(() => {
+        if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+          window.__detailInlineEditState.data.nearby = 'Saved Nearby Snapshot - Preserve Me';
+        }
+        if (window.nearbyAttractionsFinder) {
+          window.nearbyAttractionsFinder.getFormattedNearbyAttractions = async function () { return []; };
+        }
+      });
+
+      const syncCountBeforeEmptyRefresh = await page.evaluate(() => {
+        const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
+        return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
+      });
+
+      await refreshNearbyAndWaitForState();
+      await expect(nearbyPane).toContainText(/No nearby attractions (found|detected) yet\.?/i, { timeout: 12000 });
+
+      const nearbyAfterEmptyRefresh = await liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.nearby || ''));
+      expect(nearbyAfterEmptyRefresh).toBe('Saved Nearby Snapshot - Preserve Me');
+
+      const syncCountAfterEmptyRefresh = await page.evaluate(() => {
+        const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
+        return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
+      });
+      expect(syncCountAfterEmptyRefresh).toBe(syncCountBeforeEmptyRefresh);
+    } catch (error) {
+      await attachNearbyFailureDump('nearby-refresh-flow', error);
+      throw error;
+    }
   });
 
 
