@@ -49,6 +49,43 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(page.locator('#visitedSubtabStatus-outdoors .visited-subtab-status-health')).toContainText(/Outdoors data:/i);
   });
 
+  test('Outdoors action buttons keep variant styling (not all one color)', async ({ page }) => {
+    const outdoorsPane = page.locator('#visitedProgressPane-outdoors').first();
+    await expect(outdoorsPane).toBeVisible();
+    await expect(outdoorsPane.locator('[data-visited-subtab-action="open-explorer-outdoors"]')).toBeVisible();
+
+    const readFingerprints = async () => page.evaluate(() => {
+      const actionKeys = [
+        'open-explorer-outdoors',
+        'open-visit-log-outdoors',
+        'refresh-subtab-outdoors',
+        'undo-subtab-outdoors',
+        'open-city-explorer-outdoors',
+        'open-edit-mode-outdoors',
+        'open-batch-tags-outdoors'
+      ];
+      const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+      return actionKeys
+        .map((key) => {
+          const node = document.querySelector(`#visitedProgressPane-outdoors [data-visited-subtab-action="${key}"]`);
+          if (!node || !(node instanceof HTMLElement)) return null;
+          const styles = window.getComputedStyle(node);
+          const background = normalize(styles.backgroundImage) || normalize(styles.backgroundColor);
+          const border = normalize(styles.borderTopColor);
+          return `${key}|${background}|${border}`;
+        })
+        .filter(Boolean);
+    });
+
+    await expect.poll(async () => {
+      const fingerprints = await readFingerprints();
+      if (!Array.isArray(fingerprints) || fingerprints.length < 4) return false;
+      const styleOnly = fingerprints.map((value) => String(value).split('|').slice(1).join('|'));
+      return new Set(styleOnly).size >= 3;
+    }, { timeout: 10000 }).toBe(true);
+  });
+
   test('adventure achievement sections keep sticky section-header style hook', async ({ page }) => {
     const stickyRulePresent = await page.evaluate(() => {
       const selectorNeedle = '#visitedLocationsRoot .adventure-achv-section > .card-header';
