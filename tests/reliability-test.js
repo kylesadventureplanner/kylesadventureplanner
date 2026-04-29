@@ -9,9 +9,12 @@ const EXTENSION_NOISE_PATTERNS = [
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\/.+\/columns\?\$select=name,index\)/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\)/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/worksheets\?\$select=id,name,position\)/i,
-  /Failed to load resource: net::ERR_CONNECTION_RESET.*JS%20Files\/diagnostics-reporting-utils\.js/i,
-  /Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED.*JS%20Files\/diagnostics-reporting-utils\.js/i,
-  /Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED.*http:\/\/127\.0\.0\.1:\d+\/JS%20Files\/.+\.js/i
+  // Transient dev-server connection drops for local JS assets – matched against both
+  // URL-encoded paths (JS%20Files) AND decoded paths (JS Files) because Playwright's
+  // msg.text() may return either form depending on Chromium version.
+  /Failed to load resource: net::ERR_CONNECTION_RESET.*http:\/\/127\.0\.0\.1:\d+\/(?:JS(?:%20| )Files|[^)]+\.js)/i,
+  /Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED.*http:\/\/127\.0\.0\.1:\d+\/(?:JS(?:%20| )Files|[^)]+\.js)/i,
+  /Failed to load resource: net::ERR_NETWORK_CHANGED.*http:\/\/127\.0\.0\.1:\d+\//i,
 ];
 
 function isIntentionalWorkbookProbe404(text, locationUrl) {
