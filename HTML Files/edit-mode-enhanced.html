@@ -935,6 +935,42 @@
       font-size: 12px;
     }
 
+    .add-places-quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .target-summary-collapsible {
+      margin-top: 10px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 8px 10px;
+    }
+
+    .target-summary-collapsible > summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1d4ed8;
+      list-style: none;
+    }
+
+    .target-summary-collapsible > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .target-summary-collapsible > summary::before {
+      content: '▸';
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .target-summary-collapsible[open] > summary::before {
+      content: '▾';
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .button,
       .candidate-item,
@@ -970,12 +1006,12 @@
       <button id="tab-btn-places" class="tab-btn active" data-tab="places" role="tab" aria-selected="true" aria-controls="places-tab" tabindex="0" type="button">
         <span class="tab-label-wrap">➕ Add Places</span>
       </button>
-      <button id="tab-btn-festival" class="tab-btn" data-tab="festival" role="tab" aria-selected="false" aria-controls="festival-tab" tabindex="-1" type="button">
-        <span class="tab-label-wrap">🎪 Festival Config <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span><span id="festivalSourcesTabDirtyDot" class="festival-back-dirty-dot festival-tab-dirty-dot" hidden title="Unsaved changes"></span></span>
-      </button>
       <button id="tab-btn-automation" class="tab-btn" data-tab="automation" role="tab" aria-selected="false" aria-controls="automation-tab" tabindex="-1" type="button">🔄 Automation</button>
       <button id="tab-btn-backup" class="tab-btn" data-tab="backup" role="tab" aria-selected="false" aria-controls="backup-tab" tabindex="-1" type="button">💾 Backup</button>
       <button id="tab-btn-history" class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-controls="history-tab" tabindex="-1" type="button">📅 History</button>
+      <button id="tab-btn-festival" class="tab-btn" data-tab="festival" role="tab" aria-selected="false" aria-controls="festival-tab" tabindex="-1" type="button">
+        <span class="tab-label-wrap">🎪 Festival Config <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span><span id="festivalSourcesTabDirtyDot" class="festival-back-dirty-dot festival-tab-dirty-dot" hidden title="Unsaved changes"></span></span>
+      </button>
     </div>
 
     <div class="card edit-critical-config-card" id="editModeTargetCard">
@@ -999,33 +1035,21 @@
         <button class="button button-secondary" type="button" onclick="clearAutomationTargets()">Clear Multi-Selection</button>
       </div>
       <div id="targetSelectionStatus" class="target-chip-grid" data-target-visible-tab="places"></div>
-      <div id="editModeTargetDiagnostics" class="target-diagnostics-card" data-target-visible-tab="places">Destination diagnostics will appear here once the target loads.</div>
-      <div id="editModeRecentAddDiagnostics" class="target-diagnostics-card" data-target-visible-tab="places">Recent added-row diagnostics will appear here after your first successful add.</div>
+      <details id="addPlacesTargetSnapshot" class="target-summary-collapsible" data-target-visible-tab="places">
+        <summary>🧾 Add Places destination snapshot</summary>
+        <div id="editModeTargetDiagnostics" class="target-diagnostics-card">Destination diagnostics will appear here once the target loads.</div>
+        <div id="editModeRecentAddDiagnostics" class="target-diagnostics-card">Recent added-row diagnostics will appear here after your first successful add.</div>
+      </details>
     </div>
 
     <!-- Add Places Tab -->
     <div id="places-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-places" tabindex="0">
       <div class="card">
-        <div class="card-title">🧭 Target Starter Sources</div>
-        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Starter source suggestions for your selected Add Places target.</p>
-        <div class="button-group">
+        <div class="card-title">⚡ Add Places Quick Actions</div>
+        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Jump to fast-add actions and Festival setup from the top of Add Places.</p>
+        <div class="add-places-quick-actions">
+          <button id="quickAddTopBtn" class="button button-primary" type="button" onclick="jumpToAddSingleSection()">➕ Quick Add Place</button>
           <button id="openFestivalSourcesConfigBtn" class="button button-secondary" type="button" onclick="openFestivalSourcesConfigView()">🎪 Open Festival Config Tab</button>
-        </div>
-        <div class="input-group" style="margin-top:12px;">
-          <label for="targetStarterRecommendations" style="text-transform:none; letter-spacing:0;">Regional starter sources for selected target</label>
-          <label class="inline-slider-toggle" style="margin-bottom:6px;">
-            <input id="targetStarterOfficialOnlyToggle" type="checkbox" onchange="renderTargetStarterRecommendations()">
-            <span class="inline-toggle-slider" aria-hidden="true"></span>
-            <span>Show official only ([official])</span>
-          </label>
-          <textarea id="targetStarterRecommendations" class="starter-links-box" readonly></textarea>
-          <div class="button-group" style="margin-top:8px;">
-            <button id="copyTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="copyTargetStarterRecommendations()">📋 Copy Starter Sources</button>
-            <button id="appendTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="appendTargetStarterRecommendationsToBulk()">➕ Add to Bulk Input</button>
-            <button id="dedupeBulkInputNowBtn" class="button button-secondary" type="button" onclick="dedupeBulkInputNow()">🧹 Deduplicate Bulk Input Now</button>
-            <button id="resetTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="resetTargetStarterRecommendations()">↺ Reset Starter Pack</button>
-          </div>
-          <div id="targetStarterRecommendationsStatus" class="help-text">Starter pack updates automatically when your Add Places target changes.</div>
         </div>
       </div>
 
@@ -1083,7 +1107,7 @@
       </div>
 
       <!-- Add Single Place -->
-      <div class="card">
+      <div id="addSingleCard" class="card">
         <div class="card-title">➕ Add Single</div>
         <div id="singleSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
@@ -1277,6 +1301,27 @@
 
     <div id="festival-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-festival" tabindex="0" hidden>
       <div id="festivalSourcesConfigPage">
+      <div class="card">
+        <div class="card-title">🧭 Target Starter Sources</div>
+        <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Starter source suggestions for your selected Add Places target.</p>
+        <div class="input-group" style="margin-top:12px;">
+          <label for="targetStarterRecommendations" style="text-transform:none; letter-spacing:0;">Regional starter sources for selected target</label>
+          <label class="inline-slider-toggle" style="margin-bottom:6px;">
+            <input id="targetStarterOfficialOnlyToggle" type="checkbox" onchange="renderTargetStarterRecommendations()">
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
+            <span>Show official only ([official])</span>
+          </label>
+          <textarea id="targetStarterRecommendations" class="starter-links-box" readonly></textarea>
+          <div class="button-group" style="margin-top:8px;">
+            <button id="copyTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="copyTargetStarterRecommendations()">📋 Copy Starter Sources</button>
+            <button id="appendTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="appendTargetStarterRecommendationsToBulk()">➕ Add to Bulk Input</button>
+            <button id="dedupeBulkInputNowBtn" class="button button-secondary" type="button" onclick="dedupeBulkInputNow()">🧹 Deduplicate Bulk Input Now</button>
+            <button id="resetTargetStarterRecommendationsBtn" class="button button-secondary" type="button" onclick="resetTargetStarterRecommendations()">↺ Reset Starter Pack</button>
+          </div>
+          <div id="targetStarterRecommendationsStatus" class="help-text">Starter pack updates automatically when your Add Places target changes.</div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">🎪 Festival Sources Overview</div>
         <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Festival provider configuration has its own workspace so Add Places stays focused.</p>
@@ -1822,6 +1867,21 @@
       updateFestivalSourcesDirtyIndicator();
     }
 
+    function jumpToAddSingleSection() {
+      switchTab('places', { focusTab: false });
+      const addSingleCard = document.getElementById('addSingleCard');
+      if (addSingleCard && addSingleCard.classList.contains('edit-collapsible-card')) {
+        setEditModeCardCollapsed(addSingleCard, false);
+      }
+      if (addSingleCard && typeof addSingleCard.scrollIntoView === 'function') {
+        addSingleCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      const singleInput = document.getElementById('singleInput');
+      if (singleInput && typeof singleInput.focus === 'function') {
+        window.setTimeout(() => singleInput.focus(), 120);
+      }
+    }
+
     function getTargetStarterLines(targetId) {
       const key = String(targetId || '').trim();
       const rows = Array.isArray(TARGET_STARTER_RECOMMENDATIONS[key])
@@ -2343,7 +2403,7 @@
     }
 
     function initializeEditModeSectionCollapsibles() {
-      const collapsibleCards = Array.from(document.querySelectorAll('#places-tab > .card, #festival-tab > .card, #automation-tab > .card, #backup-tab > .card, #history-tab > .card'));
+      const collapsibleCards = Array.from(document.querySelectorAll('#places-tab > .card, #placesMainContent > .card, #festival-tab > .card, #automation-tab > .card, #backup-tab > .card, #history-tab > .card'));
       collapsibleCards.forEach((card, index) => {
         if (card && card.id === 'festivalSourcesConfigCard') return;
         if (!card || card.dataset.collapsibleBound === 'true') return;
@@ -2376,7 +2436,12 @@
 
     function getTabCollapsibleCards(tabContent) {
       if (!tabContent) return [];
-      return Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+      const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+      if (tabContent.id === 'places-tab') {
+        const placesMainCards = Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card'));
+        return cards.concat(placesMainCards);
+      }
+      return cards;
     }
 
     function setTabCardsCollapsed(tabContent, collapsed) {
@@ -2411,7 +2476,7 @@
         controls.appendChild(expandBtn);
         controls.appendChild(collapseBtn);
 
-        const firstCard = tabContent.querySelector(':scope > .card');
+        const firstCard = cards[0] || null;
         if (firstCard) {
           tabContent.insertBefore(controls, firstCard);
         } else {

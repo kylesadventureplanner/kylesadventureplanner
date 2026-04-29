@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log a Visit</title>
+  <link rel="stylesheet" href="../CSS/design-tokens.css">
+  <link rel="stylesheet" href="../CSS/components.css">
+  <link rel="stylesheet" href="../CSS/visited-locations-tab.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .vlw-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .vlw-header-copy { flex: 1; }
+
+    .vlw-header-title {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .vlw-header-subtitle {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .vlw-close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-left: 12px;
+      transition: background 0.15s;
+    }
+    .vlw-close-btn:hover { background: rgba(255,255,255,0.35); }
+
+    .vlw-body {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .vlw-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.09);
+      padding: 20px;
+    }
+
+    /* Re-scope visited-locations CSS for the window */
+    #visitedLocationsRoot .visited-visit-log-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #visitedLocationsRoot .visited-visit-log-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 2px;
+    }
+
+    .filter-input, .filter-select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #f9fafb;
+      color: #1f2937;
+      font-family: inherit;
+    }
+    .filter-input:focus, .filter-select:focus {
+      outline: none;
+      border-color: #667eea;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+    }
+
+    #visitedLocationsRoot .visited-visit-log-activity-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    #visitedLocationsRoot .visited-visit-log-activity-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+    #visitedLocationsRoot .visited-visit-log-activity-option:has(input:checked) {
+      background: #ede9fe;
+      border-color: #8b5cf6;
+      color: #5b21b6;
+    }
+    #visitedLocationsRoot .visited-visit-log-activity-option input[type="checkbox"] {
+      accent-color: #8b5cf6;
+    }
+
+    .visited-visit-log-photo-status {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+    .visited-visit-log-photo-status.status-success { color: #065f46; }
+    .visited-visit-log-photo-status.status-warn { color: #92400e; }
+    .visited-visit-log-photo-status.status-error { color: #991b1b; }
+
+    .vlw-help-text {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    .vlw-inline-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .visited-subtab-action-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .visited-subtab-action-btn:hover { background: #f3f4f6; }
+    .visited-subtab-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .vlw-action-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    #visitedVisitLogSubmitBtn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      min-width: 120px;
+      transition: opacity 0.15s;
+    }
+    #visitedVisitLogSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #visitedVisitLogCancelBtn {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      flex: 1;
+      min-width: 100px;
+    }
+    #visitedVisitLogCancelBtn:hover { background: #e5e7eb; }
+
+    .vlw-qualifier-summary {
+      font-size: 12px;
+      color: #5b21b6;
+      background: #ede9fe;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-top: 6px;
+    }
+
+    .vlw-error-banner {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .visited-visit-log-file-input {
+      font-size: 13px;
+      padding: 6px 8px;
+    }
+
+    textarea.filter-input {
+      resize: vertical;
+      min-height: 80px;
+    }
+  </style>
+</head>
+<body>
+  <div class="vlw-header">
+    <div class="vlw-header-copy">
+      <div id="visitedVisitLogTitle" class="vlw-header-title">📋 Log a Visit</div>
+      <div id="vlwSubtitle" class="vlw-header-subtitle">Record a visit for a location.</div>
+    </div>
+    <button type="button" class="vlw-close-btn" id="vlwCloseBtn" aria-label="Close" title="Close">✕</button>
+  </div>
+
+  <div class="vlw-body">
+    <div id="visitedLocationsRoot">
+      <div class="vlw-card">
+        <div id="vlwErrorBanner" class="vlw-error-banner"></div>
+
+        <div id="visitedVisitLogQualifierSummary" class="vlw-qualifier-summary" hidden></div>
+
+        <form id="visitedVisitLogForm" class="visited-visit-log-form" autocomplete="off">
+          <input type="hidden" id="visitedVisitLogSubtabKey" value="" />
+          <input type="hidden" id="visitedVisitLogItemId" value="" />
+          <input type="hidden" id="visitedVisitLogMode" value="add" />
+
+          <label class="visited-visit-log-label" for="visitedVisitLogLocationSearch">Type to narrow locations</label>
+          <input id="visitedVisitLogLocationSearch" class="filter-input" type="text" placeholder="Start typing the location name..." autocomplete="off" aria-describedby="visitedVisitLogHelp" />
+
+          <label class="visited-visit-log-label" for="visitedVisitLogLocationSelect">Qualifying location</label>
+          <select id="visitedVisitLogLocationSelect" class="filter-select" required aria-describedby="visitedVisitLogHelp">
+            <option value="">Loading locations...</option>
+          </select>
+
+          <label class="visited-visit-log-label" for="visitedVisitLogDate">Date visited</label>
+          <input id="visitedVisitLogDate" class="filter-input" type="date" required />
+
+          <label class="visited-visit-log-label" for="visitedVisitLogActivityGrid">Activities completed (select all that apply)</label>
+          <div id="visitedVisitLogActivityGrid" class="visited-visit-log-activity-grid" role="group" aria-label="Activities completed"></div>
+
+          <label class="visited-visit-log-label" for="visitedVisitLogNotes">Notes (optional)</label>
+          <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
+
+          <label class="visited-visit-log-label" for="visitedVisitLogPhotoInput">Photos (optional)</label>
+          <input id="visitedVisitLogPhotoInput" class="filter-input visited-visit-log-file-input" type="file" accept="image/*" multiple />
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button type="button" class="visited-subtab-action-btn" id="vlwAddPhotoUrlBtn">🔗 Add from URL</button>
+          </div>
+          <div id="vlwStagedUrls" style="display:flex;flex-direction:column;gap:4px;margin-top:4px;"></div>
+          <div id="visitedVisitLogPhotoStatus" class="visited-visit-log-photo-status" aria-live="polite">Attach one or more photos to upload them to OneDrive when you save.</div>
+
+          <div id="visitedVisitLogHelp" class="vlw-help-text" role="status" aria-live="polite" aria-atomic="true"></div>
+
+          <div class="vlw-inline-actions">
+            <button type="button" id="visitedVisitLogRefreshBtn" class="visited-subtab-action-btn">↻ Refresh Qualifying List</button>
+            <button type="button" id="visitedVisitLogAddMissingBtn" class="visited-subtab-action-btn">+ Add Missing Qualifying Location</button>
+          </div>
+
+          <div class="vlw-action-row" style="margin-top: 12px;">
+            <button type="submit" id="visitedVisitLogSubmitBtn">Save Visit</button>
+            <button type="button" id="visitedVisitLogCancelBtn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // ── Helpers ──────────────────────────────────────────────────────────
+      function escapeHtml(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+      function norm(str) {
+        return String(str || '').toLowerCase().replace(/\s+/g,' ').trim();
+      }
+
+      // ── State ──────────────────────────────────────────────────────────
+      var state = {
+        subtabKey: 'outdoors',
+        itemId: '',
+        mode: 'add',
+        hint: '',
+        dialogTitle: '',
+        filterContext: null,
+        allOptions: [],
+        query: '',
+        stagedUrlPhotos: []
+      };
+
+      // ── Bridge accessor ─────────────────────────────────────────────────
+      function getBridge() {
+        try {
+          if (window.opener && !window.opener.closed && window.opener.visitLogBridge) {
+            return window.opener.visitLogBridge;
+          }
+        } catch (_) {}
+        return null;
+      }
+
+      // ── URL param parsing ───────────────────────────────────────────────
+      function parseParams() {
+        var params = new URLSearchParams(window.location.search);
+        state.subtabKey = params.get('subtabKey') || 'outdoors';
+        state.itemId = params.get('itemId') || '';
+        state.mode = params.get('mode') === 'remove' ? 'remove' : 'add';
+        state.hint = params.get('hint') || '';
+        state.dialogTitle = params.get('dialogTitle') || '';
+        var filterParam = params.get('qualifyingFilter');
+        try { state.filterContext = filterParam ? JSON.parse(filterParam) : null; } catch (_) { state.filterContext = null; }
+      }
+
+      // ── DOM refs ────────────────────────────────────────────────────────
+      function $id(id) { return document.getElementById(id); }
+
+      // ── Render activity grid ────────────────────────────────────────────
+      function renderActivityGrid(activityOptions, inferredKeys) {
+        var grid = $id('visitedVisitLogActivityGrid');
+        if (!grid) return;
+        var subtabKey = state.subtabKey;
+        grid.innerHTML = (activityOptions || []).map(function(option, idx) {
+          var checked = (inferredKeys || []).includes(option.key) ? 'checked' : '';
+          var inputId = 'visitedVisitActivity-' + escapeHtml(subtabKey) + '-' + idx;
+          return '<label class="visited-visit-log-activity-option" for="' + escapeHtml(inputId) + '"><input id="' + escapeHtml(inputId) + '" type="checkbox" data-visited-visit-activity="' + escapeHtml(option.key) + '" ' + checked + ' /> <span>' + escapeHtml(option.icon ? option.icon + ' ' + option.label : option.label) + '</span></label>';
+        }).join('');
+      }
+
+      // ── Render location options ─────────────────────────────────────────
+      function renderLocationOptions(options, preferredId) {
+        var sel = $id('visitedVisitLogLocationSelect');
+        var help = $id('visitedVisitLogHelp');
+        if (!sel) return '';
+
+        var query = norm(state.query);
+        var filtered = !query ? options.slice() : options.filter(function(item) {
+          var t = norm(item.title);
+          var s = norm(item.sourceLabel || '');
+          return t.startsWith(query) || s.startsWith(query);
+        });
+
+        sel.innerHTML = '<option value="">Select a location...</option>' + filtered.map(function(item) {
+          var label = item.title + (item.sourceLabel ? ' — ' + item.sourceLabel : '');
+          return '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(label) + '</option>';
+        }).join('');
+
+        var selectedId = '';
+        if (preferredId && filtered.some(function(i) { return i.id === preferredId; })) {
+          selectedId = preferredId;
+        } else if (query && filtered.length === 1) {
+          selectedId = filtered[0].id;
+        }
+        sel.value = selectedId;
+        sel.classList.toggle('is-no-matches', Boolean(query) && filtered.length === 0);
+
+        if (help) {
+          var count = filtered.length + ' of ' + options.length + ' locations.';
+          var base = (options.length) + ' qualifying locations loaded.';
+          if (state.hint) base += ' ' + state.hint;
+          help.textContent = base + ' Showing ' + count;
+        }
+        return selectedId;
+      }
+
+      // ── Set photo status ────────────────────────────────────────────────
+      function setPhotoStatus(msg, type) {
+        var el = $id('visitedVisitLogPhotoStatus');
+        if (!el) return;
+        el.textContent = msg || '';
+        el.className = 'visited-visit-log-photo-status' + (type ? ' status-' + type : '');
+      }
+
+      // ── Show error ──────────────────────────────────────────────────────
+      function showError(msg) {
+        var el = $id('vlwErrorBanner');
+        if (!el) return;
+        el.textContent = msg;
+        el.style.display = msg ? '' : 'none';
+      }
+
+      // ── Get selected activity keys ──────────────────────────────────────
+      function getSelectedActivityKeys() {
+        return Array.from(document.querySelectorAll('#visitedVisitLogActivityGrid input[data-visited-visit-activity]:checked'))
+          .map(function(n) { return String(n.getAttribute('data-visited-visit-activity') || '').trim(); })
+          .filter(Boolean);
+      }
+
+      // ── Initialize ──────────────────────────────────────────────────────
+      async function initialize() {
+        parseParams();
+
+        // Set form state from URL params
+        var subtabKeyInput = $id('visitedVisitLogSubtabKey');
+        var itemIdInput = $id('visitedVisitLogItemId');
+        var modeInput = $id('visitedVisitLogMode');
+        var titleEl = $id('visitedVisitLogTitle');
+        var qualifierSummaryEl = $id('visitedVisitLogQualifierSummary');
+        var addMissingBtn = $id('visitedVisitLogAddMissingBtn');
+        var submitBtn = $id('visitedVisitLogSubmitBtn');
+        var dateInput = $id('visitedVisitLogDate');
+        var subtitleEl = $id('vlwSubtitle');
+
+        if (subtabKeyInput) subtabKeyInput.value = state.subtabKey;
+        if (itemIdInput) itemIdInput.value = state.itemId;
+        if (modeInput) modeInput.value = state.mode;
+
+        // Set today date
+        if (dateInput) {
+          var today = new Date();
+          var yyyy = today.getFullYear();
+          var mm = String(today.getMonth() + 1).padStart(2, '0');
+          var dd = String(today.getDate()).padStart(2, '0');
+          dateInput.value = yyyy + '-' + mm + '-' + dd;
+        }
+
+        // Title and submit button label
+        var defaultTitle = state.mode === 'remove' ? 'Remove Visit' : 'Log Visit';
+        var title = state.dialogTitle || defaultTitle;
+        if (titleEl) titleEl.textContent = '📋 ' + title;
+        if (submitBtn) submitBtn.textContent = state.mode === 'remove' ? 'Remove Visit' : 'Save Visit';
+        if (subtitleEl) {
+          subtitleEl.textContent = 'Recording a visit for ' + state.subtabKey.replace('-', ' ') + '.';
+        }
+
+        // Qualifier summary
+        if (qualifierSummaryEl && state.filterContext && state.filterContext.achievementTitle) {
+          var scopeLabel = state.filterContext.scope === 'badge' ? 'badge' : 'challenge';
+          if (state.filterContext.categoryKey) {
+            qualifierSummaryEl.textContent = state.filterContext.achievementTitle + ' (' + scopeLabel + ') filtering by category: ' + state.filterContext.categoryKey + '.';
+          } else {
+            qualifierSummaryEl.textContent = state.filterContext.achievementTitle + ' (' + scopeLabel + ') uses overall progress, so all subtab locations are listed.';
+          }
+          qualifierSummaryEl.hidden = false;
+        }
+
+        // Update Add Missing btn label
+        if (addMissingBtn && state.filterContext && state.filterContext.achievementTitle) {
+          addMissingBtn.textContent = '+ Add Missing Qualifying Location (' + state.filterContext.achievementTitle + ')';
+        }
+
+        var bridge = getBridge();
+        if (!bridge) {
+          showError('Could not connect to the main Adventure Planner window. Please close this window and try again from the main app.');
+          return;
+        }
+
+        try {
+          var result = await bridge.getInitialState({
+            subtabKey: state.subtabKey,
+            itemId: state.itemId,
+            filterContext: state.filterContext
+          });
+          state.allOptions = result.qualifyingOptions || [];
+          renderLocationOptions(state.allOptions, state.itemId);
+          renderActivityGrid(result.activityOptions, result.inferredActivityKeys);
+
+          // If a location is pre-selected, update activity grid for it
+          var sel = $id('visitedVisitLogLocationSelect');
+          if (sel && sel.value) {
+            var inferredForSelection = await bridge.getInferredActivityKeys(state.subtabKey, sel.value);
+            renderActivityGrid(result.activityOptions, inferredForSelection);
+          }
+
+          // Focus
+          var searchInput = $id('visitedVisitLogLocationSearch');
+          if (searchInput) searchInput.focus();
+          else if (sel) sel.focus();
+        } catch (err) {
+          showError('Failed to load qualifying locations: ' + (err && err.message ? err.message : String(err)));
+        }
+      }
+
+      // ── Event binding ───────────────────────────────────────────────────
+      document.addEventListener('DOMContentLoaded', function() {
+        initialize();
+
+        // Close button
+        var closeBtn = $id('vlwCloseBtn');
+        if (closeBtn) closeBtn.addEventListener('click', function() { window.close(); });
+
+        // Cancel button
+        var cancelBtn = $id('visitedVisitLogCancelBtn');
+        if (cancelBtn) cancelBtn.addEventListener('click', function() { window.close(); });
+
+        // Location search input → filter options
+        var searchInput = $id('visitedVisitLogLocationSearch');
+        if (searchInput) {
+          searchInput.addEventListener('input', function() {
+            state.query = searchInput.value;
+            renderLocationOptions(state.allOptions, '');
+          });
+        }
+
+        // Location select change → re-render activity grid
+        var sel = $id('visitedVisitLogLocationSelect');
+        if (sel) {
+          sel.addEventListener('change', async function() {
+            var selectedItemId = sel.value;
+            $id('visitedVisitLogItemId').value = selectedItemId;
+            var bridge = getBridge();
+            if (bridge && selectedItemId) {
+              try {
+                var activityOptions = await bridge.getActivityOptions(state.subtabKey);
+                var inferredKeys = await bridge.getInferredActivityKeys(state.subtabKey, selectedItemId);
+                renderActivityGrid(activityOptions, inferredKeys);
+              } catch (_) {}
+            }
+          });
+        }
+
+        // Refresh button
+        var refreshBtn = $id('visitedVisitLogRefreshBtn');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', async function() {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '↻ Refreshing...';
+            var bridge = getBridge();
+            if (bridge) {
+              try {
+                var refreshed = await bridge.refreshQualifyingOptions(state.subtabKey, state.filterContext);
+                state.allOptions = refreshed.qualifyingOptions || [];
+                renderLocationOptions(state.allOptions, $id('visitedVisitLogLocationSelect').value || state.itemId);
+                var help = $id('visitedVisitLogHelp');
+                if (help) help.textContent = help.textContent.replace(/\.?\s*$/, '') + '. Refreshed qualifying locations.';
+              } catch (err) {
+                showError('Refresh failed: ' + (err && err.message ? err.message : String(err)));
+              }
+            }
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '↻ Refresh Qualifying List';
+          });
+        }
+
+        // Add Missing Qualifying Location
+        var addMissingBtn = $id('visitedVisitLogAddMissingBtn');
+        if (addMissingBtn) {
+          addMissingBtn.addEventListener('click', function() {
+            var bridge = getBridge();
+            if (bridge && typeof bridge.openAddMissingLocation === 'function') {
+              bridge.openAddMissingLocation(state.subtabKey, state.filterContext);
+            } else if (window.opener && !window.opener.closed) {
+              try {
+                var editModeUrl = new URL('../HTML%20Files/edit-mode-enhanced.html', window.location.href).toString();
+                window.open(editModeUrl, '_blank');
+              } catch (_) {}
+            }
+            window.close();
+          });
+        }
+
+        // Add photo from URL
+        var addUrlBtn = $id('vlwAddPhotoUrlBtn');
+        if (addUrlBtn) {
+          addUrlBtn.addEventListener('click', function() {
+            var url = prompt('Enter photo URL:');
+            if (!url || !url.trim()) return;
+            url = url.trim();
+            state.stagedUrlPhotos.push({ webUrl: url, downloadUrl: url, id: '', name: url.split('/').pop() || 'photo', path: '', mimeType: 'image/*', size: 0 });
+            renderStagedUrls();
+          });
+        }
+
+        // Form submit
+        var form = $id('visitedVisitLogForm');
+        if (form) {
+          form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var submitBtn2 = $id('visitedVisitLogSubmitBtn');
+            var subtabKey = $id('visitedVisitLogSubtabKey').value;
+            var itemId2 = String($id('visitedVisitLogLocationSelect').value || '').trim();
+            var dateValue = String($id('visitedVisitLogDate').value || '').trim();
+            var notes = String($id('visitedVisitLogNotes').value || '').trim();
+            var mode = String($id('visitedVisitLogMode').value || 'add') === 'remove' ? 'remove' : 'add';
+
+            if (!subtabKey || !itemId2 || !dateValue) {
+              showError('Please select a location and date before saving.');
+              return;
+            }
+
+            var photoInput = $id('visitedVisitLogPhotoInput');
+            var photoFiles = photoInput && photoInput.files ? Array.from(photoInput.files) : [];
+
+            submitBtn2.disabled = true;
+            submitBtn2.textContent = mode === 'remove' ? 'Removing...' : 'Saving...';
+            showError('');
+
+            var bridge = getBridge();
+            if (!bridge) {
+              showError('Lost connection to main window. Please try again.');
+              submitBtn2.disabled = false;
+              submitBtn2.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
+              return;
+            }
+
+            try {
+              var activityKeys = getSelectedActivityKeys();
+              await bridge.submitVisit({
+                subtabKey: subtabKey,
+                itemId: itemId2,
+                dateValue: dateValue,
+                notes: notes,
+                mode: mode,
+                activityKeys: activityKeys,
+                stagedUrlPhotos: state.stagedUrlPhotos.slice()
+              }, photoFiles);
+              window.close();
+            } catch (err) {
+              var msg = err && err.message ? err.message : String(err);
+              setPhotoStatus(msg, 'error');
+              showError('Save failed: ' + msg);
+              submitBtn2.disabled = false;
+              submitBtn2.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
+            }
+          });
+        }
+      });
+
+      // ── Staged URL photos ───────────────────────────────────────────────
+      function renderStagedUrls() {
+        var container = $id('vlwStagedUrls');
+        if (!container) return;
+        container.innerHTML = state.stagedUrlPhotos.map(function(p, i) {
+          return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;background:#f3f4f6;border-radius:6px;padding:4px 8px;">'
+            + '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(p.webUrl) + '">' + escapeHtml(p.name || p.webUrl) + '</span>'
+            + '<button type="button" onclick="window._vlwRemoveStagedUrl(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px;padding:0 2px;" title="Remove">✕</button>'
+            + '</div>';
+        }).join('');
+      }
+
+      window._vlwRemoveStagedUrl = function(idx) {
+        state.stagedUrlPhotos.splice(idx, 1);
+        renderStagedUrls();
+      };
+
+    })();
+  </script>
+</body>
+</html>
+

@@ -453,6 +453,13 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('#locActiveFilters')).toContainText('Adventure subtab: Outdoors');
     await expect(page.locator('#locResultsCount')).toContainText('2 locations');
 
+    await page.locator('#locPrefilterScopeToggleBtn').evaluate((node) => node.click());
+    await expect(page.locator('#locResultsCount')).toContainText('4 locations');
+    await expect(page.locator('#locActiveFilters')).toContainText('Subtab scope: all city tables');
+
+    await page.locator('#locPrefilterScopeToggleBtn').evaluate((node) => node.click());
+    await expect(page.locator('#locResultsCount')).toContainText('2 locations');
+
     await page.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter button').evaluate((node) => node.click());
     await expect(page.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter')).toHaveCount(0);
     await expect(page.locator('#locResultsCount')).toContainText('4 locations');

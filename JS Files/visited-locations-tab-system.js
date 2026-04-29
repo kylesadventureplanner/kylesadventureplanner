@@ -341,9 +341,7 @@
       subtabExplorer: {},
        visitRecords: [],
        explorerCardState: {},
-       visitLogLocationOptions: [],
-       visitLogLocationQuery: '',
-       visitLogQualifyingFilter: null,
+       visitLogWindowRef: null,
         routePersistenceTimers: {},
         parserSession: {
          baseline: {},
@@ -4318,7 +4316,8 @@
     if (jumpLinks) {
       const hideJumpLinks = explorerState.view === 'city-explorer'
         || explorerState.view === 'explorer'
-        || explorerState.view === 'explorer-details';
+        || explorerState.view === 'explorer-details'
+        || explorerState.view === 'visit-log';
       jumpLinks.hidden = hideJumpLinks;
       jumpLinks.setAttribute('aria-hidden', hideJumpLinks ? 'true' : 'false');
       jumpLinks.style.display = hideJumpLinks ? 'none' : '';
@@ -5116,122 +5115,6 @@
       });
   }
 
-  function buildVisitLogLocationOptionLabel(item) {
-    const title = String(item && item.title ? item.title : '').trim();
-    const sourceLabel = String(item && item.sourceLabel ? item.sourceLabel : '').trim();
-    return sourceLabel ? `${title} - ${sourceLabel}` : title;
-  }
-
-  function renderVisitLogLocationOptions() {
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const help = document.getElementById('visitedVisitLogHelp');
-    if (!locationSelect) return '';
-
-    const allOptions = Array.isArray(state.visitLogLocationOptions) ? state.visitLogLocationOptions : [];
-    const query = norm(state.visitLogLocationQuery);
-    const filteredOptions = !query
-      ? allOptions.slice()
-      : allOptions.filter((item) => {
-        const title = String(item && item.titleNorm ? item.titleNorm : norm(item && item.title));
-        const sourceLabel = String(item && item.sourceLabelNorm ? item.sourceLabelNorm : norm(item && item.sourceLabel));
-        // Strict prefix matching keeps narrowing predictable for keyboard selection.
-        return title.startsWith(query) || sourceLabel.startsWith(query);
-      });
-
-    const preferredId = String(itemIdInput && itemIdInput.value ? itemIdInput.value : '').trim();
-    locationSelect.innerHTML = '<option value="">Select a location...</option>' + filteredOptions
-      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(buildVisitLogLocationOptionLabel(item))}</option>`)
-      .join('');
-
-    let selectedId = '';
-    if (preferredId && filteredOptions.some((item) => item.id === preferredId)) {
-      selectedId = preferredId;
-    } else if (query && filteredOptions.length === 1) {
-      selectedId = filteredOptions[0].id;
-    }
-
-    locationSelect.disabled = false;
-    locationSelect.classList.toggle('is-no-matches', Boolean(query) && filteredOptions.length === 0);
-    if (locationSelect.disabled) {
-      locationSelect.value = '';
-      selectedId = '';
-    } else {
-      locationSelect.value = selectedId;
-    }
-
-    if (help) {
-      const baseText = String(help.dataset.baseText || help.textContent || '').trim();
-      if (baseText) {
-        const countText = `Showing ${filteredOptions.length} of ${allOptions.length} locations.`;
-        if (query && filteredOptions.length === 0) {
-          help.textContent = `${baseText} ${countText} No matching locations for "${state.visitLogLocationQuery}".`;
-        } else {
-          help.textContent = `${baseText} ${countText}`;
-        }
-      }
-    }
-
-    return selectedId;
-  }
-
-  function syncVisitLogLocationSelection(itemId, subtabKeyOverride) {
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const nextItemId = String(itemId || '').trim();
-    if (locationSelect && String(locationSelect.value || '').trim() !== nextItemId) {
-      locationSelect.value = nextItemId;
-    }
-    if (itemIdInput) itemIdInput.value = nextItemId;
-    const subtabKey = String(
-      subtabKeyOverride
-      || document.getElementById('visitedVisitLogSubtabKey')?.value
-      || state.activeProgressSubTab
-      || 'outdoors'
-    ).trim();
-    renderVisitLogActivityGrid(subtabKey, nextItemId);
-    return nextItemId;
-  }
-
-  async function refreshVisitLogQualifyingList(options) {
-    const opts = options && typeof options === 'object' ? options : {};
-    const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const locationSearchInput = document.getElementById('visitedVisitLogLocationSearch');
-    const help = document.getElementById('visitedVisitLogHelp');
-    const preferredItemId = String(itemIdInput && itemIdInput.value ? itemIdInput.value : '').trim();
-
-    if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
-      await forceVisitedExplorerSync(subtabKey);
-    }
-
-    const filterContext = state.visitLogQualifyingFilter && typeof state.visitLogQualifyingFilter === 'object'
-      ? state.visitLogQualifyingFilter
-      : null;
-    const items = getVisitLogQualifyingOptions(subtabKey, filterContext);
-    state.visitLogLocationOptions = items;
-
-    if (opts.resetQuery) {
-      state.visitLogLocationQuery = '';
-      if (locationSearchInput) locationSearchInput.value = '';
-    }
-
-    const selectedFromRender = renderVisitLogLocationOptions();
-    const nextSelectedId = preferredItemId && items.some((item) => item.id === preferredItemId)
-      ? preferredItemId
-      : (selectedFromRender || '');
-    syncVisitLogLocationSelection(nextSelectedId, subtabKey);
-
-    if (help) {
-      const baseText = String(help.dataset.baseText || '').trim();
-      if (baseText) {
-        help.textContent = baseText + ' Refreshed qualifying locations.';
-      }
-    }
-
-    return items.length;
-  }
-
   function getVisitLogActivityOptions(subtabKey) {
     const config = window.AdventureAchievements && window.AdventureAchievements.CONFIGS
       ? window.AdventureAchievements.CONFIGS[subtabKey]
@@ -5290,225 +5173,182 @@
     return Array.from(new Set(inferred));
   }
 
-  function renderVisitLogActivityGrid(subtabKey, itemId) {
-    const grid = document.getElementById('visitedVisitLogActivityGrid');
-    if (!grid) return;
-    const options = getVisitLogActivityOptions(subtabKey);
-    if (!options.length) {
-      grid.innerHTML = '<div class="card-subtitle">No activity options are configured for this section.</div>';
-      return;
-    }
-    const selectedItem = itemId ? getExplorerItemById(subtabKey, itemId) : null;
-    const inferredKeys = selectedItem ? inferVisitCategoryKeys(subtabKey, selectedItem) : [];
-    grid.innerHTML = options.map((option, idx) => {
-      const checked = inferredKeys.includes(option.key) ? 'checked' : '';
-      const inputId = `visitedVisitActivity-${subtabKey}-${idx}`;
-      return `<label class="visited-visit-log-activity-option" for="${escapeHtml(inputId)}"><input id="${escapeHtml(inputId)}" type="checkbox" data-visited-visit-activity="${escapeHtml(option.key)}" ${checked} /> <span>${escapeHtml(option.icon ? `${option.icon} ${option.label}` : option.label)}</span></label>`;
-    }).join('');
-  }
-
-  function getSelectedVisitActivityKeys() {
-    return Array.from(document.querySelectorAll('#visitedVisitLogActivityGrid input[data-visited-visit-activity]:checked'))
-      .map((node) => String(node.getAttribute('data-visited-visit-activity') || '').trim())
-      .filter(Boolean);
-  }
-
   function closeVisitLogModal() {
-    const modal = document.getElementById('visitedVisitLogModal');
-    const backdrop = document.getElementById('visitedVisitLogBackdrop');
-    if (modal) modal.hidden = true;
-    if (backdrop) backdrop.hidden = true;
+    // Close the standalone window if open
+    if (state.visitLogWindowRef && !state.visitLogWindowRef.closed) {
+      try { state.visitLogWindowRef.close(); } catch (_) {}
+      state.visitLogWindowRef = null;
+    }
     resetVisitLogStagedUrlPhotos();
   }
 
   async function openVisitLogModal(options) {
-    const modal = document.getElementById('visitedVisitLogModal');
-    const backdrop = document.getElementById('visitedVisitLogBackdrop');
-    const subtabKeyInput = document.getElementById('visitedVisitLogSubtabKey');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const modeInput = document.getElementById('visitedVisitLogMode');
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const locationSearchInput = document.getElementById('visitedVisitLogLocationSearch');
-    const dateInput = document.getElementById('visitedVisitLogDate');
-    const notesInput = document.getElementById('visitedVisitLogNotes');
-    const activityGrid = document.getElementById('visitedVisitLogActivityGrid');
-    const photoInput = document.getElementById('visitedVisitLogPhotoInput');
-    const help = document.getElementById('visitedVisitLogHelp');
-    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
-    const titleEl = document.getElementById('visitedVisitLogTitle');
-    const qualifierSummaryEl = document.getElementById('visitedVisitLogQualifierSummary');
-    const addMissingBtn = document.getElementById('visitedVisitLogAddMissingBtn');
-    if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput || !activityGrid) return;
-
     const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
-    if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
-      await forceVisitedExplorerSync(subtabKey);
-    }
 
-    const filterContext = buildVisitLogQualifyingFilter(options && options.qualifyingFilter, subtabKey);
-    state.visitLogQualifyingFilter = filterContext;
-    state.visitLogLocationQuery = '';
-    if (locationSearchInput) locationSearchInput.value = '';
-
-    const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
-    itemIdInput.value = preselectedItemId || '';
-
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-    notesInput.value = '';
-    if (photoInput) {
-      photoInput.value = '';
-    }
-    resetVisitLogStagedUrlPhotos();
-    setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
-    subtabKeyInput.value = subtabKey;
-    const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
-    modeInput.value = mode;
-    const defaultTitle = mode === 'remove' ? 'Remove Visit' : 'Log Visit';
-    if (titleEl) titleEl.textContent = String(options && options.dialogTitle ? options.dialogTitle : defaultTitle).trim() || defaultTitle;
-    if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
-    if (qualifierSummaryEl) {
-      if (filterContext && filterContext.achievementTitle) {
-        const scopeLabel = filterContext.scope === 'badge' ? 'badge' : 'challenge';
-        if (filterContext.categoryKey) {
-          qualifierSummaryEl.textContent = `${filterContext.achievementTitle} (${scopeLabel}) filtering by category: ${filterContext.categoryKey}.`;
-        } else {
-          qualifierSummaryEl.textContent = `${filterContext.achievementTitle} (${scopeLabel}) uses overall progress, so all subtab locations are listed.`;
-        }
-        qualifierSummaryEl.hidden = false;
-      } else {
-        qualifierSummaryEl.hidden = true;
-        qualifierSummaryEl.textContent = '';
-      }
-    }
-    if (addMissingBtn) {
-      const baseText = 'Add Missing Qualifying Location';
-      addMissingBtn.textContent = filterContext && filterContext.achievementTitle
-        ? `+ ${baseText} (${filterContext.achievementTitle})`
-        : `+ ${baseText}`;
-    }
-    if (help) {
-      const hint = String(options && options.hint ? options.hint : '').trim();
-      const base = `0 qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
-      help.dataset.baseText = hint ? `${base} ${hint}` : base;
-      help.textContent = help.dataset.baseText;
-    }
-
-    await refreshVisitLogQualifyingList({ resetQuery: false });
-    if (help) {
-      const hint = String(options && options.hint ? options.hint : '').trim();
-      const currentItems = Array.isArray(state.visitLogLocationOptions) ? state.visitLogLocationOptions : [];
-      const base = `${currentItems.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
-      help.dataset.baseText = hint ? `${base} ${hint}` : base;
-      help.textContent = help.dataset.baseText;
-    }
-
-
-    modal.hidden = false;
-    backdrop.hidden = false;
-    if (locationSearchInput) {
-      locationSearchInput.focus();
-    } else {
-      locationSelect.focus();
-    }
-  }
-
-  async function submitVisitLogForm() {
-    const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || '').trim();
-    const itemId = String(document.getElementById('visitedVisitLogLocationSelect')?.value || '').trim();
-    const dateValue = String(document.getElementById('visitedVisitLogDate')?.value || '').trim();
-    const notes = String(document.getElementById('visitedVisitLogNotes')?.value || '').trim();
-    const mode = String(document.getElementById('visitedVisitLogMode')?.value || 'add').trim() === 'remove' ? 'remove' : 'add';
-    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
-    if (!subtabKey || !itemId || !dateValue) return;
-
-    setButtonBusy(submitBtn, true, mode === 'remove' ? 'Removing...' : 'Saving...');
-
-    const item = getExplorerItemById(subtabKey, itemId);
-    if (!item) {
-      setButtonBusy(submitBtn, false);
+    // Focus existing window if still open
+    if (state.visitLogWindowRef && !state.visitLogWindowRef.closed) {
+      try { state.visitLogWindowRef.focus(); } catch (_) {}
       return;
     }
-    const selectedActivityKeys = getSelectedVisitActivityKeys();
-    const categoryKeys = selectedActivityKeys.length ? selectedActivityKeys : inferVisitCategoryKeys(subtabKey, item);
-    try {
-      if (mode === 'remove') {
-        const dayPrefix = `${dateValue}T`;
-        const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
-        const idx = records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId && String(record.visitedAt || '').startsWith(dayPrefix));
-        const fallbackIdx = idx >= 0 ? idx : records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId);
-        if (fallbackIdx >= 0) {
-          const removed = records.splice(fallbackIdx, 1)[0];
-          state.visitRecords = records;
-          saveVisitRecords();
-          const backendResult = await persistVisitRecordEvent(removed, 'remove', item).catch(function () { return null; });
-          if (typeof window.showToast === 'function') {
-            const suffix = backendResult && backendResult.queued ? ' (queued for backend sync)' : '';
-            window.showToast(`Visit removed: ${removed.locationTitle || item.title}${suffix}`, 'info', 2200);
-          }
-        } else if (typeof window.showToast === 'function') {
-          window.showToast('No matching visit record found to remove.', 'warning', 2600);
-        }
-      } else {
-        const photoFiles = getVisitLogPhotoFiles();
-        let uploadedPhotos = getVisitLogStagedUrlPhotos().slice();
-        let uploadFailures = 0;
-        if (photoFiles.length) {
-          setVisitLogPhotoStatus(`Uploading ${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
-          for (let i = 0; i < photoFiles.length; i += 1) {
-            try {
-              const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
-              if (uploaded) uploadedPhotos.push(uploaded);
-              setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
-            } catch (_uploadError) {
-              uploadFailures += 1;
-              setVisitLogPhotoStatus(`Upload issue on ${i + 1}/${photoFiles.length}. Remaining files will continue.`, 'warn');
-            }
-          }
-        } else if (!uploadedPhotos.length) {
-          setVisitLogPhotoStatus('No photos selected. Visit details will be saved without attachments.');
-        }
-        uploadedPhotos = dedupeVisitPhotoEntries(uploadedPhotos);
 
-        const record = {
-          id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-          subtabKey,
-          locationId: itemId,
-          locationTitle: String(item.title || 'Unknown').trim(),
-          sourceLabel: String(item.sourceLabel || '').trim(),
-          activityKeys: selectedActivityKeys,
-          categoryKeys,
-          visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
-          notes,
-          photos: uploadedPhotos,
-          createdAt: new Date().toISOString()
-        };
-        state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
-        saveVisitRecords();
-        const backendResult = await persistVisitRecordEvent(record, 'add', item).catch(function () { return null; });
+    // Build the URL for the standalone visit-log window
+    const visitLogUrl = new URL('HTML%20Files/visit-log-window.html', window.location.href);
+    visitLogUrl.searchParams.set('subtabKey', subtabKey);
+    const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
+    if (preselectedItemId) visitLogUrl.searchParams.set('itemId', preselectedItemId);
+    const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
+    visitLogUrl.searchParams.set('mode', mode);
+    const hint = String(options && options.hint ? options.hint : '').trim();
+    if (hint) visitLogUrl.searchParams.set('hint', hint);
+    const dialogTitle = String(options && options.dialogTitle ? options.dialogTitle : '').trim();
+    if (dialogTitle) visitLogUrl.searchParams.set('dialogTitle', dialogTitle);
+    const filterContext = buildVisitLogQualifyingFilter(options && options.qualifyingFilter, subtabKey);
+    if (filterContext) visitLogUrl.searchParams.set('qualifyingFilter', JSON.stringify(filterContext));
 
-        if (typeof window.showToast === 'function') {
-          const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
-          const withFailures = uploadFailures ? ` • ${uploadFailures} photo upload${uploadFailures === 1 ? '' : 's'} pending retry` : '';
-          const withBackendQueue = backendResult && backendResult.queued ? ' • backend sync queued' : '';
-          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}${withFailures}${withBackendQueue}`, uploadFailures ? 'warning' : 'success', 2600);
-        }
-      }
+    // Ensure bridge is registered before opening window
+    registerVisitLogBridge();
 
-      closeVisitLogModal();
-      await refreshTab();
-    } catch (error) {
-      setVisitLogPhotoStatus(error && error.message ? error.message : 'Photo upload failed. Please try again.', 'error');
-      if (typeof window.showToast === 'function') {
-        window.showToast('Visit save failed while uploading photos to OneDrive.', 'warning', 2800);
-      }
-    } finally {
-      setButtonBusy(submitBtn, false);
+    const visitLogWin = window.open(visitLogUrl.toString(), 'adventureVisitLog', 'width=720,height=860,resizable=yes,scrollbars=yes');
+    if (visitLogWin) {
+      state.visitLogWindowRef = visitLogWin;
+      try { visitLogWin.focus(); } catch (_) {}
     }
   }
+
+  // ── Visit Log Window Bridge ────────────────────────────────────────────
+  // Exposes callable methods from the standalone visit-log-window.html page
+  // via window.opener.visitLogBridge.*(...)
+  function registerVisitLogBridge() {
+    window.visitLogBridge = {
+      // Called on window init: returns qualifying options + activity options
+      async getInitialState(params) {
+        const key = String(params && params.subtabKey ? params.subtabKey : 'outdoors').trim();
+        const rawFilter = params && params.filterContext ? params.filterContext : null;
+        const filterCtx = rawFilter && typeof rawFilter === 'object' ? rawFilter : null;
+        const preselectedItemId = String(params && params.itemId ? params.itemId : '').trim();
+
+        if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(key)) {
+          await forceVisitedExplorerSync(key);
+        }
+
+        const qualifyingOptions = getVisitLogQualifyingOptions(key, filterCtx);
+        const activityOptions = getVisitLogActivityOptions(key);
+        const preItem = preselectedItemId ? (qualifyingOptions.find((o) => o.id === preselectedItemId) || null) : null;
+        const inferredActivityKeys = preItem ? inferVisitCategoryKeys(key, getExplorerItemById(key, preselectedItemId) || preItem) : [];
+
+        return { qualifyingOptions, activityOptions, inferredActivityKeys };
+      },
+
+      // Refresh qualifying options (called via refresh button in window)
+      async refreshQualifyingOptions(subtabKey, filterContext) {
+        const key = String(subtabKey || 'outdoors').trim();
+        const filterCtx = filterContext && typeof filterContext === 'object' ? filterContext : null;
+        if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(key)) {
+          await forceVisitedExplorerSync(key);
+        }
+        const qualifyingOptions = getVisitLogQualifyingOptions(key, filterCtx);
+        return { qualifyingOptions };
+      },
+
+      // Get activity options for a subtab
+      async getActivityOptions(subtabKey) {
+        return getVisitLogActivityOptions(String(subtabKey || 'outdoors').trim());
+      },
+
+      // Get inferred activity keys for a chosen item
+      async getInferredActivityKeys(subtabKey, itemId) {
+        const key = String(subtabKey || 'outdoors').trim();
+        const item = getExplorerItemById(key, itemId);
+        return item ? inferVisitCategoryKeys(key, item) : [];
+      },
+
+      // Submit the visit record (called when the window form is submitted)
+      async submitVisit(data, photoFiles) {
+        const subtabKey = String(data && data.subtabKey ? data.subtabKey : '').trim();
+        const itemId = String(data && data.itemId ? data.itemId : '').trim();
+        const dateValue = String(data && data.dateValue ? data.dateValue : '').trim();
+        const notes = String(data && data.notes ? data.notes : '').trim();
+        const mode = String(data && data.mode ? data.mode : 'add') === 'remove' ? 'remove' : 'add';
+        const activityKeys = Array.isArray(data && data.activityKeys) ? data.activityKeys : [];
+        const stagedUrlPhotos = Array.isArray(data && data.stagedUrlPhotos) ? data.stagedUrlPhotos : [];
+        const files = Array.isArray(photoFiles) ? photoFiles : [];
+
+        if (!subtabKey || !itemId || !dateValue) throw new Error('Missing required fields.');
+
+        const item = getExplorerItemById(subtabKey, itemId);
+        if (!item) throw new Error(`Location not found: ${itemId}`);
+
+        const categoryKeys = activityKeys.length ? activityKeys : inferVisitCategoryKeys(subtabKey, item);
+
+        if (mode === 'remove') {
+          const dayPrefix = `${dateValue}T`;
+          const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
+          const idx = records.findIndex((r) => r && r.subtabKey === subtabKey && r.locationId === itemId && String(r.visitedAt || '').startsWith(dayPrefix));
+          const fallbackIdx = idx >= 0 ? idx : records.findIndex((r) => r && r.subtabKey === subtabKey && r.locationId === itemId);
+          if (fallbackIdx >= 0) {
+            const removed = records.splice(fallbackIdx, 1)[0];
+            state.visitRecords = records;
+            saveVisitRecords();
+            const backendResult = await persistVisitRecordEvent(removed, 'remove', item).catch(() => null);
+            if (typeof window.showToast === 'function') {
+              const suffix = backendResult && backendResult.queued ? ' (queued for backend sync)' : '';
+              window.showToast(`Visit removed: ${removed.locationTitle || item.title}${suffix}`, 'info', 2200);
+            }
+          } else if (typeof window.showToast === 'function') {
+            window.showToast('No matching visit record found to remove.', 'warning', 2600);
+          }
+        } else {
+          let uploadedPhotos = stagedUrlPhotos.slice();
+          let uploadFailures = 0;
+          if (files.length) {
+            for (let i = 0; i < files.length; i++) {
+              try {
+                const uploaded = await uploadVisitPhotoToOneDrive(files[i], { subtabKey });
+                if (uploaded) uploadedPhotos.push(uploaded);
+              } catch (_uploadError) {
+                uploadFailures++;
+              }
+            }
+          }
+          uploadedPhotos = dedupeVisitPhotoEntries(uploadedPhotos);
+
+          const record = {
+            id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+            subtabKey,
+            locationId: itemId,
+            locationTitle: String(item.title || 'Unknown').trim(),
+            sourceLabel: String(item.sourceLabel || '').trim(),
+            activityKeys,
+            categoryKeys,
+            visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
+            notes,
+            photos: uploadedPhotos,
+            createdAt: new Date().toISOString()
+          };
+          state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
+          saveVisitRecords();
+          const backendResult = await persistVisitRecordEvent(record, 'add', item).catch(() => null);
+
+          if (typeof window.showToast === 'function') {
+            const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
+            const withFailures = uploadFailures ? ` • ${uploadFailures} photo upload${uploadFailures === 1 ? '' : 's'} pending retry` : '';
+            const withBackendQueue = backendResult && backendResult.queued ? ' • backend sync queued' : '';
+            window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}${withFailures}${withBackendQueue}`, uploadFailures ? 'warning' : 'success', 2600);
+          }
+        }
+
+        state.visitLogWindowRef = null;
+        await refreshTab();
+      },
+
+      // Open edit mode to add a missing location and close the visit log window
+      openAddMissingLocation(subtabKey) {
+        const editModeUrl = new URL('HTML%20Files/edit-mode-enhanced.html', window.location.href).toString();
+        window.open(editModeUrl, '_blank');
+      }
+    };
+  }
+
 
   async function retryPendingLocalWrites(triggerBtn) {
     const visitMap = getVisitMap();
@@ -8671,6 +8511,11 @@
               return;
             }
 
+            if (action.startsWith('close-visit-log-')) {
+              closeVisitLogModal();
+              return;
+            }
+
             if (action === 'explore-bike-trails') {
               if (typeof window.openTrailExplorerWindow === 'function') {
                 window.openTrailExplorerWindow();
@@ -9196,50 +9041,6 @@
             return;
           }
 
-          const closeVisitLogBtn = closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
-          if (closeVisitLogBtn) {
-            event.preventDefault();
-            closeVisitLogModal();
-            return;
-          }
-
-          const addMissingVisitLogBtn = closest('#visitedVisitLogAddMissingBtn');
-          if (addMissingVisitLogBtn) {
-            event.preventDefault();
-            const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
-            const filterContext = state.visitLogQualifyingFilter && typeof state.visitLogQualifyingFilter === 'object'
-              ? state.visitLogQualifyingFilter
-              : null;
-            closeVisitLogModal();
-            openEditModeForSubtab(subtabKey);
-            if (typeof window.showToast === 'function') {
-              const scopedLabel = filterContext && filterContext.achievementTitle
-                ? ` for ${filterContext.achievementTitle}`
-                : '';
-              window.showToast(`Add the missing location in Edit Mode${scopedLabel}, then reopen this modal to refresh.`, 'info', 3400);
-            }
-            return;
-          }
-
-          const refreshVisitLogBtn = closest('#visitedVisitLogRefreshBtn');
-          if (refreshVisitLogBtn) {
-            event.preventDefault();
-            if (refreshVisitLogBtn instanceof HTMLButtonElement) {
-              const prevLabel = refreshVisitLogBtn.textContent;
-              refreshVisitLogBtn.disabled = true;
-              refreshVisitLogBtn.textContent = 'Refreshing...';
-              try {
-                await refreshVisitLogQualifyingList({ resetQuery: false });
-              } finally {
-                refreshVisitLogBtn.disabled = false;
-                refreshVisitLogBtn.textContent = prevLabel || '↻ Refresh Qualifying List';
-              }
-            } else {
-              await refreshVisitLogQualifyingList({ resetQuery: false });
-            }
-            return;
-          }
-
           const loadMoreBtn = closest('[data-catalog-action="load-more"]');
           if (loadMoreBtn) {
             event.preventDefault();
@@ -9418,85 +9219,6 @@
       });
     }
 
-    const visitLogForm = document.getElementById('visitedVisitLogForm');
-    if (visitLogForm && visitLogForm.dataset.bound !== '1') {
-      visitLogForm.dataset.bound = '1';
-      visitLogForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        await submitVisitLogForm();
-      });
-    }
-
-    const visitLogLocationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    if (visitLogLocationSelect && visitLogLocationSelect.dataset.bound !== '1') {
-      visitLogLocationSelect.dataset.bound = '1';
-      visitLogLocationSelect.addEventListener('change', () => {
-        syncVisitLogLocationSelection(visitLogLocationSelect.value);
-      });
-    }
-
-    const visitLogLocationSearch = document.getElementById('visitedVisitLogLocationSearch');
-    if (visitLogLocationSearch && visitLogLocationSearch.dataset.bound !== '1') {
-      visitLogLocationSearch.dataset.bound = '1';
-      visitLogLocationSearch.addEventListener('input', () => {
-        state.visitLogLocationQuery = String(visitLogLocationSearch.value || '').trim();
-        const selectedId = renderVisitLogLocationOptions();
-        syncVisitLogLocationSelection(selectedId || '');
-      });
-      visitLogLocationSearch.addEventListener('keydown', (event) => {
-        if (!visitLogLocationSelect) return;
-        if (event.key === 'Enter') {
-          const selectable = Array.from(visitLogLocationSelect.options || [])
-            .filter((option) => String(option.value || '').trim());
-          if (!selectable.length) return;
-          event.preventDefault();
-          const currentValue = String(visitLogLocationSelect.value || '').trim();
-          const nextValue = selectable.some((option) => String(option.value || '').trim() === currentValue)
-            ? currentValue
-            : String(selectable[0].value || '').trim();
-          syncVisitLogLocationSelection(nextValue);
-          return;
-        }
-
-        if (event.key === 'Escape') {
-          const currentQuery = String(visitLogLocationSearch.value || '').trim();
-          if (!currentQuery) return;
-          event.preventDefault();
-          visitLogLocationSearch.value = '';
-          state.visitLogLocationQuery = '';
-          const selectedId = renderVisitLogLocationOptions();
-          syncVisitLogLocationSelection(selectedId || '');
-          return;
-        }
-
-        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-        const selectable = Array.from(visitLogLocationSelect.options || [])
-          .filter((option) => String(option.value || '').trim());
-        if (!selectable.length) return;
-
-        event.preventDefault();
-        const currentValue = String(visitLogLocationSelect.value || '').trim();
-        const currentIndex = selectable.findIndex((option) => String(option.value || '').trim() === currentValue);
-        const direction = event.key === 'ArrowDown' ? 1 : -1;
-        const seedIndex = currentIndex >= 0 ? currentIndex : (direction > 0 ? -1 : selectable.length);
-        const nextIndex = Math.max(0, Math.min(selectable.length - 1, seedIndex + direction));
-        const nextValue = String(selectable[nextIndex].value || '').trim();
-        syncVisitLogLocationSelection(nextValue);
-      });
-    }
-
-    const visitLogPhotoInput = document.getElementById('visitedVisitLogPhotoInput');
-    if (visitLogPhotoInput && visitLogPhotoInput.dataset.bound !== '1') {
-      visitLogPhotoInput.dataset.bound = '1';
-      visitLogPhotoInput.addEventListener('change', () => {
-        const files = getVisitLogPhotoFiles();
-        if (!files.length) {
-          setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
-          return;
-        }
-        setVisitLogPhotoStatus(`${files.length} photo${files.length === 1 ? '' : 's'} selected for upload.`, 'warn');
-      });
-    }
 
     root.addEventListener('pointerdown', (event) => {
       if (!event.target.closest || !event.target.closest('[data-progress-subtab]')) return;

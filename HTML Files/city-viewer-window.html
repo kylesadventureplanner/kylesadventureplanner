@@ -1232,6 +1232,24 @@
     }
     .loc-mini-btn:hover { border-color: #667eea; color: #667eea; transform: translateY(-1px); }
     .loc-mini-btn.success { border-color: #86efac; color: #166534; }
+    .loc-mini-btn.is-active { border-color: #4f46e5; color: #312e81; background: #eef2ff; }
+    .loc-prefilter-scope-help {
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: help;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
     .loc-smart-presets {
       display: flex;
       gap: 6px;
@@ -2714,6 +2732,10 @@
                 <div class="loc-filter-group-title">Source filters</div>
                 <div class="loc-filter-subcopy">Limit results to saved rows or nearby web discoveries.</div>
               </div>
+              <div class="loc-group-actions ui-btn-group" style="margin-bottom:8px;">
+                <button type="button" id="locPrefilterScopeToggleBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="toggleLocPrefilterScope()" hidden>Subtab Scope: On</button>
+                <button type="button" id="locPrefilterScopeHelpBtn" class="loc-prefilter-scope-help" hidden aria-label="How subtab scope works" title="">?</button>
+              </div>
               <div id="locSourceFilters" class="loc-source-filters" aria-live="polite"></div>
             </div>
           </div>
@@ -3420,6 +3442,7 @@
     let prefilterTag = '';
     let prefilterLabel = '';
     let prefilterSourceSubtab = '';
+    let bypassAdventurePrefilterForLocations = false;
     let activeLocSourceFilter = '';
     let familyPreferences = null;
     let activeFamilyPreset = '';
@@ -4089,10 +4112,46 @@
       prefilterTag = '';
       prefilterLabel = '';
       prefilterSourceSubtab = '';
+      bypassAdventurePrefilterForLocations = false;
       renderPrefilterNotice();
+      renderLocPrefilterScopeToggle();
       renderCities();
       if (currentCityKey) applyLocFilters();
       else updateUrlFromState();
+    }
+
+    function shouldBypassAdventurePrefilterForLocations() {
+      return Boolean(prefilterTag && bypassAdventurePrefilterForLocations);
+    }
+
+    function renderLocPrefilterScopeToggle() {
+      const btn = document.getElementById('locPrefilterScopeToggleBtn');
+      const helpBtn = document.getElementById('locPrefilterScopeHelpBtn');
+      if (!btn) return;
+      const hasPrefilter = Boolean(prefilterTag);
+      const bypassOn = shouldBypassAdventurePrefilterForLocations();
+      const helpText = 'Scope affects this city only. Turn scope off to see all tables in this city. Use "Show all places" to clear the filter everywhere.';
+      btn.hidden = !hasPrefilter;
+      if (helpBtn) {
+        helpBtn.hidden = !hasPrefilter;
+        helpBtn.title = helpText;
+        helpBtn.setAttribute('aria-label', helpText);
+      }
+      if (!hasPrefilter) return;
+      btn.classList.toggle('is-active', bypassOn);
+      btn.setAttribute('aria-pressed', String(bypassOn));
+      btn.textContent = bypassOn
+        ? 'Subtab Scope: Off (All Tables)'
+        : `Subtab Scope: On (${getPrefilterLabel()})`;
+      btn.title = bypassOn
+        ? 'Scope is off for this city. Click to use Adventure subtab scope again.'
+        : 'Scope is on for this city. Click to show all tables in this city.';
+    }
+
+    function toggleLocPrefilterScope() {
+      if (!prefilterTag) return;
+      bypassAdventurePrefilterForLocations = !bypassAdventurePrefilterForLocations;
+      applyLocFilters();
     }
 
     function locationMatchesPrefilter(loc) {
@@ -4564,6 +4623,7 @@
         openNowOnly: !!(document.getElementById('locFilterOpenNow') && document.getElementById('locFilterOpenNow').checked),
         closingSoonOnly: !!(document.getElementById('locFilterClosingSoon') && document.getElementById('locFilterClosingSoon').checked),
         sourceFilter: String(activeLocSourceFilter || '').trim().toLowerCase(),
+        bypassAdventurePrefilter: shouldBypassAdventurePrefilterForLocations(),
         familyPreferences: normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences())
       };
     }
@@ -4571,7 +4631,7 @@
     function locationMatchesLocCriteria(loc, criteria, options) {
       const settings = options || {};
       const filters = criteria || getLocFilterCriteria();
-      if (!locationMatchesPrefilter(loc)) return false;
+      if (!filters.bypassAdventurePrefilter && !locationMatchesPrefilter(loc)) return false;
       const name = String(locVal(loc, 0, 'name')).toLowerCase();
       const tags = getLocationTags(loc).join(',').toLowerCase();
       const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
@@ -4650,6 +4710,7 @@
         openNow: document.getElementById('locFilterOpenNow').checked,
         closingSoon: document.getElementById('locFilterClosingSoon').checked,
         sourceFilter: activeLocSourceFilter,
+        prefilterBypass: shouldBypassAdventurePrefilterForLocations(),
         sortBy: document.getElementById('locSortBy').value,
         sortOrder: locSortOrder,
         quickTag: activeLocQuickTag,
@@ -4668,6 +4729,7 @@
       document.getElementById('locFilterOpenNow').checked = Boolean(state.openNow);
       document.getElementById('locFilterClosingSoon').checked = Boolean(state.closingSoon);
       activeLocSourceFilter = state.sourceFilter === 'web' ? 'web' : (state.sourceFilter === 'saved' ? 'saved' : '');
+      bypassAdventurePrefilterForLocations = Boolean(state.prefilterBypass) && Boolean(prefilterTag);
       document.getElementById('locSortBy').value = state.sortBy || 'name';
       locSortOrder = state.sortOrder === 'desc' ? 'desc' : 'asc';
       document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
@@ -4681,6 +4743,7 @@
       }
       activeFamilyPreset = String(state.familyPresetKey || '').trim();
       renderFamilyExperienceControls();
+      renderLocPrefilterScopeToggle();
     }
 
     function saveLastLocState() {
@@ -6748,8 +6811,10 @@
       if (sortBtn) sortBtn.textContent = '↑';
       activeLocQuickTag = null;
       activeLocSourceFilter = '';
+      bypassAdventurePrefilterForLocations = false;
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
       setSplitView(false);
+      renderLocPrefilterScopeToggle();
       applyLocFilters();
     }
 
@@ -6767,6 +6832,9 @@
 
       if (prefilterTag) {
         chips.push({ key: 'prefilter', label: `Adventure subtab: ${getPrefilterLabel()}`, className: 'is-prefilter', buttonLabel: 'Show all' });
+        if (shouldBypassAdventurePrefilterForLocations()) {
+          chips.push({ key: 'prefilterBypass', label: 'Subtab scope: all city tables', className: 'is-prefilter', buttonLabel: 'Use subtab scope' });
+        }
       }
 
       if (searchName) chips.push({ key: 'searchName', label: `Name: ${searchName}` });
@@ -6789,6 +6857,12 @@
     function clearSingleFilterChip(key) {
       if (key === 'prefilter') {
         clearAdventurePrefilter();
+        return;
+      }
+      if (key === 'prefilterBypass') {
+        bypassAdventurePrefilterForLocations = false;
+        renderLocPrefilterScopeToggle();
+        applyLocFilters();
         return;
       }
       if (key === 'searchName') document.getElementById('locSearchName').value = '';
@@ -6997,6 +7071,7 @@
       lastFilteredLocations = results;
       lastRankBadgeIndex = buildRankBadgeIndexForCity({ ...cityEntry, locations: cityLocations });
       document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
+      renderLocPrefilterScopeToggle();
       saveLastLocState();
       renderActiveFilterChips();
       renderSmartPresetState();
@@ -7131,6 +7206,7 @@
       activeLocId = null;
       activeLocQuickTag = null;
       activeLocSourceFilter = '';
+      bypassAdventurePrefilterForLocations = false;
       activeLocationDetailId = null;
       lastRankBadgeIndex = {};
       const viewLocations = refreshCityNearbyBlend(cityEntry);
@@ -7154,6 +7230,7 @@
       locSortOrder = 'asc';
       document.getElementById('locSortOrderBtn').textContent = '↑';
       setSplitView(false);
+      renderLocPrefilterScopeToggle();
       locFilterPanelManualOverride = false;
       syncLocFilterPanelState({ force: true });
       syncLocStatusPanelState({ force: true });

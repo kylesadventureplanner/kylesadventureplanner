@@ -403,7 +403,6 @@
   </details>
 
   <div id="visitedExplorerDetailsBackdrop" class="visited-explorer-details-backdrop" hidden></div>
-  <div id="visitedVisitLogBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedPhotoGalleryBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedUrlSearchBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedLocationTextParserBackdrop" class="visited-explorer-details-backdrop" hidden></div>
@@ -495,47 +494,6 @@
       <button type="button" id="visitedExplorerDetailsCloseBtn" class="pill-button" aria-label="Close location details">Close</button>
     </div>
     <div id="visitedExplorerDetailsBody" class="visited-explorer-details-body"></div>
-  </div>
-  <div id="visitedVisitLogModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedVisitLogTitle" hidden>
-    <div class="visited-explorer-details-head">
-      <div>
-        <div id="visitedVisitLogTitle" class="card-title">Log Visit</div>
-        <div id="visitedVisitLogQualifierSummary" class="card-subtitle" hidden></div>
-      </div>
-      <button type="button" id="visitedVisitLogCloseBtn" class="pill-button" aria-label="Close visit log form">Close</button>
-    </div>
-    <form id="visitedVisitLogForm" class="visited-visit-log-form">
-      <input type="hidden" id="visitedVisitLogSubtabKey" value="" />
-      <input type="hidden" id="visitedVisitLogItemId" value="" />
-      <input type="hidden" id="visitedVisitLogMode" value="add" />
-      <label class="visited-visit-log-label" for="visitedVisitLogLocationSearch">Type to narrow locations</label>
-      <input id="visitedVisitLogLocationSearch" class="filter-input" type="text" placeholder="Start typing the location name..." autocomplete="off" aria-describedby="visitedVisitLogHelp" />
-      <label class="visited-visit-log-label" for="visitedVisitLogLocationSelect">Qualifying location</label>
-      <select id="visitedVisitLogLocationSelect" class="filter-select" required aria-describedby="visitedVisitLogHelp">
-        <option value="">Select a location...</option>
-      </select>
-      <label class="visited-visit-log-label" for="visitedVisitLogDate">Date visited</label>
-      <input id="visitedVisitLogDate" class="filter-input" type="date" required />
-      <label class="visited-visit-log-label" for="visitedVisitLogActivityGrid">Activities completed (select all that apply)</label>
-      <div id="visitedVisitLogActivityGrid" class="visited-visit-log-activity-grid" role="group" aria-label="Activities completed"></div>
-      <label class="visited-visit-log-label" for="visitedVisitLogNotes">Notes (optional)</label>
-      <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
-      <label class="visited-visit-log-label" for="visitedVisitLogPhotoInput">Photos (optional)</label>
-      <input id="visitedVisitLogPhotoInput" class="filter-input visited-visit-log-file-input" type="file" accept="image/*" multiple />
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button type="button" class="visited-subtab-action-btn" data-visit-log-photo-url style="flex:1;">🔗 Add from URL</button>
-      </div>
-      <div id="visitedVisitLogPhotoStatus" class="card-subtitle visited-visit-log-photo-status" aria-live="polite">Attach one or more photos to upload them to OneDrive when you save.</div>
-      <div id="visitedVisitLogHelp" class="card-subtitle" role="status" aria-live="polite" aria-atomic="true"></div>
-      <div class="visited-visit-log-inline-actions">
-        <button type="button" id="visitedVisitLogRefreshBtn" class="visited-subtab-action-btn visited-visit-log-refresh-btn">↻ Refresh Qualifying List</button>
-        <button type="button" id="visitedVisitLogAddMissingBtn" class="visited-subtab-action-btn visited-visit-log-missing-btn">+ Add Missing Qualifying Location</button>
-      </div>
-      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top: 4px;">
-        <button type="submit" id="visitedVisitLogSubmitBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Visit</button>
-        <button type="button" id="visitedVisitLogCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
-      </div>
-    </form>
   </div>
 </div>
 

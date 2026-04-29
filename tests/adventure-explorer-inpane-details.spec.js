@@ -943,10 +943,15 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await page.evaluate(() => {
       window.__visitLogLaunches = [];
+      const originalOpenVisitedVisitLog = typeof window.openVisitedVisitLogFromAchievements === 'function'
+        ? window.openVisitedVisitLogFromAchievements
+        : null;
       window.openVisitedVisitLogFromAchievements = async (options) => {
         window.__visitLogLaunches.push(options || {});
-        const modal = document.getElementById('visitedVisitLogModal');
-        if (modal) modal.hidden = false;
+        if (originalOpenVisitedVisitLog) {
+          return originalOpenVisitedVisitLog(options);
+        }
+        return null;
       };
       window.syncVisitedExplorerDetailFields = async () => ({ synced: true });
     });
@@ -978,16 +983,19 @@ test.describe('Adventure explorer in-pane details flow', () => {
       return liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.links || ''));
     }, { timeout: 5000 }).toContain('https://example.org');
 
-    await logVisitBtn.click();
-    await expect(page.locator('#visitedVisitLogModal')).toBeVisible();
+    const [firstVisitPopup] = await Promise.all([
+      page.waitForEvent('popup'),
+      logVisitBtn.click()
+    ]);
+    await firstVisitPopup.waitForLoadState('domcontentloaded');
+    await expect(firstVisitPopup.locator('#visitedVisitLogTitle')).toBeVisible();
     await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(1);
     await expect.poll(() => page.evaluate(() => {
       const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
       return launches[0] || {};
     })).toMatchObject({ subtabKey: key });
 
-    await page.click('#visitedVisitLogCancelBtn');
-    await expect(page.locator('#visitedVisitLogModal')).toBeHidden();
+    await firstVisitPopup.close();
 
     const frameHandle = await detailsFrame.elementHandle();
     const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
@@ -996,15 +1004,22 @@ test.describe('Adventure explorer in-pane details flow', () => {
       window.confirm = () => true;
     });
 
-    await visitedBtn.click();
+    await visitedBtn.scrollIntoViewIfNeeded();
+    const [secondVisitPopup] = await Promise.all([
+      page.waitForEvent('popup'),
+      visitedBtn.click()
+    ]);
+    await secondVisitPopup.waitForLoadState('domcontentloaded');
+    await expect(secondVisitPopup.locator('#visitedVisitLogTitle')).toBeVisible();
 
     await expect(details.locator('#abVisitedBtn')).toContainText(/Visited/i);
-    await expect(page.locator('#visitedVisitLogModal')).toBeVisible();
     await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(2);
     await expect.poll(() => page.evaluate(() => {
       const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
       return launches[1] || {};
     })).toMatchObject({ subtabKey: key });
+
+    await secondVisitPopup.close();
   });
 
   test('refreshes stale OneDrive photo URLs and persists stable photo metadata on save', async ({ page }) => {

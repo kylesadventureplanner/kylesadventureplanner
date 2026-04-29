@@ -108,6 +108,12 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
       return true;
     };
   });
+
+  const expandAllBtn = popup.locator('#places-tab .edit-section-visibility-controls .edit-section-visibility-btn').first();
+  if (await expandAllBtn.isVisible().catch(() => false)) {
+    await expandAllBtn.click();
+  }
+
   return popup;
 }
 

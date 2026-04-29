@@ -444,6 +444,8 @@ test.describe('Edit Mode – target-table selectors', () => {
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {
     await expect(page.locator('#openFestivalSourcesConfigBtn')).toBeVisible();
     await expect(page.locator('#festivalSourcesTabBadge')).toContainText(/providers enabled/i);
+    await page.click('#openFestivalSourcesConfigBtn');
+    await expect(page.locator('#festival-tab')).toHaveClass(/active/);
     await expect(page.locator('#dedupeBulkInputNowBtn')).toBeVisible();
     await expect(page.locator('#resetTargetStarterRecommendationsBtn')).toBeVisible();
     await expect(page.locator('#targetStarterOfficialOnlyToggle')).toBeVisible();
@@ -454,11 +456,18 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#targetStarterRecommendations')).toHaveValue(/\[official\]/i);
     await page.uncheck('#targetStarterOfficialOnlyToggle');
 
+    await page.click('#tab-btn-places');
+    await expect(page.locator('#places-tab')).toHaveClass(/active/);
     await page.selectOption('#actionTargetSelect', 'nature_locations');
+    await page.click('#tab-btn-festival');
+    await expect(page.locator('#festival-tab')).toHaveClass(/active/);
     await expect(page.locator('#targetStarterRecommendations')).toHaveValue(/alltrails\.com/i);
-    await page.fill('#bulkInput', 'Line A\nLine A\nLine B');
+    await page.evaluate(() => {
+      const bulk = document.getElementById('bulkInput');
+      if (bulk) bulk.value = 'Line A\nLine A\nLine B';
+    });
     await page.click('#dedupeBulkInputNowBtn');
-    await expect(page.locator('#bulkInput')).toHaveValue('Line A\nLine B');
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('bulkInput')?.value || ''))).toBe('Line A\nLine B');
 
     await page.evaluate(() => {
       const area = document.getElementById('targetStarterRecommendations');
@@ -468,10 +477,17 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#targetStarterRecommendations')).toHaveValue(/alltrails\.com/i);
 
     await page.click('#appendTargetStarterRecommendationsBtn');
-    await expect(page.locator('#bulkInput')).toHaveValue(/alltrails\.com/i);
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('bulkInput')?.value || ''))).toMatch(/alltrails\.com/i);
 
+    await page.click('#tab-btn-places');
+    await expect(page.locator('#places-tab')).toHaveClass(/active/);
     await page.selectOption('#actionTargetSelect', 'ent_festivals');
+    await page.click('#tab-btn-festival');
+    await expect(page.locator('#festival-tab')).toHaveClass(/active/);
     await expect(page.locator('#targetStarterRecommendations')).toHaveValue(/ncapplefestival\.org/i);
+
+    await page.click('#festivalSourcesBackToPlacesBtn');
+    await expect(page.locator('#places-tab')).toHaveClass(/active/);
     await expect(page.locator('#festival-tab')).not.toHaveClass(/active/);
 
     await page.click('#openFestivalSourcesConfigBtn');
