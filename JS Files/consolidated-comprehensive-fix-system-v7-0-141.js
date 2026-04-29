@@ -1484,12 +1484,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       }, 120);
     });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class', 'disabled', 'aria-disabled']
-    });
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class', 'disabled', 'aria-disabled']
+      });
+    }
 
     // Monitor mouse activity to reset stuck states
     document.addEventListener('mouseout', () => {
@@ -1500,10 +1502,15 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     console.log('✅ ENHANCED button responsiveness monitor initialized');
   }
 
-  // Initialize button responsiveness fixes
-  setTimeout(() => {
-    ensureButtonResponsiveness();
-  }, 100);
+  // Initialize button responsiveness fixes — wait for body to exist before observing
+  const _runEnsureButtonResponsiveness = () => {
+    if (document.body) {
+      ensureButtonResponsiveness();
+    } else {
+      setTimeout(_runEnsureButtonResponsiveness, 50);
+    }
+  };
+  setTimeout(_runEnsureButtonResponsiveness, 100);
 
   // ============================================================
   // SECTION: PREVENT POINTER-EVENTS BLOCKING IN CSS
