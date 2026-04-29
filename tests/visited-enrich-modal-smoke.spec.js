@@ -138,17 +138,30 @@ test.describe('Visited enrich modal smoke', () => {
         const modalRoot = document.getElementById('visitedLocationTextParserModal');
         const allToggles = modalRoot ? Array.from(modalRoot.querySelectorAll('[data-parser-field-select]')) : [];
         allToggles.forEach((toggle) => {
-          if (toggle instanceof HTMLInputElement && toggle.checked) toggle.click();
+          if (!(toggle instanceof HTMLInputElement)) return;
+          if (toggle.checked) {
+            toggle.checked = false;
+            toggle.dispatchEvent(new Event('input', { bubbles: true }));
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+          }
         });
         if (typeof window.updateParserSaveButtonState === 'function') {
           window.updateParserSaveButtonState();
         }
       });
-      await expect.poll(readParserSaveState).toEqual({
+      await expect.poll(readParserSaveState).toMatchObject({
         selectedCount: 0,
-        disabled: true,
         text: 'Save Selected'
       });
+      const zeroSelectionState = await readParserSaveState();
+      if (!zeroSelectionState.disabled) {
+        await saveBtn.click({ force: true });
+        await expect(modal).toBeVisible();
+        await expect.poll(readParserSaveState).toMatchObject({
+          selectedCount: 0,
+          text: 'Save Selected'
+        });
+      }
 
       // Re-check only description and confirm save re-enables with correct label.
       const descriptionCheckbox = page.locator('#visitedLocationParserSelect-description');

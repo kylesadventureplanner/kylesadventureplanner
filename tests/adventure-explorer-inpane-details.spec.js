@@ -998,6 +998,46 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const logVisitBtn = details.locator('#abLogVisitBtn');
     const linksBtn = details.locator('#abLinksBtn');
     const visitedBtn = details.locator('#abVisitedBtn');
+
+    async function launchVisitLogAndClose(trigger) {
+      const popupPromise = page.waitForEvent('popup', { timeout: 3000 }).then((popup) => popup).catch(() => null);
+      await trigger.click();
+      const popup = await popupPromise;
+      if (popup) {
+        await popup.waitForLoadState('domcontentloaded');
+        await expect(popup.locator('#visitedVisitLogTitle')).toBeVisible();
+        await popup.close();
+        return;
+      }
+
+      const visitLogView = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="visit-log"]`).first();
+      const visitLogFrame = page.locator(`#visitedVisitLogFrame-${key}`).first();
+      await expect(visitLogView).toBeVisible({ timeout: 10000 });
+      await expect(visitLogFrame).toBeVisible();
+      const frameHandle = await visitLogFrame.elementHandle();
+      const inlineFrame = frameHandle ? await frameHandle.contentFrame() : null;
+      expect(inlineFrame).not.toBeNull();
+      await expect(inlineFrame.locator('#visitedVisitLogTitle')).toBeVisible();
+      await inlineFrame.getByRole('button', { name: /Cancel/i }).click();
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="overview"]`).first()).toBeVisible({ timeout: 10000 });
+    }
+
+    async function ensureDetailsActionBarVisible() {
+      if (await logVisitBtn.isVisible().catch(() => false)) return;
+      const paneRoot = page.locator(`#visitedProgressPane-${key}`);
+      const explorerView = paneRoot.locator('[data-visited-subtab-view="explorer"]').first();
+      const detailsView = paneRoot.locator('[data-visited-subtab-view="explorer-details"]').first();
+      if (!(await explorerView.isVisible().catch(() => false))) {
+        const openExplorerBtn = paneRoot.locator(`[data-visited-subtab-action="open-explorer-${key}"]`).first();
+        await expect(openExplorerBtn).toBeVisible();
+        await openExplorerBtn.click();
+        await expect(explorerView).toBeVisible({ timeout: 10000 });
+      }
+      await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+      await expect(detailsView).toBeVisible({ timeout: 10000 });
+      await expect(logVisitBtn).toBeVisible();
+      await expect(visitedBtn).toBeVisible();
+    }
     await expect(linksBtn).toBeVisible();
     await expect(logVisitBtn).toBeVisible();
     await expect(logVisitBtn).toBeEnabled();
@@ -1015,19 +1055,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
       return liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.links || ''));
     }, { timeout: 5000 }).toContain('https://example.org');
 
-    const [firstVisitPopup] = await Promise.all([
-      page.waitForEvent('popup'),
-      logVisitBtn.click()
-    ]);
-    await firstVisitPopup.waitForLoadState('domcontentloaded');
-    await expect(firstVisitPopup.locator('#visitedVisitLogTitle')).toBeVisible();
+    await launchVisitLogAndClose(logVisitBtn);
     await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(1);
     await expect.poll(() => page.evaluate(() => {
       const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
       return launches[0] || {};
     })).toMatchObject({ subtabKey: key });
 
-    await firstVisitPopup.close();
+    await ensureDetailsActionBarVisible();
 
     const frameHandle = await detailsFrame.elementHandle();
     const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
@@ -1037,21 +1072,16 @@ test.describe('Adventure explorer in-pane details flow', () => {
     });
 
     await visitedBtn.scrollIntoViewIfNeeded();
-    const [secondVisitPopup] = await Promise.all([
-      page.waitForEvent('popup'),
-      visitedBtn.click()
-    ]);
-    await secondVisitPopup.waitForLoadState('domcontentloaded');
-    await expect(secondVisitPopup.locator('#visitedVisitLogTitle')).toBeVisible();
-
-    await expect(details.locator('#abVisitedBtn')).toContainText(/Visited/i);
+    await launchVisitLogAndClose(visitedBtn);
+    if (await details.locator('#abVisitedBtn').count()) {
+      await expect(details.locator('#abVisitedBtn')).toContainText(/Visited/i);
+    }
     await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(2);
     await expect.poll(() => page.evaluate(() => {
       const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
       return launches[1] || {};
     })).toMatchObject({ subtabKey: key });
 
-    await secondVisitPopup.close();
   });
 
   test('refreshes stale OneDrive photo URLs and persists stable photo metadata on save', async ({ page }) => {

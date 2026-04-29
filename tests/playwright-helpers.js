@@ -1,3 +1,5 @@
+const { expect } = require('@playwright/test');
+
 /**
  * Shared Playwright helpers used across smoke / integration specs.
  */
@@ -39,6 +41,174 @@ async function activateFooterAction(page, locator) {
     await collapseErrorNotificationBar(page);
     await locator.evaluate((node) => node.click());
   }
+}
+
+/**
+ * Waits for Adventure Challenge to be mounted and a specific subtab pane to be
+ * interactive.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} [subtabKey='outdoors']
+ */
+async function waitForAdventureChallengeReady(page, subtabKey = 'outdoors') {
+  const safeSubtabKey = String(subtabKey || 'outdoors');
+  await expect(page.locator('#visitedLocationsRoot')).toBeVisible({ timeout: 15000 });
+  await page.waitForFunction((key) => {
+    const root = document.getElementById('visitedLocationsRoot');
+    if (!root) return false;
+    const bound = root.dataset && root.dataset.bound === '1';
+    const pane = document.getElementById(`visitedProgressPane-${key}`);
+    const dock = document.querySelector(`#appSubTabsSlot [data-progress-subtab="${key}"]`);
+    if (!pane || !dock) return false;
+    const paneVisible = !pane.hidden && pane.getAttribute('aria-hidden') !== 'true';
+    const dockVisible = dock instanceof HTMLElement && dock.offsetParent !== null;
+    return bound && paneVisible && dockVisible;
+  }, safeSubtabKey, { timeout: 15000 });
+  await expect(page.locator(`#visitedProgressPane-${safeSubtabKey}`)).toBeVisible({ timeout: 15000 });
+}
+
+/**
+ * Waits for a specific Adventure subtab view to become visible/hidden.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} subtabKey
+ * @param {string} viewKey
+ * @param {{ visible?: boolean, timeout?: number }} [options]
+ */
+async function waitForAdventureSubtabView(page, subtabKey, viewKey, options) {
+  const config = options || {};
+  const visible = config.visible !== false;
+  const timeout = Number(config.timeout || 10000);
+  const safeSubtabKey = String(subtabKey || 'outdoors');
+  const safeViewKey = String(viewKey || 'overview');
+  await expect.poll(async () => page.evaluate(({ key, view }) => {
+    const node = document.querySelector(`#visitedProgressPane-${key} [data-visited-subtab-view="${view}"]`);
+    if (!node) return { exists: false, visible: false };
+    const style = window.getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    const isVisible = !node.hidden
+      && node.getAttribute('aria-hidden') !== 'true'
+      && style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && rect.width > 0
+      && rect.height > 0;
+    return { exists: true, visible: isVisible };
+  }, { key: safeSubtabKey, view: safeViewKey }), { timeout }).toEqual(visible ? {
+    exists: true,
+    visible: true
+  } : expect.objectContaining({ visible: false }));
+  return page.locator(`#visitedProgressPane-${safeSubtabKey} [data-visited-subtab-view="${safeViewKey}"]`).first();
+}
+
+/**
+ * Clicks an Adventure subtab action and waits for a target sub-view to activate.
+ * Falls back to in-page click when Playwright's click does not transition the UI.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ subtabKey: string, action: string, targetView: string, timeout?: number }} options
+ */
+async function openAdventureSubtabView(page, options) {
+  const config = options || {};
+  const subtabKey = String(config.subtabKey || 'outdoors');
+  const action = String(config.action || '');
+  const targetView = String(config.targetView || 'overview');
+  const timeout = Number(config.timeout || 10000);
+  const button = page.locator(`#visitedProgressPane-${subtabKey} [data-visited-subtab-action="${action}"]`).first();
+  await expect(button).toBeVisible({ timeout });
+
+  let activated = false;
+  for (let attempt = 0; attempt < 2 && !activated; attempt += 1) {
+    await activateFooterAction(page, button);
+    activated = await waitForAdventureSubtabView(page, subtabKey, targetView, { timeout: 4000 })
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  if (!activated) {
+    await button.evaluate((node) => {
+      if (node && typeof node.click === 'function') node.click();
+    });
+  }
+
+  await waitForAdventureSubtabView(page, subtabKey, targetView, { timeout });
+  return button;
+}
+
+/**
+ * Waits for the Adventure jump-links container to reflect hidden/visible state.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ hidden: boolean, timeout?: number }} options
+ */
+async function waitForAdventureJumpLinksState(page, options) {
+  const config = options || {};
+  const hidden = Boolean(config.hidden);
+  const timeout = Number(config.timeout || 10000);
+  await expect.poll(async () => page.evaluate(() => {
+    const node = document.querySelector('#visitedLocationsRoot .visited-jump-links');
+    if (!node) return { exists: false, hiddenAttr: false, ariaHidden: '', visible: false };
+    const style = window.getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    return {
+      exists: true,
+      hiddenAttr: node.hasAttribute('hidden'),
+      ariaHidden: String(node.getAttribute('aria-hidden') || ''),
+      visible: !node.hidden && style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0
+    };
+  }), { timeout }).toEqual(hidden
+    ? expect.objectContaining({ exists: true, hiddenAttr: true, ariaHidden: 'true', visible: false })
+    : expect.objectContaining({ exists: true, hiddenAttr: false, visible: true }));
+  return page.locator('#visitedLocationsRoot .visited-jump-links').first();
+}
+
+/**
+ * Waits until an embedded iframe is visible, sized, and its content is ready.
+ *
+ * @param {import('@playwright/test').Locator} frameLocator
+ * @param {{ srcPattern?: RegExp, bodySelector?: string, minWidth?: number, minHeight?: number, timeout?: number }} [options]
+ */
+async function waitForEmbeddedFrameReady(frameLocator, options) {
+  const config = options || {};
+  const timeout = Number(config.timeout || 10000);
+  const minWidth = Number(config.minWidth || 250);
+  const minHeight = Number(config.minHeight || 120);
+  await expect(frameLocator).toBeVisible({ timeout });
+  if (config.srcPattern) {
+    await expect(frameLocator).toHaveAttribute('src', config.srcPattern, { timeout });
+  }
+  await expect.poll(async () => frameLocator.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      width: Math.max(Number(rect.width || 0), Number(node.clientWidth || 0), Number(node.offsetWidth || 0)),
+      height: Math.max(Number(rect.height || 0), Number(node.clientHeight || 0), Number(node.offsetHeight || 0))
+    };
+  }), { timeout }).toEqual(expect.objectContaining({
+    width: expect.any(Number),
+    height: expect.any(Number)
+  }));
+  await expect.poll(async () => {
+    const metrics = await frameLocator.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        width: Math.max(Number(rect.width || 0), Number(node.clientWidth || 0), Number(node.offsetWidth || 0)),
+        height: Math.max(Number(rect.height || 0), Number(node.clientHeight || 0), Number(node.offsetHeight || 0))
+      };
+    });
+    return metrics.width > minWidth && metrics.height > minHeight;
+  }, { timeout }).toBe(true);
+
+  const liveFrame = await expect.poll(async () => {
+    const handle = await frameLocator.elementHandle();
+    return handle ? await handle.contentFrame() : null;
+  }, { timeout }).not.toBeNull().then(async () => {
+    const handle = await frameLocator.elementHandle();
+    return handle ? await handle.contentFrame() : null;
+  });
+
+  if (config.bodySelector && liveFrame) {
+    await expect(liveFrame.locator(config.bodySelector)).toBeVisible({ timeout });
+  }
+  return liveFrame;
 }
 
 /**
@@ -263,6 +433,11 @@ async function installVisitedExplorerSeedFixture(page) {
 module.exports = {
   collapseErrorNotificationBar,
   activateFooterAction,
+  waitForAdventureChallengeReady,
+  waitForAdventureSubtabView,
+  openAdventureSubtabView,
+  waitForAdventureJumpLinksState,
+  waitForEmbeddedFrameReady,
   openNatureOverviewView,
   openNatureLogView,
   openNatureLogViewOrSkip,
