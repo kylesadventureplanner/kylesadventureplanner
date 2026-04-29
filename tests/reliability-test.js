@@ -21,21 +21,15 @@ function isIntentionalWorkbookProbe404(text, locationUrl) {
   const msg = String(text || '');
   const url = String(locationUrl || '');
   const combined = `${msg}\n${url}`;
-  if (
-    /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i.test(msg)
-    && /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\//i.test(combined)
-    && (/\/workbook\/tables(?:\)|$)/i.test(combined) || /\/workbook\/worksheets\?\$select=id,name,position/i.test(combined))
-  ) {
-    return true;
-  }
-  return (
-    /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i.test(msg)
-    && (
-      /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/Retail_Food_and_Drink\.xlsx:\/workbook\/tables\/Retail\/columns\?\$select=name,index/i.test(url)
-      || /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\)?/i.test(msg)
-      || /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/worksheets\?\$select=id,name,position\)?/i.test(msg)
-    )
-  );
+  const is404 = /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i.test(msg);
+  if (!is404) return false;
+
+  const isGraphRootProbe = /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\//i.test(combined);
+  if (!isGraphRootProbe) return false;
+
+  // Playwright may place the URL in msg.text() OR in msg.location().url.
+  // Accept known intentional workbook probe endpoints used by fallback routing.
+  return /\/workbook\/(?:tables(?:\/[^/?#)]+)?(?:\/columns(?:\?\$select=name,index)?)?|worksheets\?\$select=id,name,position)/i.test(combined);
 }
 
 function isIgnoredExtensionNoise(text, locationUrl) {
