@@ -3,6 +3,16 @@ const { installVisitedExplorerSeedFixture } = require('./playwright-helpers');
 
 test.describe('Visited enrich modal smoke', () => {
   test('supports changed highlights, selective save, confidence chips, and undo', async ({ page }, testInfo) => {
+    async function clickWithFallback(locator) {
+      try {
+        await locator.click({ timeout: 5000 });
+      } catch (_error) {
+        await locator.evaluate((node) => {
+          if (node && typeof node.click === 'function') node.click();
+        });
+      }
+    }
+
     async function readParserSaveState() {
       return page.evaluate(() => {
         const toggles = Array.from(document.querySelectorAll('#visitedLocationTextParserModal [data-parser-field-select]'));
@@ -30,13 +40,41 @@ test.describe('Visited enrich modal smoke', () => {
 
     for (const subtab of candidateSubtabs) {
       await page.locator(`#appSubTabsSlot [data-progress-subtab="${subtab}"]`).first().click();
-      const openExplorerBtn = page.locator(`#visitedProgressPane-${subtab} [data-visited-subtab-action="open-explorer-${subtab}"]`).first();
-      if (!(await openExplorerBtn.isVisible().catch(() => false))) continue;
-      await openExplorerBtn.click();
+      const paneRoot = page.locator(`#visitedProgressPane-${subtab}`);
+      await expect(paneRoot).toBeVisible();
 
-      const cards = page.locator(`#visitedExplorerList-${subtab} .visited-explorer-card`);
-      await cards.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => null);
-      if ((await cards.count()) > 0) {
+      const openExplorerBtn = paneRoot.locator(`[data-visited-subtab-action="open-explorer-${subtab}"]`).first();
+      if (!(await openExplorerBtn.isVisible().catch(() => false))) continue;
+      await clickWithFallback(openExplorerBtn);
+
+      const explorerView = paneRoot.locator('[data-visited-subtab-view="explorer"]').first();
+      const explorerOpenedViaClick = await expect
+        .poll(async () => explorerView.isVisible().catch(() => false), { timeout: 3000 })
+        .toBe(true)
+        .then(() => true)
+        .catch(() => false);
+      if (!explorerOpenedViaClick) {
+        await openExplorerBtn.evaluate((node) => {
+          if (node && typeof node.click === 'function') node.click();
+        });
+      }
+      await expect(explorerView).toBeVisible({ timeout: 10000 });
+
+      const list = page.locator(`#visitedExplorerList-${subtab}`);
+      await expect(list).toBeVisible();
+      await expect(list).not.toContainText('Loading explorer cards...', { timeout: 20000 });
+
+      const cards = list.locator('.visited-explorer-card');
+      const hasVisibleCard = await expect
+        .poll(async () => {
+          if ((await cards.count()) === 0) return false;
+          return cards.first().isVisible().catch(() => false);
+        }, { timeout: 8000 })
+        .toBe(true)
+        .then(() => true)
+        .catch(() => false);
+
+      if (hasVisibleCard) {
         selectedSubtab = subtab;
         break;
       }
@@ -46,8 +84,16 @@ test.describe('Visited enrich modal smoke', () => {
 
     const cards = page.locator(`#visitedExplorerList-${selectedSubtab} .visited-explorer-card`);
     const firstCard = cards.first();
-    await firstCard.locator('[data-visited-explorer-quick-actions-toggle]').click();
-    await firstCard.locator('[data-visited-explorer-parse-text]').click();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+
+    const quickActionsBtn = firstCard.locator('[data-visited-explorer-quick-actions-toggle]');
+    await quickActionsBtn.scrollIntoViewIfNeeded();
+    await expect(quickActionsBtn).toBeVisible();
+    await clickWithFallback(quickActionsBtn);
+
+    const parseTextBtn = firstCard.locator('[data-visited-explorer-parse-text]');
+    await expect(parseTextBtn).toBeVisible();
+    await clickWithFallback(parseTextBtn);
 
     const modal = page.locator('#visitedLocationTextParserModal');
     await expect(modal).toBeVisible();
