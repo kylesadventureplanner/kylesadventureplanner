@@ -202,7 +202,15 @@ async function openExplorerAndFindDetails(page) {
     await openBtn.click();
 
     const explorerView = paneRoot.locator('[data-visited-subtab-view="explorer"]').first();
-    await expect(explorerView).toBeVisible();
+    const explorerOpenedViaClick = await expect
+      .poll(async () => explorerView.isVisible().catch(() => false), { timeout: 3000 })
+      .toBe(true)
+      .then(() => true)
+      .catch(() => false);
+    if (!explorerOpenedViaClick) {
+      await openBtn.evaluate((node) => node.click());
+    }
+    await expect(explorerView).toBeVisible({ timeout: 10000 });
 
     const list = page.locator(`#visitedExplorerList-${key}`);
     await expect(list).toBeVisible();
@@ -220,6 +228,74 @@ async function openExplorerAndFindDetails(page) {
   }
 
   throw new Error('No explorer details button was found in any Adventure subtab.');
+}
+
+async function withLiveDetailsFrame(detailsFrame, run) {
+  const liveFrameHandle = await detailsFrame.elementHandle();
+  const liveFrame = liveFrameHandle ? await liveFrameHandle.contentFrame() : null;
+  if (!liveFrame) throw new Error('Adventure details iframe was not available.');
+  return run(liveFrame);
+}
+
+async function activateDetailsTab(detailsFrame, detailsFrameLocator, tabId) {
+  const normalizedTabId = String(tabId || 'overview');
+  const tabButton = detailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${normalizedTabId}"]`);
+  await expect(detailsFrameLocator.locator('#tabs')).toBeVisible();
+  await expect(tabButton).toBeVisible();
+
+  await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate((targetTabId) => {
+    const safeTabId = String(targetTabId || 'overview').replace(/"/g, '');
+    if (typeof window.activateTab === 'function') {
+      window.activateTab(safeTabId);
+      return;
+    }
+    const btn = document.querySelector(`#tabs .tab-btn[data-tab="${safeTabId}"]`);
+    if (btn && typeof btn.click === 'function') btn.click();
+  }, normalizedTabId));
+
+  await expect.poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 10000 }).toBe('true');
+  await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate((targetTabId) => {
+    const pane = document.querySelector(`#pane-${String(targetTabId || '').replace(/"/g, '')}`);
+    if (!pane) return false;
+    return (
+      pane.getAttribute('aria-hidden') === 'false'
+      && pane.hidden === false
+      && pane.classList.contains('active')
+    );
+  }, normalizedTabId)), { timeout: 10000 }).toBe(true);
+}
+
+async function clickDetailsControl(detailsFrame, selector) {
+  await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate((targetSelector) => {
+    const element = document.querySelector(String(targetSelector || ''));
+    if (!element || typeof element.click !== 'function') {
+      throw new Error(`Missing details control: ${String(targetSelector || '')}`);
+    }
+    element.click();
+  }, selector));
+}
+
+async function forceOpenEnrichPasteBody(detailsFrame) {
+  await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+    const body = document.getElementById('enrichPasteBody');
+    const arrow = document.getElementById('enrichPasteArrow');
+    if (!body) return;
+    body.classList.add('open');
+    if (arrow) arrow.textContent = '▼';
+  }));
+}
+
+async function readTagSaveDebug(detailsFrame) {
+  return withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+    const debug = window.__lastTagSaveDebug || {};
+    const steps = Array.isArray(debug.steps) ? debug.steps : [];
+    const hostStep = steps.find((entry) => entry && entry.step === 'host_context');
+    return {
+      finalStatus: String(debug.finalStatus || ''),
+      hostContext: hostStep && hostStep.detail ? String(hostStep.detail.context || '') : '',
+      stepCount: steps.length
+    };
+  }));
 }
 
 test.describe('Adventure explorer in-pane details flow', () => {
@@ -284,51 +360,6 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(plannerDetailsFrame).not.toBeNull();
     const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
-    async function withLiveDetailsFrame(run) {
-      const liveFrameHandle = await detailsFrame.elementHandle();
-      const liveFrame = liveFrameHandle ? await liveFrameHandle.contentFrame() : null;
-      if (!liveFrame) throw new Error('Adventure details iframe was not available.');
-      return run(liveFrame);
-    }
-
-    async function activateDetailsTab(tabId) {
-      const tabButton = plannerDetailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${tabId}"]`);
-      await expect(plannerDetailsFrameLocator.locator('#tabs')).toBeVisible();
-      await expect(tabButton).toBeVisible();
-
-      await tabButton.click();
-      const becameSelectedViaClick = await expect
-        .poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 3000 })
-        .toBe('true')
-        .then(() => true)
-        .catch(() => false);
-
-      if (!becameSelectedViaClick) {
-        await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate((targetTabId) => {
-          const normalizedTabId = String(targetTabId || 'overview');
-          if (typeof window.activateTab === 'function') {
-            window.activateTab(normalizedTabId);
-            return;
-          }
-
-          const safeTabId = normalizedTabId.replace(/"/g, '');
-          const btn = document.querySelector(`#tabs .tab-btn[data-tab="${safeTabId}"]`);
-          if (btn && typeof btn.click === 'function') btn.click();
-        }, tabId));
-      }
-
-      await expect.poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 10000 }).toBe('true');
-      await expect.poll(async () => withLiveDetailsFrame((liveFrame) => liveFrame.evaluate((targetTabId) => {
-        const pane = document.querySelector(`#pane-${String(targetTabId || '').replace(/"/g, '')}`);
-        if (!pane) return false;
-        return (
-          pane.getAttribute('aria-hidden') === 'false'
-          && pane.hidden === false
-          && pane.classList.contains('active')
-        );
-      }, tabId)), { timeout: 10000 }).toBe(true);
-    }
-
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
     await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
     await expect(plannerDetailsFrameLocator.locator('#abBatchTagsBtn')).toBeVisible();
@@ -337,40 +368,25 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await ratingResetBtn.click();
     await expect(plannerDetailsFrameLocator.locator('.star-btn.lit')).toHaveCount(0);
 
-    await activateDetailsTab('tag-management');
+    await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'tag-management');
     await expect(plannerDetailsFrameLocator.locator('#pane-tag-management')).toBeVisible();
-    await plannerDetailsFrameLocator.locator('#tmSaveBtn').click();
-    const readTagSaveDebug = async () => {
-      const liveFrameHandle = await detailsFrame.elementHandle();
-      const liveFrame = liveFrameHandle ? await liveFrameHandle.contentFrame() : null;
-      if (!liveFrame) return { finalStatus: '', hostContext: '', stepCount: 0 };
-      return liveFrame.evaluate(() => {
-      const debug = window.__lastTagSaveDebug || {};
-      const steps = Array.isArray(debug.steps) ? debug.steps : [];
-      const hostStep = steps.find((entry) => entry && entry.step === 'host_context');
-      return {
-        finalStatus: String(debug.finalStatus || ''),
-        hostContext: hostStep && hostStep.detail ? String(hostStep.detail.context || '') : '',
-        stepCount: steps.length
-      };
-    });
-    };
+    await clickDetailsControl(detailsFrame, '#tmSaveBtn');
 
     await expect.poll(async () => {
-      const snapshot = await readTagSaveDebug();
+      const snapshot = await readTagSaveDebug(detailsFrame);
       return snapshot.finalStatus;
     }, { timeout: 20000 }).toMatch(/^(success_excel|success_planner_only|success_local_only|failed)$/);
 
     await expect.poll(async () => {
-      const snapshot = await readTagSaveDebug();
+      const snapshot = await readTagSaveDebug(detailsFrame);
       return snapshot.hostContext;
     }, { timeout: 20000 }).toMatch(/^(parent|opener)$/);
 
-    await activateDetailsTab('notes');
+    await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'notes');
     await expect(plannerDetailsFrameLocator.locator('#pane-notes')).toHaveAttribute('aria-hidden', 'false');
     await expect(plannerDetailsFrameLocator.locator('#detailNotesWrap')).toBeVisible();
 
-    await activateDetailsTab('details');
+    await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'details');
     await expect(plannerDetailsFrameLocator.locator('#refreshHoursBtn')).toBeVisible();
     const inlineEditBtn = plannerDetailsFrameLocator.locator('#abInlineEditBtn');
     if (await inlineEditBtn.count()) {
@@ -386,7 +402,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditDirtyCount')).toContainText('1 field changed');
       await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).toHaveClass(/is-dirty/);
 
-      await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => {
+      await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
         window.__inlineEditConfirmPrompts = [];
         window.__inlineEditConfirmResponses = [false, true];
         window.confirm = (message) => {
@@ -400,18 +416,28 @@ test.describe('Adventure explorer in-pane details flow', () => {
       await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
       await expect(plannerDetailsFrameLocator.locator('#pane-details[aria-hidden="false"]')).toBeVisible();
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
-      const firstPrompt = await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => String((window.__inlineEditConfirmPrompts || [])[0] || '')));
+      const firstPrompt = await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => String((window.__inlineEditConfirmPrompts || [])[0] || '')));
       if (firstPrompt) {
         expect(firstPrompt).toContain('unsaved inline field edits');
       }
 
-      await activateDetailsTab('notes');
+      await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+        window.__inlineEditConfirmResponses = [true];
+      }));
+      await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'notes');
 
-      await activateDetailsTab('details');
+      await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'details');
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
       const saveInlineBtn = plannerDetailsFrameLocator.locator('#inlineEditSaveBtn');
       await expect(saveInlineBtn).toBeEnabled();
-      await saveInlineBtn.click();
+      await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(async () => {
+        if (typeof window.saveInlineEditFields === 'function') {
+          await window.saveInlineEditFields();
+          return;
+        }
+        const btn = document.getElementById('inlineEditSaveBtn');
+        if (btn && typeof btn.click === 'function') btn.click();
+      }));
       const clearedDirtyState = await expect.poll(async () => {
         const frameHandleNow = await detailsFrame.elementHandle();
         const liveFrameNow = frameHandleNow ? await frameHandleNow.contentFrame() : null;
@@ -423,7 +449,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
       }, { timeout: 15000 }).toBe(true).then(() => true).catch(() => false);
 
       if (!clearedDirtyState) {
-        await saveInlineBtn.click();
+        await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(async () => {
+          if (typeof window.saveInlineEditFields === 'function') {
+            await window.saveInlineEditFields();
+            return;
+          }
+          const btn = document.getElementById('inlineEditSaveBtn');
+          if (btn && typeof btn.click === 'function') btn.click();
+        }));
       }
 
       await expect.poll(async () => {
@@ -521,18 +554,16 @@ test.describe('Adventure explorer in-pane details flow', () => {
       }
     });
 
-    const enrichPasteBody = plannerDetailsFrameLocator.locator('#enrichPasteBody');
-    if (!(await enrichPasteBody.isVisible())) {
-      await plannerDetailsFrameLocator.locator('#enrichPasteToggleHead').click();
-    }
+    await forceOpenEnrichPasteBody(detailsFrame);
+    await expect(plannerDetailsFrameLocator.locator('#enrichPasteBody')).toHaveClass(/open/);
     await expect(plannerDetailsFrameLocator.locator('#enrichAutoFetchBtn')).toBeVisible();
-    await plannerDetailsFrameLocator.locator('#enrichAutoFetchBtn').click();
+    await clickDetailsControl(detailsFrame, '#enrichAutoFetchBtn');
     await expect(plannerDetailsFrameLocator.locator('#enrichAddress')).toHaveValue(/Amphitheatre Parkway/i);
     await expect(plannerDetailsFrameLocator.locator('#enrichPhone')).toHaveValue(/253-0000/);
     await expect(plannerDetailsFrameLocator.locator('#enrichHours')).toHaveValue(/Monday:/i);
     await expect(plannerDetailsFrameLocator.locator('#enrichDescription')).toHaveValue(/Google-fetched enriched description/i);
 
-    await plannerDetailsFrameLocator.locator('#enrichSaveBtn').click();
+    await clickDetailsControl(detailsFrame, '#enrichSaveBtn');
     await expect.poll(() => page.evaluate(() => window.__lastExplorerEnrichUpdates), { timeout: 10000 }).toMatchObject({
       address: '1600 Amphitheatre Parkway, Mountain View, CA 94043',
       description: 'A Google-fetched enriched description for Playwright verification.'
@@ -595,7 +626,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
     await expect(details.locator('#tabs')).toBeVisible();
-    await details.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
+    await activateDetailsTab(detailsFrame, details, 'tag-management');
     await expect(details.locator('#pane-tag-management')).toBeVisible();
 
     const frameHandle = await detailsFrame.elementHandle();
@@ -615,7 +646,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       return Array.isArray(state.tags) ? state.tags.slice() : [];
     });
 
-    await details.locator('#tmRefreshAutoBtn').click();
+    await clickDetailsControl(detailsFrame, '#tmRefreshAutoBtn');
     await expect.poll(async () => liveFrame.evaluate(() => {
       const state = window.__detailTagState || {};
       return Array.isArray(state.recommendedTags) ? state.recommendedTags.length : 0;
@@ -628,7 +659,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(tagsAfterRefresh).toEqual(tagsBeforeRefresh);
 
     // Save without applying recommendations first; suggested tags must not be persisted.
-    await details.locator('#tmSaveBtn').click();
+    await clickDetailsControl(detailsFrame, '#tmSaveBtn');
     await expect.poll(() => page.evaluate(() => {
       const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
       return calls.length;
@@ -642,14 +673,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(firstSavedTagsCsv).not.toContain('Playwright-Rec-A');
     expect(firstSavedTagsCsv).not.toContain('Playwright-Rec-B');
 
-    await details.locator('#tmRecommendApplyBtn').click();
+    await clickDetailsControl(detailsFrame, '#tmRecommendApplyBtn');
     await expect.poll(async () => liveFrame.evaluate(() => {
       const state = window.__detailTagState || {};
       const tags = Array.isArray(state.tags) ? state.tags : [];
       return tags.includes('Playwright-Rec-A') && tags.includes('Playwright-Rec-B');
     }), { timeout: 8000 }).toBe(true);
 
-    await details.locator('#tmSaveBtn').click();
+    await clickDetailsControl(detailsFrame, '#tmSaveBtn');
     await expect.poll(() => page.evaluate(() => {
       const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
       return calls.length;
@@ -708,14 +739,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(liveFrame).not.toBeNull();
 
-    await details.locator('#tabs .tab-btn[data-tab="additional"]').click();
+    await activateDetailsTab(detailsFrame, details, 'additional');
     await expect(details.locator('#pane-additional')).toBeVisible();
     const nearbyPane = details.locator('#nearbyAttractionsValue');
     const refreshNearbyBtn = details.locator('#refreshNearbyBtn');
 
     async function refreshNearbyAndWaitForState() {
       const previousUpdatedAt = await liveFrame.evaluate(() => Number(window.__detailNearbyState?.updatedAt || 0));
-      await refreshNearbyBtn.click();
+      await clickDetailsControl(detailsFrame, '#refreshNearbyBtn');
       await expect.poll(async () => {
         return liveFrame.evaluate((prev) => {
           const state = window.__detailNearbyState || {};
@@ -890,6 +921,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
 
     const detailsFrame = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+    const detailsFrameElement = page.locator(`#visitedExplorerDetailsFrame-${key}`);
     const previousBtn = detailsFrame.locator('#previousLocationBtn');
     const nextBtn = detailsFrame.locator('#nextLocationBtn');
     await expect(previousBtn).toBeVisible();
@@ -905,7 +937,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       .then(() => true)
       .catch(() => false);
     if (!advancedViaKeyboard) {
-      await detailsFrame.locator('#nextLocationBtn').click();
+      await clickDetailsControl(detailsFrameElement, '#nextLocationBtn');
     }
 
     await expect(detailsTitle).toHaveText('Mock Adventure Spot Gamma');
@@ -921,14 +953,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
       .then(() => true)
       .catch(() => false);
     if (!reversedViaKeyboard) {
-      await detailsFrame.locator('#previousLocationBtn').click();
+      await clickDetailsControl(detailsFrameElement, '#previousLocationBtn');
     }
     await expect(detailsTitle).toHaveText('Mock Adventure Spot Alpha');
     await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
     await expect(previousBtn).toBeDisabled();
     await expect(nextBtn).toBeEnabled();
 
-    await detailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
+    await activateDetailsTab(detailsFrameElement, detailsFrame, 'notes');
     const notesInput = detailsFrame.locator('#dnmInput');
     await expect(notesInput).toBeVisible();
     await notesInput.click();

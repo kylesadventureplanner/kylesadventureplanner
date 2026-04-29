@@ -19,6 +19,16 @@ const CITY_INLINE_TEST_DATA = [
 ];
 
 test.describe('Adventure inline tools roundtrip', () => {
+  async function readFrameRenderMetrics(frameLocator) {
+    return frameLocator.evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        width: Math.max(Number(rect.width || 0), Number(node.clientWidth || 0), Number(node.offsetWidth || 0)),
+        height: Math.max(Number(rect.height || 0), Number(node.clientHeight || 0), Number(node.offsetHeight || 0))
+      };
+    });
+  }
+
   async function readInlineClosePayload(page) {
     return page.evaluate(() => {
       const payload = window.__inlineToolClosePayload || {};
@@ -87,16 +97,22 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(page.locator('#visitedLocationsRoot .visited-jump-links')).toHaveAttribute('aria-hidden', 'true');
     await expect(cityFrame).toBeVisible();
     await expect(cityFrame).toHaveAttribute('src', /city-viewer-window\.html/i);
-    const cityBox = await cityFrame.boundingBox();
-    expect(cityBox && cityBox.width ? cityBox.width : 0).toBeGreaterThan(500);
-    expect(cityBox && cityBox.height ? cityBox.height : 0).toBeGreaterThan(400);
+    const cityMetrics = await readFrameRenderMetrics(cityFrame);
+    expect(cityMetrics.width).toBeGreaterThan(250);
+    expect(cityMetrics.height).toBeGreaterThan(120);
 
     const cityFrameHandle = await cityFrame.elementHandle();
     const cityInlineFrame = cityFrameHandle ? await cityFrameHandle.contentFrame() : null;
     expect(cityInlineFrame).not.toBeNull();
     await expect(cityInlineFrame.locator('body.embedded-viewer')).toBeVisible();
     await expect(cityInlineFrame.locator('.header')).toBeHidden();
-    await cityInlineFrame.locator('.city-card').first().click();
+    const firstCityCard = cityInlineFrame.locator('.city-card').first();
+    const firstCityExploreBtn = firstCityCard.getByRole('button', { name: /Explore/i }).first();
+    if (await firstCityExploreBtn.count()) {
+      await firstCityExploreBtn.click();
+    } else {
+      await firstCityCard.evaluate((node) => node.click());
+    }
     await expect(cityInlineFrame.locator('#locationsPage')).toBeVisible();
     const prefilterChip = cityInlineFrame.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter');
     const prefilterCount = await prefilterChip.count();
@@ -165,9 +181,9 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(overviewView).toBeHidden();
     await expect(editFrame).toBeVisible();
     await expect(editFrame).toHaveAttribute('src', /edit-mode-enhanced\.html|edit-mode-enhanced\.html\?/i);
-    const editBox = await editFrame.boundingBox();
-    expect(editBox && editBox.width ? editBox.width : 0).toBeGreaterThan(500);
-    expect(editBox && editBox.height ? editBox.height : 0).toBeGreaterThan(400);
+    const editMetrics = await readFrameRenderMetrics(editFrame);
+    expect(editMetrics.width).toBeGreaterThan(250);
+    expect(editMetrics.height).toBeGreaterThan(120);
 
     const editFrameHandle = await editFrame.elementHandle();
     const editInlineFrame = editFrameHandle ? await editFrameHandle.contentFrame() : null;

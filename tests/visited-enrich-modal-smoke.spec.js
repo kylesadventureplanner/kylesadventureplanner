@@ -3,6 +3,19 @@ const { installVisitedExplorerSeedFixture } = require('./playwright-helpers');
 
 test.describe('Visited enrich modal smoke', () => {
   test('supports changed highlights, selective save, confidence chips, and undo', async ({ page }, testInfo) => {
+    async function readParserSaveState() {
+      return page.evaluate(() => {
+        const toggles = Array.from(document.querySelectorAll('#visitedLocationTextParserModal [data-parser-field-select]'));
+        const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
+        const selectedCount = toggles.filter((toggle) => toggle instanceof HTMLInputElement && toggle.checked).length;
+        return {
+          selectedCount,
+          disabled: Boolean(saveBtn && saveBtn.disabled),
+          text: String(saveBtn && saveBtn.textContent || '').trim()
+        };
+      });
+    }
+
     await installVisitedExplorerSeedFixture(page);
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
@@ -79,33 +92,34 @@ test.describe('Visited enrich modal smoke', () => {
         const modalRoot = document.getElementById('visitedLocationTextParserModal');
         const allToggles = modalRoot ? Array.from(modalRoot.querySelectorAll('[data-parser-field-select]')) : [];
         allToggles.forEach((toggle) => {
-          if (toggle instanceof HTMLInputElement) toggle.checked = false;
+          if (toggle instanceof HTMLInputElement && toggle.checked) toggle.click();
         });
-        const saveB = document.getElementById('visitedLocationParserSaveBtn');
-        if (!saveB) return;
-        const selected = allToggles.filter((t) => t instanceof HTMLInputElement && t.checked).length;
-        saveB.disabled = selected === 0;
-        saveB.textContent = selected > 0 ? `Save Selected (${selected})` : 'Save Selected';
+        if (typeof window.updateParserSaveButtonState === 'function') {
+          window.updateParserSaveButtonState();
+        }
       });
-      await expect(saveBtn).toBeDisabled();
+      await expect.poll(readParserSaveState).toEqual({
+        selectedCount: 0,
+        disabled: true,
+        text: 'Save Selected'
+      });
 
       // Re-check only description and confirm save re-enables with correct label.
       const descriptionCheckbox = page.locator('#visitedLocationParserSelect-description');
       await page.evaluate(() => {
         const cb = document.getElementById('visitedLocationParserSelect-description');
         if (!(cb instanceof HTMLInputElement)) return;
-        cb.checked = true;
-        const modalRoot = document.getElementById('visitedLocationTextParserModal');
-        const allToggles = modalRoot ? Array.from(modalRoot.querySelectorAll('[data-parser-field-select]')) : [];
-        const saveB = document.getElementById('visitedLocationParserSaveBtn');
-        if (!saveB) return;
-        const selected = allToggles.filter((t) => t instanceof HTMLInputElement && t.checked).length;
-        saveB.disabled = selected === 0;
-        saveB.textContent = selected > 0 ? `Save Selected (${selected})` : 'Save Selected';
+        if (!cb.checked) cb.click();
+        if (typeof window.updateParserSaveButtonState === 'function') {
+          window.updateParserSaveButtonState();
+        }
       });
       await expect(descriptionCheckbox).toBeChecked();
-      await expect(saveBtn).toBeEnabled();
-      await expect(saveBtn).toContainText('Save Selected (1)');
+      await expect.poll(readParserSaveState).toEqual({
+        selectedCount: 1,
+        disabled: false,
+        text: 'Save Selected (1)'
+      });
 
       if (await recommendedSelector.count()) {
         await recommendedSelector.click();

@@ -8,7 +8,8 @@ module.exports = defineConfig({
   timeout: 60 * 1000,
   use: {
     baseURL: process.env.APP_URL || 'http://127.0.0.1:4321',
-    trace: 'on-first-retry'
+    trace: 'on-first-retry',
+    viewport: { width: 1280, height: 720 }
   },
   webServer: hasAppUrl
     ? undefined
