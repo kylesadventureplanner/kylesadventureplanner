@@ -1017,14 +1017,28 @@
   }
 
 
+  /* ── Inline tool frame (City Explorer / Log a Visit / Edit Mode / Batch Tags)
+     The frame now lives OUTSIDE its header card as a direct child of
+     .visited-overview-view, matching how .adventure-cards-grid lives outside its
+     header card in the Explorer view.  Full pane width, no card-padding inset. ── */
   #visitedLocationsRoot .visited-inline-tool-frame {
     width: 100%;
-    min-height: clamp(420px, 62vh, 840px);
-    border: 1px solid #dbeafe;
-    border-radius: 12px;
+    /* Taller default height now that there is no surrounding card eating space */
+    min-height: clamp(620px, 82vh, 1400px);
+    border: none;
+    border-top: 2px solid #dbeafe;
+    border-radius: 0 0 14px 14px;
     background: #ffffff;
-    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
     display: block;
+    margin-top: 0;
+  }
+
+  /* Compact the header card that sits above the full-width frame */
+  #visitedLocationsRoot .visited-inline-tool-header-card {
+    margin-bottom: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-color: transparent !important;
   }
 
   #visitedLocationsRoot .visited-subtab-action-btn:hover {
@@ -1182,6 +1196,44 @@
     align-items: flex-start;
     gap: var(--ui-space-8, 8px);
     margin-bottom: var(--ui-space-12, 12px);
+  }
+
+  #visitedLocationsRoot .visited-progress-pane {
+    width: 100%;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane > .card,
+  #visitedLocationsRoot .visited-progress-pane > [data-achv-container],
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view,
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view > .card {
+    width: 100%;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view > .card,
+  #visitedLocationsRoot .visited-progress-pane > .card.ui-intro-card {
+    padding: 16px 18px 18px;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view[data-visited-subtab-view="explorer"] > .card {
+    padding: 18px 24px 20px;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view[data-visited-subtab-view="explorer"] .adventure-cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 16px;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view[data-visited-subtab-view="explorer"] .visited-explorer-basic-filter,
+  #visitedLocationsRoot .visited-progress-pane > .visited-overview-view[data-visited-subtab-view="explorer"] .visited-explorer-advanced-filter-body {
+    gap: 14px;
+  }
+
+  @media (min-width: 1280px) {
+    #visitedLocationsRoot .visited-progress-pane > .visited-overview-view[data-visited-subtab-view="explorer"] > .card,
+    #visitedLocationsRoot .visited-progress-pane > .card.ui-intro-card {
+      padding-left: 26px;
+      padding-right: 26px;
+    }
   }
 
   #visitedLocationsRoot .visited-view-header-copy {

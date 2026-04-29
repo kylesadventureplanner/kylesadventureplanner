@@ -164,11 +164,30 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
       await expect(dockButton).toBeFocused();
 
       await dockButton.press('ArrowRight');
+      // Poll until a *different* subtab is selected – the DOM update is async
+      // when keyboard nav triggers a transition animation under parallel load.
+      await expect.poll(async () => {
+        const selected = await page
+          .locator('#appSubTabsSlot [data-progress-subtab][aria-selected="true"]')
+          .first()
+          .getAttribute('data-progress-subtab')
+          .catch(() => key);
+        return selected !== key;
+      }, { timeout: 8000 }).toBe(true);
+
       const selectedAfterRight = page.locator('#appSubTabsSlot [data-progress-subtab][aria-selected="true"]').first();
       await expect(selectedAfterRight).toBeVisible();
       await expect(selectedAfterRight).not.toHaveAttribute('data-progress-subtab', key);
 
       await selectedAfterRight.press('ArrowLeft');
+      // Poll until we're back on the original subtab.
+      await expect.poll(async () => {
+        const selected = await page
+          .locator(`#appSubTabsSlot [data-progress-subtab="${key}"][aria-selected="true"]`)
+          .count()
+          .catch(() => 0);
+        return selected > 0;
+      }, { timeout: 8000 }).toBe(true);
       await expect(page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"][aria-selected="true"]`).first()).toBeVisible();
     });
   });

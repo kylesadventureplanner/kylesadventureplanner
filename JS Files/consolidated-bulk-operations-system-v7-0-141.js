@@ -1234,7 +1234,9 @@ function getCachedPlaceDetailsFromRows(placeId, mainWindow) {
  */
 async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, options = {}) {
   try {
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const requestedHost = window.opener && !window.opener.closed ? window.opener : window;
+    const providerHost = resolveAutomationHost(requestedHost, 'getPlaceDetails');
+    const mainWindow = providerHost || requestedHost || window;
     const forceRefresh = !!options.forceRefresh;
     const hasAllowCachedFallbackOption = Object.prototype.hasOwnProperty.call(options || {}, 'allowCachedFallback');
     // When forceRefresh is requested, default to live-only unless explicitly overridden.
@@ -1249,6 +1251,9 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       context: helperContext,
       liveLookupAttempted: false,
       liveLookupProvider: 'none',
+      liveLookupHost: mainWindow === window
+        ? 'window'
+        : (mainWindow === window.parent ? 'window.parent' : (mainWindow === window.top ? 'window.top' : 'window.opener')),
       liveLookupStatus: 'not-attempted',
       hasMeaningfulDetails: false,
       source: 'empty-fallback'

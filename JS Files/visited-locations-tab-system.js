@@ -615,17 +615,22 @@
     view.setAttribute('data-visited-subtab-view', viewKey);
     view.hidden = true;
     view.setAttribute('aria-hidden', 'true');
+    // The header card is kept compact (back button + title only).
+    // The iframe lives OUTSIDE the card as a direct sibling — identical to the
+    // pattern used by the Explorer view where adventure-cards-grid sits outside
+    // its header card.  This gives the tool full pane width with no card-padding
+    // eating into the horizontal or vertical space.
     view.innerHTML = `
-      <div class="card" style="margin-top: 10px;">
-        <div class="visited-view-header-row">
+      <div class="card visited-inline-tool-header-card" style="margin-top: 10px;">
+        <div class="visited-view-header-row ui-section-header-row">
           <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="${escapeHtml(closeAction)}" title="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}" data-tooltip="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}">← Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}</button>
-          <div class="visited-view-header-copy">
+          <div class="visited-view-header-copy ui-section-header-copy">
             <div class="card-title">${title}</div>
             <div class="card-subtitle">${escapeHtml(subtitle)}</div>
           </div>
         </div>
-        <iframe id="${escapeHtml(frameId)}" class="visited-inline-tool-frame" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
       </div>
+      <iframe id="${escapeHtml(frameId)}" class="visited-inline-tool-frame" title="${escapeHtml(title)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
     `;
     pane.appendChild(view);
     return { view, frameId };

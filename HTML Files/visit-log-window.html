@@ -65,6 +65,11 @@
       padding: 20px;
     }
 
+    body.embedded-visit-log .vlw-body {
+      max-width: 1120px;
+      padding: 14px 16px 24px;
+    }
+
     .vlw-card {
       background: #fff;
       border-radius: 12px;
@@ -352,7 +357,26 @@
 
       // ── URL param parsing ───────────────────────────────────────────────
       function parseParams() {
-        var params = new URLSearchParams(window.location.search);
+        // The local dev server (npx serve) rewrites URLs by removing the .html
+        // extension and stripping the query string.  When window.location.search is
+        // empty inside an iframe, try to recover the original params from the parent
+        // frame's <iframe src="…"> attribute, which retains the full URL.
+        var search = window.location.search;
+        if (!search && window.parent && window.parent !== window) {
+          try {
+            var parentDoc = window.parent.document;
+            var iframes = parentDoc.querySelectorAll('iframe');
+            for (var fi = 0; fi < iframes.length; fi++) {
+              if (iframes[fi].contentWindow === window) {
+                var rawSrc = iframes[fi].getAttribute('src') || '';
+                var qIdx = rawSrc.indexOf('?');
+                if (qIdx >= 0) search = rawSrc.substring(qIdx);
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+        var params = new URLSearchParams(search);
         state.embedded = params.get('embedded') === '1';
         state.sourceSubtab = params.get('sourceSubtab') || params.get('subtabKey') || 'outdoors';
         state.subtabKey = params.get('subtabKey') || 'outdoors';

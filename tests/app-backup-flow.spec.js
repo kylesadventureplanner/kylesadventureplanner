@@ -68,17 +68,28 @@ test.describe('App backup flow', () => {
   });
 
   test('creates a dated zip backup download', async ({ page }) => {
+    // The zip-generation step can take 60-90 s under CI parallel load.
+    // Bump the per-test timeout so the download event and status text checks
+    // have enough runway without fighting the global 60 s config limit.
+    test.setTimeout(180000);
+
     await openAppBackup(page);
     const createZipBtn = await waitForAppBackupReady(page);
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+    // Arm the download listener before clicking to avoid a race where the
+    // click completes very fast and the event fires before waitForEvent registers.
+    const downloadPromise = page.waitForEvent('download', { timeout: 150000 });
+
+    // Use activateFooterAction so any overlay that appeared after manifest-load
+    // does not intercept the click.
     await activateFooterAction(page, createZipBtn);
+
     const download = await downloadPromise;
 
     const fileName = download.suggestedFilename();
     expect(fileName).toMatch(/^kyles-adventure-planner_backup_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.zip$/);
 
-    await expect(page.locator('#appBackupStatus')).toContainText('Backup downloaded', { timeout: 120000 });
+    await expect(page.locator('#appBackupStatus')).toContainText('Backup downloaded', { timeout: 150000 });
   });
 });
 

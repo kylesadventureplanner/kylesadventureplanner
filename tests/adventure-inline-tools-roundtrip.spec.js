@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { activateFooterAction, waitForAdventureChallengeReady, waitForEmbeddedFrameReady } = require('./playwright-helpers');
 
 const CITY_INLINE_TEST_KEY = 'city_inline_payload';
 const CITY_INLINE_TEST_DATA = [
@@ -42,10 +43,17 @@ test.describe('Adventure inline tools roundtrip', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
-    await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
-    await expect(page.locator('#visitedProgressPane-outdoors')).toBeVisible();
+    // Use activateFooterAction to handle any overlay interception, then wait for
+    // the Adventure Challenge to be fully bound before each inline-tools test.
+    await activateFooterAction(page, page.locator('.app-tab-btn[data-tab="visited-locations"]'));
+    await waitForAdventureChallengeReady(page, 'outdoors');
+    // Ensure the outdoors subtab dock is active (it may already be selected by default).
+    const outdoorsDock = page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first();
+    const isSelected = await outdoorsDock.getAttribute('aria-selected').catch(() => null);
+    if (isSelected !== 'true') {
+      await activateFooterAction(page, outdoorsDock);
+      await waitForAdventureChallengeReady(page, 'outdoors');
+    }
   });
 
   test('City Explorer inline opens and back returns to overview', async ({ page }) => {
@@ -241,14 +249,17 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(logFrame).toBeVisible();
     await expect(logFrame).toHaveAttribute('src', /visit-log-window\.html/i);
 
-    const logMetrics = await readFrameRenderMetrics(logFrame);
-    expect(logMetrics.width).toBeGreaterThan(250);
-    expect(logMetrics.height).toBeGreaterThan(120);
-
-    const logFrameHandle = await logFrame.elementHandle();
-    const logInlineFrame = logFrameHandle ? await logFrameHandle.contentFrame() : null;
+    // Use waitForEmbeddedFrameReady to poll until the iframe is sized AND its
+    // DOMContentLoaded-triggered init has applied the embedded-visit-log body class.
+    const logInlineFrame = await waitForEmbeddedFrameReady(logFrame, {
+      srcPattern: /visit-log-window\.html/i,
+      bodySelector: 'body.embedded-visit-log',
+      minWidth: 250,
+      minHeight: 120,
+      timeout: 20000
+    });
     expect(logInlineFrame).not.toBeNull();
-    await expect(logInlineFrame.locator('body.embedded-visit-log')).toBeVisible();
+    await expect(logInlineFrame.locator('body.embedded-visit-log')).toBeVisible({ timeout: 15000 });
 
     await logInlineFrame.getByRole('button', { name: /Cancel/i }).click();
 
