@@ -109,10 +109,28 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
     };
   });
 
-  const expandAllBtn = popup.locator('#places-tab .edit-section-visibility-controls .edit-section-visibility-btn').first();
-  if (await expandAllBtn.isVisible().catch(() => false)) {
-    await expandAllBtn.click();
-  }
+  // Directly expand all collapsible cards in the places tab using JavaScript
+  // This is more reliable than clicking the expand button, especially in CI
+  await popup.evaluate(() => {
+    const tabContent = document.getElementById('places-tab');
+    if (!tabContent) return;
+
+    const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+    const placesMainCards = Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card'));
+    const allCards = cards.concat(placesMainCards);
+
+    allCards.forEach((card) => {
+      const body = card.querySelector(':scope > .edit-collapsible-card-body');
+      const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+      if (body && toggleBtn) {
+        card.classList.remove('is-collapsed');
+        body.hidden = false;
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.textContent = '▲ Collapse';
+        toggleBtn.title = 'Collapse section';
+      }
+    });
+  });
 
   return popup;
 }
@@ -752,11 +770,36 @@ test.describe('Edit Mode single-add candidate search', () => {
       return select && select.options.length >= 7;
     }, null, { timeout: 10000 });
 
+    // Re-expand collapsible cards after reload
+    await popup.evaluate(() => {
+      const tabContent = document.getElementById('places-tab');
+      if (!tabContent) return;
+
+      const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+      const placesMainCards = Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card'));
+      const allCards = cards.concat(placesMainCards);
+
+      allCards.forEach((card) => {
+        const body = card.querySelector(':scope > .edit-collapsible-card-body');
+        const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+        if (body && toggleBtn) {
+          card.classList.remove('is-collapsed');
+          body.hidden = false;
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          toggleBtn.textContent = '▲ Collapse';
+          toggleBtn.title = 'Collapse section';
+        }
+      });
+    });
+
     await expect(popup.locator('#candidateDistanceLimitMiles')).toHaveValue('50');
     await expect(popup.locator('#candidateStateFilter')).toHaveValue('NC');
     await expect(popup.locator('#candidateSortMode')).toHaveValue('best-rated');
 
     await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    // Wait for the UI to update after action target selection - both visible and enabled
+    await popup.locator('#singleInputType').waitFor({ state: 'visible',timeout: 10000 });
+    await expect(popup.locator('#singleInputType')).toBeEnabled();
     await popup.selectOption('#singleInputType', 'placeName');
     await popup.fill('#singleInput', 'festival');
     await popup.click('#singleSearchCandidatesBtn');

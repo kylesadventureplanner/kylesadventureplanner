@@ -55,6 +55,30 @@ async function openEditModePopup(page) {
   }, null, { timeout: 10000 });
   // Wait for draft tracking init
   await popup.waitForFunction(() => Boolean(window.__editModeDraftTrackingInit), null, { timeout: 5000 });
+
+  // Directly expand all collapsible cards in the places tab using JavaScript
+  // This ensures elements like #singleInput, #singleInputType, etc. are visible and interactable
+  await popup.evaluate(() => {
+    const tabContent = document.getElementById('places-tab');
+    if (!tabContent) return;
+
+    const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+    const placesMainCards = Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card'));
+    const allCards = cards.concat(placesMainCards);
+
+    allCards.forEach((card) => {
+      const body = card.querySelector(':scope > .edit-collapsible-card-body');
+      const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+      if (body && toggleBtn) {
+        card.classList.remove('is-collapsed');
+        body.hidden = false;
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.textContent = '▲ Collapse';
+        toggleBtn.title = 'Collapse section';
+      }
+    });
+  });
+
   return popup;
 }
 
@@ -87,6 +111,28 @@ test.describe('Edit Mode draft guards', () => {
       return select && select.options.length >= 7;
     }, null, { timeout: 10000 });
     await popup.waitForFunction(() => Boolean(window.__editModeDraftTrackingInit), null, { timeout: 5000 });
+
+    // Re-expand collapsible cards after reload
+    await popup.evaluate(() => {
+      const tabContent = document.getElementById('places-tab');
+      if (!tabContent) return;
+
+      const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+      const placesMainCards = Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card'));
+      const allCards = cards.concat(placesMainCards);
+
+      allCards.forEach((card) => {
+        const body = card.querySelector(':scope > .edit-collapsible-card-body');
+        const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+        if (body && toggleBtn) {
+          card.classList.remove('is-collapsed');
+          body.hidden = false;
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          toggleBtn.textContent = '▲ Collapse';
+          toggleBtn.title = 'Collapse section';
+        }
+      });
+    });
 
     await expect(popup.locator('#singleInput')).toHaveValue('Draft Single Place');
     await expect(popup.locator('#bulkInput')).toHaveValue('Draft Bulk A\nDraft Bulk B');
@@ -185,6 +231,13 @@ test.describe('Edit Mode draft guards', () => {
     await fillAndSaveDraft(popup, '#singleInput', 'Apple Blossom Festival');
 
     await expect.poll(() => popup.evaluate(() => localStorage.getItem('editMode_draft_singleInput')), { timeout: 5000 }).not.toBeNull();
+
+    // Mock window.confirm to auto-accept the target confirmation dialog
+    // (tests 3 & 4 use Playwright's native dialog handler for the tab-switch confirm,
+    // but this test needs the submit confirm to return true automatically)
+    await popup.evaluate(() => {
+      window.confirm = () => true;
+    });
 
     await popup.click('#singleSubmitBtn');
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);

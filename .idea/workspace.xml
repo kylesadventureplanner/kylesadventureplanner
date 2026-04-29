@@ -5,17 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/HTML Files/visit-log-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CSS/visited-locations-tab.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/visited-locations-tab.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-log-visit-modal.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-log-visit-modal.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/edit-mode-draft-guards.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-draft-guards.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/edit-mode-search-candidates.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-search-candidates.spec.js" afterDir="false" />
     </list>
@@ -108,7 +100,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="135674000" />
+      <workItem from="1777064709892" duration="138354000" />
     </task>
     <servers />
   </component>

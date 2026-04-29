@@ -29,21 +29,27 @@ async function gotoEditMode(page, url = '/HTML Files/edit-mode-enhanced.html') {
 }
 
 async function expandTabCardsIfAvailable(page, tabName) {
-  const tabPanel = page.locator(`#${tabName}-tab`);
-  const expandAllBtn = tabPanel.locator('.edit-section-visibility-btn', { hasText: /Expand all/i }).first();
-  if (await expandAllBtn.count()) {
-    await expandAllBtn.click();
-    return;
-  }
+  // Directly expand all collapsible cards using JavaScript for better reliability in CI
+  await page.evaluate((tabId) => {
+    const tabContent = document.getElementById(tabId);
+    if (!tabContent) return;
 
-  const toggleButtons = tabPanel.locator('.edit-card-collapse-btn');
-  const toggleCount = await toggleButtons.count();
-  for (let i = 0; i < toggleCount; i += 1) {
-    const toggleBtn = toggleButtons.nth(i);
-    if (/expand/i.test((await toggleBtn.textContent()) || '')) {
-      await toggleBtn.click();
-    }
-  }
+    const cards = Array.from(tabContent.querySelectorAll(':scope > .card.edit-collapsible-card'));
+    const placesMainCards = tabId === 'places-tab' ? Array.from(tabContent.querySelectorAll('#placesMainContent > .card.edit-collapsible-card')) : [];
+    const allCards = cards.concat(placesMainCards);
+
+    allCards.forEach((card) => {
+      const body = card.querySelector(':scope > .edit-collapsible-card-body');
+      const toggleBtn = card.querySelector(':scope > .edit-card-collapse-btn');
+      if (body && toggleBtn) {
+        card.classList.remove('is-collapsed');
+        body.hidden = false;
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.textContent = '▲ Collapse';
+        toggleBtn.title = 'Collapse section';
+      }
+    });
+  }, `${tabName}-tab`);
 }
 
 test.describe('Edit Mode – global header button', () => {
