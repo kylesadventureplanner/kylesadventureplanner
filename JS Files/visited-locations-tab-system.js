@@ -591,13 +591,22 @@
     const pane = root ? root.querySelector(`#visitedProgressPane-${subtabKey}`) : null;
     if (!pane) return null;
 
-    const viewKey = type === 'edit' ? 'edit-mode' : 'city-explorer';
-    const title = type === 'edit' ? '📝 Edit Mode' : '🌆 City Explorer';
-    const subtitle = type === 'edit'
+    const normalizedType = String(type || 'city').trim().toLowerCase();
+    const isEdit = normalizedType === 'edit';
+    const isVisitLog = normalizedType === 'visit-log';
+    const viewKey = isEdit ? 'edit-mode' : (isVisitLog ? 'visit-log' : 'city-explorer');
+    const title = isEdit ? '📝 Edit Mode' : (isVisitLog ? '📋 Log a Visit' : '🌆 City Explorer');
+    const subtitle = isEdit
       ? 'Manage records in Edit Mode without leaving Adventure Challenge.'
-      : `City Explorer filtered for ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure'}.`;
-    const closeAction = type === 'edit' ? `close-edit-mode-${subtabKey}` : `close-city-explorer-${subtabKey}`;
-    const frameId = type === 'edit' ? `visitedEditModeFrame-${subtabKey}` : `visitedCityExplorerFrame-${subtabKey}`;
+      : (isVisitLog
+        ? `Log a visit without leaving ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure Challenge'}.`
+        : `City Explorer filtered for ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure'}.`);
+    const closeAction = isEdit
+      ? `close-edit-mode-${subtabKey}`
+      : (isVisitLog ? `close-visit-log-${subtabKey}` : `close-city-explorer-${subtabKey}`);
+    const frameId = isEdit
+      ? `visitedEditModeFrame-${subtabKey}`
+      : (isVisitLog ? `visitedVisitLogFrame-${subtabKey}` : `visitedCityExplorerFrame-${subtabKey}`);
     let view = pane.querySelector(`[data-visited-subtab-view="${viewKey}"]`);
     if (view) return { view, frameId };
 
@@ -620,6 +629,33 @@
     `;
     pane.appendChild(view);
     return { view, frameId };
+  }
+
+  function buildVisitLogUrlForSubtab(subtabKey, options = {}) {
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    const opts = options && typeof options === 'object' ? options : {};
+    const visitLogUrl = new URL(resolveInlinePageUrl('HTML Files/visit-log-window.html'));
+    visitLogUrl.searchParams.set('embedded', '1');
+    visitLogUrl.searchParams.set('sourceSubtab', key);
+    visitLogUrl.searchParams.set('subtabKey', key);
+
+    const preselectedItemId = String(opts.itemId || '').trim();
+    if (preselectedItemId) visitLogUrl.searchParams.set('itemId', preselectedItemId);
+
+    const mode = String(opts.mode || 'add').trim() === 'remove' ? 'remove' : 'add';
+    visitLogUrl.searchParams.set('mode', mode);
+
+    const hint = String(opts.hint || '').trim();
+    if (hint) visitLogUrl.searchParams.set('hint', hint);
+
+    const dialogTitle = String(opts.dialogTitle || '').trim();
+    if (dialogTitle) visitLogUrl.searchParams.set('dialogTitle', dialogTitle);
+
+    const filterContext = buildVisitLogQualifyingFilter(opts.qualifyingFilter, key);
+    if (filterContext) visitLogUrl.searchParams.set('qualifyingFilter', JSON.stringify(filterContext));
+
+    visitLogUrl.searchParams.set('ts', String(Date.now()));
+    return visitLogUrl.toString();
   }
 
   async function openCityExplorerForSubtab(subtabKey) {
@@ -5173,46 +5209,51 @@
     return Array.from(new Set(inferred));
   }
 
-  function closeVisitLogModal() {
+  function closeVisitLogModal(options = {}) {
     // Close the standalone window if open
     if (state.visitLogWindowRef && !state.visitLogWindowRef.closed) {
       try { state.visitLogWindowRef.close(); } catch (_) {}
       state.visitLogWindowRef = null;
     }
+
+    const root = options && options.root ? options.root : document.getElementById('visitedLocationsRoot');
+    const key = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
+    if (root && key) {
+      setExplorerView(root, key, 'overview');
+    }
+
     resetVisitLogStagedUrlPhotos();
   }
 
   async function openVisitLogModal(options) {
     const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
+    const root = document.getElementById('visitedLocationsRoot');
+    if (!root) return;
 
-    // Focus existing window if still open
-    if (state.visitLogWindowRef && !state.visitLogWindowRef.closed) {
-      try { state.visitLogWindowRef.focus(); } catch (_) {}
-      return;
+    if (state.activeOverviewView !== 'main') {
+      state.activeOverviewView = 'main';
+      syncVisitedOverviewView(root);
+    }
+    if (state.activeProgressSubTab !== subtabKey) {
+      setActiveProgressSubTab(root, subtabKey);
     }
 
-    // Build the URL for the standalone visit-log window
-    const visitLogUrl = new URL('HTML%20Files/visit-log-window.html', window.location.href);
-    visitLogUrl.searchParams.set('subtabKey', subtabKey);
-    const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
-    if (preselectedItemId) visitLogUrl.searchParams.set('itemId', preselectedItemId);
-    const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
-    visitLogUrl.searchParams.set('mode', mode);
-    const hint = String(options && options.hint ? options.hint : '').trim();
-    if (hint) visitLogUrl.searchParams.set('hint', hint);
-    const dialogTitle = String(options && options.dialogTitle ? options.dialogTitle : '').trim();
-    if (dialogTitle) visitLogUrl.searchParams.set('dialogTitle', dialogTitle);
-    const filterContext = buildVisitLogQualifyingFilter(options && options.qualifyingFilter, subtabKey);
-    if (filterContext) visitLogUrl.searchParams.set('qualifyingFilter', JSON.stringify(filterContext));
+    // Close any old popup-mode window if still open; Visit Log now opens inline.
+    if (state.visitLogWindowRef && !state.visitLogWindowRef.closed) {
+      try { state.visitLogWindowRef.close(); } catch (_) {}
+      state.visitLogWindowRef = null;
+    }
 
-    // Ensure bridge is registered before opening window
+    // Ensure bridge is registered before loading the inline iframe.
     registerVisitLogBridge();
 
-    const visitLogWin = window.open(visitLogUrl.toString(), 'adventureVisitLog', 'width=720,height=860,resizable=yes,scrollbars=yes');
-    if (visitLogWin) {
-      state.visitLogWindowRef = visitLogWin;
-      try { visitLogWin.focus(); } catch (_) {}
-    }
+    const toolView = ensureInlineSubtabToolView(root, subtabKey, 'visit-log');
+    if (!toolView) return;
+    const frame = document.getElementById(toolView.frameId);
+    if (!frame) return;
+
+    frame.src = buildVisitLogUrlForSubtab(subtabKey, options || {});
+    setExplorerView(root, subtabKey, 'visit-log');
   }
 
   // ── Visit Log Window Bridge ────────────────────────────────────────────
@@ -5343,8 +5384,8 @@
 
       // Open edit mode to add a missing location and close the visit log window
       openAddMissingLocation(subtabKey) {
-        const editModeUrl = new URL('HTML%20Files/edit-mode-enhanced.html', window.location.href).toString();
-        window.open(editModeUrl, '_blank');
+        const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+        openEditModeForSubtab(key);
       }
     };
   }
@@ -8276,6 +8317,7 @@
           const subtabKey = String(data.sourceSubtab || state.activeProgressSubTab || 'outdoors').trim();
           if (data.tool === 'city-viewer') closeCityExplorerForSubtab(root, subtabKey);
           if (data.tool === 'edit-mode') closeEditModeForSubtab(root, subtabKey);
+          if (data.tool === 'visit-log') closeVisitLogModal({ root, subtabKey });
         });
       }
 
@@ -8512,7 +8554,8 @@
             }
 
             if (action.startsWith('close-visit-log-')) {
-              closeVisitLogModal();
+              const subtabKey = action.replace('close-visit-log-', '');
+              closeVisitLogModal({ root, subtabKey });
               return;
             }
 

@@ -213,5 +213,59 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="edit-mode"]').first()).toBeHidden();
   });
+
+  test('Log a Visit opens inline and cancel returns to overview', async ({ page }) => {
+    await page.evaluate(() => {
+      window.__inlineToolClosePayload = null;
+      window.addEventListener('message', (event) => {
+        const data = event && event.data ? event.data : {};
+        if (data.type !== 'planner-inline-tool-close') return;
+        window.__inlineToolClosePayload = {
+          type: String(data.type || ''),
+          tool: String(data.tool || ''),
+          sourceSubtab: String(data.sourceSubtab || '')
+        };
+      }, { capture: true });
+    });
+
+    const openLogBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-visit-log-outdoors"]').first();
+    await expect(openLogBtn).toBeVisible();
+    await openLogBtn.click();
+
+    const logView = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="visit-log"]').first();
+    const overviewView = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first();
+    const logFrame = page.locator('#visitedVisitLogFrame-outdoors').first();
+
+    await expect(logView).toBeVisible();
+    await expect(overviewView).toBeHidden();
+    await expect(logFrame).toBeVisible();
+    await expect(logFrame).toHaveAttribute('src', /visit-log-window\.html/i);
+
+    const logMetrics = await readFrameRenderMetrics(logFrame);
+    expect(logMetrics.width).toBeGreaterThan(250);
+    expect(logMetrics.height).toBeGreaterThan(120);
+
+    const logFrameHandle = await logFrame.elementHandle();
+    const logInlineFrame = logFrameHandle ? await logFrameHandle.contentFrame() : null;
+    expect(logInlineFrame).not.toBeNull();
+    await expect(logInlineFrame.locator('body.embedded-visit-log')).toBeVisible();
+
+    await logInlineFrame.getByRole('button', { name: /Cancel/i }).click();
+
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return payload.type;
+    }, { timeout: 10000 }).toBe('planner-inline-tool-close');
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return { tool: payload.tool, sourceSubtab: payload.sourceSubtab };
+    }, { timeout: 10000 }).toEqual({
+      tool: 'visit-log',
+      sourceSubtab: 'outdoors'
+    });
+
+    await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
+    await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="visit-log"]').first()).toBeHidden();
+  });
 });
 

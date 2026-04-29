@@ -1,0 +1,40 @@
+
+> kylesadventureplanner-reliability@1.0.0 reliability:gate
+> npm run reliability:source-routing && node scripts/reliability-gate.js
+
+
+> kylesadventureplanner-reliability@1.0.0 reliability:source-routing
+> node scripts/validate-adventure-source-routing.js
+
+
+Edit Mode targets (7):
+ - Nature_Locations.xlsx / Nature_Locations
+ - Retail_Food_and_Drink.xlsx / Coffee
+ - Retail_Food_and_Drink.xlsx / Retail
+ - Retail_Food_and_Drink.xlsx / Restaurants
+ - Entertainment_Locations.xlsx / Festivals
+ - Entertainment_Locations.xlsx / Wildlife_Animals
+ - Entertainment_Locations.xlsx / General_Entertainment
+
+Explorer source routes (7):
+ - Nature_Locations.xlsx / Nature_Locations
+ - Entertainment_Locations.xlsx / General_Entertainment
+ - Retail_Food_and_Drink.xlsx / Restaurants
+ - Retail_Food_and_Drink.xlsx / Coffee
+ - Retail_Food_and_Drink.xlsx / Retail
+ - Entertainment_Locations.xlsx / Wildlife_Animals
+ - Entertainment_Locations.xlsx / Festivals
+
+City Viewer source routes (7):
+ - Retail_Food_and_Drink.xlsx / Coffee
+ - Retail_Food_and_Drink.xlsx / Restaurants
+ - Retail_Food_and_Drink.xlsx / Retail
+ - Nature_Locations.xlsx / Nature_Locations
+ - Entertainment_Locations.xlsx / Festivals
+ - Entertainment_Locations.xlsx / Wildlife_Animals
+ - Entertainment_Locations.xlsx / General_Entertainment
+✅ Explorer matches expected source mapping.
+✅ City Viewer matches expected source mapping.
+
+✅ Source-route validation passed. Explorer and City Viewer are aligned with Edit Mode targets.
+✅ Reliability gate passed

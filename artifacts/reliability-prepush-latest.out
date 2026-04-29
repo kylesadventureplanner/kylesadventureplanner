@@ -1,0 +1,31 @@
+
+> kylesadventureplanner-reliability@1.0.0 reliability:prepush
+> playwright test --workers=1 --max-failures=1 tests/reliability-test-noise.spec.js tests/edit-mode-target-routing.spec.js tests/edit-mode-submit-guards.spec.js tests/visited-enrich-modal-smoke.spec.js tests/reliability-smoke.spec.js
+
+
+Running 21 tests using 1 worker
+
+  ✓   1 tests/edit-mode-submit-guards.spec.js:55:3 › Edit Mode submit guards › prevent duplicate rapid clicks for single, bulk, and chain submit buttons (3.5s)
+  ✓   2 tests/edit-mode-target-routing.spec.js:233:3 › Edit Mode target-table routing › Add Single, Bulk Add, and Bulk Chain write using the currently selected target schema (4.1s)
+  ✓   3 tests/edit-mode-target-routing.spec.js:280:3 › Edit Mode target-table routing › Add Single resolves prefixed workbook paths when bare workbook names return itemNotFound (3.1s)
+  ✓   4 tests/edit-mode-target-routing.spec.js:309:3 › Edit Mode target-table routing › row-level saveToExcel resolves prefixed workbook paths when bare workbook names return itemNotFound (678ms)
+  ✓   5 tests/edit-mode-target-routing.spec.js:337:3 › Edit Mode target-table routing › row-level saveToExcel sanitizes Favorite Status and redirects misrouted long text to Description (1.1s)
+  ✓   6 tests/edit-mode-target-routing.spec.js:368:3 › Edit Mode target-table routing › full workbook PATCH diagnostics modal shows raw error payloads (1.6s)
+  ✓   7 tests/edit-mode-target-routing.spec.js:418:3 › Edit Mode target-table routing › single add can be cancelled at the destination confirmation prompt (3.5s)
+  ✓   8 tests/reliability-smoke.spec.js:56:1 › first-click success: nature explore (1.2s)
+  ✓   9 tests/reliability-smoke.spec.js:68:1 › first-click success: nature run command (3.7s)
+  ✓  10 tests/reliability-smoke.spec.js:81:1 › first-click success: bike refresh (1.6s)
+  ✓  11 tests/reliability-smoke.spec.js:100:1 › hidden overlay probe catches interception (1.9s)
+  ✓  12 tests/reliability-smoke.spec.js:136:1 › stale row-detail blocker is cleared before nature interactions (4.0s)
+  ✓  13 tests/reliability-smoke.spec.js:178:1 › nature explore remains responsive across repeated tab switches (5.0s)
+  ✓  14 tests/reliability-smoke.spec.js:213:1 › update banner exposes version diff and records telemetry counters (1.7s)
+  ✓  15 tests/reliability-test-noise.spec.js:5:3 › isIgnoredExtensionNoise › ignores known browser-extension noise (2ms)
+  ✓  16 tests/reliability-test-noise.spec.js:10:3 › isIgnoredExtensionNoise › ignores intentional Graph workbook probe 404s (1ms)
+  ✓  17 tests/reliability-test-noise.spec.js:19:3 › isIgnoredExtensionNoise › ignores transient localhost JS asset network drops (1ms)
+  ✓  18 tests/reliability-test-noise.spec.js:28:3 › isIgnoredExtensionNoise › ignores transient localhost CSS and HTML asset network drops (0ms)
+  ✓  19 tests/reliability-test-noise.spec.js:37:3 › isIgnoredExtensionNoise › ignores service-worker script-fetch drop and local serve nav-fallback mis-routing (1ms)
+  ✓  20 tests/reliability-test-noise.spec.js:44:3 › isIgnoredExtensionNoise › does not ignore real application errors (1ms)
+[visited-enrich-diag] parserTemplate=polished chips=8 toggles=8
+  ✓  21 tests/visited-enrich-modal-smoke.spec.js:5:3 › Visited enrich modal smoke › supports changed highlights, selective save, confidence chips, and undo (2.2s)
+
+  21 passed (51.8s)

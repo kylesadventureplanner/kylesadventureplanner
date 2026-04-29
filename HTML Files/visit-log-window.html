@@ -309,6 +309,8 @@
       // ── State ──────────────────────────────────────────────────────────
       var state = {
         subtabKey: 'outdoors',
+        sourceSubtab: 'outdoors',
+        embedded: false,
         itemId: '',
         mode: 'add',
         hint: '',
@@ -326,12 +328,33 @@
             return window.opener.visitLogBridge;
           }
         } catch (_) {}
+        try {
+          if (window.parent && window.parent !== window && window.parent.visitLogBridge) {
+            return window.parent.visitLogBridge;
+          }
+        } catch (_) {}
         return null;
+      }
+
+      function requestClose() {
+        if (state.embedded) {
+          try {
+            window.parent.postMessage({
+              type: 'planner-inline-tool-close',
+              tool: 'visit-log',
+              sourceSubtab: state.sourceSubtab || state.subtabKey || 'outdoors'
+            }, window.parent.location.origin);
+          } catch (_) {}
+          return;
+        }
+        window.close();
       }
 
       // ── URL param parsing ───────────────────────────────────────────────
       function parseParams() {
         var params = new URLSearchParams(window.location.search);
+        state.embedded = params.get('embedded') === '1';
+        state.sourceSubtab = params.get('sourceSubtab') || params.get('subtabKey') || 'outdoors';
         state.subtabKey = params.get('subtabKey') || 'outdoors';
         state.itemId = params.get('itemId') || '';
         state.mode = params.get('mode') === 'remove' ? 'remove' : 'add';
@@ -418,6 +441,7 @@
       // ── Initialize ──────────────────────────────────────────────────────
       async function initialize() {
         parseParams();
+        if (state.embedded) document.body.classList.add('embedded-visit-log');
 
         // Set form state from URL params
         var subtabKeyInput = $id('visitedVisitLogSubtabKey');
@@ -506,11 +530,11 @@
 
         // Close button
         var closeBtn = $id('vlwCloseBtn');
-        if (closeBtn) closeBtn.addEventListener('click', function() { window.close(); });
+        if (closeBtn) closeBtn.addEventListener('click', function() { requestClose(); });
 
         // Cancel button
         var cancelBtn = $id('visitedVisitLogCancelBtn');
-        if (cancelBtn) cancelBtn.addEventListener('click', function() { window.close(); });
+        if (cancelBtn) cancelBtn.addEventListener('click', function() { requestClose(); });
 
         // Location search input → filter options
         var searchInput = $id('visitedVisitLogLocationSearch');
@@ -574,7 +598,7 @@
                 window.open(editModeUrl, '_blank');
               } catch (_) {}
             }
-            window.close();
+            if (!state.embedded) requestClose();
           });
         }
 
@@ -633,7 +657,7 @@
                 activityKeys: activityKeys,
                 stagedUrlPhotos: state.stagedUrlPhotos.slice()
               }, photoFiles);
-              window.close();
+              requestClose();
             } catch (err) {
               var msg = err && err.message ? err.message : String(err);
               setPhotoStatus(msg, 'error');
