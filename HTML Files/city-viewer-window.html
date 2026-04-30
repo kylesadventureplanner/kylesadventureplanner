@@ -1233,6 +1233,94 @@
     .loc-mini-btn:hover { border-color: #667eea; color: #667eea; transform: translateY(-1px); }
     .loc-mini-btn.success { border-color: #86efac; color: #166534; }
     .loc-mini-btn.is-active { border-color: #4f46e5; color: #312e81; background: #eef2ff; }
+    /* ── Show All Tables scope banner ────────────────────────────── */
+    .loc-scope-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .loc-scope-banner.visible { display: flex; }
+    .loc-scope-banner-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .loc-scope-banner-text {
+      flex: 1;
+      font-size: 13px;
+      color: #3730a3;
+      min-width: 0;
+    }
+    .loc-scope-banner-label {
+      font-weight: 700;
+    }
+    .loc-scope-banner-sub {
+      font-size: 11.5px;
+      color: #6366f1;
+      margin-top: 1px;
+    }
+    .loc-scope-toggle-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 2px solid #818cf8;
+      background: #fff;
+      color: #4338ca;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .loc-scope-toggle-btn:hover {
+      background: #e0e7ff;
+      border-color: #4f46e5;
+    }
+    .loc-scope-toggle-btn.is-all-tables {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #fff;
+    }
+    .loc-scope-toggle-btn.is-all-tables:hover {
+      background: #4338ca;
+      border-color: #4338ca;
+    }
+    .loc-scope-toggle-track {
+      display: inline-block;
+      width: 32px;
+      height: 18px;
+      border-radius: 999px;
+      background: #c7d2fe;
+      position: relative;
+      transition: background 0.18s ease;
+      flex-shrink: 0;
+    }
+    .loc-scope-toggle-btn.is-all-tables .loc-scope-toggle-track {
+      background: #a5b4fc;
+    }
+    .loc-scope-toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.18s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .loc-scope-toggle-btn.is-all-tables .loc-scope-toggle-thumb {
+      transform: translateX(14px);
+    }
+    /* ────────────────────────────────────────────────────────────── */
     .loc-prefilter-scope-help {
       width: 22px;
       height: 22px;
@@ -2608,6 +2696,9 @@
           <div class="subtitle" id="locationsPageSubtitle"></div>
         </div>
       </div>
+
+      <!-- Show All Tables scope banner (only visible when a subtab prefilter is active) -->
+      <div id="locScopeBanner" class="loc-scope-banner" aria-live="polite" role="status"></div>
 
       <!-- Category summary bar -->
       <div id="locCategoryBar" class="loc-category-bar" aria-label="Location categories"></div>
@@ -4127,25 +4218,58 @@
     function renderLocPrefilterScopeToggle() {
       const btn = document.getElementById('locPrefilterScopeToggleBtn');
       const helpBtn = document.getElementById('locPrefilterScopeHelpBtn');
-      if (!btn) return;
+      const banner = document.getElementById('locScopeBanner');
       const hasPrefilter = Boolean(prefilterTag);
       const bypassOn = shouldBypassAdventurePrefilterForLocations();
       const helpText = 'Scope affects this city only. Turn scope off to see all tables in this city. Use "Show all places" to clear the filter everywhere.';
-      btn.hidden = !hasPrefilter;
-      if (helpBtn) {
-        helpBtn.hidden = !hasPrefilter;
-        helpBtn.title = helpText;
-        helpBtn.setAttribute('aria-label', helpText);
+
+      // ── Legacy small toggle in advanced filters ──
+      if (btn) {
+        btn.hidden = !hasPrefilter;
+        if (helpBtn) {
+          helpBtn.hidden = !hasPrefilter;
+          helpBtn.title = helpText;
+          helpBtn.setAttribute('aria-label', helpText);
+        }
+        if (hasPrefilter) {
+          btn.classList.toggle('is-active', bypassOn);
+          btn.setAttribute('aria-pressed', String(bypassOn));
+          btn.textContent = bypassOn
+            ? 'Subtab Scope: Off (All Tables)'
+            : `Subtab Scope: On (${getPrefilterLabel()})`;
+          btn.title = bypassOn
+            ? 'Scope is off for this city. Click to use Adventure subtab scope again.'
+            : 'Scope is on for this city. Click to show all tables in this city.';
+        }
       }
-      if (!hasPrefilter) return;
-      btn.classList.toggle('is-active', bypassOn);
-      btn.setAttribute('aria-pressed', String(bypassOn));
-      btn.textContent = bypassOn
-        ? 'Subtab Scope: Off (All Tables)'
-        : `Subtab Scope: On (${getPrefilterLabel()})`;
-      btn.title = bypassOn
-        ? 'Scope is off for this city. Click to use Adventure subtab scope again.'
-        : 'Scope is on for this city. Click to show all tables in this city.';
+
+      // ── Prominent scope banner above location cards ──
+      if (!banner) return;
+      if (!hasPrefilter) {
+        banner.classList.remove('visible');
+        banner.innerHTML = '';
+        return;
+      }
+      banner.classList.add('visible');
+      const label = getPrefilterLabel();
+      banner.innerHTML = `
+        <span class="loc-scope-banner-icon">${bypassOn ? '🌐' : '🔖'}</span>
+        <div class="loc-scope-banner-text">
+          <div class="loc-scope-banner-label">${bypassOn ? 'All Tables' : escHtml(label) + ' only'}</div>
+          <div class="loc-scope-banner-sub">${bypassOn
+            ? 'Showing locations from all your saved tables in this city.'
+            : 'Showing locations from the <strong>' + escHtml(label) + '</strong> subtab. Toggle to see everything.'
+          }</div>
+        </div>
+        <button type="button"
+          class="loc-scope-toggle-btn${bypassOn ? ' is-all-tables' : ''}"
+          onclick="toggleLocPrefilterScope()"
+          aria-pressed="${bypassOn}"
+          title="${bypassOn ? 'Click to return to ' + escAttr(label) + ' subtab view' : 'Click to show all tables in this city'}">
+          <span class="loc-scope-toggle-track"><span class="loc-scope-toggle-thumb"></span></span>
+          ${bypassOn ? 'All Tables' : 'Show All Tables'}
+        </button>
+      `;
     }
 
     function toggleLocPrefilterScope() {

@@ -59,17 +59,58 @@
       background: rgba(255,255,255,0.3);
     }
 
+    /* ── Sticky header zone (header card + tab bar) ── */
+    .edit-sticky-zone {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      /* Same as body background so content scrolls underneath cleanly */
+      background: #f9fafb;
+    }
+
+    /* Header loses its bottom-rounding so it flows into the tab bar */
+    .edit-sticky-zone .header {
+      margin-bottom: 0;
+      border-radius: 12px 12px 0 0;
+    }
+
+    /* When scrolled, lift the sticky zone with a shadow */
+    .edit-sticky-zone.is-scrolled {
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.22);
+    }
+
     /* Embedded mode already has a parent header in Adventure Challenge. */
     body.embedded-edit-mode .header {
       display: none;
     }
 
+    /* In embedded mode the header is hidden so restore tab bar's own card styling */
+    body.embedded-edit-mode .edit-sticky-zone .tabs {
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-top: 1px solid #e5e7eb;
+    }
+
     .tabs {
       display: flex;
       gap: 8px;
-      margin-bottom: var(--ui-space-24, 24px);
+      /* No bottom margin here – the sticky zone provides spacing below */
+      margin-bottom: 0;
       border-bottom: 2px solid #e5e7eb;
       overflow-x: auto;
+      /* Tab bar sits on a white card that rounds off the bottom of the header */
+      background: white;
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      border: 1px solid #e5e7eb;
+      border-top: none;
+      padding: 0 8px;
+    }
+
+    /* Spacing between the sticky zone and first content card */
+    .edit-sticky-zone + * {
+      margin-top: var(--ui-space-24, 24px);
     }
 
     .tab-btn {
@@ -530,6 +571,32 @@
       line-height: 1.4;
     }
 
+    .mode-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mode-recommendation-hint {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      line-height: 1.3;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .mode-recommendation-hint.is-mismatch {
+      color: #92400e;
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
     .target-chip-grid {
       display: grid;
       gap: 8px;
@@ -988,31 +1055,34 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <div>
-        <h1>📝 Edit Mode</h1>
-        <p style="margin-top: 4px; opacity: 0.9;">Manage locations, automation, and settings</p>
-        <div id="activeTargetBanner" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:5px 12px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);border-radius:20px;font-size:13px;font-weight:600;letter-spacing:0.01em;backdrop-filter:blur(4px);">
-          <span style="opacity:0.75;font-weight:400;">Editing:</span>
-          <span id="activeTargetBannerTableName" style="color:#fde68a;font-weight:800;font-size:14px;">—</span>
-          <span id="activeTargetBannerFile" style="opacity:0.7;font-weight:400;font-size:11px;"></span>
+    <!-- Sticky zone: header card + tab bar stay pinned while scrolling -->
+    <div class="edit-sticky-zone" id="editStickyHeaderZone">
+      <div class="header">
+        <div>
+          <h1>📝 Edit Mode</h1>
+          <p style="margin-top: 4px; opacity: 0.9;">Manage locations, automation, and settings</p>
+          <div id="activeTargetBanner" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:5px 12px;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);border-radius:20px;font-size:13px;font-weight:600;letter-spacing:0.01em;backdrop-filter:blur(4px);">
+            <span style="opacity:0.75;font-weight:400;">Editing:</span>
+            <span id="activeTargetBannerTableName" style="color:#fde68a;font-weight:800;font-size:14px;">—</span>
+            <span id="activeTargetBannerFile" style="opacity:0.7;font-weight:400;font-size:11px;"></span>
+          </div>
         </div>
+        <button class="close-btn" onclick="closeEditModeWindow()">✕</button>
       </div>
-      <button class="close-btn" onclick="closeEditModeWindow()">✕</button>
-    </div>
 
-    <!-- Tabs -->
-    <div class="tabs" id="editModeTabList" role="tablist" aria-label="Edit mode sections">
-      <button id="tab-btn-places" class="tab-btn active" data-tab="places" role="tab" aria-selected="true" aria-controls="places-tab" tabindex="0" type="button">
-        <span class="tab-label-wrap">➕ Add Places</span>
-      </button>
-      <button id="tab-btn-automation" class="tab-btn" data-tab="automation" role="tab" aria-selected="false" aria-controls="automation-tab" tabindex="-1" type="button">🔄 Automation</button>
-      <button id="tab-btn-backup" class="tab-btn" data-tab="backup" role="tab" aria-selected="false" aria-controls="backup-tab" tabindex="-1" type="button">💾 Backup</button>
-      <button id="tab-btn-history" class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-controls="history-tab" tabindex="-1" type="button">📅 History</button>
-      <button id="tab-btn-festival" class="tab-btn" data-tab="festival" role="tab" aria-selected="false" aria-controls="festival-tab" tabindex="-1" type="button">
-        <span class="tab-label-wrap">🎪 Festival Config <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span><span id="festivalSourcesTabDirtyDot" class="festival-back-dirty-dot festival-tab-dirty-dot" hidden title="Unsaved changes"></span></span>
-      </button>
-    </div>
+      <!-- Tab bar, now directly connected to the header above and sticky with it -->
+      <div class="tabs" id="editModeTabList" role="tablist" aria-label="Edit mode sections">
+        <button id="tab-btn-places" class="tab-btn active" data-tab="places" role="tab" aria-selected="true" aria-controls="places-tab" tabindex="0" type="button">
+          <span class="tab-label-wrap">➕ Add Places</span>
+        </button>
+        <button id="tab-btn-automation" class="tab-btn" data-tab="automation" role="tab" aria-selected="false" aria-controls="automation-tab" tabindex="-1" type="button">🔄 Automation</button>
+        <button id="tab-btn-backup" class="tab-btn" data-tab="backup" role="tab" aria-selected="false" aria-controls="backup-tab" tabindex="-1" type="button">💾 Backup</button>
+        <button id="tab-btn-history" class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-controls="history-tab" tabindex="-1" type="button">📅 History</button>
+        <button id="tab-btn-festival" class="tab-btn" data-tab="festival" role="tab" aria-selected="false" aria-controls="festival-tab" tabindex="-1" type="button">
+          <span class="tab-label-wrap">🎪 Festival Config <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span><span id="festivalSourcesTabDirtyDot" class="festival-back-dirty-dot festival-tab-dirty-dot" hidden title="Unsaved changes"></span></span>
+        </button>
+      </div>
+    </div><!-- /edit-sticky-zone -->
 
     <div class="card edit-critical-config-card" id="editModeTargetCard">
       <div class="card-title" id="editModeTargetCardTitle">🎯 Target Table</div>
@@ -1519,6 +1589,18 @@
           <div class="dry-run-status off" id="refreshDryRunStatus">DISABLED</div>
         </div>
 
+        <div class="input-group" style="margin-top:10px;">
+          <div class="mode-label-row">
+            <label for="refreshPlaceIdsMode">Update mode</label>
+            <span id="refreshPlaceIdsModeHint" class="mode-recommendation-hint" aria-live="polite"></span>
+          </div>
+          <select id="refreshPlaceIdsMode">
+            <option value="missing-only">Search only rows missing / blank Place IDs</option>
+            <option value="refresh-all">Refresh all rows from Google</option>
+          </select>
+          <div class="help-text" style="margin-top:6px; color:#64748b;">Use <strong>missing / blank</strong> to backfill empty Place IDs only. Use <strong>refresh all</strong> when you want every row rechecked against Google.</div>
+        </div>
+
         <div class="button-group">
           <button class="button button-primary" onclick="submitRefreshPlaceIds()">🔄 Refresh Place IDs</button>
         </div>
@@ -1622,6 +1704,18 @@
           <div class="dry-run-status off" id="missingDryRunStatus">DISABLED</div>
         </div>
 
+        <div class="input-group" style="margin-top:10px;">
+          <div class="mode-label-row">
+            <label for="populateMissingMode">Update mode</label>
+            <span id="populateMissingModeHint" class="mode-recommendation-hint" aria-live="polite"></span>
+          </div>
+          <select id="populateMissingMode">
+            <option value="missing-only">Only fill missing / blank values</option>
+            <option value="refresh-all">Refresh / overwrite all tracked Google values</option>
+          </select>
+          <div class="help-text" style="margin-top:6px; color:#64748b;">This updates website, phone, hours, address, and rating using Google Places.</div>
+        </div>
+
         <div class="button-group">
           <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
         </div>
@@ -1643,6 +1737,18 @@
           <div class="toggle-slider"></div>
           <label for="hoursDryRun">🧪 Dry Run Mode</label>
           <div class="dry-run-status off" id="hoursDryRunStatus">DISABLED</div>
+        </div>
+
+        <div class="input-group" style="margin-top:10px;">
+          <div class="mode-label-row">
+            <label for="updateHoursMode">Update mode</label>
+            <span id="updateHoursModeHint" class="mode-recommendation-hint" aria-live="polite"></span>
+          </div>
+          <select id="updateHoursMode">
+            <option value="missing-only">Only fill blank hours</option>
+            <option value="refresh-all" selected>Refresh all hours from Google</option>
+          </select>
+          <div class="help-text" style="margin-top:6px; color:#64748b;">Choose <strong>blank only</strong> if you want to preserve any existing hours entries.</div>
         </div>
 
         <div class="button-group">
@@ -2549,6 +2655,7 @@
     const CANDIDATE_ANCHOR_FALLBACK = { lat: 35.3476, lng: -82.4590 };
     const CANDIDATE_FILTER_STORAGE_KEY = 'editModeCandidateFiltersV1';
     const FESTIVAL_SOURCES_CONFIG_STORAGE_KEY = 'editModeFestivalSourcesConfigV1';
+    const GOOGLE_AUTOMATION_MODE_STORAGE_KEY = 'editModeGoogleAutomationModePrefsV1';
     const GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD = 10;
     const FESTIVAL_OFFICIAL_STARTER_FEEDS = [
       '[official] Blue Ridge Parkway Events|https://www.blueridgeparkway.org/events/feed/',
@@ -4374,7 +4481,9 @@
         if (!incoming || typeof incoming !== 'object') return;
         if (!aggregate.updateDescriptionsDiagnostics) {
           aggregate.updateDescriptionsDiagnostics = {
+            updateMode: '',
             skipReasonCounts: {},
+            rowSamples: [],
             googleApi: {
               checked: false,
               attemptedRows: 0,
@@ -4382,11 +4491,13 @@
               emptyRows: 0,
               errorRows: 0,
               sourceCounts: {},
-              sampleReturns: []
+              sampleReturns: [],
+              sampleFailures: []
             }
           };
         }
         const targetDiag = aggregate.updateDescriptionsDiagnostics;
+        if (!targetDiag.updateMode && incoming.updateMode) targetDiag.updateMode = String(incoming.updateMode);
         const incomingSkip = incoming.skipReasonCounts && typeof incoming.skipReasonCounts === 'object' ? incoming.skipReasonCounts : {};
         Object.keys(incomingSkip).forEach((reason) => {
           const amount = Math.max(0, Number(incomingSkip[reason]) || 0);
@@ -4409,6 +4520,16 @@
         if (Array.isArray(incomingGoogle.sampleReturns)) {
           incomingGoogle.sampleReturns.forEach((sample) => {
             if (targetGoogle.sampleReturns.length < 3) targetGoogle.sampleReturns.push(sample);
+          });
+        }
+        if (Array.isArray(incomingGoogle.sampleFailures)) {
+          incomingGoogle.sampleFailures.forEach((sample) => {
+            if (targetGoogle.sampleFailures.length < 4) targetGoogle.sampleFailures.push(sample);
+          });
+        }
+        if (Array.isArray(incoming.rowSamples)) {
+          incoming.rowSamples.forEach((sample) => {
+            if (targetDiag.rowSamples.length < 6) targetDiag.rowSamples.push(sample);
           });
         }
       };
@@ -4594,7 +4715,9 @@
       if (!el) return;
       const safe = result && typeof result === 'object' ? result : {};
       const merged = {
+        updateMode: '',
         skipReasonCounts: {},
+        rowSamples: [],
         googleApi: {
           checked: false,
           attemptedRows: 0,
@@ -4602,11 +4725,13 @@
           emptyRows: 0,
           errorRows: 0,
           sourceCounts: {},
-          sampleReturns: []
+          sampleReturns: [],
+          sampleFailures: []
         }
       };
       const mergeIncoming = (incoming) => {
         if (!incoming || typeof incoming !== 'object') return;
+        if (!merged.updateMode && incoming.updateMode) merged.updateMode = String(incoming.updateMode || '').trim();
         const skipReasonCounts = incoming.skipReasonCounts && typeof incoming.skipReasonCounts === 'object' ? incoming.skipReasonCounts : {};
         Object.keys(skipReasonCounts).forEach((reason) => {
           const amount = Math.max(0, Number(skipReasonCounts[reason]) || 0);
@@ -4630,6 +4755,16 @@
             if (merged.googleApi.sampleReturns.length < 3) merged.googleApi.sampleReturns.push(sample);
           });
         }
+        if (Array.isArray(incomingGoogle.sampleFailures)) {
+          incomingGoogle.sampleFailures.forEach((sample) => {
+            if (merged.googleApi.sampleFailures.length < 4) merged.googleApi.sampleFailures.push(sample);
+          });
+        }
+        if (Array.isArray(incoming.rowSamples)) {
+          incoming.rowSamples.forEach((sample) => {
+            if (merged.rowSamples.length < 6) merged.rowSamples.push(sample);
+          });
+        }
       };
       mergeIncoming(safe.updateDescriptionsDiagnostics);
       if (Array.isArray(safe.targetSummaries)) {
@@ -4647,6 +4782,7 @@
       const skipText = skipEntries.length
         ? ` • Skip reasons: ${skipEntries.map(([reason, count]) => `${reason}=${Number(count)}`).join(', ')}`
         : ' • Skip reasons: none';
+      const modeText = merged.updateMode ? ` • Mode: ${merged.updateMode}` : '';
       const googleChecked = merged.googleApi.checked || Number(merged.googleApi.attemptedRows || 0) > 0;
       const googleText = ` • Google check: ${googleChecked ? 'yes' : 'no'} (attempted ${Number(merged.googleApi.attemptedRows || 0)}, meaningful ${Number(merged.googleApi.returnedRows || 0)}, empty ${Number(merged.googleApi.emptyRows || 0)}, errors ${Number(merged.googleApi.errorRows || 0)})`;
       const sourceText = sourceEntries.length
@@ -4660,7 +4796,108 @@
             return `${src}/${status}${desc ? ` -> "${desc.slice(0, 60)}${desc.length > 60 ? '...' : ''}"` : ' -> (no description)'}`;
           }).join(' | ')}`
         : '';
-      el.textContent = `${el.textContent}${skipText}${googleText}${sourceText}${sampleText}`;
+      const failureText = Array.isArray(merged.googleApi.sampleFailures) && merged.googleApi.sampleFailures.length
+        ? ` • Google failures: ${merged.googleApi.sampleFailures.slice(0, 2).map((sample) => {
+            const src = String((sample && sample.source) || 'unknown').trim() || 'unknown';
+            const status = String((sample && sample.status) || 'unknown').trim() || 'unknown';
+            const err = String((sample && sample.error) || '').trim();
+            return `${src}/${status}${err ? ` -> ${err.slice(0, 80)}${err.length > 80 ? '...' : ''}` : ''}`;
+          }).join(' | ')}`
+        : '';
+      const rowSampleText = Array.isArray(merged.rowSamples) && merged.rowSamples.length
+        ? ` • Row samples: ${merged.rowSamples.slice(0, 2).map((sample) => {
+            const rowName = String((sample && sample.name) || '(no name)').trim();
+            const rowStatus = String((sample && sample.status) || 'unknown').trim();
+            const reason = String((sample && sample.reason) || '').trim();
+            return `${rowName}/${rowStatus}${reason ? ` -> ${reason.slice(0, 90)}${reason.length > 90 ? '...' : ''}` : ''}`;
+          }).join(' | ')}`
+        : '';
+      el.textContent = `${el.textContent}${modeText}${skipText}${googleText}${sourceText}${sampleText}${failureText}${rowSampleText}`;
+    }
+
+    function normalizeGoogleAutomationMode(rawMode, fallback = 'missing-only') {
+      const fallbackMode = String(fallback || 'missing-only').trim().toLowerCase() === 'refresh-all' ? 'refresh-all' : 'missing-only';
+      const mode = String(rawMode || '').trim().toLowerCase();
+      if (!mode) return fallbackMode;
+      return mode === 'refresh-all' ? 'refresh-all' : 'missing-only';
+    }
+
+    function getGoogleAutomationModeHintLabel(mode) {
+      const normalized = normalizeGoogleAutomationMode(mode, 'missing-only');
+      return normalized === 'refresh-all' ? 'Refresh all' : 'Missing only';
+    }
+
+    function renderGoogleAutomationModeHint(control, currentMode) {
+      if (!control || !control.hintId) return;
+      const hintEl = document.getElementById(control.hintId);
+      if (!hintEl) return;
+      const recommendedMode = normalizeGoogleAutomationMode(control.fallback, control.fallback);
+      const activeMode = normalizeGoogleAutomationMode(currentMode, control.fallback);
+      const recommendedLabel = getGoogleAutomationModeHintLabel(recommendedMode);
+      const activeLabel = getGoogleAutomationModeHintLabel(activeMode);
+      if (activeMode === recommendedMode) {
+        hintEl.textContent = `Recommended: ${recommendedLabel}`;
+        hintEl.classList.remove('is-mismatch');
+        return;
+      }
+      hintEl.textContent = `Recommended: ${recommendedLabel} (now ${activeLabel})`;
+      hintEl.classList.add('is-mismatch');
+    }
+
+    function readGoogleAutomationModePrefs() {
+      try {
+        const raw = window.localStorage.getItem(GOOGLE_AUTOMATION_MODE_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (_error) {
+        return {};
+      }
+    }
+
+    function persistGoogleAutomationModePrefs(prefs) {
+      const safePrefs = prefs && typeof prefs === 'object' ? prefs : {};
+      try {
+        window.localStorage.setItem(GOOGLE_AUTOMATION_MODE_STORAGE_KEY, JSON.stringify(safePrefs));
+      } catch (_error) {
+        // Ignore storage failures.
+      }
+    }
+
+    function initializeGoogleAutomationModeControls() {
+      if (window.__googleAutomationModeControlsInitialized) return;
+      window.__googleAutomationModeControlsInitialized = true;
+      const modeControls = [
+        { id: 'refreshPlaceIdsMode', fallback: 'missing-only', hintId: 'refreshPlaceIdsModeHint', toastPrefix: 'Refresh Place IDs' },
+        { id: 'populateMissingMode', fallback: 'missing-only', hintId: 'populateMissingModeHint', toastPrefix: 'Fill Missing Fields' },
+        { id: 'updateHoursMode', fallback: 'refresh-all', hintId: 'updateHoursModeHint', toastPrefix: 'Update Hours' }
+      ];
+      const prefs = readGoogleAutomationModePrefs();
+      modeControls.forEach((control) => {
+        const { id, fallback } = control;
+        const el = document.getElementById(id);
+        if (!el) return;
+        const normalized = normalizeGoogleAutomationMode(prefs[id], fallback);
+        el.value = normalized;
+        renderGoogleAutomationModeHint(control, normalized);
+        el.addEventListener('change', () => {
+          const nextPrefs = readGoogleAutomationModePrefs();
+          const selectedMode = normalizeGoogleAutomationMode(el.value, fallback);
+          nextPrefs[id] = selectedMode;
+          persistGoogleAutomationModePrefs(nextPrefs);
+          renderGoogleAutomationModeHint(control, selectedMode);
+          showToast(`⚙️ ${control.toastPrefix} mode changed to ${getGoogleAutomationModeHintLabel(selectedMode)}.`, 'info', 1800);
+        });
+      });
+    }
+
+    function getGoogleAutomationModeValue(elementId, fallback = 'missing-only') {
+      const el = document.getElementById(elementId);
+      const raw = String(el && el.value ? el.value : '').trim().toLowerCase();
+      const normalized = normalizeGoogleAutomationMode(raw, fallback);
+      if (el && el.value !== normalized) {
+        el.value = normalized;
+      }
+      return normalized;
     }
 
     function normalizeWriteResultContractForUi(result, defaults = {}) {
@@ -7081,13 +7318,14 @@
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
       const targets = getAutomationTargetsForRun();
+      const updateMode = getGoogleAutomationModeValue('populateMissingMode', 'missing-only');
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
-          return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
+          return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun, { updateMode });
         }
         if (typeof window.handlePopulateMissingFields === 'function') {
-          return await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
+          return await window.handlePopulateMissingFields(document.createElement('div'), dryRun, { updateMode });
         }
         if (window.enhancedAutomation) {
           return await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
@@ -7107,16 +7345,17 @@
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
       const targets = getAutomationTargetsForRun();
+      const updateMode = getGoogleAutomationModeValue('updateHoursMode', 'refresh-all');
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateHoursWithProgress === 'function') {
-          return await window.handleUpdateHoursWithProgress(document.createElement('div'), dryRun);
+          return await window.handleUpdateHoursWithProgress(document.createElement('div'), dryRun, { updateMode });
         }
         if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
-          return await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
+          return await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun, { updateMode });
         }
         if (typeof window.handleUpdateHoursOnly === 'function') {
-          return await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
+          return await window.handleUpdateHoursOnly(document.createElement('div'), dryRun, { updateMode });
         }
         if (window.enhancedAutomation) {
           return await window.enhancedAutomation.updateHoursOnly(dryRun);
@@ -7136,21 +7375,31 @@
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
       const targets = getAutomationTargetsForRun();
+      const updateMode = getGoogleAutomationModeValue('refreshPlaceIdsMode', 'missing-only');
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        const host = getMainWindowSafe();
+        if (updateMode === 'missing-only') {
+          if (host && typeof host.searchMissingGooglePlaceIds === 'function') {
+            return await host.searchMissingGooglePlaceIds({ dryRun });
+          }
+          if (host && typeof host.backfillMissingGooglePlaceIds === 'function') {
+            return await host.backfillMissingGooglePlaceIds({ dryRun });
+          }
+        }
         if (typeof window.refreshPlaceIdsWithProgress === 'function') {
-          return await window.refreshPlaceIdsWithProgress(dryRun);
+          return await window.refreshPlaceIdsWithProgress(dryRun, { updateMode });
         }
         if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
-          return await window.handleRefreshPlaceIdsWithProgress(document.createElement('div'), dryRun);
+          return await window.handleRefreshPlaceIdsWithProgress(document.createElement('div'), dryRun, { updateMode });
         }
-        const host = getMainWindowSafe();
         if (host && typeof host.runGoogleAutomation === 'function') {
           return await host.runGoogleAutomation('refreshPlaceIds', dryRun);
         }
         throw new Error('Refresh system not available');
       });
       renderAutomationWriteDiagnostics('refresh-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('refresh-write-diagnostics', result);
       return;
     }
 
@@ -7173,6 +7422,7 @@
         throw new Error('Search Missing Place IDs system not available');
       });
       renderAutomationWriteDiagnostics('search-place-ids-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('search-place-ids-write-diagnostics', result);
       return;
     }
 
@@ -8007,6 +8257,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initializeGoogleAutomationModeControls();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();
@@ -8035,6 +8286,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initializeGoogleAutomationModeControls();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();
@@ -8064,6 +8316,19 @@
   <script src="../JS Files/consolidated-bulk-operations-system-v7-0-141.js"></script>
   <script src="../JS Files/consolidated-comprehensive-fix-system-v7-0-141.js"></script>
   <script src="../JS Files/button-reliability-system.js"></script>
+
+  <script>
+    /* Sticky header scroll-shadow: add .is-scrolled once page scrolls past the header */
+    (function () {
+      var stickyZone = document.getElementById('editStickyHeaderZone');
+      if (!stickyZone) return;
+      function onScroll() {
+        stickyZone.classList.toggle('is-scrolled', window.scrollY > 10);
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }());
+  </script>
 </body>
 </html>
 

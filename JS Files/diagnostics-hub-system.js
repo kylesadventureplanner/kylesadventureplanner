@@ -170,6 +170,72 @@
     return (size / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
+  function normalizeGoogleMode(rawMode, fallbackMode) {
+    if (window.DiagnosticsReport && typeof window.DiagnosticsReport.normalizeGoogleUpdateMode === 'function') {
+      return window.DiagnosticsReport.normalizeGoogleUpdateMode(rawMode, fallbackMode);
+    }
+    var fallback = String(fallbackMode || 'missing-only').trim().toLowerCase() === 'refresh-all' ? 'refresh-all' : 'missing-only';
+    var mode = String(rawMode || '').trim().toLowerCase();
+    if (!mode) return fallback;
+    return mode === 'refresh-all' ? 'refresh-all' : 'missing-only';
+  }
+
+  function describeGoogleMode(rawMode) {
+    if (window.DiagnosticsReport && typeof window.DiagnosticsReport.describeGoogleUpdateMode === 'function') {
+      return window.DiagnosticsReport.describeGoogleUpdateMode(rawMode);
+    }
+    return normalizeGoogleMode(rawMode) === 'refresh-all' ? 'refresh all values' : 'missing / blank values only';
+  }
+
+  function getGoogleModeGuide(operationName) {
+    if (window.DiagnosticsReport && typeof window.DiagnosticsReport.getGoogleOperationModeGuide === 'function') {
+      return window.DiagnosticsReport.getGoogleOperationModeGuide(operationName);
+    }
+    return {
+      expectedDefaultMode: 'missing-only',
+      expectedDefaultLabel: describeGoogleMode('missing-only'),
+      note: 'Mode expectations are not explicitly configured for this operation yet.'
+    };
+  }
+
+  function renderGoogleModeCoverage(recentRuns) {
+    var runs = Array.isArray(recentRuns) ? recentRuns : [];
+    if (!runs.length) {
+      return '<div class="diagnostics-hub-empty">Run a Google automation action to populate mode coverage diagnostics.</div>';
+    }
+    var buckets = Object.create(null);
+    runs.forEach(function (run) {
+      var operation = String(run && run.operation || 'unknown').trim() || 'unknown';
+      var guide = getGoogleModeGuide(operation);
+      var mode = normalizeGoogleMode(run && run.mode, guide.expectedDefaultMode);
+      if (!buckets[operation]) {
+        buckets[operation] = { operation: operation, missingOnly: 0, refreshAll: 0, lastMode: mode, lastAt: String(run && run.timestamp || '') };
+      }
+      if (mode === 'refresh-all') buckets[operation].refreshAll += 1;
+      else buckets[operation].missingOnly += 1;
+      buckets[operation].lastMode = mode;
+      buckets[operation].lastAt = String(run && run.timestamp || buckets[operation].lastAt || '');
+    });
+    var rows = Object.keys(buckets).sort().map(function (key) {
+      var bucket = buckets[key];
+      var guide = getGoogleModeGuide(bucket.operation);
+      var expectedMode = normalizeGoogleMode(guide.expectedDefaultMode, 'missing-only');
+      var lastMode = normalizeGoogleMode(bucket.lastMode, expectedMode);
+      var modeTone = lastMode === expectedMode ? '#047857' : '#b45309';
+      return [
+        '<tr>',
+        '<td><strong>' + escHtml(bucket.operation) + '</strong></td>',
+        '<td>' + escHtml(String(bucket.missingOnly)) + '</td>',
+        '<td>' + escHtml(String(bucket.refreshAll)) + '</td>',
+        '<td><span style="font-weight:700;color:' + escHtml(modeTone) + ';">' + escHtml(describeGoogleMode(lastMode)) + '</span></td>',
+        '<td>' + escHtml(guide.expectedDefaultLabel || describeGoogleMode(expectedMode)) + '</td>',
+        '<td>' + escHtml(formatTime(bucket.lastAt)) + '</td>',
+        '</tr>'
+      ].join('');
+    }).join('');
+    return '<div class="diagnostics-hub-table-wrap"><table class="diagnostics-hub-table"><thead><tr><th>Operation</th><th>Missing-only runs</th><th>Refresh-all runs</th><th>Last mode used</th><th>Expected default</th><th>Last run</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
   function composeDiagnosticsStatusHtml(options) {
     var safeOptions = options && typeof options === 'object' ? options : {};
     var tone = String(safeOptions.tone || 'info').trim().toLowerCase();
@@ -703,6 +769,9 @@
 
   function renderPlacesHealthSection(snapshot) {
     var places = snapshot.placesHealth || { available: false, status: 'unknown', ok: false, summary: 'Not tested', steps: [] };
+    var googleApiDiag = snapshot.googleApiDiagnostics || { keyStatus: null, lastHealthCheck: null, recentRuns: [] };
+    var keyStatus = googleApiDiag.keyStatus || { state: 'unknown', configured: false, preview: '', detail: 'Google key state has not been recorded yet.' };
+    var latestRun = Array.isArray(googleApiDiag.recentRuns) && googleApiDiag.recentRuns.length ? googleApiDiag.recentRuns[0] : null;
     var statusColor = places.ok ? '#047857' : (places.status === 'unknown' ? '#64748b' : '#b45309');
     var statusLabel = places.ok ? '✓ Healthy' : (places.status === 'unknown' ? '? Not tested' : '⚠ Issues detected');
     var stepsHtml = (Array.isArray(places.steps) ? places.steps : []).map(function(step) {
@@ -713,6 +782,29 @@
         '<div style="font-weight:700;color:' + escHtml(stepColor) + ';">' + escHtml(stepStatus) + ' ' + escHtml(step.key || 'step') + '</div>',
         '<div class="diagnostics-hub-note">' + escHtml(step.detail || '') + '</div>',
         (step.advice ? '<div class="diagnostics-hub-note"><strong>💡 Suggestion:</strong> ' + escHtml(step.advice) + '</div>' : ''),
+        '</div>'
+      ].join('');
+    }).join('');
+    var recentRuns = (Array.isArray(googleApiDiag.recentRuns) ? googleApiDiag.recentRuns : []).slice(0, 5);
+    var runsHtml = recentRuns.map(function(run) {
+      var totals = run && run.totals ? run.totals : {};
+      var summaryText = String(run && run.summary || '').trim();
+      var operationName = String(run && run.operation || 'google-operation').trim();
+      var modeGuide = getGoogleModeGuide(operationName);
+      var modeValue = normalizeGoogleMode(run && run.mode, modeGuide.expectedDefaultMode);
+      var expectedMode = normalizeGoogleMode(modeGuide.expectedDefaultMode, 'missing-only');
+      var modeMatchesDefault = modeValue === expectedMode;
+      return [
+        '<div class="diagnostics-hub-list-item">',
+        '<div class="diagnostics-hub-list-head">',
+        '<strong>' + escHtml(operationName) + '</strong>',
+        '<span class="diagnostics-hub-badge">' + escHtml(describeGoogleMode(modeValue)) + (run && run.dryRun ? ' • dry run' : '') + '</span>',
+        '</div>',
+        '<div class="diagnostics-hub-note">' + escHtml(summaryText || 'No summary captured.') + '</div>',
+        '<div class="diagnostics-hub-note">Mode guidance: expected default is ' + escHtml(modeGuide.expectedDefaultLabel || describeGoogleMode(expectedMode)) + '. ' + escHtml(modeGuide.note || '') + '</div>',
+        '<div class="diagnostics-hub-note" style="color:' + (modeMatchesDefault ? '#047857' : '#b45309') + ';">Last run used ' + escHtml(describeGoogleMode(modeValue)) + (modeMatchesDefault ? ' (matches default).' : ' (differs from default by operator choice).') + '</div>',
+        '<div class="diagnostics-hub-note">Rows: total ' + escHtml(String(Math.max(0, Number(totals.totalRows) || 0))) + ', updated ' + escHtml(String(Math.max(0, Number(totals.updatedRows) || 0))) + ', skipped ' + escHtml(String(Math.max(0, Number(totals.skippedRows) || 0))) + ', errors ' + escHtml(String(Math.max(0, Number(totals.errorRows) || 0))) + '</div>',
+        '<div class="diagnostics-hub-note">Captured: ' + escHtml(formatTime(run && run.timestamp)) + '</div>',
         '</div>'
       ].join('');
     }).join('');
@@ -730,17 +822,38 @@
       '<div class="diagnostics-hub-note"><strong>Place ID:</strong> ' + escHtml(places.placeIdUsed || 'Not used') + '</div>',
       '<div class="diagnostics-hub-note"><strong>Test Status:</strong> ' + escHtml(places.status || 'unknown') + '</div>',
       '</section>',
+      '<section class="diagnostics-hub-card">',
+      '<div class="diagnostics-hub-card-title">🔑 Key state</div>',
+      '<div class="diagnostics-hub-kpi ' + (keyStatus.configured ? 'is-good' : 'is-warn') + '">' + escHtml(keyStatus.state || 'unknown') + '</div>',
+      '<div class="diagnostics-hub-note">' + escHtml(keyStatus.detail || 'No key diagnostics recorded yet.') + '</div>',
+      '<div class="diagnostics-hub-note"><strong>Preview:</strong> ' + escHtml(keyStatus.preview || '—') + '</div>',
+      '</section>',
+      '<section class="diagnostics-hub-card">',
+      '<div class="diagnostics-hub-card-title">🛠 Latest Google automation run</div>',
+      '<div class="diagnostics-hub-note"><strong>Operation:</strong> ' + escHtml(latestRun && latestRun.operation || 'None recorded yet') + '</div>',
+      '<div class="diagnostics-hub-note"><strong>Mode:</strong> ' + escHtml(latestRun && latestRun.mode || '—') + '</div>',
+      '<div class="diagnostics-hub-note"><strong>Summary:</strong> ' + escHtml(latestRun && latestRun.summary || 'Run one of the Google update tools to populate this section.') + '</div>',
+      '</section>',
       '</div>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
       '<div class="diagnostics-hub-card-title">Health Check Steps</div>',
       (stepsHtml ? stepsHtml : '<div class="diagnostics-hub-empty">No health check data available. Run the Places API health test.</div>'),
       '</section>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
+      '<div class="diagnostics-hub-card-title">Recent Google automation runs</div>',
+      (runsHtml ? runsHtml : '<div class="diagnostics-hub-empty">No Google automation runs have been recorded yet.</div>'),
+      '</section>',
+      '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
+      '<div class="diagnostics-hub-card-title">Google mode coverage</div>',
+      '<div class="diagnostics-hub-note">Tracks how often each operation runs in missing-only vs refresh-all mode so you can confirm operator intent and defaults.</div>',
+      renderGoogleModeCoverage(googleApiDiag.recentRuns),
+      '</section>',
+      '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
       '<div class="diagnostics-hub-card-title">About Places API Health</div>',
       '<ul class="diagnostics-hub-bullets">',
       '<li>This section validates your Google Places API key configuration and connectivity.</li>',
       '<li>The health check tests Place search, Place details retrieval, and Google Maps library availability.</li>',
-      '<li>If any step fails, check your API key in the browser console and ensure the required APIs are enabled in Google Cloud Console.</li>',
+      '<li>If any step fails, check the exact step, your API key state, and the recent automation run summaries shown above before assuming Google itself is down.</li>',
       '<li>To run a full health check in the browser, use the Places API test in the automation panel or the developer console.</li>',
       '</ul>',
       '</section>'
@@ -837,6 +950,9 @@
           adventure: getAdventureSnapshot(),
           nature: getNatureSnapshot(),
           placesHealth: placesHealth,
+          googleApiDiagnostics: window.DiagnosticsReport && typeof window.DiagnosticsReport.getGoogleApiSnapshot === 'function'
+            ? window.DiagnosticsReport.getGoogleApiSnapshot()
+            : { keyStatus: null, lastHealthCheck: null, recentRuns: [] },
           storageInventory: buildStorageInventory(),
           reliability: readReliabilitySnapshot(),
           knownGood: readKnownGoodInfo(),

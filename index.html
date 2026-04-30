@@ -10987,6 +10987,13 @@
           ? `Places health check failed during ${failedStep.label}.`
           : 'Places health check failed.';
       }
+      if (window.DiagnosticsReport && typeof window.DiagnosticsReport.recordPlacesHealthCheck === 'function') {
+        try {
+          window.DiagnosticsReport.recordPlacesHealthCheck(result);
+        } catch (_diagError) {
+          // Non-blocking diagnostics only.
+        }
+      }
       return result;
     }
 
@@ -22015,6 +22022,25 @@ COMMON ISSUES:
       };
 
       const title = actionTitles[actionType] || "Google Automation";
+      const recordAutomationRun = function(payload) {
+        if (!(window.DiagnosticsReport && typeof window.DiagnosticsReport.recordGoogleAutomationRun === 'function')) return;
+        try {
+          window.DiagnosticsReport.recordGoogleAutomationRun(actionType, {
+            mode: actionType === 'populateMissing'
+              ? 'missing-only'
+              : (actionType === 'refreshHours'
+                ? 'refresh-all'
+                : (actionType === 'refreshAll'
+                  ? 'refresh-all'
+                  : (actionType === 'searchPlaceIds' ? 'missing-only' : 'refresh-all'))),
+            dryRun: !!isDryRun,
+            target: String(window.tableName || '').trim(),
+            ...payload
+          });
+        } catch (_diagError) {
+          // Non-blocking diagnostics only.
+        }
+      };
       showAutomationProgress(title, isDryRun);
       showAutomationPreview(actionType);
 
@@ -22099,6 +22125,16 @@ COMMON ISSUES:
       if (abortedByPlacesConfig) {
         addAutomationLog("Run stopped early to prevent repeated blocked requests.", "warning");
         showToast(`${title}: blocked by Google Places API permission/config`, "error", 5000);
+        recordAutomationRun({
+          success: false,
+          summary: `${title} stopped early because Google Places API was blocked by key/project configuration.`,
+          totals: { totalRows: total, updatedRows: updated, skippedRows: skipped, errorRows: errors, persistedRows: 0 },
+          googleApi: {
+            blocked: true,
+            issue: 'places-config-blocked',
+            autoRefreshInvalidPlaceIds: autoRefreshInvalidPlaceIds
+          }
+        });
         return;
       }
 
@@ -22384,6 +22420,15 @@ COMMON ISSUES:
       const toastType = errors > 0 ? "warning" : "success";
       const toastMsg = `${title}: ${updated} ${isDryRun ? "planned" : "updated"}, ${skipped} skipped${errors ? `, ${errors} errors` : ""}`;
       showToast(toastMsg, toastType, 4000);
+      recordAutomationRun({
+        success: errors === 0,
+        summary: toastMsg,
+        totals: { totalRows: total, updatedRows: updated, skippedRows: skipped, errorRows: errors, persistedRows: isDryRun ? 0 : updated },
+        googleApi: {
+          blocked: false,
+          autoRefreshInvalidPlaceIds: autoRefreshInvalidPlaceIds
+        }
+      });
 
       window.clearStaleModalBackdrops?.();
       window.ensureButtonsClickable?.();

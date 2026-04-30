@@ -195,6 +195,28 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#search-place-ids-write-diagnostics')).toContainText(/dry run only/i);
   });
 
+  test('automation mode selectors show recommendation hints and emit change toast', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await expandTabCardsIfAvailable(page, 'automation');
+
+    await expect(page.locator('#refreshPlaceIdsModeHint')).toContainText('Recommended: Missing only');
+    await expect(page.locator('#populateMissingModeHint')).toContainText('Recommended: Missing only');
+    await expect(page.locator('#updateHoursModeHint')).toContainText('Recommended: Refresh all');
+
+    await page.evaluate(() => {
+      window.__modeToastCalls = [];
+      window.showToast = (...args) => {
+        window.__modeToastCalls.push(args.map((part) => String(part)));
+      };
+    });
+
+    await page.selectOption('#populateMissingMode', 'refresh-all');
+    await expect(page.locator('#populateMissingModeHint')).toContainText('Recommended: Missing only (now Refresh all)');
+    await expect.poll(() => page.evaluate(() => window.__modeToastCalls.length), { timeout: 10000 }).toBeGreaterThan(0);
+    await expect.poll(() => page.evaluate(() => window.__modeToastCalls[window.__modeToastCalls.length - 1][0]), { timeout: 10000 })
+      .toContain('Fill Missing Fields mode changed to Refresh all');
+  });
+
   test('Update Descriptions automation fills blank descriptions from Google details', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
     await page.evaluate(() => {
@@ -320,6 +342,14 @@ test.describe('Edit Mode – target-table selectors', () => {
       const mount = document.createElement('div');
       document.body.appendChild(mount);
       window.__populatePersistResult = await window.handlePopulateMissingFields(mount, false);
+      // Reset hours cell so the hours handler still has something to write
+      // (handlePopulateMissingFields already populated it; the refresh-all optimisation
+      // would otherwise skip rows whose value already matches Google).
+      if (window.adventuresData?.[0]?.values?.[0]) {
+        const hoursIdx = typeof window.getColumnIndexByName === 'function'
+          ? Number(window.getColumnIndexByName('Hours of Operation', ['Hours'])) : 5;
+        if (hoursIdx >= 0) window.adventuresData[0].values[0][hoursIdx] = '';
+      }
       window.__hoursPersistResult = await window.handleUpdateHoursOnly(mount, false);
       window.__tagPersistResult = await window.autoTagAllLocationsUnified({ dryRun: false });
     });

@@ -85,21 +85,18 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       console.log('✅ Initialized activeFilters');
     }
 
-    // ⚠️ IMPORTANT: Initialize Google Places API Key
-    // This is REQUIRED for the Populate Missing Fields feature to work
-    // If you don't have an API key, get one from https://console.cloud.google.com
-    // Steps:
-    // 1. Create a project
-    // 2. Enable "Places API"
-    // 3. Go to Credentials and create an API key
-    // 4. Replace 'YOUR_GOOGLE_PLACES_API_KEY_HERE' with your actual key
-
-    if (!window.GOOGLE_PLACES_API_KEY) {
-      // TODO: Replace this with your actual Google Places API key
-      window.GOOGLE_PLACES_API_KEY = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
-      console.log('⚠️ GOOGLE_PLACES_API_KEY placeholder set. Update with real key for Populate Missing Fields to work.');
-    } else {
-      console.log('✅ GOOGLE_PLACES_API_KEY initialized');
+    // Google key status is now reported via shared diagnostics instead of
+    // force-injecting a fallback key here.  This avoids false "placeholder"
+    // warnings when the real loader/key is already configured elsewhere.
+    const googleKeyStatus = window.DiagnosticsReport && typeof window.DiagnosticsReport.getGoogleApiKeyStatus === 'function'
+      ? window.DiagnosticsReport.getGoogleApiKeyStatus()
+      : null;
+    if (googleKeyStatus && googleKeyStatus.configured) {
+      console.log(`✅ GOOGLE_PLACES_API_KEY detected (${googleKeyStatus.preview || 'configured'})`);
+    } else if (googleKeyStatus && googleKeyStatus.placeholder) {
+      console.warn('⚠️ GOOGLE_PLACES_API_KEY looks like a placeholder token. Replace it before relying on live Places requests.');
+    } else if (!window.GOOGLE_PLACES_API_KEY) {
+      console.warn('⚠️ GOOGLE_PLACES_API_KEY is not set on window. Google Places features may be unavailable until the main app config loads.');
     }
 
     console.log('✅ Global variables initialized');
@@ -728,8 +725,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   /**
    * Refresh Place IDs with detailed progress tracking
    */
-  window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async function(dryRun = false) {
-    console.log(`🔄 Starting Refresh Place IDs (Dry Run: ${dryRun})...`);
+  window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async function(dryRun = false, options = {}) {
+    const updateMode = String(options && options.updateMode || 'refresh-all').trim().toLowerCase() === 'missing-only' ? 'missing-only' : 'refresh-all';
+    console.log(`🔄 Starting Refresh Place IDs (Dry Run: ${dryRun}, mode=${updateMode})...`);
 
     const statusDiv = document.getElementById('refresh-status');
     if (!statusDiv) {
@@ -754,6 +752,57 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       let skipped = 0;
       const details = [];
       const errors = [];
+      const skipReasonCounts = Object.create(null);
+      const googleFailureSamples = [];
+      const recordSkipReason = (reason) => {
+        const safeReason = String(reason || 'unspecified').trim() || 'unspecified';
+        skipReasonCounts[safeReason] = Number(skipReasonCounts[safeReason] || 0) + 1;
+      };
+      const classifyGoogleFailure = (error) => {
+        const message = String(error && error.message ? error.message : error || 'Unknown Google error').trim();
+        if (/NOT_FOUND/i.test(message)) return 'Google no longer recognizes this Place ID (NOT_FOUND).';
+        if (/REQUEST_DENIED|API key|billing|referer|permission/i.test(message)) return 'Google rejected the request because of API-key, billing, referrer, or permissions configuration.';
+        if (/OVER_QUERY_LIMIT|quota|rate limit/i.test(message)) return 'Google refused the request because quota or rate limits were reached.';
+        if (/network|failed to fetch|load failed|timeout/i.test(message)) return 'The request failed before Google returned data (network/load/timeout issue).';
+        return message;
+      };
+      const buildOperationDiagnostics = () => ({
+        operation: 'refresh-place-ids',
+        updateMode,
+        rows: {
+          totalRows: data.length,
+          updatedRows: successful,
+          skippedRows: skipped,
+          errorRows: failed,
+          persistedRows: workbookPersisted ? changedRows.length : 0
+        },
+        skipReasonCounts: Object.keys(skipReasonCounts).sort((a, b) => a.localeCompare(b)).reduce((acc, key) => {
+          acc[key] = Number(skipReasonCounts[key] || 0);
+          return acc;
+        }, {}),
+        rowSamples: details.slice(0, 6).map((item) => ({
+          name: String(item && item.name || '(no name)').trim(),
+          status: String(item && item.status || 'unknown').trim(),
+          reason: String(item && (item.reason || item.error || item.action) || '').trim(),
+          placeId: String(item && item.placeId || '').trim()
+        })),
+        googleApi: {
+          checked: successful + failed > 0,
+          attemptedRows: successful + failed,
+          returnedRows: successful,
+          emptyRows: 0,
+          errorRows: failed,
+          sourceCounts: { getPlaceDetails: successful + failed },
+          sampleReturns: details.filter((item) => item && item.status === 'success').slice(0, 3).map((item) => ({
+            placeId: String(item.placeId || '').trim(),
+            name: String(item.name || '').trim(),
+            source: 'getPlaceDetails',
+            status: 'success',
+            descriptionPreview: String(item.action || '').trim().slice(0, 120)
+          })),
+          sampleFailures: googleFailureSamples.slice(0, 4)
+        }
+      });
       const activeCols = (mainWindow && typeof mainWindow.getColumnIndexByName === 'function')
         ? {
             NAME: Number(mainWindow.getColumnIndexByName('Name')),
@@ -810,7 +859,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   <strong>Processing: ${i + 1}/${data.length} (${progress}%)</strong>
                   <div style="font-size: 12px; margin-top: 8px;">
                     📍 ${placeName}<br>
-                    ✅ Success: ${successful} | ❌ Failed: ${failed} | ⏭️ Skipped: ${skipped}
+                    ✅ Updated: ${successful} | ❌ Errors: ${failed} | ⏭️ Skipped: ${skipped}
                   </div>
                 </div>
               </div>
@@ -819,7 +868,8 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
           if (!placeId || placeId === 'SKIP' || placeId === 'undefined' || String(placeId).trim() === '') {
             skipped++;
-            details.push({ status: 'skipped', name: placeName, reason: 'No Place ID' });
+            recordSkipReason('missing-place-id');
+            details.push({ status: 'skipped', name: placeName, placeId: '', reason: 'Skipped because this row has no Place ID' });
             continue;
           }
 
@@ -828,7 +878,8 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
             details.push({
               status: 'success',
               name: placeName,
-              action: 'Would refresh Place ID'
+              placeId: String(placeId || '').trim(),
+              action: 'Would refresh Google-backed values for this Place ID'
             });
             console.log(`✅ [DRY RUN] Would refresh: ${placeName}`);
           } else {
@@ -840,6 +891,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   details.push({
                     status: 'success',
                     name: placeName,
+                    placeId: String(placeId || '').trim(),
                     action: 'Refreshed from Google API'
                   });
                   if (rowValues) {
@@ -862,28 +914,36 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   console.log(`✅ Refreshed: ${placeName}`);
                 } else {
                   failed++;
-                  errors.push({ name: placeName, error: 'API returned no data' });
+                  const failureMessage = 'Google returned no details for this Place ID';
+                  errors.push({ name: placeName, error: failureMessage });
                   details.push({
                     status: 'failed',
                     name: placeName,
-                    error: 'API returned no data'
+                    placeId: String(placeId || '').trim(),
+                    error: failureMessage
                   });
+                  googleFailureSamples.push({ placeId: String(placeId || '').trim(), name: String(placeName || '').trim(), source: 'getPlaceDetails', status: 'empty', error: failureMessage });
                 }
               } catch (apiError) {
                 failed++;
-                errors.push({ name: placeName, error: apiError.message });
+                const classifiedFailure = classifyGoogleFailure(apiError);
+                errors.push({ name: placeName, error: classifiedFailure });
                 details.push({
                   status: 'failed',
                   name: placeName,
-                  error: apiError.message
+                  placeId: String(placeId || '').trim(),
+                  error: classifiedFailure
                 });
+                googleFailureSamples.push({ placeId: String(placeId || '').trim(), name: String(placeName || '').trim(), source: 'getPlaceDetails', status: 'error', error: classifiedFailure.slice(0, 220) });
               }
             } else {
               skipped++;
+              recordSkipReason('getPlaceDetails-unavailable');
               details.push({
                 status: 'skipped',
                 name: placeName,
-                reason: 'getPlaceDetails not available'
+                placeId: String(placeId || '').trim(),
+                reason: 'Skipped because the Google details helper is not available in this window'
               });
             }
           }
@@ -891,7 +951,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         } catch (error) {
           console.error(`❌ Error processing ${placeName}:`, error);
           failed++;
-          errors.push({ name: placeName, error: error.message });
+          const classifiedFailure = classifyGoogleFailure(error);
+          errors.push({ name: placeName, error: classifiedFailure });
+          googleFailureSamples.push({ placeId: String(placeId || '').trim(), name: String(placeName || '').trim(), source: 'refresh-loop', status: 'error', error: classifiedFailure.slice(0, 220) });
         }
       }
 
@@ -926,13 +988,20 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         }
       }
 
+      const operationDiagnostics = buildOperationDiagnostics();
+      const allSkippedDueToMissingPlaceId = skipped > 0 && successful === 0 && failed === 0 && Number(operationDiagnostics.skipReasonCounts['missing-place-id'] || 0) === skipped;
       let resultHTML = '<div class="status-message status-success" style="background: #ecfdf5; color: #047857; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px;">';
-      resultHTML += '<strong>✅ Refresh Complete!</strong><br><br>';
+      resultHTML += `<strong>${allSkippedDueToMissingPlaceId ? 'ℹ️ Refresh finished with no eligible rows' : '✅ Refresh Complete!'}</strong><br><br>`;
       resultHTML += `📊 <strong>Results:</strong><br>`;
-      resultHTML += `✅ Successful: ${successful}<br>`;
-      resultHTML += `❌ Failed: ${failed}<br>`;
+      resultHTML += `✅ Updated: ${successful}<br>`;
+      resultHTML += `❌ Errors: ${failed}<br>`;
       resultHTML += `⏭️ Skipped: ${skipped}<br>`;
       resultHTML += `📍 Total: ${data.length}<br>`;
+      resultHTML += `🧭 Mode: ${updateMode === 'missing-only' ? 'missing / blank only' : 'refresh all'}<br>`;
+
+      if (allSkippedDueToMissingPlaceId) {
+        resultHTML += `<br><strong>Why nothing updated:</strong> all ${skipped} row${skipped === 1 ? '' : 's'} were skipped because they had no Place ID. This was not a Google failure.<br>`;
+      }
 
       if (dryRun) {
         resultHTML += `<br>🧪 <strong>DRY RUN MODE - No changes made</strong>`;
@@ -942,6 +1011,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         } else {
           resultHTML += `<br>💾 <strong>⚠️ Workbook not persisted:</strong> ${workbookPersistError || 'unknown-error'}`;
         }
+      }
+
+      const skipReasonEntries = Object.entries(operationDiagnostics.skipReasonCounts || {});
+      if (skipReasonEntries.length) {
+        resultHTML += `<br><strong>Skip reasons:</strong><br>`;
+        skipReasonEntries.forEach(([reason, count]) => {
+          resultHTML += `• ${reason}: ${count}<br>`;
+        });
       }
 
       resultHTML += '<br><br><strong>Details:</strong><br>';
@@ -976,20 +1053,45 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       if (window.showToast) {
         window.showToast(
-          `✅ Refresh Complete: ${successful} success, ${failed} failed, ${skipped} skipped`,
-          'success',
+          allSkippedDueToMissingPlaceId
+            ? `ℹ️ Refresh skipped: all ${skipped} row${skipped === 1 ? '' : 's'} were missing Place IDs`
+            : `✅ Refresh Complete: ${successful} updated, ${failed} errors, ${skipped} skipped`,
+          allSkippedDueToMissingPlaceId ? 'warning' : 'success',
           5000
         );
       }
 
-      console.log(`🎉 Refresh complete: ${successful} success, ${failed} failed, ${skipped} skipped`);
+      if (window.DiagnosticsReport && typeof window.DiagnosticsReport.recordGoogleAutomationRun === 'function') {
+        try {
+          window.DiagnosticsReport.recordGoogleAutomationRun('refresh-place-ids', {
+            mode: updateMode,
+            dryRun: !!dryRun,
+            success: failed === 0,
+            target: String(mainWindow.tableName || '').trim(),
+            summary: allSkippedDueToMissingPlaceId
+              ? `All ${skipped} rows were skipped because they had no Place ID.`
+              : `Refresh completed with ${successful} updated, ${skipped} skipped, ${failed} errors.`,
+            totals: operationDiagnostics.rows,
+            skipReasonCounts: operationDiagnostics.skipReasonCounts,
+            googleApi: operationDiagnostics.googleApi,
+            samples: operationDiagnostics.rowSamples
+          });
+        } catch (_diagError) {
+          // Best-effort diagnostics only.
+        }
+      }
+
+      console.log(`🎉 Refresh complete: ${successful} updated, ${failed} errors, ${skipped} skipped`);
       return {
         success: failed === 0,
-        message: `Refresh Complete: ${successful} success, ${failed} failed, ${skipped} skipped`,
+        message: allSkippedDueToMissingPlaceId
+          ? `All ${skipped} rows were skipped because they had no Place ID.`
+          : `Refresh Complete: ${successful} updated, ${failed} errors, ${skipped} skipped`,
         persisted: !!workbookPersisted,
         persistMode: dryRun ? 'dry-run' : (workbookPersisted ? (changedRows.length ? 'saveToExcel-row-patch' : 'saveToExcel') : (persistedRowUpdates > 0 ? 'error' : 'no-op')),
         persistReason: dryRun ? 'dry-run' : (workbookPersisted ? '' : (workbookPersistError || (persistedRowUpdates > 0 ? 'saveToExcel-unavailable' : 'no-row-updates'))),
         dryRun,
+        updateMode,
         updatedCount: successful,
         skippedCount: skipped,
         errorCount: failed,
@@ -999,7 +1101,8 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         verifiedRowsChanged,
         postWriteVerified: changedRows.length > 0 ? verifiedRowsChanged === changedRows.length : false,
         verificationMode: dryRun ? 'dry-run' : (changedRows.length ? 'row-reread' : 'no-op'),
-        verificationReason: dryRun ? 'dry-run' : (changedRows.length ? (verifiedRowsChanged === changedRows.length ? '' : 'one-or-more-row-verifications-failed') : 'no-row-updates')
+        verificationReason: dryRun ? 'dry-run' : (changedRows.length ? (verifiedRowsChanged === changedRows.length ? '' : 'one-or-more-row-verifications-failed') : 'no-row-updates'),
+        updateDescriptionsDiagnostics: operationDiagnostics
       };
 
     } catch (error) {
@@ -1017,7 +1120,16 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         persisted: false,
         persistMode: 'error',
         persistReason: error.message,
-        dryRun
+        dryRun,
+        updateMode,
+        updateDescriptionsDiagnostics: {
+          operation: 'refresh-place-ids',
+          updateMode,
+          rows: { totalRows: 0, updatedRows: 0, skippedRows: 0, errorRows: 1, persistedRows: 0 },
+          skipReasonCounts: {},
+          rowSamples: [],
+          googleApi: { checked: false, attemptedRows: 0, returnedRows: 0, emptyRows: 0, errorRows: 1, sourceCounts: {}, sampleReturns: [], sampleFailures: [{ source: 'refresh-loop', status: 'error', error: String(error && error.message ? error.message : error).slice(0, 220) }] }
+        }
       };
     }
   };
