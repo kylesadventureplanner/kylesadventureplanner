@@ -160,6 +160,24 @@ window.DiagnosticsReport = window.DiagnosticsReport || (function() {
     var operation = String(safe.operation || 'unknown').trim() || 'unknown';
     var modeGuide = getGoogleOperationModeGuide(operation);
     var normalizedMode = normalizeGoogleUpdateMode(safe.mode, modeGuide.expectedDefaultMode);
+    var totals = {
+      totalRows: Math.max(0, Number(safe.totals && safe.totals.totalRows) || 0),
+      updatedRows: Math.max(0, Number(safe.totals && safe.totals.updatedRows) || 0),
+      skippedRows: Math.max(0, Number(safe.totals && safe.totals.skippedRows) || 0),
+      errorRows: Math.max(0, Number(safe.totals && safe.totals.errorRows) || 0),
+      persistedRows: Math.max(0, Number(safe.totals && safe.totals.persistedRows) || 0)
+    };
+    var googleApi = safe.googleApi && typeof safe.googleApi === 'object' ? safe.googleApi : {};
+    var attemptedRows = Math.max(0, Number(googleApi.attemptedRows) || 0);
+    var isSuccessfulNoOp = !safe.dryRun
+      && totals.updatedRows === 0
+      && totals.errorRows === 0
+      && (totals.totalRows > 0 || attemptedRows > 0)
+      && (totals.skippedRows > 0 || attemptedRows > 0);
+    var summaryText = String(safe.summary || '').trim();
+    if (isSuccessfulNoOp) {
+      summaryText = 'No changes needed (already up to date).';
+    }
     return {
       operation: operation,
       mode: normalizedMode,
@@ -168,16 +186,10 @@ window.DiagnosticsReport = window.DiagnosticsReport || (function() {
       dryRun: !!safe.dryRun,
       target: String(safe.target || '').trim(),
       success: safe.success !== false,
-      summary: String(safe.summary || '').trim(),
-      totals: {
-        totalRows: Math.max(0, Number(safe.totals && safe.totals.totalRows) || 0),
-        updatedRows: Math.max(0, Number(safe.totals && safe.totals.updatedRows) || 0),
-        skippedRows: Math.max(0, Number(safe.totals && safe.totals.skippedRows) || 0),
-        errorRows: Math.max(0, Number(safe.totals && safe.totals.errorRows) || 0),
-        persistedRows: Math.max(0, Number(safe.totals && safe.totals.persistedRows) || 0)
-      },
+      summary: summaryText,
+      totals: totals,
       skipReasonCounts: safe.skipReasonCounts && typeof safe.skipReasonCounts === 'object' ? safe.skipReasonCounts : {},
-      googleApi: safe.googleApi && typeof safe.googleApi === 'object' ? safe.googleApi : {},
+      googleApi: googleApi,
       samples: Array.isArray(safe.samples) ? safe.samples.slice(0, 5) : [],
       timestamp: String(safe.timestamp || new Date().toISOString())
     };

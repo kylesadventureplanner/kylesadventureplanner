@@ -785,6 +785,41 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     };
   }
 
+  function normalizeHoursForRefreshWrite(value, normalizeHoursHost) {
+    if (value == null) return '';
+    if (typeof normalizeHoursHost?.normalizeOperationHours === 'function') {
+      try {
+        return String(normalizeHoursHost.normalizeOperationHours(value) || '').trim();
+      } catch (_error) {}
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return '';
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return normalizeHoursForRefreshWrite(JSON.parse(trimmed), normalizeHoursHost);
+        } catch (_error) {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    }
+    if (Array.isArray(value)) return value.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+    if (typeof value === 'object') {
+      if (Array.isArray(value.weekdayDescriptions)) {
+        return value.weekdayDescriptions.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+      }
+      if (Array.isArray(value.weekday_text)) {
+        return value.weekday_text.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+      }
+      if (Array.isArray(value.weekdayText)) {
+        return value.weekdayText.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+      }
+      return String(value.text || '').trim();
+    }
+    return String(value).trim();
+  }
+
   /**
    * Refresh Place IDs with detailed progress tracking
    */
@@ -968,9 +1003,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   if (rowValues) {
                     if (freshData.website) rowValues[c.WEBSITE] = String(freshData.website);
                     if (freshData.hours) {
-                      rowValues[c.HOURS] = typeof normalizeHoursHost.normalizeOperationHours === 'function'
-                        ? String(normalizeHoursHost.normalizeOperationHours(freshData.hours) || '')
-                        : String(freshData.hours || '');
+                      rowValues[c.HOURS] = normalizeHoursForRefreshWrite(freshData.hours, normalizeHoursHost);
                     }
                     if (freshData.address) rowValues[c.ADDRESS] = String(freshData.address);
                     if (freshData.phone) rowValues[c.PHONE] = String(freshData.phone);

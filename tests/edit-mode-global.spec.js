@@ -430,6 +430,59 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toMatch(/Description column:\s*index\s*16\s*\(Description\)/i);
   });
 
+  test('update hours normalizes stringified JSON payloads before persisting', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright JSON Hours Cafe';
+      row[1] = 'ChIJJsonHoursCafe123';
+      row[9] = 'NC';
+      row[10] = 'Durham';
+      row[11] = '123 JSON Hours Way, Durham, NC 27701';
+      window.adventuresData = [{ values: [row] }];
+
+      window.saveToExcel = async () => ({ persisted: true, verified: true });
+      const serializedHours = JSON.stringify({
+        periods: [{ open: { day: 1, hour: 7, minute: 30 }, close: { day: 1, hour: 12, minute: 0 } }],
+        weekdayDescriptions: [
+          'Monday: 7:30 AM - 12:00 PM',
+          'Tuesday: 7:30 AM - 3:30 PM',
+          'Wednesday: 7:30 AM - 3:30 PM'
+        ],
+        specialDays: []
+      });
+      window.getPlaceDetails = async () => ({
+        hours: serializedHours,
+        reviews: []
+      });
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__jsonHoursResult = await window.handleUpdateHoursOnly(mount, false, { updateMode: 'refresh-all' });
+    });
+
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
+      .toContain('Monday: 7:30 AM - 12:00 PM');
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
+      .not.toContain('{"periods"');
+    await expect.poll(() => page.evaluate(() => window.__jsonHoursResult), { timeout: 10000 })
+      .toMatchObject({ success: true, updatedCount: 1 });
+  });
+
   test('automation row persistence prefers workbook row ids when available', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
     await page.evaluate(() => {

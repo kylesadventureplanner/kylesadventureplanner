@@ -1083,7 +1083,18 @@ function updateSheetData(updateRanges) {
 
 function normalizeHoursForBulkOps(value, mainWindow) {
   if (value == null) return '';
-  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        return normalizeHoursForBulkOps(JSON.parse(trimmed), mainWindow);
+      } catch (_error) {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
   const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
   if (host && typeof host.normalizeOperationHours === 'function') {
     try {
@@ -1095,6 +1106,12 @@ function normalizeHoursForBulkOps(value, mainWindow) {
     if (Array.isArray(value.weekdayDescriptions)) {
       return value.weekdayDescriptions.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
     }
+    if (Array.isArray(value.weekday_text)) {
+      return value.weekday_text.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+    }
+    if (Array.isArray(value.weekdayText)) {
+      return value.weekdayText.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+    }
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const normalized = days
       .map((day) => {
@@ -1103,7 +1120,7 @@ function normalizeHoursForBulkOps(value, mainWindow) {
       })
       .filter(Boolean)
       .join('; ');
-    return normalized || String(value.text || value.periods || '').trim() || JSON.stringify(value);
+    return normalized || String(value.text || value.periods || '').trim();
   }
   return String(value).trim();
 }
