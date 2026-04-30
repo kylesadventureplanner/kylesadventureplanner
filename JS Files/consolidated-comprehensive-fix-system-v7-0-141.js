@@ -722,6 +722,69 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   // SECTION 6: REFRESH PLACE IDS WITH PROGRESS
   // ============================================================
 
+  function collectRefreshHostCandidates() {
+    const candidates = [];
+    const pushCandidate = (win, label) => {
+      try {
+        if (!win) return;
+        if (candidates.some((entry) => entry.win === win)) return;
+        candidates.push({ win, label: String(label || 'unknown') });
+      } catch (_error) {
+        // Ignore inaccessible window references
+      }
+    };
+
+    pushCandidate(window, 'self');
+    try {
+      if (window.parent && window.parent !== window) pushCandidate(window.parent, 'parent');
+    } catch (_error) {}
+    try {
+      if (window.opener && !window.opener.closed) pushCandidate(window.opener, 'opener');
+    } catch (_error) {}
+    try {
+      if (window.top && window.top !== window) pushCandidate(window.top, 'top');
+    } catch (_error) {}
+    try {
+      if (window.opener && !window.opener.closed && window.opener.parent && window.opener.parent !== window.opener) {
+        pushCandidate(window.opener.parent, 'opener.parent');
+      }
+    } catch (_error) {}
+
+    return candidates;
+  }
+
+  function resolveRefreshAutomationContexts() {
+    const candidates = collectRefreshHostCandidates();
+    const findHost = (predicate) => {
+      const match = candidates.find((entry) => {
+        try {
+          return !!(entry && entry.win && predicate(entry.win));
+        } catch (_error) {
+          return false;
+        }
+      });
+      return match || null;
+    };
+
+    const dataHost = findHost((win) => Array.isArray(win.adventuresData) && win.adventuresData.length > 0);
+    const helperHost = findHost((win) => typeof win.getPlaceDetails === 'function');
+    const saveHost = findHost((win) => typeof win.saveToExcel === 'function');
+    const columnHost = findHost((win) => typeof win.getColumnIndexByName === 'function');
+    const normalizeHoursHost = findHost((win) => typeof win.normalizeOperationHours === 'function');
+    const fallbackHost = candidates[0] || { win: window, label: 'self' };
+
+    return {
+      candidates,
+      mainWindow: (dataHost && dataHost.win) || fallbackHost.win,
+      mainWindowLabel: (dataHost && dataHost.label) || fallbackHost.label,
+      helperHost: (helperHost && helperHost.win) || null,
+      helperHostLabel: (helperHost && helperHost.label) || '',
+      saveHost: (saveHost && saveHost.win) || ((dataHost && dataHost.win) || fallbackHost.win),
+      columnHost: (columnHost && columnHost.win) || ((dataHost && dataHost.win) || fallbackHost.win),
+      normalizeHoursHost: (normalizeHoursHost && normalizeHoursHost.win) || ((dataHost && dataHost.win) || fallbackHost.win)
+    };
+  }
+
   /**
    * Refresh Place IDs with detailed progress tracking
    */
@@ -736,7 +799,15 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     }
 
     try {
-      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+      const resolvedContexts = resolveRefreshAutomationContexts();
+      const mainWindow = resolvedContexts.mainWindow;
+      const columnHost = resolvedContexts.columnHost || mainWindow;
+      const saveHost = resolvedContexts.saveHost || mainWindow;
+      const normalizeHoursHost = resolvedContexts.normalizeHoursHost || mainWindow;
+      const getPlaceDetailsHost = resolvedContexts.helperHost;
+      const getPlaceDetails = getPlaceDetailsHost && typeof getPlaceDetailsHost.getPlaceDetails === 'function'
+        ? getPlaceDetailsHost.getPlaceDetails.bind(getPlaceDetailsHost)
+        : null;
       const data = mainWindow.adventuresData || window.adventuresData || [];
 
       if (!data || data.length === 0) {
@@ -803,17 +874,17 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
           sampleFailures: googleFailureSamples.slice(0, 4)
         }
       });
-      const activeCols = (mainWindow && typeof mainWindow.getColumnIndexByName === 'function')
+      const activeCols = (columnHost && typeof columnHost.getColumnIndexByName === 'function')
         ? {
-            NAME: Number(mainWindow.getColumnIndexByName('Name')),
-            PLACE_ID: Number(mainWindow.getColumnIndexByName('Google Place ID', ['GooglePlaceId'])),
-            WEBSITE: Number(mainWindow.getColumnIndexByName('Website')),
-            HOURS: Number(mainWindow.getColumnIndexByName('Hours of Operation', ['Hours'])),
-            ADDRESS: Number(mainWindow.getColumnIndexByName('Address')),
-            PHONE: Number(mainWindow.getColumnIndexByName('Phone Number', ['Phone'])),
-            RATING: Number(mainWindow.getColumnIndexByName('Google Rating', ['Rating'])),
-            DIRECTIONS: Number(mainWindow.getColumnIndexByName('Directions', ['Directions '])),
-            DESCRIPTION: Number(mainWindow.getColumnIndexByName('Description'))
+            NAME: Number(columnHost.getColumnIndexByName('Name')),
+            PLACE_ID: Number(columnHost.getColumnIndexByName('Google Place ID', ['GooglePlaceId'])),
+            WEBSITE: Number(columnHost.getColumnIndexByName('Website')),
+            HOURS: Number(columnHost.getColumnIndexByName('Hours of Operation', ['Hours'])),
+            ADDRESS: Number(columnHost.getColumnIndexByName('Address')),
+            PHONE: Number(columnHost.getColumnIndexByName('Phone Number', ['Phone'])),
+            RATING: Number(columnHost.getColumnIndexByName('Google Rating', ['Rating'])),
+            DIRECTIONS: Number(columnHost.getColumnIndexByName('Directions', ['Directions '])),
+            DESCRIPTION: Number(columnHost.getColumnIndexByName('Description'))
           }
         : {
             NAME: 0,
@@ -883,9 +954,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
             });
             console.log(`✅ [DRY RUN] Would refresh: ${placeName}`);
           } else {
-            if (mainWindow.getPlaceDetails && typeof mainWindow.getPlaceDetails === 'function') {
+            if (typeof getPlaceDetails === 'function') {
               try {
-                const freshData = await mainWindow.getPlaceDetails(placeId);
+                const freshData = await getPlaceDetails(placeId);
                 if (freshData) {
                   successful++;
                   details.push({
@@ -897,8 +968,8 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   if (rowValues) {
                     if (freshData.website) rowValues[c.WEBSITE] = String(freshData.website);
                     if (freshData.hours) {
-                      rowValues[c.HOURS] = typeof mainWindow.normalizeOperationHours === 'function'
-                        ? String(mainWindow.normalizeOperationHours(freshData.hours) || '')
+                      rowValues[c.HOURS] = typeof normalizeHoursHost.normalizeOperationHours === 'function'
+                        ? String(normalizeHoursHost.normalizeOperationHours(freshData.hours) || '')
                         : String(freshData.hours || '');
                     }
                     if (freshData.address) rowValues[c.ADDRESS] = String(freshData.address);
@@ -943,7 +1014,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                 status: 'skipped',
                 name: placeName,
                 placeId: String(placeId || '').trim(),
-                reason: 'Skipped because the Google details helper is not available in this window'
+                reason: `Skipped because the Google details helper is not available (active host: ${resolvedContexts.mainWindowLabel || 'self'})`
               });
             }
           }
@@ -961,20 +1032,20 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       let workbookPersistError = '';
       let verifiedRowsChanged = 0;
       if (!dryRun && persistedRowUpdates > 0) {
-        if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
+        if (saveHost && typeof saveHost.saveToExcel === 'function') {
           try {
-            if (mainWindow.saveToExcel.length >= 1 && changedRows.length) {
+            if (saveHost.saveToExcel.length >= 1 && changedRows.length) {
               for (const row of changedRows) {
                 const rowRef = typeof window.resolveWorkbookRowReference === 'function'
                   ? window.resolveWorkbookRowReference(row, row.rowIndex)
                   : (row.rowId ?? row.rowIndex);
-                const saveResult = await mainWindow.saveToExcel(rowRef, row.values);
+                const saveResult = await saveHost.saveToExcel(rowRef, row.values);
                 if (saveResult && typeof saveResult === 'object' && saveResult.verified) verifiedRowsChanged += 1;
               }
               workbookPersisted = true;
               console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook via row patching`);
             } else {
-              await mainWindow.saveToExcel();
+              await saveHost.saveToExcel();
               workbookPersisted = true;
               console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook`);
             }
