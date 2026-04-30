@@ -1518,16 +1518,41 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     /**
      * Fix 2: Monitor for pointer-events: none and fix immediately
      */
+    // Track buttons already warned about so we don't spam the console on every interval tick.
+    const _ptrEventsWarnedSet = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+
     const fixPointerEventsOnButtons = () => {
       const buttons = document.querySelectorAll('button:not(:disabled)');
       buttons.forEach(btn => {
+        // Skip buttons that are inside an intentionally collapsed/hidden container.
+        // Those containers use `pointer-events: none !important` in CSS by design (e.g.
+        // #errorNotificationBar.collapsed * and #debuggingConsole.collapsed *).
+        // Trying to override CSS !important via inline style will never win, so we'd
+        // just spam warnings forever without actually fixing anything.
+        if (btn.closest('.collapsed, [hidden]')) return;
+
         const style = window.getComputedStyle(btn);
         const pointerEvents = style.pointerEvents;
 
         if (pointerEvents === 'none') {
           // Use valid inline style assignment (no !important — that's only valid in stylesheets)
           btn.style.pointerEvents = 'auto';
-          console.warn(`⚠️ Fixed pointer-events:none on: ${btn.id || btn.textContent.slice(0, 20)}`);
+
+          // Verify the fix actually took effect. If CSS !important still overrides us,
+          // there is nothing we can do here — silently skip rather than loop-warning.
+          const newPointerEvents = window.getComputedStyle(btn).pointerEvents;
+          if (newPointerEvents === 'none') {
+            // CSS !important on an ancestor is winning; revert the now-useless inline style
+            // so we don't accumulate junk inline styles on elements we can't change.
+            btn.style.pointerEvents = '';
+            return;
+          }
+
+          // Only warn once per button element to avoid console spam.
+          if (_ptrEventsWarnedSet && !_ptrEventsWarnedSet.has(btn)) {
+            _ptrEventsWarnedSet.add(btn);
+            console.warn(`⚠️ Fixed pointer-events:none on: ${btn.id || btn.textContent.slice(0, 20)}`);
+          }
         }
 
         // NOTE: Do NOT set z-index here. Forcing z-index: 10 on every button via inline style

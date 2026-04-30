@@ -10434,7 +10434,10 @@
         lowerMessage.includes('invalid frameid for foreground frameid') ||
         lowerMessage.includes('no tab with id:') ||
         lowerMessage.includes('chrome-extension://') ||
-        (lowerMessage.includes('cannot create item with duplicate id') && lowerMessage.includes('lastpass'))
+        (lowerMessage.includes('cannot create item with duplicate id') && lowerMessage.includes('lastpass')) ||
+        // Button responsiveness monitor routine fix messages — these are informational-only
+        // maintenance logs from the fix system and should not inflate the error bar count.
+        lowerMessage.includes('fixed pointer-events:none on:')
       );
     };
     }
