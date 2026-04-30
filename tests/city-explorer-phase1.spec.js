@@ -822,6 +822,55 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('.loc-card.active')).toContainText('River Falls');
   });
 
+  test('map fallback shows basemap unavailable status and retries Google script from inline action', async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalAppendChild = HTMLHeadElement.prototype.appendChild;
+      window.__mapsScriptAppendAttempts = 0;
+      HTMLHeadElement.prototype.appendChild = function (node) {
+        const isScript = node && node.tagName === 'SCRIPT';
+        const src = isScript ? String(node.src || '') : '';
+        if (isScript && src.includes('maps.googleapis.com/maps/api/js')) {
+          window.__mapsScriptAppendAttempts += 1;
+          if (window.__mapsScriptAppendAttempts === 1) {
+            setTimeout(() => {
+              if (typeof node.onerror === 'function') node.onerror(new Event('error'));
+            }, 0);
+            return node;
+          }
+          const mockScript = [
+            'window.google = window.google || {};',
+            'window.google.maps = window.google.maps || {};',
+            'window.google.maps.Map = function(){ this.setCenter = function(){}; this.fitBounds = function(){}; };',
+            'window.google.maps.Marker = function(){ this.setMap = function(){}; this.setOpacity = function(){}; this.addListener = function(){}; };',
+            'window.google.maps.LatLngBounds = function(){ this.extend = function(){}; };',
+            'window.google.maps.event = { trigger: function(){} };',
+            'setTimeout(function(){ if (typeof window.__cvMapsInit === "function") window.__cvMapsInit(); }, 120);'
+          ].join('');
+          node.src = `data:text/javascript,${encodeURIComponent(mockScript)}`;
+        }
+        return originalAppendChild.call(this, node);
+      };
+    });
+
+    await openTestCity(page);
+
+    const splitToggle = page.locator('#locSplitToggleBtn');
+    await splitToggle.click();
+
+    await expect(page.locator('#locMapStatus')).toContainText('Basemap unavailable');
+    await expect(page.locator('#locMapCanvas .map-pin')).toHaveCount(4);
+    await expect(page.locator('#locRetryBasemapBtn')).toBeVisible();
+
+    await page.locator('#locRetryBasemapBtn').click();
+    await expect(page.locator('#locRetryBasemapBtn')).toBeDisabled();
+    await expect(page.locator('#locRetryBasemapBtn')).toHaveText('Retrying...');
+
+    await expect.poll(() => page.evaluate(() => Number(window.__mapsScriptAppendAttempts || 0)), { timeout: 10000 }).toBe(2);
+    await expect(page.locator('#locRetryBasemapBtn')).toHaveText('Loaded');
+    await expect(page.locator('#locMapStatus')).toContainText('Basemap loaded.');
+    await expect(page.locator('#locMapStatusRow')).toBeHidden();
+  });
+
   test('non-Nature rows hide Nature-only detail fields while Nature rows keep them', async ({ page }) => {
     await openTestCity(page);
 

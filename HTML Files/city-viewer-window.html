@@ -1640,12 +1640,61 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 8px;
       padding: 10px 12px;
       border-bottom: 1px solid #f3f4f6;
       font-size: 12px;
       color: #6b7280;
       font-weight: 600;
+    }
+    .loc-map-status-row {
+      display: none;
+      flex-basis: 100%;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .loc-map-status-row.is-visible {
+      display: flex;
+    }
+    .loc-map-status {
+      display: block;
+      flex: 1;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #92400e;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 5px 7px;
+    }
+    .loc-map-retry-btn {
+      border: 1px solid #f59e0b;
+      background: #fef3c7;
+      color: #78350f;
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .loc-map-retry-btn:hover {
+      background: #fde68a;
+    }
+    .loc-map-retry-btn.is-loading,
+    .loc-map-retry-btn:disabled {
+      opacity: 0.75;
+      cursor: wait;
+      background: #fde68a;
+    }
+    .loc-map-retry-btn.is-success {
+      border-color: #10b981;
+      background: #d1fae5;
+      color: #065f46;
+      cursor: default;
+      opacity: 1;
     }
     .loc-map-canvas {
       height: 460px;
@@ -2860,6 +2909,10 @@
           <div class="loc-map-header">
             <span>Map Pins (synced with list)</span>
             <span id="locMapCount">0 pins</span>
+            <div id="locMapStatusRow" class="loc-map-status-row" hidden>
+              <span id="locMapStatus" class="loc-map-status"></span>
+              <button id="locRetryBasemapBtn" class="loc-map-retry-btn" type="button" onclick="retryLocBasemap()">Retry basemap</button>
+            </div>
           </div>
           <div id="locMapCanvas" class="loc-map-canvas"></div>
         </aside>
@@ -3537,6 +3590,8 @@
     let locGoogleMarkers = [];
     let locMapboxMap = null;
     let locMapboxMarkers = [];
+    let locBasemapErrorMessage = '';
+    let locRetryBasemapFlashTimer = null;
     let prefilterTag = '';
     let prefilterLabel = '';
     let prefilterSourceSubtab = '';
@@ -6312,7 +6367,8 @@
 
       window.__cvMapsLoadPromise = new Promise((resolve, reject) => {
         window.__cvMapsQueue = window.__cvMapsQueue || [];
-        window.__cvMapsQueue.push(() => resolve(true));
+        const onReady = () => resolve(true);
+        window.__cvMapsQueue.push(onReady);
 
         if (window.__cvMapsScriptRequested) return;
         window.__cvMapsScriptRequested = true;
@@ -6322,7 +6378,10 @@
         script.async = true;
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__cvMapsInit`;
         script.onerror = () => {
+          window.__cvMapsQueue = (window.__cvMapsQueue || []).filter((fn) => fn !== onReady);
+          window.__cvMapsScriptRequested = false;
           window.__cvMapsLoadPromise = null;
+          locBasemapErrorMessage = 'Basemap unavailable right now; showing simplified pins.';
           reject(new Error('Google Maps failed to load.'));
         };
         document.head.appendChild(script);
@@ -6336,10 +6395,16 @@
       saveLastLocState();
 
       if (locSplitView) {
+        setLocMapStatus('');
         ensureCityMapsApiLoaded().then(() => {
+          locBasemapErrorMessage = '';
           if (locSplitView) renderLocMap(lastFilteredLocations);
         }).catch((error) => {
           console.warn('⚠️ Maps API load failed; using fallback map renderer.', error && error.message ? error.message : error);
+          if (!locBasemapErrorMessage) {
+            locBasemapErrorMessage = 'Basemap unavailable right now; showing simplified pins.';
+          }
+          renderLocMap(lastFilteredLocations);
         });
       }
 
@@ -6359,6 +6424,30 @@
         });
       });
       updateUrlFromState();
+    }
+
+    function retryLocBasemap() {
+      if (!locSplitView) return;
+      setLocMapStatus('');
+      locBasemapErrorMessage = '';
+      window.__cvMapsScriptRequested = false;
+      window.__cvMapsLoadPromise = null;
+      setLocRetryBasemapLoading(true);
+
+      ensureCityMapsApiLoaded().then(() => {
+        locBasemapErrorMessage = '';
+        if (!locSplitView) {
+          setLocRetryBasemapLoading(false);
+          return;
+        }
+        renderLocMap(lastFilteredLocations);
+        flashLocRetryBasemapSuccess();
+      }).catch((error) => {
+        console.warn('⚠️ Retry basemap failed; keeping fallback renderer.', error && error.message ? error.message : error);
+        locBasemapErrorMessage = 'Basemap unavailable right now; showing simplified pins.';
+        renderLocMap(lastFilteredLocations);
+        setLocRetryBasemapLoading(false);
+      });
     }
 
     function findLocationById(locId) {
@@ -6390,6 +6479,9 @@
       const count = document.getElementById('locMapCount');
       if (!canvas || !count) return;
       count.textContent = `${locations.length} pins`;
+      if (!locSplitView) {
+        setLocMapStatus('');
+      }
       // Only clear canvas when Google Maps is NOT mounted – clearing the Google Maps
       // container destroys its tile DOM and makes the map go blank.
       if (!locGoogleMap) {
@@ -6407,10 +6499,80 @@
          return { locId, loc, point: getLocPoint(loc, locId), name: String(locVal(loc, 0, 'name') || 'Location') };
        });
 
-      if (renderGoogleMap(points)) return;
-      if (renderMapboxMap(points)) return;
+        if (renderGoogleMap(points)) {
+          setLocMapStatus('');
+          return;
+        }
+        if (renderMapboxMap(points)) {
+          setLocMapStatus('');
+          return;
+        }
       renderCanvasMap(points);
+        if (locBasemapErrorMessage) {
+          setLocMapStatus(locBasemapErrorMessage);
+        } else {
+          setLocMapStatus('');
+        }
     }
+
+      function setLocMapStatus(message) {
+        const node = document.getElementById('locMapStatus');
+        const row = document.getElementById('locMapStatusRow');
+        if (!node) return;
+        const text = String(message || '').trim();
+        node.textContent = text;
+        if (row) {
+          row.classList.toggle('is-visible', !!text);
+          row.hidden = !text;
+        }
+      }
+
+      function setLocRetryBasemapLoading(isLoading) {
+        const btn = document.getElementById('locRetryBasemapBtn');
+        if (!btn) return;
+        if (locRetryBasemapFlashTimer) {
+          clearTimeout(locRetryBasemapFlashTimer);
+          locRetryBasemapFlashTimer = null;
+        }
+        const loading = !!isLoading;
+        btn.disabled = loading;
+        btn.textContent = loading ? 'Retrying...' : 'Retry basemap';
+        btn.classList.toggle('is-loading', loading);
+        btn.classList.remove('is-success');
+        btn.setAttribute('aria-busy', loading ? 'true' : 'false');
+      }
+
+      function flashLocRetryBasemapSuccess() {
+        const btn = document.getElementById('locRetryBasemapBtn');
+        if (!btn) {
+          setLocMapStatus('Basemap loaded.');
+          locRetryBasemapFlashTimer = window.setTimeout(() => {
+            setLocMapStatus('');
+            locRetryBasemapFlashTimer = null;
+          }, 1000);
+          return;
+        }
+
+        if (locRetryBasemapFlashTimer) {
+          clearTimeout(locRetryBasemapFlashTimer);
+          locRetryBasemapFlashTimer = null;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Loaded';
+        btn.classList.remove('is-loading');
+        btn.classList.add('is-success');
+        btn.setAttribute('aria-busy', 'false');
+        setLocMapStatus('Basemap loaded.');
+
+        locRetryBasemapFlashTimer = window.setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = 'Retry basemap';
+          btn.classList.remove('is-success');
+          setLocMapStatus('');
+          locRetryBasemapFlashTimer = null;
+        }, 1000);
+      }
 
     function renderGoogleMap(points) {
       // Need the full Google Maps library, not just the namespace stub.
