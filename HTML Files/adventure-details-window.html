@@ -382,30 +382,10 @@
 <body>
 <div class="wrap ui-page-shell">
   <div id="header" class="head"></div>
-  <div id="debugBar" class="debug-bar u-hidden"></div>
 
-  <div id="tabs" class="tabs ui-control-bar" aria-label="Adventure details tabs">
-    <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
-    <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
-    <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
-    <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
-    <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
-    <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
-    <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
-    <button class="tab-btn" data-tab="map" type="button">🗺️ Map View</button>
-  </div>
-
-  <div id="pane-overview" class="tab-pane active"></div>
-  <div id="pane-details" class="tab-pane"></div>
-  <div id="pane-notes" class="tab-pane"></div>
-  <div id="pane-contact" class="tab-pane"></div>
-  <div id="pane-additional" class="tab-pane"></div>
-  <div id="pane-tag-management" class="tab-pane"></div>
-  <div id="pane-photos" class="tab-pane"></div>
-  <div id="pane-map" class="tab-pane"></div>
-
-  <!-- Sticky action bar — always visible regardless of active tab -->
-  <div class="action-bar u-hidden mobile-sticky-actions ui-control-bar" id="actionBar">
+  <!-- Quick Actions Bar — sits above the navigation tabs, collapses to a single row -->
+  <div class="action-bar u-hidden ui-control-bar" id="actionBar" aria-label="Quick Actions">
+    <!-- Always-visible row -->
     <span class="action-bar-label">Quick Actions</span>
 
     <button type="button" class="ab-btn ab-fav" id="abFavBtn" title="Add to Favorites">
@@ -422,34 +402,58 @@
       <button type="button" class="star-reset-btn" id="abRatingResetBtn" title="Reset my rating">Reset</button>
     </div>
 
-    <a class="ab-btn ab-maps u-hidden" id="abMapsBtn" href="#" target="_blank" rel="noopener">
+    <!-- Expand toggle -->
+    <button type="button" class="ab-expand-toggle" id="abExpandToggle" aria-expanded="false" title="Show more actions">
+      ▼ More
+    </button>
+
+    <!-- Overflow actions — hidden until expanded -->
+    <a class="ab-btn ab-maps ab-extra u-hidden" id="abMapsBtn" href="#" target="_blank" rel="noopener">
       🗺️ Open Maps
     </a>
 
-    <button type="button" class="ab-btn" id="abLinksBtn" title="Add or update related links">
+    <button type="button" class="ab-btn ab-extra" id="abLinksBtn" title="Add or update related links">
       🔗 Add Links
     </button>
 
-    <button type="button" class="ab-btn" id="abBatchTagsBtn" title="Open Batch Tag Actions in Edit Mode">
+    <button type="button" class="ab-btn ab-extra" id="abBatchTagsBtn" title="Open Batch Tag Actions in Edit Mode">
       🏷️ Batch Tags
     </button>
 
-    <button type="button" class="ab-btn" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
+    <button type="button" class="ab-btn ab-extra" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
       🔮 Smart Refresh
     </button>
 
-    <button type="button" class="ab-btn" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
+    <button type="button" class="ab-btn ab-extra" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
       ✏️ Edit Fields
     </button>
 
-    <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this location as visited">
+    <button type="button" class="ab-btn ab-visited ab-extra" id="abVisitedBtn" title="Mark this location as visited">
       <span id="abVisitedIcon">✅</span> <span id="abVisitedText">Mark Visited</span>
     </button>
 
-    <button type="button" class="ab-btn" id="abLogVisitBtn" title="Open the Log a Visit workflow for this location">
+    <button type="button" class="ab-btn ab-extra" id="abLogVisitBtn" title="Open the Log a Visit workflow for this location">
       📝 Log a Visit
     </button>
   </div>
+
+  <div id="tabs" class="tabs ui-control-bar" aria-label="Adventure details tabs">
+    <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
+    <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
+    <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
+    <button class="tab-btn" data-tab="nearby" type="button">📌 Nearby</button>
+    <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
+    <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
+    <button class="tab-btn" data-tab="map" type="button">🗺️ Map View</button>
+  </div>
+
+  <div id="pane-overview" class="tab-pane active"></div>
+  <div id="pane-notes" class="tab-pane"></div>
+  <div id="pane-contact" class="tab-pane"></div>
+  <div id="pane-nearby" class="tab-pane"></div>
+  <div id="pane-tag-management" class="tab-pane"></div>
+  <div id="pane-photos" class="tab-pane"></div>
+  <div id="pane-map" class="tab-pane"></div>
 
   <div id="enrichBackdrop" class="enrich-backdrop" aria-hidden="true"></div>
   <div id="linksBackdrop" class="links-backdrop" aria-hidden="true"></div>
@@ -651,6 +655,16 @@
     <div class="ph-viewer-body">
       <div class="ph-viewer-img-wrap"><img id="phViewerImg" class="ph-viewer-img" src="" alt="Photo preview" /></div>
       <div id="phViewerCaption" class="ph-viewer-caption"></div>
+    </div>
+  </div>
+
+  <!-- 🧰 Diagnostics, Sync and Clean Up — houses the Debug Match panel -->
+  <div class="diag-section-wrap" id="diagSectionWrap">
+    <button type="button" class="diag-section-toggle" id="diagSectionToggle" aria-expanded="false">
+      🧰 Diagnostics, Sync and Clean Up <span class="diag-toggle-arrow">▼</span>
+    </button>
+    <div class="diag-section-body" id="diagSectionBody" hidden>
+      <div id="debugBar" class="debug-bar u-hidden"></div>
     </div>
   </div>
 </div>
@@ -1481,7 +1495,7 @@
       state.open = false;
       var activeTab = getActiveDetailTabId();
       render(state.payload || { data: state.data });
-      activateTab(activeTab || 'details');
+      activateTab(activeTab || 'overview');
       if (hostResult && hostResult.synced) {
         showDetailToast('✅ Saved ' + payload.dirtyKeys.length + ' changed field' + (payload.dirtyKeys.length === 1 ? '' : 's') + ' to Excel.', 'success', 3000);
       } else if (hostResult && hostResult.queued) {
@@ -1606,6 +1620,18 @@
 
     debugBar.className = 'debug-bar ' + (allMatch ? 'match' : 'mismatch');
     debugBar.classList.remove('u-hidden');
+
+    // Auto-expand the diagnostics section when a debug marker is present
+    var diagBody = document.getElementById('diagSectionBody');
+    var diagToggle = document.getElementById('diagSectionToggle');
+    if (diagBody && diagBody.hidden) {
+      diagBody.hidden = false;
+      if (diagToggle) {
+        diagToggle.setAttribute('aria-expanded', 'true');
+        var arrow = diagToggle.querySelector('.diag-toggle-arrow');
+        if (arrow) arrow.textContent = '▲';
+      }
+    }
     debugBar.innerHTML =
       '<button type="button" class="debug-bar-toggle" id="debugBarToggle">' +
       '<span class="debug-title">🔎 Debug: ' + (allMatch ? 'MATCH ✓' : '⚠️ MISMATCH') + '</span>' +
@@ -5572,17 +5598,6 @@
     renderDebugMarker(payload);
     initActionBar(data, directionsUrl, payload);
 
-    document.getElementById('pane-overview').innerHTML =
-      '<div class="grid">' +
-      card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
-      card('City', data.city, 'city') +
-      card('State', data.state, 'state') +
-      card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>' + renderDetailFieldSourceBadge(data, 'driveTime'), 'driveTime') +
-      card('Coordinates', renderCoordsCard(data), 'coordinates') +
-      '</div>' +
-      card('Description', renderDescriptionCard(data), 'description') +
-      card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div><div class="tm-actions" style="margin-top:8px;"><button type="button" id="openBatchTagsFromCardBtn" class="tm-btn">🏷️ Batch Tag Actions</button></div>');
-
     var isNatureSource = (function() {
       var wb = (payload && payload.explorerSource && payload.explorerSource.workbook) || '';
       if (wb) return /nature_locations/i.test(wb);
@@ -5592,8 +5607,13 @@
       return /nature_locations/i.test(fp) || /mylist/i.test((openerWin && openerWin.tableName) || '');
     })();
 
-    document.getElementById('pane-details').innerHTML =
+    document.getElementById('pane-overview').innerHTML =
       '<div class="grid">' +
+      card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
+      card('City', data.city, 'city') +
+      card('State', data.state, 'state') +
+      card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>' + renderDetailFieldSourceBadge(data, 'driveTime'), 'driveTime') +
+      card('Coordinates', renderCoordsCard(data), 'coordinates') +
       card('Hours', renderHoursCard(data), 'hoursOfOperation') +
       (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
       (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
@@ -5602,7 +5622,10 @@
       card('Google Rating', renderGoogleRatingDisplay(data.googleRating), 'googleRating') +
       card('My Rating', data.myRating, 'myRating') +
       '</div>' +
+      card('Description', renderDescriptionCard(data), 'description') +
+      card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div><div class="tm-actions" style="margin-top:8px;"><button type="button" id="openBatchTagsFromCardBtn" class="tm-btn">🏷️ Batch Tag Actions</button></div>') +
       '<div id="detailInlineEditMount"></div>';
+
 
     document.getElementById('pane-notes').innerHTML = '<div id="detailNotesWrap"></div>';
     window.__detailNotesState = {
@@ -5629,7 +5652,7 @@
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
 
-    document.getElementById('pane-additional').innerHTML =
+    document.getElementById('pane-nearby').innerHTML =
       renderNearbyControlsHtml(data) +
       '<div class="card" data-detail-field-card="nearby" style="margin-top:0;border-top:none;border-radius:0 0 10px 10px;border-top:1px solid #f1f5f9;">' +
         '<div id="nearbyAttractionsValue">' +
@@ -7182,12 +7205,39 @@
     var inlineEditBtn = document.getElementById('abInlineEditBtn');
     if (inlineEditBtn) {
       inlineEditBtn.onclick = function () {
-        activateTab('details');
+        activateTab('overview');
         // Force-open avoids accidental close if click is replayed/twice-fired.
         toggleInlineEditPanel(true);
       };
     }
+
+    // Expand / collapse the overflow actions in the Quick Actions bar
+    var expandToggle = document.getElementById('abExpandToggle');
+    if (expandToggle && !expandToggle.dataset.bound) {
+      expandToggle.dataset.bound = '1';
+      expandToggle.addEventListener('click', function () {
+        var bar = document.getElementById('actionBar');
+        var expanded = bar && bar.classList.toggle('ab-expanded');
+        expandToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        expandToggle.textContent = expanded ? '▲ Less' : '▼ More';
+      });
+    }
   }
+
+  // Bind the Diagnostics section toggle
+  document.addEventListener('DOMContentLoaded', function () {
+    var diagToggle = document.getElementById('diagSectionToggle');
+    var diagBody   = document.getElementById('diagSectionBody');
+    if (diagToggle && diagBody) {
+      diagToggle.addEventListener('click', function () {
+        var open = diagBody.hidden;
+        diagBody.hidden = !open;
+        diagToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var arrow = diagToggle.querySelector('.diag-toggle-arrow');
+        if (arrow) arrow.textContent = open ? '▲' : '▼';
+      });
+    }
+  });
 
   function activateTab(target) {
     var tabs = document.querySelectorAll('.tab-btn');
@@ -7196,12 +7246,12 @@
     var currentTab = getActiveDetailTabId();
     var inlineEditState = window.__detailInlineEditState;
     var hasDirtyInlineEdits = !!(
-      currentTab === 'details' &&
+      currentTab === 'overview' &&
       inlineEditState &&
       inlineEditState.open &&
       inlineEditState.dirtyMap &&
       Object.keys(inlineEditState.dirtyMap).some(function (key) { return !!inlineEditState.dirtyMap[key]; }) &&
-      normalized !== 'details'
+      normalized !== 'overview'
     );
     if (hasDirtyInlineEdits) {
       var shouldLeave = window.confirm('You have unsaved inline field edits. Leave the Details tab without saving?');
@@ -7418,7 +7468,7 @@
         var radiusVal = Number(nearbyRadiusBtn.getAttribute('data-nearby-radius'));
         var curUi = getNearbyUiState();
         persistNearbyUiState(Object.assign({}, curUi, { radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles }));
-        var additionalPane = document.getElementById('pane-additional');
+        var additionalPane = document.getElementById('pane-nearby');
         if (additionalPane) {
           var controlsWrap = document.getElementById('nearbyControlsWrap');
           var _curData = window.__detailInlineEditState && window.__detailInlineEditState.data;
@@ -7434,7 +7484,7 @@
         if (!NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === categoryVal; })) categoryVal = 'all';
         var curUi2 = getNearbyUiState();
         persistNearbyUiState(Object.assign({}, curUi2, { category: categoryVal }));
-        var additionalPane2 = document.getElementById('pane-additional');
+        var additionalPane2 = document.getElementById('pane-nearby');
         if (additionalPane2) {
           var controlsWrap2 = document.getElementById('nearbyControlsWrap');
           var _curData2 = window.__detailInlineEditState && window.__detailInlineEditState.data;

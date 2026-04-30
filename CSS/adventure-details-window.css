@@ -368,6 +368,13 @@ h1 {
   color: #991b1b;
 }
 
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
 .debug-pill {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid #d1d5db;
@@ -403,18 +410,49 @@ h1 {
 }
 
 .action-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 100;
-  background: #fff;
-  border-top: 2px solid #e5e7eb;
-  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  margin: 8px 0 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* When expanded, allow flex-wrap so extra items flow to new lines */
+.action-bar.ab-expanded {
   flex-wrap: wrap;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-  border-radius: 0 0 14px 14px;
+}
+
+/* Extra (overflow) items — hidden until expanded */
+.action-bar .ab-extra {
+  display: none !important;
+}
+.action-bar.ab-expanded .ab-extra {
+  display: inline-flex !important;
+}
+
+/* Expand toggle button */
+.ab-expand-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ab-expand-toggle:hover {
+  background: #f3f4f6;
 }
 
 .action-bar-label {
@@ -827,4 +865,43 @@ h1 {
   border: 2px solid #2563eb;
 }
 
+/* ── Diagnostics, Sync and Clean Up section ──────────────────── */
+.diag-section-wrap {
+  margin-top: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
 
+.diag-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  text-align: left;
+  gap: 8px;
+  transition: background 0.15s;
+}
+
+.diag-section-toggle:hover {
+  background: #f1f5f9;
+}
+
+.diag-toggle-arrow {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.diag-section-body {
+  padding: 12px 14px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+}
