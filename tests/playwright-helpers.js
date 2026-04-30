@@ -20,7 +20,7 @@ async function collapseErrorNotificationBar(page) {
       return;
     }
     errorBar.classList.add('collapsed');
-    errorBar.style.maxHeight = '44px';
+    errorBar.style.maxHeight = '36px';
   });
 }
 
