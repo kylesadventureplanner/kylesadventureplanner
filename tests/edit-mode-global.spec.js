@@ -483,6 +483,155 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toMatchObject({ success: true, updatedCount: 1 });
   });
 
+  test('remove exact duplicates only removes rows with same name and same address', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const activeCols = typeof window.getActiveCols === 'function'
+        ? window.getActiveCols(window)
+        : { NAME: 0, PLACE_ID: 1, ADDRESS: 11 };
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const rowA = new Array(header.length).fill('');
+      rowA[activeCols.NAME] = 'Playwright Duplicate Cafe';
+      rowA[activeCols.ADDRESS] = '100 Same St, Durham, NC';
+      rowA[activeCols.PLACE_ID] = 'ChIJDupA';
+
+      const rowB = new Array(header.length).fill('');
+      rowB[activeCols.NAME] = 'Playwright Duplicate Cafe';
+      rowB[activeCols.ADDRESS] = '100 Same St, Durham, NC';
+      rowB[activeCols.PLACE_ID] = 'ChIJDupB';
+
+      const rowC = new Array(header.length).fill('');
+      rowC[activeCols.NAME] = 'Playwright Duplicate Cafe';
+      rowC[activeCols.ADDRESS] = '200 Different Ave, Durham, NC';
+      rowC[activeCols.PLACE_ID] = 'ChIJDupC';
+
+      window.adventuresData = [
+        { values: [rowA] },
+        { values: [rowB] },
+        { values: [rowC] }
+      ];
+      window.__dedupeSaveCalls = 0;
+      window.saveToExcel = async () => {
+        window.__dedupeSaveCalls += 1;
+        return true;
+      };
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__dedupeResult = await window.handleRemoveExactDuplicates(mount, false);
+    });
+
+    await expect.poll(() => page.evaluate(() => Number(window.__dedupeSaveCalls || 0)), { timeout: 10000 }).toBe(1);
+    await expect.poll(() => page.evaluate(() => window.adventuresData.length), { timeout: 10000 }).toBe(2);
+    await expect.poll(() => page.evaluate(() => {
+      const activeCols = typeof window.getActiveCols === 'function'
+        ? window.getActiveCols(window)
+        : { ADDRESS: 11 };
+      return window.adventuresData.map((entry) => String(entry?.values?.[0]?.[activeCols.ADDRESS] || ''));
+    }), { timeout: 10000 })
+      .toEqual(expect.arrayContaining(['100 Same St, Durham, NC', '200 Different Ave, Durham, NC']));
+    await expect.poll(() => page.evaluate(() => window.__dedupeResult), { timeout: 10000 })
+      .toMatchObject({ success: true, rowsChanged: 1, persistedRows: 1 });
+  });
+
+  test('remove exact duplicates chip updates after dry-run and real run', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await expandTabCardsIfAvailable(page, 'automation');
+    await page.evaluate(() => {
+      const activeCols = typeof window.getActiveCols === 'function'
+        ? window.getActiveCols(window)
+        : { NAME: 0, PLACE_ID: 1, ADDRESS: 11 };
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const rowA = new Array(header.length).fill('');
+      rowA[activeCols.NAME] = 'Playwright Dedupe Chip Cafe';
+      rowA[activeCols.ADDRESS] = '300 Chip St, Durham, NC';
+      rowA[activeCols.PLACE_ID] = 'ChIJDedupeChipA';
+
+      const rowB = new Array(header.length).fill('');
+      rowB[activeCols.NAME] = 'Playwright Dedupe Chip Cafe';
+      rowB[activeCols.ADDRESS] = '300 Chip St, Durham, NC';
+      rowB[activeCols.PLACE_ID] = 'ChIJDedupeChipB';
+
+      window.adventuresData = [
+        { values: [rowA] },
+        { values: [rowB] }
+      ];
+      window.probeTargetSchema = async () => true;
+      window.loadTargetRows = async () => true;
+      window.__dedupeChipSaveCalls = 0;
+      window.saveToExcel = async () => {
+        window.__dedupeChipSaveCalls += 1;
+        return true;
+      };
+      window.confirm = () => true;
+    });
+
+    await page.evaluate(async () => {
+      const toggle = document.getElementById('dedupeDryRun');
+      if (toggle) {
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      await window.submitRemoveExactDuplicates();
+    });
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('dupesRemovedCountChip')?.textContent || '').trim()), { timeout: 10000 })
+      .toBe('Would remove: 1');
+    await expect.poll(() => page.evaluate(() => {
+      const chip = document.getElementById('dupesRemovedCountChip');
+      return {
+        dryRun: !!chip?.classList?.contains('is-dry-run'),
+        success: !!chip?.classList?.contains('is-success')
+      };
+    }), { timeout: 10000 }).toMatchObject({ dryRun: true, success: false });
+
+    await page.evaluate(async () => {
+      const toggle = document.getElementById('dedupeDryRun');
+      if (toggle) {
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      await window.submitRemoveExactDuplicates();
+    });
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('dupesRemovedCountChip')?.textContent || '').trim()), { timeout: 10000 })
+      .toBe('Removed: 1');
+    await expect.poll(() => page.evaluate(() => {
+      const chip = document.getElementById('dupesRemovedCountChip');
+      return {
+        dryRun: !!chip?.classList?.contains('is-dry-run'),
+        success: !!chip?.classList?.contains('is-success')
+      };
+    }), { timeout: 10000 }).toMatchObject({ dryRun: false, success: true });
+
+    await page.evaluate(async () => {
+      const toggle = document.getElementById('dedupeDryRun');
+      if (toggle) {
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      await window.submitRemoveExactDuplicates();
+    });
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('dupesRemovedCountChip')?.textContent || '').trim()), { timeout: 10000 })
+      .toBe('Removed: 0');
+    await expect.poll(() => page.evaluate(() => {
+      const chip = document.getElementById('dupesRemovedCountChip');
+      return {
+        dryRun: !!chip?.classList?.contains('is-dry-run'),
+        success: !!chip?.classList?.contains('is-success')
+      };
+    }), { timeout: 10000 }).toMatchObject({ dryRun: false, success: false });
+    await expect.poll(() => page.evaluate(() => Number(window.__dedupeChipSaveCalls || 0)), { timeout: 10000 }).toBe(1);
+  });
+
   test('automation row persistence prefers workbook row ids when available', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
     await page.evaluate(() => {

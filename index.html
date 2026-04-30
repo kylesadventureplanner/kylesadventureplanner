@@ -11261,23 +11261,21 @@
         }
       }
 
-      const resolvedDescription = (() => {
-        if (place.editorialSummary && place.editorialSummary.text) {
-          return String(place.editorialSummary.text).trim();
-        }
-        if (Array.isArray(place.reviews) && place.reviews.length) {
-          const snippets = place.reviews
+      const resolvedDescription = place.editorialSummary && place.editorialSummary.text
+        ? String(place.editorialSummary.text).trim()
+        : '';
+      const reviewSnippet = Array.isArray(place.reviews)
+        ? place.reviews
             .map((review) => {
               if (!review) return '';
               if (review.text && typeof review.text === 'object' && review.text.text) return String(review.text.text).trim();
               return String(review.text || review.originalText || review.snippet || '').trim();
             })
             .filter(Boolean)
-            .slice(0, 2);
-          if (snippets.length) return snippets.join(' ').trim();
-        }
-        return '';
-      })();
+            .slice(0, 2)
+            .join(' ')
+            .trim()
+        : '';
 
       return {
         placeId: normalizedPlaceId,
@@ -11289,6 +11287,8 @@
         website: place.websiteURI || '',
         hours: place.regularOpeningHours || null,
         description: resolvedDescription,
+        descriptionSource: resolvedDescription ? 'editorial-summary' : '',
+        reviewSnippet,
         coordinates: place.location ? {
           lat: place.location.lat(),
           lng: place.location.lng()
@@ -15792,12 +15792,22 @@
             <p><strong>Website:</strong> ${website ? `<a href="${website}" target="_blank" rel="noopener">Visit Website</a>` : "Not available"}</p>
           </div>
 
-          ${description ? `
-            <div class="modal-detail-section">
-              <h3>📖 Description</h3>
-              <p>${description}</p>
-            </div>
-          ` : ''}
+          <div class="modal-detail-section">
+            <h3 style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span>📖 Description</span>
+                <span data-description-source-badge style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:11px;font-weight:700;line-height:1;">Source: current</span>
+              </span>
+              <button
+                type="button"
+                class="row-detail-action-btn row-detail-action-btn--refresh"
+                data-action="refresh-description"
+                data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}"
+                data-tooltip="Refresh description from Google"
+              >🔄 Refresh</button>
+            </h3>
+            <p data-description-current>${description || '<span class="row-detail-empty">No description available</span>'}</p>
+          </div>
 
           ${tags ? `
             <div class="modal-detail-section">
@@ -16113,6 +16123,81 @@
             pulseActionButton();
             window.openTagManager(placeId);
           }
+          return;
+        }
+        if (action === 'refresh-description') {
+          const placeId = String(actionBtn.getAttribute('data-place-id') || '').trim();
+          if (!placeId) {
+            if (typeof showToast === 'function') showToast('Cannot refresh description: missing Place ID', 'warning', 2200);
+            return;
+          }
+          if (filteredIndex < 0 || !Array.isArray(window.totalFilteredAdventures) || !window.totalFilteredAdventures[filteredIndex]) {
+            if (typeof showToast === 'function') showToast('Cannot refresh description for this row right now', 'warning', 2200);
+            return;
+          }
+
+          pulseActionButton();
+          actionBtn.disabled = true;
+
+          (async () => {
+            try {
+              if (typeof window.getPlaceDetails !== 'function') {
+                throw new Error('Google details helper unavailable');
+              }
+
+              const details = await window.getPlaceDetails(placeId);
+              const fallbackSummary = (() => {
+                const businessType = String(details && details.businessType || '').trim().replace(/^[\p{So}]\s/u, '');
+                const rating = details && details.rating != null ? String(details.rating).trim() : '';
+                const ratingsTotal = details && details.userRatingsTotal != null ? String(details.userRatingsTotal).trim() : '';
+                let text = businessType;
+                if (rating) text += `${text ? ' | ' : ''}Rating: ${rating}⭐`;
+                if (ratingsTotal) text += ` (${ratingsTotal} reviews)`;
+                return text.trim();
+              })();
+              const editorialDescription = String(details && details.description || '').trim();
+              const refreshedDescription = editorialDescription || fallbackSummary;
+              if (!refreshedDescription) {
+                throw new Error('Google returned no description data');
+              }
+
+              const descColumnIndex = typeof window.getColumnIndexByName === 'function'
+                ? Number(window.getColumnIndexByName('Description'))
+                : 16;
+              const safeDescCol = Number.isInteger(descColumnIndex) && descColumnIndex >= 0 ? descColumnIndex : 16;
+              const persisted = await updateExcelColumn(filteredIndex, safeDescCol, refreshedDescription);
+              if (!persisted) {
+                throw new Error('Description refresh could not be saved to workbook');
+              }
+
+              const descNode = modalContent.querySelector('[data-description-current]');
+              if (descNode) descNode.textContent = refreshedDescription;
+              const sourceBadge = modalContent.querySelector('[data-description-source-badge]');
+              if (sourceBadge) {
+                const sourceLabel = editorialDescription ? 'Source: editorial' : 'Source: fallback summary';
+                sourceBadge.textContent = sourceLabel;
+                sourceBadge.style.borderColor = editorialDescription ? '#86efac' : '#fcd34d';
+                sourceBadge.style.background = editorialDescription ? '#f0fdf4' : '#fffbeb';
+                sourceBadge.style.color = editorialDescription ? '#166534' : '#92400e';
+              }
+
+              const row = window.totalFilteredAdventures[filteredIndex] && window.totalFilteredAdventures[filteredIndex].row;
+              const values = row && row.values && row.values[0];
+              if (Array.isArray(values) && safeDescCol < values.length) {
+                values[safeDescCol] = refreshedDescription;
+              }
+
+              if (typeof showToast === 'function') {
+                showToast('Description refreshed from Google', 'success', 2200);
+              }
+            } catch (error) {
+              if (typeof showToast === 'function') {
+                showToast(`Description refresh failed: ${String(error && error.message ? error.message : error)}`, 'error', 3200);
+              }
+            } finally {
+              actionBtn.disabled = false;
+            }
+          })();
         }
       }, true);
 
