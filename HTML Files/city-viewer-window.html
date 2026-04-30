@@ -878,6 +878,13 @@
       line-height: 1;
       color: #f59e0b;
     }
+    .loc-rating-count {
+      font-size: 10px;
+      font-weight: 500;
+      color: #b45309;
+      margin-left: 3px;
+      opacity: 0.85;
+    }
     .loc-rating-stars .is-empty {
       color: #cbd5e1;
     }
@@ -6209,6 +6216,7 @@
       const originBadge = getLocationOriginBadge(loc);
       const tagEntries = getLocationDerivedTags(loc);
       const editState = getLocationEditState(locId);
+      const ratingCount = extractRatingCount(loc);
       const noteText = editState.note;
       const visitCount = Math.max(0, editState.visitCount || 0);
       const encodedLocId = encodeURIComponent(locId);
@@ -6229,7 +6237,7 @@
               <span class="loc-meta-badge ${escAttr(originBadge.className)}">${escHtml(originBadge.label)}</span>
               ${isNatureSource && difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
               ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
-              ${renderRatingBadgeHtml(rating)}
+              ${renderRatingBadgeHtml(rating, ratingCount)}
             </div>
           </div>
           ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
@@ -6943,7 +6951,36 @@
       return workbook.indexOf('nature_locations') >= 0;
     }
 
-    function renderRatingBadgeHtml(rawRating) {
+    function extractRatingCount(loc) {
+      if (!loc) return null;
+
+      // 1. Direct property — works for Google Places nearby/blended data
+      const directRaw = loc.ratingCount || loc.userRatingCount || loc.userRatingsTotal || loc.reviewCount || loc.ratingsCount || loc.ratingsTotal || null;
+      const directN = Number(directRaw);
+      if (Number.isFinite(directN) && directN > 0) return directN;
+
+      // 2. Schema-driven column lookup — works for Excel-loaded rows
+      try {
+        const schemaColumns = (Array.isArray(window.__excelSchemaColumns) && window.__excelSchemaColumns.length > 0)
+          ? window.__excelSchemaColumns
+          : (typeof getHostWindow === 'function' && getHostWindow() && Array.isArray(getHostWindow().__excelSchemaColumns))
+            ? getHostWindow().__excelSchemaColumns
+            : [];
+        const aliases = ['rating count', 'ratings count', 'user ratings total', 'review count', 'user ratings', 'ratingcount', 'review total'];
+        const colIdx = schemaColumns.findIndex(c => aliases.includes(String(c || '').trim().toLowerCase()));
+        if (colIdx >= 0) {
+          const row = loc.values && Array.isArray(loc.values[0]) ? loc.values[0] : null;
+          if (row && colIdx < row.length) {
+            const v = Number(row[colIdx]);
+            if (Number.isFinite(v) && v > 0) return v;
+          }
+        }
+      } catch (_e) {}
+
+      return null;
+    }
+
+    function renderRatingBadgeHtml(rawRating, rawRatingCount) {
       const ratingNumber = Number(rawRating);
       if (!Number.isFinite(ratingNumber) || ratingNumber <= 0) return '';
       const clamped = Math.max(0, Math.min(5, ratingNumber));
@@ -6951,7 +6988,13 @@
       const stars = Array.from({ length: 5 }).map(function (_x, idx) {
         return idx < rounded ? '★' : '<span class="is-empty">★</span>';
       }).join('');
-      return `<span class="loc-meta-badge rating loc-rating-inline"><span class="loc-rating-stars" aria-hidden="true">${stars}</span><span>${escHtml(clamped.toFixed(1))}</span></span>`;
+      const count = Number(rawRatingCount);
+      let countSuffix = '';
+      if (Number.isFinite(count) && count > 0) {
+        const formatted = count >= 1000 ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k` : String(count);
+        countSuffix = `<span class="loc-rating-count">(${escHtml(formatted)})</span>`;
+      }
+      return `<span class="loc-meta-badge rating loc-rating-inline"><span class="loc-rating-stars" aria-hidden="true">${stars}</span><span>${escHtml(clamped.toFixed(1))}</span>${countSuffix}</span>`;
     }
 
     function populateTagDatalist(locations) {
@@ -7327,6 +7370,7 @@
         const originKey = getLocSourceKey(loc);
         const tagEntries = getLocationDerivedTags(loc);
         const editState = getLocationEditState(locId);
+        const ratingCount = extractRatingCount(loc);
         const noteText = editState.note;
         const visitCount = Math.max(0, editState.visitCount || 0);
 
@@ -7352,7 +7396,7 @@
                 <span class="loc-meta-badge ${escAttr(originBadge.className)}">${escHtml(originBadge.label)}</span>
                 ${isNatureSource && difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
                 ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
-                ${renderRatingBadgeHtml(rating)}
+                ${renderRatingBadgeHtml(rating, ratingCount)}
               </div>
             </div>
             ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}

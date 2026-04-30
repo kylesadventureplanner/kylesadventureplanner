@@ -21009,10 +21009,16 @@ COMMON ISSUES:
       if (firstRow && Array.isArray(firstRow.values) && firstRow.values.length > 0) {
         const firstRowValues = firstRow.values[0];
         if (Array.isArray(firstRowValues)) {
-          // Use the actual column count from existing data, but cap it reasonably
-          actualColumnCount = Math.max(13, Math.min(firstRowValues.length, 24));
+          actualColumnCount = Math.max(13, firstRowValues.length);
         }
       }
+    }
+
+    // When the schema is already loaded, prefer its column count (it's authoritative and
+    // avoids the 24-column cap that would silently drop Latitude/Longitude/GPS columns).
+    const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+    if (schemaColumns.length > 0) {
+      actualColumnCount = Math.max(actualColumnCount, schemaColumns.length);
     }
 
     console.log(`📋 buildExcelRow: Using ${actualColumnCount} columns (total available: ${actualColumnCount})`);
@@ -21094,7 +21100,12 @@ COMMON ISSUES:
         .filter(Boolean)
     )).join(', ');
 
-    const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+    const safePlaceId = strVal(placeId);
+    const googlePlaceUrl = safePlaceId
+      ? "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(safePlaceId)
+      : "";
+
+    // setByName helper — maps a value to the row at the schema column matching one of the given names.
     const setByName = (names, value) => {
       if (!schemaColumns.length) return false;
       if (!Array.isArray(names) || !names.length) return false;
@@ -21112,10 +21123,6 @@ COMMON ISSUES:
       return true;
     };
 
-    const safePlaceId = strVal(placeId);
-    const googlePlaceUrl = safePlaceId
-      ? "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(safePlaceId)
-      : "";
 
     // Schema-driven mapping first (works across Nature/Retail/Entertainment table layouts).
     setByName(['Name'], name);
@@ -21128,6 +21135,8 @@ COMMON ISSUES:
     setByName(['Address'], address);
     setByName(['Phone Number', 'Phone'], strVal(details && details.phone));
     setByName(['Google Rating', 'Rating'], details && details.rating != null ? String(details.rating) : '');
+    setByName(['Rating Count', 'Ratings Count', 'User Ratings Total', 'Review Count', 'User Ratings'],
+      details && details.userRatingsTotal != null && details.userRatingsTotal > 0 ? String(details.userRatingsTotal) : '');
     setByName(['Directions', 'Directions '], buildDirectionsUrl(safePlaceId, address, name));
     setByName(['Description'], description);
     setByName(['Google URL'], googlePlaceUrl);
@@ -21135,9 +21144,14 @@ COMMON ISSUES:
     // GPS coordinates
     const coords = details && details.coordinates;
     if (coords) {
-      setByName(['Latitude', 'Lat', 'GPS Latitude'], String(coords.lat));
-      setByName(['Longitude', 'Lng', 'GPS Longitude'], String(coords.lng));
-      setByName(['GPS Coordinates', 'Coordinates', 'GPS'], `${coords.lat}, ${coords.lng}`);
+      const latWritten = setByName(['Latitude', 'Lat', 'GPS Latitude', 'gps_latitude', 'latitude', 'lat'], String(coords.lat));
+      const lngWritten = setByName(['Longitude', 'Lng', 'GPS Longitude', 'gps_longitude', 'longitude', 'lng', 'lon', 'long'], String(coords.lng));
+      setByName(['GPS Coordinates', 'Coordinates', 'GPS', 'gps_coordinates', 'coordinates'], `${coords.lat}, ${coords.lng}`);
+      if (!latWritten || !lngWritten) {
+        console.warn(`⚠️ GPS coordinates could not be mapped via schema (schema loaded: ${schemaColumns.length > 0}). Available columns: [${schemaColumns.join(', ')}]`);
+      } else {
+        console.log(`📍 GPS coordinates written: lat=${coords.lat}, lng=${coords.lng}`);
+      }
     }
 
     // Drive time from user's current location (if available).
