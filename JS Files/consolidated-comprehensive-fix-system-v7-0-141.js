@@ -786,10 +786,22 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   }
 
   function normalizeHoursForRefreshWrite(value, normalizeHoursHost) {
+    const looksLikeStructuredHoursJson = (text) => {
+      const trimmed = String(text || '').trim();
+      if (!trimmed) return false;
+      if (!((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']')))) return false;
+      return /"(periods|weekdayDescriptions|weekday_text|weekdayText|specialDays)"\s*:/.test(trimmed);
+    };
     if (value == null) return '';
     if (typeof normalizeHoursHost?.normalizeOperationHours === 'function') {
       try {
-        return String(normalizeHoursHost.normalizeOperationHours(value) || '').trim();
+        const normalized = String(normalizeHoursHost.normalizeOperationHours(value) || '').trim();
+        if (normalized && looksLikeStructuredHoursJson(normalized)) {
+          try {
+            return normalizeHoursForRefreshWrite(JSON.parse(normalized), null);
+          } catch (_error) {}
+        }
+        return normalized;
       } catch (_error) {}
     }
     if (typeof value === 'string') {

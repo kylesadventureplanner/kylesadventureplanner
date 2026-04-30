@@ -611,7 +611,7 @@
     if (view) return { view, frameId };
 
     view = document.createElement('div');
-    view.className = 'visited-overview-view';
+    view.className = 'visited-overview-view u-single-scroll-mode';
     view.setAttribute('data-visited-subtab-view', viewKey);
     view.hidden = true;
     view.setAttribute('aria-hidden', 'true');
@@ -5676,12 +5676,12 @@
     let view = pane.querySelector('[data-visited-subtab-view="explorer-details"]');
     if (!view) {
       view = document.createElement('div');
-      view.className = 'visited-overview-view';
+      view.className = 'visited-overview-view u-single-scroll-mode';
       view.setAttribute('data-visited-subtab-view', 'explorer-details');
       view.hidden = true;
       view.setAttribute('aria-hidden', 'true');
       view.innerHTML = `
-        <div class="card" style="margin-top: 10px;">
+        <div class="card visited-inline-tool-header-card" style="margin-top: 10px;">
           <div class="visited-view-header-row">
             <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
             <div class="visited-view-header-copy">
@@ -5689,8 +5689,8 @@
               <div class="card-subtitle">Planner-style details and actions for this location.</div>
             </div>
           </div>
-          <iframe id="visitedExplorerDetailsFrame-${escapeHtml(subtabKey)}" class="visited-inline-tool-frame" title="Location details" loading="lazy"></iframe>
         </div>
+        <iframe id="visitedExplorerDetailsFrame-${escapeHtml(subtabKey)}" class="visited-inline-tool-frame" title="Location details" loading="lazy"></iframe>
       `;
       pane.appendChild(view);
     }
@@ -5812,6 +5812,18 @@
       const cityValue = String(item.city || '').trim();
       const stateValue = String(item.state || '').trim();
       const addressLabel = formatExplorerAddressLine(item);
+      const hasAddress = Boolean(addressLabel);
+      const addressFilterMarkup = cityValue || stateValue
+        ? `<button type="button" class="visited-explorer-address-filter-btn" data-visited-explorer-address-filter="1" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-city="${escapeHtml(cityValue)}" data-visited-explorer-state="${escapeHtml(stateValue)}" title="Address filter options for ${escapeHtml(addressLabel)}">${escapeHtml(addressLabel)}</button>`
+        : `<span class="visited-explorer-address-text">${escapeHtml(addressLabel || 'No address available')}</span>`;
+      const addressActionsMenuMarkup = `
+        <button type="button" class="visited-card-menu-toggle visited-explorer-address-menu-toggle" data-visited-explorer-address-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false" title="Address actions">Address actions</button>
+        <div class="visited-card-mini-menu visited-explorer-address-menu" data-visited-explorer-address-menu="${escapeHtml(item.id)}" data-visited-card-menu-type="address-actions" role="menu" hidden>
+          <button type="button" class="visited-card-mini-menu-item visited-explorer-address-menu-item" data-visited-explorer-address-copy="${escapeHtml(addressLabel)}" role="menuitem" ${hasAddress ? '' : 'disabled'}>Copy</button>
+          <button type="button" class="visited-card-mini-menu-item visited-explorer-address-menu-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Directions</button>
+          <button type="button" class="visited-card-mini-menu-item visited-explorer-address-menu-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Open in Maps</button>
+        </div>
+      `;
       const starButtons = [1, 2, 3, 4, 5].map((value) => `
         <button
           type="button"
@@ -5839,20 +5851,20 @@
               </label>
               <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
               <button type="button" class="visited-explorer-detail-btn visited-explorer-card-filter-btn" data-visited-explorer-card-filter="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" title="Filter options for this card" aria-label="Filters for ${escapeHtml(item.title || 'this location')}">🔍 Filters</button>
-              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
+              <button type="button" class="visited-explorer-detail-btn visited-card-menu-toggle" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick actions</button>
             </div>
           </div>
-          <div class="visited-explorer-quick-actions-menu" data-visited-explorer-quick-actions-menu="${escapeHtml(item.id)}" hidden>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Directions</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Google URL</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-batch-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🏷️ Batch Tag Actions</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔗 Find / Add URLs</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔮 Enrich Data</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📝 Paste &amp; Parse Text</button>
+          <div class="visited-card-mini-menu visited-explorer-quick-actions-menu" data-visited-explorer-quick-actions-menu="${escapeHtml(item.id)}" data-visited-card-menu-type="quick-actions" role="menu" hidden>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Directions</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Google URL</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Log Visit</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Tag Manager</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-batch-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🏷️ Batch Tag Actions</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔗 Find / Add URLs</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔮 Enrich Data</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📝 Paste &amp; Parse Text</button>
           </div>
           <div class="visited-explorer-card-controls">
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
@@ -5864,9 +5876,7 @@
             ? `<div class="visited-explorer-tag-row visited-explorer-tag-row--fixed">${chips}</div>`
             : '<div class="visited-explorer-field visited-explorer-field--tags-empty">No tags</div>'}
           ${notesPreview ? `<div class="visited-explorer-note-preview"><strong>Notes:</strong> ${escapeHtml(notesPreview)}</div>` : ''}
-          <div class="visited-explorer-field visited-explorer-field--address"><strong>Physical Address - City - State:</strong> ${cityValue || stateValue
-            ? `<button type="button" class="visited-explorer-address-filter-btn" data-visited-explorer-address-filter="1" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-city="${escapeHtml(cityValue)}" data-visited-explorer-state="${escapeHtml(stateValue)}" title="Address filter options for ${escapeHtml(addressLabel)}">${escapeHtml(addressLabel)}</button>`
-            : escapeHtml(addressLabel)}</div>
+          <div class="visited-explorer-field visited-explorer-field--address"><strong>Physical Address - City - State:</strong><span class="visited-explorer-address-actions">${addressFilterMarkup}${addressActionsMenuMarkup}</span></div>
           <div class="visited-explorer-field visited-explorer-field--description"><strong>Description:</strong><div class="visited-explorer-description-box">${escapeHtml(item.description || 'No description yet.')}</div></div>
         </div>
       `;
@@ -5949,6 +5959,125 @@
       if (token) unique.add(token);
     });
     return Array.from(unique);
+  }
+
+  function closeExplorerCardMiniMenus(root, menuSelector, toggleSelector) {
+    if (!root) return;
+    root.querySelectorAll(menuSelector).forEach((menu) => {
+      menu.hidden = true;
+    });
+    root.querySelectorAll(toggleSelector).forEach((btn) => {
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function closeExplorerQuickActionMenus(root) {
+    closeExplorerCardMiniMenus(root, '[data-visited-explorer-quick-actions-menu]', '[data-visited-explorer-quick-actions-toggle]');
+  }
+
+  function closeExplorerAddressActionMenus(root) {
+    closeExplorerCardMiniMenus(root, '[data-visited-explorer-address-menu]', '[data-visited-explorer-address-actions-toggle]');
+  }
+
+  function closeAllExplorerCardMiniMenus(root) {
+    closeExplorerQuickActionMenus(root);
+    closeExplorerAddressActionMenus(root);
+  }
+
+  function getExplorerCardMenuEnabledItems(menu) {
+    return Array.from((menu && menu.querySelectorAll('.visited-card-mini-menu-item')) || [])
+      .filter((item) => !item.disabled);
+  }
+
+  function closeExplorerCardMiniMenuInstance(menu, options = {}) {
+    if (!menu) return;
+    menu.hidden = true;
+    const toggleButton = menu.__menuToggleButton;
+    if (toggleButton && typeof toggleButton.setAttribute === 'function') {
+      toggleButton.setAttribute('aria-expanded', 'false');
+      if (options.focusToggle && typeof toggleButton.focus === 'function') {
+        toggleButton.focus();
+      }
+    }
+  }
+
+  function reportExplorerCardMenuTelemetry(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (Array.isArray(window.__visitedExplorerCardMenuEvents)) {
+      window.__visitedExplorerCardMenuEvents.push(payload);
+    } else if (window.__visitedExplorerCardMenuDebug === true) {
+      window.__visitedExplorerCardMenuEvents = [payload];
+    }
+    if (typeof window.__visitedExplorerCardMenuHook === 'function') {
+      try { window.__visitedExplorerCardMenuHook(payload); } catch (_) {}
+    }
+    try {
+      document.dispatchEvent(new CustomEvent('visited:explorer-card-menu-open', { detail: payload }));
+    } catch (_) {}
+  }
+
+  const EXPLORER_ACTION_FEEDBACK_DURATION_MS = 1800;
+  const EXPLORER_ACTION_FEEDBACK_LABELS = {
+    copied: 'Copied',
+    saved: 'Saved',
+    applied: 'Applied'
+  };
+
+  function showExplorerActionFeedback(kind) {
+    const key = String(kind || '').trim().toLowerCase();
+    const message = EXPLORER_ACTION_FEEDBACK_LABELS[key] || EXPLORER_ACTION_FEEDBACK_LABELS.applied;
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, 'success', EXPLORER_ACTION_FEEDBACK_DURATION_MS);
+    }
+  }
+
+  function toggleExplorerCardMiniMenu(root, toggleButton, config = {}) {
+    if (!root || !toggleButton) return false;
+    const toggleAttr = String(config.toggleAttr || '').trim();
+    const menuAttr = String(config.menuAttr || '').trim();
+    if (!toggleAttr || !menuAttr) return false;
+    const itemId = String(toggleButton.getAttribute(toggleAttr) || '').trim();
+    const card = toggleButton.closest('.visited-explorer-card');
+    const targetMenu = card ? card.querySelector(`[${menuAttr}="${itemId}"]`) : null;
+    const willOpen = Boolean(targetMenu && targetMenu.hidden);
+    if (typeof config.beforeOpen === 'function' && willOpen && config.beforeOpen() === false) return false;
+    if (typeof config.closeAll === 'function') config.closeAll();
+    if (targetMenu) {
+      targetMenu.hidden = !willOpen;
+      toggleButton.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      targetMenu.__menuToggleButton = toggleButton;
+      if (willOpen) {
+        reportExplorerCardMenuTelemetry({
+          menuType: String(config.menuType || 'unknown'),
+          itemId,
+          subtabKey: String(config.subtabKey || '').trim(),
+          interaction: String(config.interaction || ''),
+          ts: Date.now()
+        });
+        if (config.focusFirstItem !== false) {
+          const firstItem = getExplorerCardMenuEnabledItems(targetMenu)[0];
+          if (firstItem && typeof firstItem.focus === 'function') firstItem.focus();
+        }
+      }
+    }
+    return willOpen;
+  }
+
+  function setExplorerCopyMicroState(button, copied) {
+    if (!button) return;
+    const originalLabel = String(button.dataset.copyIdleLabel || button.textContent || 'Copy').trim() || 'Copy';
+    button.dataset.copyIdleLabel = originalLabel;
+    if (button.__copyStateResetTimer) {
+      window.clearTimeout(button.__copyStateResetTimer);
+      button.__copyStateResetTimer = 0;
+    }
+    button.textContent = copied ? 'Copied' : 'Copy';
+    button.classList.toggle('is-copied', Boolean(copied));
+    button.__copyStateResetTimer = window.setTimeout(() => {
+      if (!button.isConnected) return;
+      button.textContent = originalLabel;
+      button.classList.remove('is-copied');
+    }, EXPLORER_ACTION_FEEDBACK_DURATION_MS);
   }
 
   // Danger-tinted action value keywords – used to style "exclude" and "clear" options.
@@ -8391,13 +8520,16 @@
             return match && root.contains(match) ? match : null;
           };
 
-          if (!closest('[data-visited-explorer-quick-actions-toggle]') && !closest('[data-visited-explorer-quick-actions-menu]')) {
-            root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
-              menu.hidden = true;
-            });
-            root.querySelectorAll('[data-visited-explorer-quick-actions-toggle]').forEach((btn) => {
-              btn.setAttribute('aria-expanded', 'false');
-            });
+          if (!closest('[data-visited-explorer-quick-actions-toggle]')
+            && !closest('[data-visited-explorer-quick-actions-menu]')
+            && !closest('[data-visited-explorer-address-actions-toggle]')
+            && !closest('[data-visited-explorer-address-menu]')) {
+            closeAllExplorerCardMiniMenus(root);
+          }
+
+          const anyMiniMenuActionBtn = closest('.visited-card-mini-menu-item');
+          if (anyMiniMenuActionBtn) {
+            closeAllExplorerCardMiniMenus(root);
           }
 
           const tagFilterBtn = closest('[data-visited-explorer-tag-filter]');
@@ -8415,14 +8547,48 @@
             if (!choice) return;
             if (applyExplorerTagFilterAction(subtabKey, tag, choice)) {
               renderExplorerList(root, subtabKey);
-              if (typeof window.showToast === 'function') {
-                window.showToast(`Updated tag filters for "${tag}".`, 'success', 1800);
-              }
+              showExplorerActionFeedback('applied');
             }
             return;
           }
 
+          const addressActionsToggleBtn = closest('[data-visited-explorer-address-actions-toggle]');
+          if (addressActionsToggleBtn) {
+            event.preventDefault();
+            const subtabKey = String(addressActionsToggleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            toggleExplorerCardMiniMenu(root, addressActionsToggleBtn, {
+              toggleAttr: 'data-visited-explorer-address-actions-toggle',
+              menuAttr: 'data-visited-explorer-address-menu',
+              closeAll: () => closeAllExplorerCardMiniMenus(root),
+              menuType: 'address-actions',
+              subtabKey,
+              interaction: event.type
+            });
+            return;
+          }
+
           const addressFilterBtn = closest('[data-visited-explorer-address-filter]');
+          const addressCopyBtn = closest('[data-visited-explorer-address-copy]');
+          if (addressCopyBtn) {
+            event.preventDefault();
+            const addressText = String(addressCopyBtn.getAttribute('data-visited-explorer-address-copy') || '').trim();
+            if (!addressText) return;
+            let copied = false;
+            try {
+              copied = await copyRouteText(addressText);
+            } catch (_) {
+              copied = false;
+            }
+            if (!copied) {
+              // Fallback that still allows quick manual copy when clipboard API is unavailable.
+              window.prompt('Copy address:', addressText);
+            }
+            setExplorerCopyMicroState(addressCopyBtn, copied);
+            closeExplorerAddressActionMenus(root);
+            showExplorerActionFeedback(copied ? 'copied' : 'applied');
+            return;
+          }
+
           if (addressFilterBtn) {
             event.preventDefault();
             const subtabKey = String(addressFilterBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -8443,9 +8609,7 @@
             if (!choice) return;
             if (applyExplorerAddressFilterAction(subtabKey, city, stateName, choice)) {
               renderExplorerList(root, subtabKey);
-              if (typeof window.showToast === 'function') {
-                window.showToast('Updated address filters.', 'success', 1800);
-              }
+              showExplorerActionFeedback('applied');
             }
             return;
           }
@@ -8502,11 +8666,39 @@
             }
             if (applied) {
               renderExplorerList(root, subtabKey);
-              if (typeof window.showToast === 'function') window.showToast('Filter updated.', 'success', 1800);
+              showExplorerActionFeedback('applied');
             }
             return;
           }
 
+
+      if (!root.__visitedKeydownHandler) {
+        root.__visitedKeydownHandler = function handleVisitedKeydown(event) {
+          const eventTarget = getEventTargetElement(event);
+          if (!eventTarget || !root.contains(eventTarget)) return;
+
+          const openMenu = eventTarget.closest('.visited-card-mini-menu:not([hidden])')
+            || root.querySelector('.visited-card-mini-menu:not([hidden])');
+          if (!openMenu) return;
+
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            closeExplorerCardMiniMenuInstance(openMenu, { focusToggle: true });
+            return;
+          }
+
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          const enabledItems = getExplorerCardMenuEnabledItems(openMenu);
+          if (!enabledItems.length) return;
+          const activeIdx = enabledItems.indexOf(eventTarget);
+          const baseIndex = activeIdx >= 0 ? activeIdx : 0;
+          const delta = event.key === 'ArrowDown' ? 1 : -1;
+          const nextIdx = (baseIndex + delta + enabledItems.length) % enabledItems.length;
+          event.preventDefault();
+          enabledItems[nextIdx].focus();
+        };
+        root.addEventListener('keydown', root.__visitedKeydownHandler);
+      }
           const openSuggestionsBtn = closest('#visitedOpenSuggestionsBtn');
           if (openSuggestionsBtn) {
             event.preventDefault();
@@ -8699,28 +8891,24 @@
             event.preventDefault();
             const itemId = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-quick-actions-toggle') || '').trim();
             const subtabKey = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
-            const card = explorerQuickActionsBtn.closest('.visited-explorer-card');
-            const targetMenu = card ? card.querySelector(`[data-visited-explorer-quick-actions-menu="${itemId}"]`) : null;
-            const willOpen = Boolean(targetMenu && targetMenu.hidden);
             // Only debounce open clicks; close clicks must always go through so a
             // second tap on the toggle reliably dismisses the already-open menu.
-            if (willOpen && !acquireExplorerActionLock(`quick-actions:${subtabKey}:${itemId}`, 120)) return;
-            root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
-              menu.hidden = true;
+            toggleExplorerCardMiniMenu(root, explorerQuickActionsBtn, {
+              toggleAttr: 'data-visited-explorer-quick-actions-toggle',
+              menuAttr: 'data-visited-explorer-quick-actions-menu',
+              closeAll: () => closeAllExplorerCardMiniMenus(root),
+              beforeOpen: () => acquireExplorerActionLock(`quick-actions:${subtabKey}:${itemId}`, 120),
+              menuType: 'quick-actions',
+              subtabKey,
+              interaction: event.type
             });
-            root.querySelectorAll('[data-visited-explorer-quick-actions-toggle]').forEach((btn) => {
-              btn.setAttribute('aria-expanded', 'false');
-            });
-            if (targetMenu) {
-              targetMenu.hidden = !willOpen;
-              explorerQuickActionsBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            }
             return;
           }
 
           const explorerGoogleBtn = closest('[data-visited-explorer-open-google]');
           if (explorerGoogleBtn) {
             event.preventDefault();
+            closeExplorerAddressActionMenus(root);
             const subtabKey = String(explorerGoogleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerGoogleBtn.getAttribute('data-visited-explorer-open-google') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
@@ -8737,6 +8925,7 @@
           const explorerDirectionsBtn = closest('[data-visited-explorer-open-directions]');
           if (explorerDirectionsBtn) {
             event.preventDefault();
+            closeExplorerAddressActionMenus(root);
             const subtabKey = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-open-directions') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);

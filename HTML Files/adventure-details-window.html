@@ -100,6 +100,7 @@
     }
     .links-modal.open { display: block; }
     .links-modal textarea { min-height: 160px; }
+    .visited-log-modal { width: min(520px, calc(100vw - 24px)); }
     .enrich-modal {
       position: fixed;
       left: 50%;
@@ -147,6 +148,22 @@
       bottom: 0;
       background: #fff;
       z-index: 2;
+    }
+    .google-rating-display {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .google-rating-stars {
+      font-size: 15px;
+      letter-spacing: 1px;
+      color: #f59e0b;
+      line-height: 1;
+    }
+    .google-rating-value {
+      font-weight: 700;
+      color: #1f2937;
     }
     @media (max-width: 760px) {
       .enrich-grid { grid-template-columns: 1fr; }
@@ -222,6 +239,71 @@
       font-weight: 700;
       text-transform: none;
       letter-spacing: 0;
+    }
+    .detail-source-badge-wrap {
+      margin-top: 8px;
+    }
+    .detail-source-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .detail-source-badge.detail-source-badge--google {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+    .detail-source-badge.detail-source-badge--local {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+      color: #166534;
+    }
+    .detail-source-badge.detail-source-badge--inferred {
+      background: #fffbeb;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+    .parking-source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .detail-map-source-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .detail-map-source-swatch.detail-source-badge--google {
+      background: #1d4ed8;
+      border-color: #93c5fd;
+    }
+    .detail-map-source-swatch.detail-source-badge--local {
+      background: #16a34a;
+      border-color: #86efac;
+    }
+    .detail-map-source-swatch.detail-source-badge--inferred {
+      background: #d97706;
+      border-color: #fcd34d;
     }
     .detail-map-shell {
       display: grid;
@@ -354,10 +436,6 @@
 
     <button type="button" class="ab-btn" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
       🔮 Smart Refresh
-    </button>
-
-    <button type="button" class="ab-btn" id="abRefreshDriveTimeBtn" title="Recalculate drive time from your current location">
-      🚗 Refresh Drive Time
     </button>
 
     <button type="button" class="ab-btn" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
@@ -546,6 +624,21 @@
     <div class="enrich-foot">
       <button id="enrichCancelBtn" type="button" class="auth-btn">Cancel</button>
       <button id="enrichRunBtn" type="button" class="ab-btn ab-fav">🔮 Run Enrichment</button>
+    </div>
+  </div>
+
+  <div id="visitedLogPromptBackdrop" class="links-backdrop" aria-hidden="true"></div>
+  <div id="visitedLogPromptModal" class="links-modal visited-log-modal" role="dialog" aria-modal="true" aria-labelledby="visitedLogPromptTitle">
+    <div class="enrich-head">
+      <div id="visitedLogPromptTitle" class="enrich-title">✅ Marked as visited</div>
+      <button id="visitedLogPromptCloseBtn" type="button" class="auth-btn">Close</button>
+    </div>
+    <div class="enrich-body">
+      <p style="margin:0;color:#374151;line-height:1.5;">Would you like to log a visit now?</p>
+    </div>
+    <div class="enrich-foot">
+      <button id="visitedLogPromptSkipBtn" type="button" class="auth-btn">Not now</button>
+      <button id="visitedLogPromptConfirmBtn" type="button" class="ab-btn ab-fav">📝 Log Visit</button>
     </div>
   </div>
 
@@ -928,6 +1021,237 @@
       source: String(source || 'detail-refresh'),
       updatedAt: updatedAt
     }, key);
+  }
+
+  function getDetailFieldRefreshEntry(data, fieldKey) {
+    var safeFieldKey = String(fieldKey || '').trim();
+    if (!safeFieldKey) return null;
+    var placeKey = getLocationKey(data || {});
+    var persisted = placeKey ? readJsonMap(DETAIL_FIELD_REFRESH_META_KEY)[placeKey] : null;
+    var direct = persisted && typeof persisted === 'object' ? persisted[safeFieldKey] : null;
+    if (direct && typeof direct === 'object') return direct;
+
+    if (safeFieldKey === 'cost') {
+      var costUpdatedAt = data && data.costInferenceMeta && data.costInferenceMeta.updatedAt;
+      if (costUpdatedAt) return { updatedAt: costUpdatedAt, source: 'cost-inference' };
+    }
+
+    if (safeFieldKey === 'coordinates') {
+      var coordsEntry = getStoredCoords(placeKey || '');
+      if (coordsEntry && coordsEntry.updatedAt) return { updatedAt: coordsEntry.updatedAt, source: coordsEntry.source || 'stored' };
+    }
+
+    if (safeFieldKey === 'nearby') {
+      var nearbyState = window.__detailNearbyState;
+      if (nearbyState && nearbyState.updatedAt) return { updatedAt: new Date(nearbyState.updatedAt).toISOString(), source: 'nearby-attractions' };
+    }
+
+    return null;
+  }
+
+  function titleCaseRefreshSourceLabel(value) {
+    return String(value || '').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (char) { return char.toUpperCase(); }).trim();
+  }
+
+  function formatDetailRefreshSourceLabel(source, fieldKey) {
+    var raw = String(source || '').trim();
+    if (!raw) return '';
+    var lower = raw.toLowerCase();
+    if (lower === 'google-places') return 'Google Places';
+    if (lower === 'google-distance-matrix') return 'Google Maps';
+    if (lower === 'haversine') return 'Haversine estimate';
+    if (lower === 'cost-inference') return 'Cost inference';
+    if (lower === 'nearby-attractions') return 'Nearby search';
+    if (lower === 'google-nearby') return 'Google nearby search';
+    if (lower === 'local-nearby') return 'Local nearby data';
+    if (lower === 'mixed-nearby-sources') return 'Mixed nearby sources';
+    if (lower === 'tag-recommendation') return 'Tag recommendations';
+    if (lower === 'google-photo') return 'Google Photos';
+    if (lower === 'google-place-search') return 'Google Place search';
+    if (lower === 'google-url-extract') return 'Google Maps URL';
+    if (lower === 'parking-search') return 'Parking search';
+    if (lower === 'mixed-parking-sources') return 'Mixed parking sources';
+    if (lower === 'google') return 'Google';
+    if (lower === 'openstreetmap' || lower === 'osm') return 'OpenStreetMap';
+    if (lower === 'municipal') return 'Municipal';
+    if (lower === 'official') return 'Official';
+    if (lower === 'data-fields') return fieldKey === 'coordinates' ? 'Saved coordinates' : 'Saved data';
+    if (lower === 'stored') return 'Saved data';
+    if (lower === 'geocode') return 'Google Geocoding';
+    if (lower.indexOf('google-url-') === 0) return 'Google Maps URL';
+    if (lower === 'opener-place-details') return 'Google Place Details';
+    if (lower === 'detail-refresh') return 'Detail refresh';
+    return titleCaseRefreshSourceLabel(raw);
+  }
+
+  function getDetailFieldSourceWrapId(fieldKey) {
+    return 'detailFieldSourceWrap_' + String(fieldKey || '').replace(/[^a-z0-9_-]/gi, '_');
+  }
+
+  function getDetailRefreshSourceToneClass(source) {
+    var lower = String(source || '').trim().toLowerCase();
+    if (!lower) return 'detail-source-badge--inferred';
+    if (
+      lower.indexOf('google') !== -1
+      || lower === 'geocode'
+      || lower === 'google-places'
+      || lower === 'opener-place-details'
+      || lower === 'google-distance-matrix'
+    ) {
+      return 'detail-source-badge--google';
+    }
+    if (
+      lower === 'local-nearby'
+      || lower === 'data-fields'
+      || lower === 'stored'
+      || lower === 'openstreetmap'
+      || lower === 'osm'
+      || lower === 'municipal'
+      || lower === 'official'
+      || lower === 'tag-recommendation'
+    ) {
+      return 'detail-source-badge--local';
+    }
+    return 'detail-source-badge--inferred';
+  }
+
+  function getDetailFieldSourceBadgeHtml(data, fieldKey) {
+    var entry = getDetailFieldRefreshEntry(data, fieldKey);
+    var sourceKey = entry && entry.source ? String(entry.source) : '';
+    var label = formatDetailRefreshSourceLabel(entry && entry.source, fieldKey);
+    if (!label) return '';
+    var toneClass = getDetailRefreshSourceToneClass(sourceKey);
+    return '<span class="detail-source-badge ' + toneClass + '">Source: ' + escapeHtml(label) + '</span>';
+  }
+
+  function renderDetailFieldSourceBadge(data, fieldKey) {
+    var safeFieldKey = String(fieldKey || '').trim();
+    if (!safeFieldKey) return '';
+    var badgeHtml = getDetailFieldSourceBadgeHtml(data, safeFieldKey);
+    return '<div id="' + getDetailFieldSourceWrapId(safeFieldKey) + '" class="detail-source-badge-wrap"' + (badgeHtml ? '' : ' hidden') + '>' + badgeHtml + '</div>';
+  }
+
+  function syncDetailFieldRefreshIndicators(data, fieldKey) {
+    var safeFieldKey = String(fieldKey || '').trim();
+    if (!safeFieldKey) return;
+
+    var wrap = document.getElementById(getDetailFieldSourceWrapId(safeFieldKey));
+    if (wrap) {
+      var badgeHtml = getDetailFieldSourceBadgeHtml(data, safeFieldKey);
+      wrap.innerHTML = badgeHtml;
+      wrap.hidden = !badgeHtml;
+    }
+
+    var card = document.querySelector('[data-detail-field-card="' + safeFieldKey.replace(/"/g, '') + '"]');
+    if (!card) return;
+    var labelEl = card.querySelector('.label');
+    if (!labelEl) return;
+    var freshnessMap = getDetailFreshnessMap(data, window.__detailCurrentPayload || null);
+    window.__detailFieldFreshnessMap = freshnessMap;
+    var rel = freshnessMap[safeFieldKey] || '';
+    var freshnessEl = labelEl.querySelector('.detail-freshness-badge');
+    if (!rel) {
+      if (freshnessEl) freshnessEl.remove();
+      return;
+    }
+    if (!freshnessEl) {
+      freshnessEl = document.createElement('span');
+      freshnessEl.className = 'detail-freshness-badge';
+      labelEl.appendChild(freshnessEl);
+    }
+    freshnessEl.textContent = 'Last refreshed ' + rel;
+    freshnessEl.title = 'Last refreshed ' + rel;
+  }
+
+  function inferNearbyRefreshSource(attractions) {
+    var labels = Array.isArray(attractions)
+      ? attractions.map(function (item) { return String(item && item.sourceBadge || '').trim().toLowerCase(); }).filter(Boolean)
+      : [];
+    var unique = [];
+    labels.forEach(function (label) {
+      if (unique.indexOf(label) === -1) unique.push(label);
+    });
+    if (!unique.length) return 'nearby-attractions';
+    if (unique.length > 1) return 'mixed-nearby-sources';
+    if (unique[0] === 'google') return 'google-nearby';
+    if (unique[0] === 'local') return 'local-nearby';
+    return 'nearby-attractions';
+  }
+
+  function inferParkingRefreshSource(bestOption, rankedOptions) {
+    var bestSource = String(bestOption && bestOption.source || '').trim();
+    if (bestSource) return bestSource;
+    var unique = [];
+    (Array.isArray(rankedOptions) ? rankedOptions : []).forEach(function (item) {
+      var source = String(item && item.source || '').trim().toLowerCase();
+      if (source && unique.indexOf(source) === -1) unique.push(source);
+    });
+    if (unique.length > 1) return 'mixed-parking-sources';
+    return unique[0] || 'parking-search';
+  }
+
+  function extractDetailPlaceIdFromUrl(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return '';
+    var match = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
+    if (match) return String(match[0] || '').trim();
+    var queryMatch = text.match(/[?&]query_place_id=([^&#]+)/i);
+    if (queryMatch) {
+      try { return decodeURIComponent(queryMatch[1]); } catch (_errA) { return String(queryMatch[1] || '').trim(); }
+    }
+    var pidMatch = text.match(/place_id[:=]([^&#]+)/i);
+    if (pidMatch) {
+      try { return decodeURIComponent(pidMatch[1]); } catch (_errB) { return String(pidMatch[1] || '').trim(); }
+    }
+    return '';
+  }
+
+  function buildDetailPlaceIdSearchQuery(data) {
+    var bits = [
+      String(data && data.name || '').trim(),
+      String(data && data.city || '').trim(),
+      String(data && data.state || '').trim(),
+      String(data && data.address || '').trim()
+    ].filter(Boolean);
+    return bits.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  async function resolveGooglePlaceIdForDetail(data, openerWin) {
+    var urls = [
+      String(data && data.googleUrl || '').trim(),
+      String(data && data.directions || '').trim(),
+      String(data && data.links || '').trim(),
+      String(data && data.links2 || '').trim()
+    ].filter(Boolean);
+
+    for (var i = 0; i < urls.length; i += 1) {
+      var fromOpener = '';
+      if (openerWin && typeof openerWin.extractPlaceIdFromUrl === 'function') {
+        try { fromOpener = String(openerWin.extractPlaceIdFromUrl(urls[i]) || '').trim(); } catch (_error) {}
+      }
+      var fromLocal = extractDetailPlaceIdFromUrl(urls[i]);
+      var resolved = fromOpener || fromLocal;
+      if (resolved) return { placeId: resolved, source: 'google-url-extract' };
+    }
+
+    var query = buildDetailPlaceIdSearchQuery(data);
+    if (query && openerWin && typeof openerWin.resolvePlaceIdFromInput === 'function') {
+      try {
+        var viaResolver = String(await openerWin.resolvePlaceIdFromInput('placeName', query) || '').trim();
+        if (viaResolver) return { placeId: viaResolver, source: 'google-place-search' };
+      } catch (_resolverErr) {}
+    }
+
+    if (query && openerWin && typeof openerWin.searchPlaces === 'function') {
+      try {
+        var searchResults = await openerWin.searchPlaces(query);
+        var first = Array.isArray(searchResults) && searchResults.length ? searchResults[0] : null;
+        var viaSearch = String(first && (first.placeId || first.googlePlaceId || first.id) || '').trim();
+        if (viaSearch) return { placeId: viaSearch, source: 'google-place-search' };
+      } catch (_searchErr) {}
+    }
+
+    return null;
   }
 
   function getDetailFreshnessMap(data, payload) {
@@ -3761,6 +4085,7 @@
             '<button type="button" class="nb-action-btn" onclick="openNearbyDiagnosticsFromDetail()" title="Debug nearby data sources">🩺</button>',
           '</div>',
         '</div>',
+        renderDetailFieldSourceBadge(data, 'nearby'),
         /* Filters */
         '<div class="nb-filters">',
           '<div class="nb-filters-toggle" onclick="(function(el){var b=el.closest(\'.nb-filters\').querySelector(\'.nb-filters-body\');var open=b.style.display!==\'none\';b.style.display=open?\'none\':\'\';el.querySelector(\'.nb-filters-caret\').style.transform=open?\'\':\' rotate(180deg)\'})(this)">',
@@ -3869,6 +4194,9 @@
         '.nb-badge--blue{background:#dbeafe;color:#1d4ed8;}',
         '.nb-badge--red{background:#fee2e2;color:#b91c1c;}',
         '.nb-badge--gray{background:#f1f5f9;color:#475569;}',
+        '.nb-badge--source.detail-source-badge--google{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;}',
+        '.nb-badge--source.detail-source-badge--local{background:#dcfce7;color:#15803d;border:1px solid #86efac;}',
+        '.nb-badge--source.detail-source-badge--inferred{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}',
         '.nb-card-desc{font-size:11px;color:#64748b;margin-top:5px;line-height:1.4;}',
         '.nb-card-why{font-size:10px;color:#94a3b8;margin-top:3px;font-style:italic;}',
         '.nb-card-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;}',
@@ -3896,9 +4224,10 @@
       var cardIcon = categoryIconMap[catId] || '📍';
 
       // Status badge
+      var sourceToneClass = exists ? 'detail-source-badge--local' : 'detail-source-badge--google';
       var statusBadge = exists
-        ? '<span class="nb-badge nb-badge--green">✅ In App</span>'
-        : '<span class="nb-badge nb-badge--blue">🔗 Google</span>';
+        ? '<span class="nb-badge nb-badge--source ' + sourceToneClass + '">✅ In App</span>'
+        : '<span class="nb-badge nb-badge--source ' + sourceToneClass + '">🔗 Google</span>';
 
       // Open/closed badge
       var openBadge = '';
@@ -4220,6 +4549,7 @@
     var radii = [1, 2, 5, 10];
     return '<div id="parkingControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
       '<div class="tm-actions"><button type="button" id="refreshParkingBtn" class="tm-btn">🅿️ Refresh Parking</button><span class="u-text-xs-dim">Best option uses proximity + confidence + recency.</span></div>' +
+      renderDetailFieldSourceBadge((window.__detailInlineEditState && window.__detailInlineEditState.data) || (window.__detailCurrentPayload && window.__detailCurrentPayload.data) || null, 'parking') +
       '<div class="tm-actions"><span class="u-text-xs-dim">Radius:</span>' + radii.map(function (r) {
         var active = Number(ui.radiusMiles) === Number(r);
         return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-parking-radius="' + r + '">' + r + ' mi</button>';
@@ -4249,20 +4579,15 @@
   function getParkingSourceBadgeMeta(source) {
     var raw = String(source || '').trim();
     var lower = raw.toLowerCase();
-    if (lower.indexOf('google') !== -1) return { label: 'Google', className: 'parking-source-badge--google' };
-    if (lower.indexOf('openstreetmap') !== -1 || lower === 'osm') return { label: 'OpenStreetMap', className: 'parking-source-badge--osm' };
-    if (lower.indexOf('municipal') !== -1 || lower.indexOf('city') !== -1) return { label: 'Municipal', className: 'parking-source-badge--municipal' };
-    if (lower.indexOf('official') !== -1) return { label: 'Official', className: 'parking-source-badge--official' };
-    return { label: raw || 'Unknown', className: 'parking-source-badge--unknown' };
+    if (lower.indexOf('google') !== -1) return { label: 'Google', sourceKey: 'google', toneClass: 'detail-source-badge--google' };
+    if (lower.indexOf('openstreetmap') !== -1 || lower === 'osm') return { label: 'OpenStreetMap', sourceKey: 'osm', toneClass: 'detail-source-badge--local' };
+    if (lower.indexOf('municipal') !== -1 || lower.indexOf('city') !== -1) return { label: 'Municipal', sourceKey: 'municipal', toneClass: 'detail-source-badge--local' };
+    if (lower.indexOf('official') !== -1) return { label: 'Official', sourceKey: 'official', toneClass: 'detail-source-badge--local' };
+    return { label: raw || 'Unknown', sourceKey: 'unknown', toneClass: 'detail-source-badge--inferred' };
   }
 
   function getParkingSourceToggleKey(source) {
-    var className = getParkingSourceBadgeMeta(source).className;
-    if (className === 'parking-source-badge--google') return 'google';
-    if (className === 'parking-source-badge--osm') return 'osm';
-    if (className === 'parking-source-badge--municipal') return 'municipal';
-    if (className === 'parking-source-badge--official') return 'official';
-    return 'unknown';
+    return String(getParkingSourceBadgeMeta(source).sourceKey || 'unknown');
   }
 
   function renderParkingListHtml(state) {
@@ -4287,7 +4612,7 @@
       var fullNow = opt.fullness && opt.fullness.flag ? ('⚠ Likely full now (' + opt.fullness.label + ')') : 'Availability looks better now';
       return '<div class="card" style="margin:0;">' +
         '<div class="label">' + escapeHtml(idx === 0 ? 'Best Parking' : 'Option ' + (idx + 1)) +
-          ' <span class="parking-source-badge ' + escapeHtml(sourceBadge.className) + '">' + escapeHtml(sourceBadge.label) + '</span></div>' +
+          ' <span class="parking-source-badge ' + escapeHtml(sourceBadge.toneClass) + '">' + escapeHtml(sourceBadge.label) + '</span></div>' +
         '<div class="value"><strong>' + escapeHtml(opt.name) + '</strong><br>📍 ' + escapeHtml(opt.distanceText || '—') + ' · Confidence ' + confidencePct + '% · Verified ' + escapeHtml(freshness) + '</div>' +
         (opt.address ? '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(opt.address) + '</div>' : '') +
         '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(fullNow) + '</div>' +
@@ -4406,12 +4731,14 @@
       cacheMap[placeKey] = { options: ranked, center: coords, updatedAt: Date.now() };
       saveParkingCacheMap(cacheMap);
       window.__detailParkingState = { placeKey: placeKey, center: coords, options: ranked, updatedAt: Date.now() };
+      markDetailFieldRefreshed(data, 'parking', inferParkingRefreshSource(best, ranked));
       var list = document.getElementById('parkingOptionsList');
       if (list) list.innerHTML = renderParkingListHtml(window.__detailParkingState);
       var metaSummary = document.getElementById('parkingMetaSummary');
       if (metaSummary) {
         metaSummary.textContent = 'Confidence ' + Math.round(Math.max(0, Math.min(1, Number(metadata.confidence || 0))) * 100) + '% • Last verified ' + (formatRelativeAge(metadata.lastVerifiedAt) || 'today');
       }
+      syncDetailFieldRefreshIndicators(data, 'parking');
       if (getActiveDetailTabId() === 'map') renderDetailMap(data);
       syncBestParkingAction(data);
       if (ranked.length) {
@@ -4546,9 +4873,10 @@
 
       var nearbyText = buildNearbyDisplayFromAttractions(attractions);
       data.nearby = nearbyText;
-      markDetailFieldRefreshed(data, 'nearby', 'nearby-attractions');
+      markDetailFieldRefreshed(data, 'nearby', inferNearbyRefreshSource(attractions));
       var pane = document.getElementById('nearbyAttractionsValue');
       if (pane) pane.innerHTML = renderNearbyListHtml(attractions, data);
+      syncDetailFieldRefreshIndicators(data, 'nearby');
       if (getActiveDetailTabId() === 'map') renderDetailMap(data);
 
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { nearby: nearbyText }, 'detail-nearby-refresh');
@@ -4610,6 +4938,7 @@
       if (costValue) {
         costValue.innerHTML = escapeHtml(display) + renderCostMetaHintHtml(costMeta);
       }
+      syncDetailFieldRefreshIndicators(data, 'cost');
       if (forceSync && result.tier !== 'Unknown') await syncOrQueueExplorerUpdate(state.syncState, { cost: display }, 'detail-cost-refresh');
       var toastMsg = result.tier === 'Unknown'
         ? '❓ Cost unknown — not enough info. Set it manually.'
@@ -4662,19 +4991,45 @@
     var hasCoords = areValidDetailCoordinates(lat, lng);
     var coordText = hasCoords
       ? escapeHtml(lat.toFixed(5) + ', ' + lng.toFixed(5))
-        + (stored ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(stored.source || '') + '</div>' : '')
       : '<span class="empty">Not set — click Refresh to geocode</span>';
+    var coordCopyValue = hasCoords ? String(lat.toFixed(5) + ', ' + lng.toFixed(5)) : '';
+    var coordCopyButton = '<button type="button" id="detailCoordsCopyBtn" class="addr-copy-btn" data-copy-label="coordinates" data-copy="' + escapeHtml(coordCopyValue) + '"' + (hasCoords ? '' : ' hidden') + '>📋 Copy</button>';
     return '<span id="detailCoordsValue">' + coordText + '</span>' +
       '<div class="tm-actions" style="margin-top:8px;">' +
+      coordCopyButton +
       '<button type="button" id="refreshCoordsBtn" class="tm-btn">📍 ' + (hasCoords ? 'Refresh' : 'Get') + ' Coordinates</button>' +
-      '</div>';
+      '</div>' +
+      renderDetailFieldSourceBadge(data, 'coordinates');
+  }
+
+  function renderGoogleRatingDisplay(value) {
+    var text = String(value == null ? '' : value).trim();
+    if (!text) return '<span class="empty">Not available</span>';
+    var numeric = Number(text);
+    if (!Number.isFinite(numeric)) return '<span class="google-rating-value">' + escapeHtml(text) + '</span>';
+    var clamped = Math.max(0, Math.min(5, numeric));
+    var rounded = Math.round(clamped);
+    var stars = '';
+    for (var i = 0; i < 5; i += 1) {
+      stars += i < rounded ? '★' : '☆';
+    }
+    return '<span class="google-rating-display"><span class="google-rating-stars" aria-hidden="true">' + stars + '</span><span class="google-rating-value">' + escapeHtml(clamped.toFixed(1)) + '/5</span></span>';
   }
 
   function renderHoursCard(data) {
     return '<span id="detailHoursValue">' + escapeHtml(String(data && data.hoursOfOperation || '')) + '</span>' +
       '<div class="tm-actions" style="margin-top:8px;">' +
       '<button type="button" id="refreshHoursBtn" class="tm-btn">🕐 Refresh Hours</button>' +
-      '</div>';
+      '</div>' +
+      renderDetailFieldSourceBadge(data, 'hoursOfOperation');
+  }
+
+  function renderDescriptionCard(data) {
+    return '<span id="detailDescriptionValue">' + escapeHtml(String(data && data.description || '')) + '</span>' +
+      '<div class="tm-actions" style="margin-top:8px;">' +
+      '<button type="button" id="refreshDescriptionBtn" class="tm-btn">📝 Refresh Description</button>' +
+      '</div>' +
+      renderDetailFieldSourceBadge(data, 'description');
   }
 
   async function refreshCoordinatesForDetail(forceSync) {
@@ -4697,9 +5052,14 @@
 
       var valueEl = document.getElementById('detailCoordsValue');
       if (valueEl) {
-        valueEl.innerHTML = escapeHtml(coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5)) +
-          '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(coords.source || 'geocode') + '</div>';
+        valueEl.textContent = coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5);
       }
+      var coordCopyBtn = document.getElementById('detailCoordsCopyBtn');
+      if (coordCopyBtn) {
+        coordCopyBtn.setAttribute('data-copy', coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5));
+        coordCopyBtn.hidden = false;
+      }
+      syncDetailFieldRefreshIndicators(data, 'coordinates');
       if (btn) { btn.textContent = '📍 Refresh Coordinates'; }
       if (getActiveDetailTabId() === 'map') renderDetailMap(data);
 
@@ -4718,6 +5078,8 @@
     var state = window.__detailInlineEditState;
     if (!state || !state.data) return;
     var data = state.data;
+    var btn = document.getElementById('refreshDescriptionBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
     try {
       var openerWin = getOpenerWindow();
       var placeId = String(data.googlePlaceId || '').trim();
@@ -4731,11 +5093,61 @@
       var desc = extractDescriptionFromGoogleDetails(details || {});
       if (!desc) { showDetailToast('ℹ️ No description found via Google Places.', 'info', 2600); return; }
       data.description = desc;
+      var descEl = document.getElementById('detailDescriptionValue');
+      if (descEl) descEl.textContent = desc;
       markDetailFieldRefreshed(data, 'description', 'google-places');
+      syncDetailFieldRefreshIndicators(data, 'description');
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { description: desc }, 'detail-desc-refresh').catch(function () {});
       showDetailToast('✅ Description refreshed from Google Places.', 'success', 2600);
     } catch (_err) {
       showDetailToast('⚠️ Could not refresh description.', 'error', 3000);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📝 Refresh Description'; }
+    }
+  }
+
+  async function refreshGooglePlaceIdForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    var btn = document.getElementById('refreshPlaceIdBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+    try {
+      var openerWin = getOpenerWindow();
+      var currentPlaceId = String(data.googlePlaceId || '').trim();
+      var resolved = await resolveGooglePlaceIdForDetail(data, openerWin);
+      if (!resolved || !String(resolved.placeId || '').trim()) {
+        if (currentPlaceId) {
+          showDetailToast('ℹ️ Could not find a newer Google Place ID. Current ID kept.', 'info', 3000);
+        } else {
+          showDetailToast('⚠️ Could not resolve a Google Place ID from URL or search.', 'warning', 3200);
+        }
+        return;
+      }
+
+      var nextPlaceId = String(resolved.placeId || '').trim();
+      data.googlePlaceId = nextPlaceId;
+      if (window.__detailCurrentPayload && window.__detailCurrentPayload.data) {
+        window.__detailCurrentPayload.data.googlePlaceId = nextPlaceId;
+      }
+      var placeIdEl = document.getElementById('detailPlaceIdValue');
+      if (placeIdEl) placeIdEl.textContent = nextPlaceId;
+
+      markDetailFieldRefreshed(data, 'googlePlaceId', String(resolved.source || 'google-place-id-refresh'));
+      syncDetailFieldRefreshIndicators(data, 'googlePlaceId');
+      if (forceSync) {
+        await syncOrQueueExplorerUpdate(state.syncState, { googlePlaceId: nextPlaceId }, 'detail-place-id-refresh').catch(function () {});
+      }
+
+      if (nextPlaceId === currentPlaceId) {
+        showDetailToast('✅ Google Place ID verified and is already current.', 'success', 2600);
+      } else {
+        showDetailToast('✅ Google Place ID refreshed.', 'success', 2600);
+      }
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh Google Place ID right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🧭 Refresh Place ID'; }
     }
   }
 
@@ -4759,7 +5171,8 @@
       markDetailFieldRefreshed(data, 'googleRating', 'google-places');
       appendRatingHistory(getLocationKey(data), parseNumericRating(rating));
       var ratingEl = document.querySelector('[data-detail-field-card="googleRating"] .value');
-      if (ratingEl) ratingEl.textContent = rating;
+      if (ratingEl) ratingEl.innerHTML = renderGoogleRatingDisplay(rating);
+      syncDetailFieldRefreshIndicators(data, 'googleRating');
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { googleRating: rating }, 'detail-rating-refresh').catch(function () {});
       showDetailToast('✅ Google Rating updated: ' + rating + ' ⭐', 'success', 2600);
     } catch (_err) {
@@ -4790,6 +5203,7 @@
       markDetailFieldRefreshed(data, 'hoursOfOperation', 'google-places');
       var hoursEl = document.getElementById('detailHoursValue');
       if (hoursEl) hoursEl.textContent = hours;
+      syncDetailFieldRefreshIndicators(data, 'hoursOfOperation');
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { hours: hours }, 'detail-hours-refresh').catch(function () {});
       showDetailToast('✅ Hours of Operation refreshed.', 'success', 2600);
     } catch (_err) {
@@ -5009,10 +5423,8 @@
     var state = window.__detailInlineEditState;
     if (!state || !state.data) return;
     var btn = document.getElementById('refreshDriveTimeBtn');
-    var abBtn = document.getElementById('abRefreshDriveTimeBtn');
     var btnText = '🚗 Refresh Drive Time';
     if (btn) { btn.disabled = true; btn.textContent = 'Calculating...'; }
-    if (abBtn) { abBtn.disabled = true; abBtn.textContent = '⏳ Calculating...'; }
     try {
       var data = state.data;
 
@@ -5069,6 +5481,7 @@
           card.appendChild(span);
         }
       }
+      syncDetailFieldRefreshIndicators(data, 'driveTime');
 
       // Sync back to Excel/explorer.
       if (forceSync) {
@@ -5081,7 +5494,6 @@
       showDetailToast('⚠️ Could not refresh drive time right now.', 'error', 3200);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = btnText; }
-      if (abBtn) { abBtn.disabled = false; abBtn.textContent = '🚗 Refresh Drive Time'; }
     }
   }
 
@@ -5165,10 +5577,10 @@
       card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
       card('City', data.city, 'city') +
       card('State', data.state, 'state') +
-      card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>', 'driveTime') +
+      card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>' + renderDetailFieldSourceBadge(data, 'driveTime'), 'driveTime') +
       card('Coordinates', renderCoordsCard(data), 'coordinates') +
       '</div>' +
-      card('Description', data.description, 'description') +
+      card('Description', renderDescriptionCard(data), 'description') +
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div><div class="tm-actions" style="margin-top:8px;"><button type="button" id="openBatchTagsFromCardBtn" class="tm-btn">🏷️ Batch Tag Actions</button></div>');
 
     var isNatureSource = (function() {
@@ -5186,8 +5598,8 @@
       (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
       (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
       (isNatureSource ? card('Trail Length', data.trailLength, 'trailLength') : '') +
-      card('Cost', '<span id="detailCostValue">' + escapeHtml(data.cost || '') + renderCostMetaHintHtml(data.costInferenceMeta) + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshCostBtn" class="tm-btn">🔄 Refresh Cost</button></div>', 'cost') +
-      card('Google Rating', data.googleRating, 'googleRating') +
+      card('Cost', '<span id="detailCostValue">' + escapeHtml(data.cost || '') + renderCostMetaHintHtml(data.costInferenceMeta) + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshCostBtn" class="tm-btn">🔄 Refresh Cost</button></div>' + renderDetailFieldSourceBadge(data, 'cost'), 'cost') +
+      card('Google Rating', renderGoogleRatingDisplay(data.googleRating), 'googleRating') +
       card('My Rating', data.myRating, 'myRating') +
       '</div>' +
       '<div id="detailInlineEditMount"></div>';
@@ -5212,7 +5624,7 @@
       card('Website', data.website ? '<a href="' + data.website + '" target="_blank" rel="noopener">Visit Website</a>' : '', 'website') +
       card('Directions', directionsUrl ? '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get Directions</a>' : '') +
       card('Google URL', googleViewUrl ? '<a href="' + googleViewUrl + '" target="_blank" rel="noopener">Open in Google</a>' : '', 'googleUrl') +
-      card('Place ID', data.googlePlaceId, 'googlePlaceId') +
+      card('Place ID', '<span id="detailPlaceIdValue">' + escapeHtml(String(data.googlePlaceId || '').trim()) + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshPlaceIdBtn" class="tm-btn">🧭 Refresh Place ID</button></div>' + renderDetailFieldSourceBadge(data, 'googlePlaceId'), 'googlePlaceId') +
       card('Links', data.links ? '<a href="' + data.links + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links') +
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
@@ -5570,7 +5982,8 @@
         lng: lng,
         distanceText: String(opt && opt.distanceText || '').trim(),
         sourceLabel: sourceBadge.label,
-        sourceClassName: sourceBadge.className,
+        sourceClassName: sourceBadge.sourceKey,
+        sourceToneClass: sourceBadge.toneClass,
         confidencePct: Math.round(Math.max(0, Math.min(1, Number(opt && opt.confidence || 0))) * 100)
       };
     }).filter(Boolean);
@@ -5588,18 +6001,18 @@
       if (className) activeByClass[className] = true;
     });
     var orderedSources = [
-      { key: 'google', label: 'Google', className: 'parking-source-badge--google' },
-      { key: 'osm', label: 'OSM', className: 'parking-source-badge--osm' },
-      { key: 'municipal', label: 'Municipal', className: 'parking-source-badge--municipal' },
-      { key: 'official', label: 'Official', className: 'parking-source-badge--official' },
-      { key: 'unknown', label: 'Unknown', className: 'parking-source-badge--unknown' }
+      { key: 'google', label: 'Google', className: 'google', toneClass: 'detail-source-badge--google' },
+      { key: 'osm', label: 'OSM', className: 'osm', toneClass: 'detail-source-badge--local' },
+      { key: 'municipal', label: 'Municipal', className: 'municipal', toneClass: 'detail-source-badge--local' },
+      { key: 'official', label: 'Official', className: 'official', toneClass: 'detail-source-badge--local' },
+      { key: 'unknown', label: 'Unknown', className: 'unknown', toneClass: 'detail-source-badge--inferred' }
     ];
     return '<span class="detail-map-source-legend">' + orderedSources.map(function (entry) {
       var enabled = sourceToggles[entry.key] !== false;
       var hasMarkers = !!activeByClass[entry.className];
       var chipClass = 'detail-map-source-chip' + (enabled ? '' : ' is-inactive') + (hasMarkers ? '' : ' is-empty');
       return '<button type="button" class="' + chipClass + '" data-parking-source-toggle="' + escapeHtml(entry.key) + '" aria-pressed="' + (enabled ? 'true' : 'false') + '" title="Toggle ' + escapeHtml(entry.label) + ' parking markers">' +
-        '<span class="detail-map-source-swatch ' + escapeHtml(entry.className) + '"></span>' +
+        '<span class="detail-map-source-swatch ' + escapeHtml(entry.toneClass) + '"></span>' +
         escapeHtml(entry.label) +
       '</button>';
     }).join('') + '</span>';
@@ -5799,6 +6212,70 @@
     if (focusTarget) {
       try { focusTarget.focus(); } catch (_focusError) {}
     }
+  }
+
+  function openVisitedLogPromptModal(options) {
+    bindVisitedLogPromptModalControls();
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    var openerEl = safeOptions.openerEl && typeof safeOptions.openerEl.focus === 'function'
+      ? safeOptions.openerEl
+      : (document.activeElement && typeof document.activeElement.focus === 'function' ? document.activeElement : null);
+    var backdrop = document.getElementById('visitedLogPromptBackdrop');
+    var modal = document.getElementById('visitedLogPromptModal');
+    var confirmBtn = document.getElementById('visitedLogPromptConfirmBtn');
+    if (!backdrop || !modal) return Promise.resolve(false);
+    backdrop.classList.add('open');
+    modal.classList.add('open');
+    if (confirmBtn) {
+      try { confirmBtn.focus(); } catch (_focusErr) {}
+    }
+    return new Promise(function (resolve) {
+      window.__detailVisitedLogPromptState = {
+        openerEl: openerEl,
+        resolve: resolve
+      };
+    });
+  }
+
+  function closeVisitedLogPromptModal(shouldLogVisit) {
+    var state = window.__detailVisitedLogPromptState && typeof window.__detailVisitedLogPromptState === 'object'
+      ? window.__detailVisitedLogPromptState
+      : null;
+    var backdrop = document.getElementById('visitedLogPromptBackdrop');
+    var modal = document.getElementById('visitedLogPromptModal');
+    if (backdrop) backdrop.classList.remove('open');
+    if (modal) modal.classList.remove('open');
+    window.__detailVisitedLogPromptState = null;
+    if (state && typeof state.resolve === 'function') {
+      state.resolve(!!shouldLogVisit);
+    }
+    var fallbackBtn = document.getElementById('abVisitedBtn');
+    var focusTarget = state && state.openerEl && typeof state.openerEl.focus === 'function'
+      ? state.openerEl
+      : (fallbackBtn && typeof fallbackBtn.focus === 'function' ? fallbackBtn : null);
+    if (focusTarget) {
+      try { focusTarget.focus(); } catch (_focusError) {}
+    }
+  }
+
+  function bindVisitedLogPromptModalControls() {
+    if (window.__visitedLogPromptModalBound) return;
+    window.__visitedLogPromptModalBound = true;
+    var closeBtn = document.getElementById('visitedLogPromptCloseBtn');
+    var skipBtn = document.getElementById('visitedLogPromptSkipBtn');
+    var confirmBtn = document.getElementById('visitedLogPromptConfirmBtn');
+    var backdrop = document.getElementById('visitedLogPromptBackdrop');
+    if (closeBtn) closeBtn.addEventListener('click', function () { closeVisitedLogPromptModal(false); });
+    if (skipBtn) skipBtn.addEventListener('click', function () { closeVisitedLogPromptModal(false); });
+    if (confirmBtn) confirmBtn.addEventListener('click', function () { closeVisitedLogPromptModal(true); });
+    if (backdrop) backdrop.addEventListener('click', function () { closeVisitedLogPromptModal(false); });
+    document.addEventListener('keydown', function (event) {
+      if (!event || event.key !== 'Escape') return;
+      var modal = document.getElementById('visitedLogPromptModal');
+      if (!modal || !modal.classList.contains('open')) return;
+      event.preventDefault();
+      closeVisitedLogPromptModal(false);
+    }, true);
   }
 
   function bindLinksModalControls() {
@@ -6670,7 +7147,7 @@
             var shouldOpenVisitLog = false;
             try {
               shouldOpenVisitLog = canLaunchVisitLogWorkflow()
-                && window.confirm('Marked as visited. Would you like to log a visit now?');
+                && await openVisitedLogPromptModal({ openerEl: visitedBtn });
             } catch (_confirmError) {
               shouldOpenVisitLog = false;
             }
@@ -6819,6 +7296,7 @@
       var addrBtn = closestFromEvent(e, '.addr-copy-btn');
       if (addrBtn) {
         var text = addrBtn.getAttribute('data-copy') || '';
+        var label = String(addrBtn.getAttribute('data-copy-label') || 'address').trim() || 'address';
         if (!text) return;
         copyDebugBundle(text).then(function () {
           var orig = addrBtn.textContent;
@@ -6826,7 +7304,7 @@
           addrBtn.classList.add('copied');
           setTimeout(function () { addrBtn.textContent = orig; addrBtn.classList.remove('copied'); }, 1400);
         }).catch(function () {
-          window.prompt('Copy address:', text);
+          window.prompt('Copy ' + label + ':', text);
         });
         return;
       }
@@ -6915,7 +7393,17 @@
         return;
       }
 
-      if (closestFromEvent(e, '#refreshDriveTimeBtn') || closestFromEvent(e, '#abRefreshDriveTimeBtn')) {
+      if (closestFromEvent(e, '#refreshDescriptionBtn')) {
+        refreshDescriptionForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshPlaceIdBtn')) {
+        refreshGooglePlaceIdForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshDriveTimeBtn')) {
         refreshDriveTimeForDetail(true);
         return;
       }

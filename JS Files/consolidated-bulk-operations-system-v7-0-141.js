@@ -1082,6 +1082,12 @@ function updateSheetData(updateRanges) {
 }
 
 function normalizeHoursForBulkOps(value, mainWindow) {
+  const looksLikeStructuredHoursJson = (text) => {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return false;
+    if (!((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']')))) return false;
+    return /"(periods|weekdayDescriptions|weekday_text|weekdayText|specialDays)"\s*:/.test(trimmed);
+  };
   if (value == null) return '';
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -1098,7 +1104,13 @@ function normalizeHoursForBulkOps(value, mainWindow) {
   const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
   if (host && typeof host.normalizeOperationHours === 'function') {
     try {
-      return String(host.normalizeOperationHours(value) || '').trim();
+      const normalized = String(host.normalizeOperationHours(value) || '').trim();
+      if (normalized && looksLikeStructuredHoursJson(normalized)) {
+        try {
+          return normalizeHoursForBulkOps(JSON.parse(normalized), null);
+        } catch (_error) {}
+      }
+      return normalized;
     } catch (_error) {}
   }
   if (Array.isArray(value)) return value.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');

@@ -31,6 +31,46 @@ test.describe('Adventure explorer card filter actions', () => {
     const list = page.locator(`#visitedExplorerList-${selectedSubtab} .visited-explorer-card`);
     await expect(list.first()).toBeVisible({ timeout: 12000 });
 
+    const advancedFilters = page.locator(`#visitedProgressPane-${selectedSubtab} .visited-explorer-advanced-filters`).first();
+    await expect(advancedFilters).toBeVisible();
+    await expect(advancedFilters).toHaveJSProperty('open', false);
+
+    await page.evaluate(() => {
+      window.__copiedExplorerAddress = '';
+      const clipboardMock = {
+        writeText: async (value) => {
+          window.__copiedExplorerAddress = String(value || '');
+        }
+      };
+      try {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboardMock });
+      } catch (_) {
+        // Older browser contexts can reject redefining clipboard; test will still verify button visibility.
+      }
+    });
+
+    const addressActionsToggle = list.first().locator('[data-visited-explorer-address-actions-toggle]').first();
+    await expect(addressActionsToggle).toBeVisible();
+    await addressActionsToggle.click();
+
+    const addressCopyBtn = list.first().locator('[data-visited-explorer-address-menu] [data-visited-explorer-address-copy]').first();
+    const addressDirectionsBtn = list.first().locator('[data-visited-explorer-address-menu] [data-visited-explorer-open-directions]').first();
+    await expect(addressCopyBtn).toBeVisible();
+    await addressCopyBtn.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(addressDirectionsBtn).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(list.first().locator('[data-visited-explorer-address-menu]')).toBeHidden();
+    await expect(addressActionsToggle).toBeFocused();
+
+    await addressActionsToggle.click();
+    await expect(addressCopyBtn).toBeVisible();
+    await addressCopyBtn.click();
+    await expect(addressCopyBtn).toHaveText(/copied/i);
+    await expect(addressCopyBtn).toHaveClass(/is-copied/);
+    const copiedAddress = await page.evaluate(() => String(window.__copiedExplorerAddress || '').trim());
+    expect(copiedAddress.length).toBeGreaterThan(0);
+
     const initialCount = await list.count();
     const tagButtons = list.first().locator('[data-visited-explorer-tag-filter]');
     const tagCount = await tagButtons.count();

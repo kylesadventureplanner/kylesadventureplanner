@@ -483,6 +483,64 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toMatchObject({ success: true, updatedCount: 1 });
   });
 
+  test('refresh place ids normalizes structured JSON hours into readable text', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Refresh JSON Hours Cafe';
+      row[1] = 'ChIJRefreshJsonHours123';
+      row[9] = 'NC';
+      row[10] = 'Durham';
+      row[11] = '321 Refresh Way, Durham, NC 27701';
+      window.adventuresData = [{ values: [row] }];
+
+      window.saveToExcel = async () => ({ persisted: true, verified: true });
+      const serializedHours = JSON.stringify({
+        periods: [
+          { open: { day: 0, hour: 15, minute: 0 }, close: { day: 0, hour: 23, minute: 0 } },
+          { open: { day: 1, hour: 7, minute: 0 }, close: { day: 1, hour: 22, minute: 0 } }
+        ],
+        weekdayDescriptions: [
+          'Monday: 7:00 AM - 10:00 PM',
+          'Sunday: 3:00 PM - 11:00 PM'
+        ],
+        specialDays: []
+      });
+      window.getPlaceDetails = async () => ({
+        placeId: 'ChIJRefreshJsonHours123',
+        hours: serializedHours,
+        website: '',
+        phone: '',
+        address: '321 Refresh Way, Durham, NC 27701',
+        rating: '',
+        reviews: []
+      });
+    });
+
+    await page.evaluate(async () => {
+      window.__refreshJsonHoursResult = await window.refreshPlaceIdsWithProgress(false, { updateMode: 'refresh-all' });
+    });
+
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
+      .toContain('Monday: 7:00 AM - 10:00 PM');
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
+      .not.toContain('"periods"');
+    await expect.poll(() => page.evaluate(() => window.__refreshJsonHoursResult), { timeout: 10000 })
+      .toMatchObject({ success: true });
+  });
+
   test('remove exact duplicates only removes rows with same name and same address', async ({ page }) => {
     await page.click('.tab-btn[data-tab="automation"]');
     await page.evaluate(() => {

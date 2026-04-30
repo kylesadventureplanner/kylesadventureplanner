@@ -1,4 +1,5 @@
 const { test, expect } = require('./reliability-test');
+const { waitForEmbeddedFrameReady } = require('./playwright-helpers');
 
 // Keep retries scoped to this spec so flaky CI runs capture a trace.zip
 // without broadening retry behavior across the full smoke suite.
@@ -237,6 +238,22 @@ async function withLiveDetailsFrame(detailsFrame, run) {
   return run(liveFrame);
 }
 
+async function ensureDetailsFrameReady(detailsFrame) {
+  await waitForEmbeddedFrameReady(detailsFrame, {
+    srcPattern: /adventure-details-window\.html/i,
+    bodySelector: '#tabs',
+    timeout: 15000
+  });
+
+  await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+    if (window.__detailInlineEditState && window.__detailInlineEditState.data) return true;
+    if (window.__detailCurrentPayload && window.__detailCurrentPayload.data && typeof window.render === 'function') {
+      window.render(window.__detailCurrentPayload);
+    }
+    return !!(window.__detailInlineEditState && window.__detailInlineEditState.data);
+  })), { timeout: 15000 }).toBe(true);
+}
+
 async function activateDetailsTab(detailsFrame, detailsFrameLocator, tabId) {
   const normalizedTabId = String(tabId || 'overview');
   const tabButton = detailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${normalizedTabId}"]`);
@@ -355,12 +372,15 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
     await expect(detailsFrame).toBeVisible();
     await expect(detailsFrame).toHaveAttribute('src', /adventure-details-window\.html/i);
+    await expect(detailsView.locator(':scope > .visited-inline-tool-header-card')).toBeVisible();
+    await expect(detailsView.locator(':scope > .visited-inline-tool-frame')).toHaveCount(1);
     const frameHandle = await detailsFrame.elementHandle();
     const plannerDetailsFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(plannerDetailsFrame).not.toBeNull();
     const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
+    await expect(plannerDetailsFrameLocator.locator('#refreshDescriptionBtn')).toBeVisible();
     await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
     await expect(plannerDetailsFrameLocator.locator('#abBatchTagsBtn')).toBeVisible();
     const ratingResetBtn = plannerDetailsFrameLocator.locator('#abRatingResetBtn');
@@ -388,6 +408,8 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'details');
     await expect(plannerDetailsFrameLocator.locator('#refreshHoursBtn')).toBeVisible();
+    await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="googleRating"] .google-rating-stars')).toBeVisible();
+    await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="googleRating"] .google-rating-stars')).toContainText(/★/);
     const inlineEditBtn = plannerDetailsFrameLocator.locator('#abInlineEditBtn');
     if (await inlineEditBtn.count()) {
       const inlineEditPanel = plannerDetailsFrameLocator.locator('#detailInlineEditPanel');
@@ -484,6 +506,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await quickActionsBtn.click();
     const tagMenuBtn = firstCard.locator('[data-visited-explorer-quick-actions-menu] [data-visited-explorer-tags]').first();
+    if (!(await tagMenuBtn.isVisible())) await quickActionsBtn.click();
     await expect(tagMenuBtn).toBeVisible();
     await tagMenuBtn.click();
     await expect(detailsView).toBeVisible();
@@ -492,6 +515,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await quickActionsBtn.click();
     const notesMenuBtn = firstCard.locator('[data-visited-explorer-quick-actions-menu] [data-visited-explorer-notes]').first();
+    if (!(await notesMenuBtn.isVisible())) await quickActionsBtn.click();
     await expect(notesMenuBtn).toBeVisible();
     await notesMenuBtn.click();
     await expect(detailsView).toBeVisible();
@@ -604,6 +628,95 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(hoursValue).toContainText('Monday: 9:00 AM - 6:00 PM');
     await expect(hoursValue).toContainText('Tuesday: 9:00 AM - 6:00 PM');
     await expect(hoursValue).not.toContainText(/"periods"\s*:/i);
+  });
+
+  test('refreshable detail cards show source badges and description refresh updates its badge live', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    const { key } = await openExplorerAndFindDetails(page);
+    await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await ensureDetailsFrameReady(detailsFrame);
+    const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    await page.evaluate(() => {
+      window.getPlaceDetails = async () => ({
+        description: 'Fresh description from Google Places via Playwright.'
+      });
+    });
+
+    await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+      var state = window.__detailInlineEditState;
+      if (!state || !state.data) throw new Error('Missing detail inline edit state.');
+      state.data.googlePlaceId = 'ChIJPlaywrightDetailBadge123';
+      if (window.__detailCurrentPayload && window.__detailCurrentPayload.data) {
+        window.__detailCurrentPayload.data.googlePlaceId = 'ChIJPlaywrightDetailBadge123';
+      }
+
+      var refreshMap = JSON.parse(window.localStorage.getItem('__adventure_detail_field_refresh_meta_v1') || '{}');
+      var now = new Date().toISOString();
+      refreshMap.place_ChIJPlaywrightDetailBadge123 = Object.assign({}, refreshMap.place_ChIJPlaywrightDetailBadge123 || {}, {
+        driveTime: { updatedAt: now, source: 'google-distance-matrix' },
+        hoursOfOperation: { updatedAt: now, source: 'google-places' },
+        cost: { updatedAt: now, source: 'cost-inference' },
+        nearby: { updatedAt: now, source: 'local-nearby' },
+        parking: { updatedAt: now, source: 'openstreetmap' }
+      });
+      window.localStorage.setItem('__adventure_detail_field_refresh_meta_v1', JSON.stringify(refreshMap));
+
+      if (typeof window.render === 'function') {
+        window.render(window.__detailCurrentPayload);
+      }
+    }));
+
+    await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => ({
+      driveTime: String(document.getElementById('detailFieldSourceWrap_driveTime')?.textContent || '').trim(),
+      hours: String(document.getElementById('detailFieldSourceWrap_hoursOfOperation')?.textContent || '').trim(),
+      cost: String(document.getElementById('detailFieldSourceWrap_cost')?.textContent || '').trim(),
+      nearby: String(document.getElementById('detailFieldSourceWrap_nearby')?.textContent || '').trim(),
+      driveTimeClass: String(document.querySelector('#detailFieldSourceWrap_driveTime .detail-source-badge')?.className || '').trim(),
+      hoursClass: String(document.querySelector('#detailFieldSourceWrap_hoursOfOperation .detail-source-badge')?.className || '').trim(),
+      costClass: String(document.querySelector('#detailFieldSourceWrap_cost .detail-source-badge')?.className || '').trim(),
+      nearbyClass: String(document.querySelector('#detailFieldSourceWrap_nearby .detail-source-badge')?.className || '').trim(),
+      description: String(document.getElementById('detailFieldSourceWrap_description')?.textContent || '').trim()
+    }))), { timeout: 10000 }).toMatchObject({
+      driveTime: 'Source: Google Maps',
+      hours: 'Source: Google Places',
+      cost: 'Source: Cost inference',
+      nearby: 'Source: Local nearby data',
+      driveTimeClass: expect.stringContaining('detail-source-badge--google'),
+      hoursClass: expect.stringContaining('detail-source-badge--google'),
+      costClass: expect.stringContaining('detail-source-badge--inferred'),
+      nearbyClass: expect.stringContaining('detail-source-badge--local'),
+      description: ''
+    });
+
+    await expect(plannerDetailsFrameLocator.locator('#abRefreshDriveTimeBtn')).toHaveCount(0);
+    await expect(plannerDetailsFrameLocator.locator('#refreshDriveTimeBtn')).toBeVisible();
+    await expect(plannerDetailsFrameLocator.locator('#detailCoordsCopyBtn')).toHaveCount(1);
+    await expect(plannerDetailsFrameLocator.locator('#refreshDescriptionBtn')).toBeVisible();
+    await clickDetailsControl(detailsFrame, '#refreshDescriptionBtn');
+
+    await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => ({
+      text: String(document.getElementById('detailDescriptionValue')?.textContent || '').trim(),
+      badge: String(document.getElementById('detailFieldSourceWrap_description')?.textContent || '').trim()
+    }))), { timeout: 10000 }).toMatchObject({
+      text: 'Fresh description from Google Places via Playwright.',
+      badge: 'Source: Google Places'
+    });
+
+    await activateDetailsTab(detailsFrame, plannerDetailsFrameLocator, 'contact');
+    await expect(plannerDetailsFrameLocator.locator('#refreshPlaceIdBtn')).toBeVisible();
+    await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+        window.__detailInlineEditState.data.googleUrl = 'https://www.google.com/maps/place/?q=place_id:ChIJUpdatedPlaceIdPlaywright123';
+      }
+    }));
+    await clickDetailsControl(detailsFrame, '#refreshPlaceIdBtn');
+    await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => String(document.getElementById('detailPlaceIdValue')?.textContent || '').trim())), { timeout: 10000 })
+      .toBe('ChIJUpdatedPlaceIdPlaywright123');
   });
 
   test('tag refresh stays non-destructive, apply mutates tags, and save syncs only applied tags', async ({ page }) => {
@@ -911,6 +1024,10 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(list).toBeVisible();
 
     const cityFilter = paneRoot.locator(`#visitedExplorerCity-${key}`);
+    const advancedFilters = paneRoot.locator('.visited-explorer-advanced-filters').first();
+    if (!(await advancedFilters.evaluate((el) => Boolean(el && el.open)).catch(() => false))) {
+      await advancedFilters.locator('summary').first().click();
+    }
     await expect(cityFilter).toBeVisible();
     await cityFilter.selectOption('austin');
 
@@ -1063,16 +1180,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
     })).toMatchObject({ subtabKey: key });
 
     await ensureDetailsActionBarVisible();
-
-    const frameHandle = await detailsFrame.elementHandle();
-    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
-    expect(liveFrame).not.toBeNull();
-    await liveFrame.evaluate(() => {
-      window.confirm = () => true;
-    });
+    await withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+      window.canLaunchVisitLogWorkflow = () => true;
+    }));
 
     await visitedBtn.scrollIntoViewIfNeeded();
-    await launchVisitLogAndClose(visitedBtn);
+    await visitedBtn.click();
+    await expect(details.locator('#visitedLogPromptModal')).toBeVisible();
+    await launchVisitLogAndClose(details.locator('#visitedLogPromptConfirmBtn'));
     if (await details.locator('#abVisitedBtn').count()) {
       await expect(details.locator('#abVisitedBtn')).toContainText(/Visited/i);
     }
