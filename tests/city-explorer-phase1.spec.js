@@ -775,6 +775,41 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     expect(openedUrl).toContain('query_place_id=pid-river-falls');
   });
 
+  test('card footer View Details button opens detail page and Google Maps uses external link attributes', async ({ page }) => {
+    await openTestCity(page);
+
+    const riverCard = page.locator('.loc-card', { hasText: 'River Falls' }).first();
+    await expect(riverCard).toHaveAttribute('title', 'Opens detail view');
+    await expect(riverCard).toHaveAttribute('aria-description', 'Opens detail view');
+
+    const mapsLink = riverCard.locator('.loc-card-footer a.loc-action-btn', { hasText: 'Google Maps' });
+    await expect(mapsLink).toBeVisible();
+    await expect(mapsLink).toHaveAttribute('target', '_blank');
+    await expect(mapsLink).toHaveAttribute('rel', /noopener/);
+    await expect(mapsLink).toHaveAttribute('href', /(maps\.google\.com|google\.com\/maps)/);
+
+    const viewDetailsButton = riverCard.locator('.loc-card-footer .loc-action-btn', { hasText: 'View Details' });
+    await expect(viewDetailsButton).toBeVisible();
+    await viewDetailsButton.click();
+
+    await expect(page.locator('#locationDetailPage')).toBeVisible();
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
+  });
+
+  test('clicking card surface opens detail page directly', async ({ page }) => {
+    await openTestCity(page);
+
+    const riverCard = page.locator('.loc-card', { hasText: 'River Falls' }).first();
+    await expect(riverCard).toBeVisible();
+    await expect(riverCard).toHaveAttribute('aria-description', 'Opens detail view');
+
+    // Click non-footer surface text to assert card-level open behavior.
+    await riverCard.locator('.loc-card-name').click();
+
+    await expect(page.locator('#locationDetailPage')).toBeVisible();
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
+  });
+
   test('quick action map view opens split map and focuses selected location', async ({ page }) => {
     await openTestCity(page);
 

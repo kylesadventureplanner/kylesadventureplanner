@@ -3810,6 +3810,22 @@
       font-weight: 700;
     }
 
+    #deploymentFingerprintMount {
+      width: min(420px, 100%);
+      max-width: 100%;
+      align-self: flex-end;
+    }
+
+    #deploymentFingerprintMount:empty {
+      display: none;
+    }
+
+    #deploymentFingerprintMount #deploymentFingerprintPanel {
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+    }
+
     .app-back-btn {
       min-height: 44px;
       padding: 0 18px;
@@ -4441,6 +4457,11 @@
       .header-actions-row {
         width: 100%;
         justify-content: flex-start;
+      }
+
+      #deploymentFingerprintMount {
+        width: 100%;
+        align-self: stretch;
       }
     }
 
@@ -8720,6 +8741,7 @@
   <div class="header-right">
     <div class="header-actions-row">
       <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
+      <button id="quickAddFab" class="auth-btn quick-add-header-btn" title="Quick Add a place" aria-label="Quick Add a place" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">➕ Quick Add <span class="qa-inbox-count" id="qaInboxCount" style="display:none;">0</span></button>
       <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
       <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup">💾 App Backup</button>
@@ -8730,6 +8752,7 @@
       <button id="deviceSignInBtn" class="auth-btn" title="Sign in using device code flow on another device">Sign In via Device</button>
       <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
     </div>
+    <div id="deploymentFingerprintMount" aria-live="polite"></div>
     <span id="authStatus" class="auth-status-line">Not signed in</span>
   </div>
 </header>
@@ -27077,21 +27100,25 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   }
 
   function ensurePanel() {
+    const mount = document.getElementById('deploymentFingerprintMount');
     let panel = document.getElementById('deploymentFingerprintPanel');
-    if (panel) return panel;
+    if (panel) {
+      if (mount && panel.parentElement !== mount) {
+        mount.appendChild(panel);
+      }
+      return panel;
+    }
 
     panel = document.createElement('div');
     panel.id = 'deploymentFingerprintPanel';
-    panel.style.position = 'fixed';
-    panel.style.right = '14px';
-    panel.style.top = '14px';
-    panel.style.bottom = 'auto';
-    panel.style.zIndex = '100000';
+    panel.style.position = 'relative';
+    panel.style.zIndex = 'auto';
     panel.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
     panel.style.fontSize = '12px';
     panel.style.lineHeight = '1.35';
-    panel.style.maxWidth = '360px';
-    panel.style.boxShadow = '0 8px 24px rgba(0,0,0,0.22)';
+    panel.style.width = '100%';
+    panel.style.maxWidth = '100%';
+    panel.style.boxShadow = '0 6px 16px rgba(0,0,0,0.18)';
     panel.style.borderRadius = '10px';
     panel.style.overflow = 'hidden';
     panel.style.border = '1px solid rgba(0,0,0,0.15)';
@@ -27099,7 +27126,11 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       + '<button id="deploymentFingerprintToggle" type="button" style="all:unset;display:block;width:100%;cursor:pointer;padding:8px 10px;font-weight:700;">Checking deployment fingerprint...</button>'
       + '<div id="deploymentFingerprintDetails" style="display:none;background:#ffffff;padding:8px 10px;border-top:1px solid #e5e7eb;"></div>';
 
-    document.body.appendChild(panel);
+    if (mount) {
+      mount.appendChild(panel);
+    } else {
+      document.body.appendChild(panel);
+    }
     return panel;
   }
 
@@ -27114,11 +27145,18 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     const deployedLabel = formatDeploymentTimestamp(deployedAt);
     const deployedAge = formatDeploymentAge(deployedAt);
     const bg = result.allOk ? '#065f46' : '#991b1b';
+    const expanded = panel.dataset.expanded === '1';
+    const statusDot = result.allOk ? '●' : '○';
+
     toggle.style.background = bg;
     toggle.style.color = '#ffffff';
-    toggle.textContent = result.allOk
-      ? `Deployment ${DEPLOYMENT_TAG} | ${deployedLabel} (${deployedAge}) | ${result.passed}/${result.total}`
-      : `Deployment mismatch | ${deployedLabel} (${deployedAge}) | ${result.passed}/${result.total}`;
+    toggle.style.padding = expanded ? '8px 10px' : '7px 10px';
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    toggle.textContent = expanded
+      ? `${statusDot} ${result.allOk ? 'Live' : 'Mismatch'} | ${DEPLOYMENT_TAG} | ${deployedLabel} (${deployedAge}) | ${result.passed}/${result.total}`
+      : `${statusDot} ${DEPLOYMENT_TAG} | ${result.passed}/${result.total}`;
+
+    details.style.display = expanded ? 'block' : 'none';
 
     details.innerHTML = '';
     const head = document.createElement('div');
@@ -27147,17 +27185,19 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     const toggle = panel.querySelector('#deploymentFingerprintToggle');
     const details = panel.querySelector('#deploymentFingerprintDetails');
     if (!toggle || !details || toggle.dataset.wired === '1') return;
+    if (!panel.dataset.expanded) panel.dataset.expanded = '0';
     toggle.dataset.wired = '1';
     toggle.addEventListener('click', function() {
-      details.style.display = details.style.display === 'none' ? 'block' : 'none';
+      panel.dataset.expanded = panel.dataset.expanded === '1' ? '0' : '1';
+      renderPanel();
     });
   }
 
   window.showDeploymentFingerprintStatus = function() {
+    const panel = ensurePanel();
+    panel.dataset.expanded = '1';
     renderPanel();
     wireToggle();
-    const details = document.getElementById('deploymentFingerprintDetails');
-    if (details) details.style.display = 'block';
   };
 
   if (document.readyState === 'loading') {
@@ -27573,33 +27613,24 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 <!-- Quick Add FAB & Sheet – styles -->
 <style>
 /* ── Quick-Add FAB ────────────────────────────────────────────── */
-.quick-add-fab {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 84px);
-  right: 24px;
-  bottom: auto;
-  z-index: 1200;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+.quick-add-header-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 26px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  font-size: 28px;
-  line-height: 1;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 18px rgba(102,126,234,.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .18s ease, box-shadow .18s ease;
+  border-color: rgba(255, 255, 255, 0.28);
 }
-.quick-add-fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(102,126,234,.55); }
-.quick-add-fab:active { transform: scale(.96); }
+.quick-add-header-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(102,126,234,.35);
+}
 
 .qa-inbox-count {
   position: absolute;
-  top: 4px; right: 4px;
+  top: -6px; right: -8px;
   background: #ef4444;
   color: #fff;
   font-size: 11px;
@@ -27717,10 +27748,6 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 </style>
 
 <!-- Quick Add FAB & Sheet -->
-<button class="quick-add-fab" id="quickAddFab" title="Quick Add a place" aria-label="Quick Add a place" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">
-  <span style="pointer-events:none;">＋</span>
-  <span class="qa-inbox-count" id="qaInboxCount" style="display:none;">0</span>
-</button>
 
 <div class="quick-add-backdrop" id="quickAddBackdrop" onclick="FamilyPrefs && FamilyPrefs.closeQuickAdd()"></div>
 <div class="quick-add-sheet" id="quickAddSheet" role="dialog" aria-modal="true" aria-label="Quick Add a place">

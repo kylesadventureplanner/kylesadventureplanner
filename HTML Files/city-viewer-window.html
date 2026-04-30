@@ -6193,7 +6193,7 @@
       const locId = getLocId(loc);
       const cityEntry = currentCityKey ? citiesData[currentCityKey] : null;
       const name = locVal(loc, 0, 'name') || 'Unnamed Location';
-      const website = locVal(loc, 2, 'website');
+      const website = normalizeExternalUrl(locVal(loc, 2, 'website'));
       const driveTime = locVal(loc, 4, 'driveTime');
       const hours = formatLocationHoursForDisplay(locVal(loc, 5, 'hours'));
       const duration = locVal(loc, 6, 'duration');
@@ -6204,7 +6204,7 @@
       const rating = locVal(loc, 13, 'rating');
       const cost = locVal(loc, 14, 'cost');
       const description = locVal(loc, 12, 'description');
-      const googleUrl = locVal(loc, 23, 'googleUrl');
+      const googleUrl = buildGoogleOpenUrlForLocation(loc);
       const isNatureSource = isNatureLocationRecord(loc);
       const originBadge = getLocationOriginBadge(loc);
       const tagEntries = getLocationDerivedTags(loc);
@@ -6625,7 +6625,7 @@
               <div class="loc-compare-tags">${tags.length ? tags.map(tag => `<span class="loc-compare-tag">${escHtml(tag)}</span>`).join('') : '<span class="loc-compare-tag">No tags</span>'}</div>
               <div class="loc-compare-actions">
                 <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="setActiveLocation('${escAttr(locId)}', true)">Focus</button>
-                <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openLocationDetailByEncodedId('${encodedLocId}')">Details</button>
+                <button type="button" class="loc-mini-btn ui-btn ui-btn--mini" onclick="openLocationDetailByEncodedId('${encodedLocId}')">View Details</button>
               </div>
             </div>`;
         }).join('')}</div>`;
@@ -7307,7 +7307,7 @@
         const locId = getLocId(loc);
         const encodedLocId = encodeURIComponent(locId);
         const name = locVal(loc, 0, 'name') || 'Unnamed Location';
-        const website = locVal(loc, 2, 'website');
+        const website = normalizeExternalUrl(locVal(loc, 2, 'website'));
         const driveTime = locVal(loc, 4, 'driveTime');
         const locAnimDelay = `${Math.min(idx * 0.035, 0.5).toFixed(3)}s`;
         const hours = formatLocationHoursForDisplay(locVal(loc, 5, 'hours'));
@@ -7319,7 +7319,7 @@
         const rating = locVal(loc, 13, 'rating');
         const cost = locVal(loc, 14, 'cost');
         const description = locVal(loc, 12, 'description');
-        const googleUrl = locVal(loc, 23, 'googleUrl');
+        const googleUrl = buildGoogleOpenUrlForLocation(loc);
         const placeId = String(locVal(loc, 1, 'googlePlaceId') || '').trim();
         const hasPlaceId = placeId && !isPlaceholderText(placeId);
         const isNatureSource = isNatureLocationRecord(loc);
@@ -7342,7 +7342,7 @@
           : '';
 
         return `
-          <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" data-location-origin="${escAttr(originKey)}" role="button" tabindex="0" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
+          <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" data-location-origin="${escAttr(originKey)}" role="button" tabindex="0" title="Opens detail view" aria-description="Opens detail view" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
             <div class="loc-card-header">
               <div>
                 <div class="loc-card-name">${escHtml(name)}</div>
@@ -7371,6 +7371,7 @@
             <div class="loc-card-footer">
               ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌐 Website</a>` : ''}
               ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Google Maps</a>` : ''}
+              <button class="loc-action-btn" type="button" onclick="event.stopPropagation();openLocationDetailByEncodedId('${encodedLocId}')">View Details</button>
               <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="event.stopPropagation();toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
               ${renderQuickActionsMenu(locId, encodedLocId)}
             </div>
