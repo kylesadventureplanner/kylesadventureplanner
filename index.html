@@ -26815,6 +26815,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   'use strict';
 
   const DEPLOYMENT_TAG = '2026.04.23.live-debug.1';
+  const DEPLOYED_AT_ISO = '2026-04-30T00:00:00Z';
   const REQUIRED_FILE_FINGERPRINTS = {
     'visited-locations-tab-system.js': '2026.04.23.live-debug.1',
     'consolidated-bulk-operations-system-v7-0-141.js': '2026.04.24.direct-patch-fix.1'
@@ -26860,6 +26861,40 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     };
   }
 
+  function resolveDeploymentTimestamp() {
+    const runtimeStamp = String(
+      window.__APP_DEPLOYED_AT
+      || window.__DEPLOYED_AT
+      || DEPLOYED_AT_ISO
+      || ''
+    ).trim();
+    const ts = Date.parse(runtimeStamp);
+    return Number.isFinite(ts) ? new Date(ts) : null;
+  }
+
+  function formatDeploymentTimestamp(dateObj) {
+    if (!(dateObj instanceof Date) || !Number.isFinite(dateObj.getTime())) return 'unknown';
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(dateObj);
+    } catch (_err) {
+      return dateObj.toISOString();
+    }
+  }
+
+  function formatDeploymentAge(dateObj) {
+    if (!(dateObj instanceof Date) || !Number.isFinite(dateObj.getTime())) return 'unknown age';
+    const mins = Math.max(0, Math.round((Date.now() - dateObj.getTime()) / 60000));
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    return days + 'd ago';
+  }
+
   function ensurePanel() {
     let panel = document.getElementById('deploymentFingerprintPanel');
     if (panel) return panel;
@@ -26893,12 +26928,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     if (!toggle || !details) return;
 
     const result = evaluateChecks();
+    const deployedAt = resolveDeploymentTimestamp();
+    const deployedLabel = formatDeploymentTimestamp(deployedAt);
+    const deployedAge = formatDeploymentAge(deployedAt);
     const bg = result.allOk ? '#065f46' : '#991b1b';
     toggle.style.background = bg;
     toggle.style.color = '#ffffff';
     toggle.textContent = result.allOk
-      ? `Deployment ${DEPLOYMENT_TAG} OK (${result.passed}/${result.total})`
-      : `Deployment mismatch (${result.passed}/${result.total})`;
+      ? `Deployment ${DEPLOYMENT_TAG} | ${deployedLabel} (${deployedAge}) | ${result.passed}/${result.total}`
+      : `Deployment mismatch | ${deployedLabel} (${deployedAge}) | ${result.passed}/${result.total}`;
 
     details.innerHTML = '';
     const head = document.createElement('div');
@@ -26906,6 +26944,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     head.style.fontWeight = '700';
     head.textContent = `Expected build: ${DEPLOYMENT_TAG}`;
     details.appendChild(head);
+
+    const stamp = document.createElement('div');
+    stamp.style.marginBottom = '8px';
+    stamp.style.color = '#334155';
+    stamp.textContent = `Last deployment: ${deployedLabel} (${deployedAge})`;
+    details.appendChild(stamp);
 
     result.checks.forEach((item) => {
       const row = document.createElement('div');
@@ -27349,8 +27393,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 /* ── Quick-Add FAB ────────────────────────────────────────────── */
 .quick-add-fab {
   position: fixed;
-  bottom: 24px;
+  top: calc(env(safe-area-inset-top, 0px) + 84px);
   right: 24px;
+  bottom: auto;
   z-index: 1200;
   width: 56px;
   height: 56px;

@@ -3713,7 +3713,7 @@
     }
 
     function buildFamilyConfidenceItemModel(loc) {
-      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      const openInfo = getOpenInfoForToday(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')));
       const driveMinutes = getLocationDriveMinutesForFamily(loc);
       const costRank = getLocationCostRank(loc);
       return {
@@ -4760,7 +4760,7 @@
       const tags = getLocationTags(loc).join(',').toLowerCase();
       const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
       const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
-      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      const openInfo = getOpenInfoForToday(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')));
       if (filters.searchTerm && !name.includes(filters.searchTerm)) return false;
       if (filters.diffFilter && !difficulty.includes(filters.diffFilter)) return false;
       if (filters.costFilter && !cost.includes(filters.costFilter)) return false;
@@ -4910,7 +4910,7 @@
 
     function getLocationBestValueScore(loc) {
       const rating = parseFloat(locVal(loc, 13, 'rating')) || 0;
-      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      const openInfo = getOpenInfoForToday(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')));
       const driveMins = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
       const tagCount = getLocationTags(loc).length;
       const costRank = getLocationCostRank(loc);
@@ -5480,7 +5480,7 @@
       }
 
       const rating = parseFloat(locVal(loc, 13, 'rating'));
-      const hours = String(locVal(loc, 5, 'hours') || '').trim();
+      const hours = String(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')) || '').trim();
       const address = String(locVal(loc, 11, 'address') || '').trim();
       const description = String(locVal(loc, 12, 'description') || '').trim();
       const driveMins = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
@@ -6195,7 +6195,7 @@
       const name = locVal(loc, 0, 'name') || 'Unnamed Location';
       const website = locVal(loc, 2, 'website');
       const driveTime = locVal(loc, 4, 'driveTime');
-      const hours = locVal(loc, 5, 'hours');
+      const hours = formatLocationHoursForDisplay(locVal(loc, 5, 'hours'));
       const duration = locVal(loc, 6, 'duration');
       const difficulty = locVal(loc, 7, 'difficulty');
       const trailLen = locVal(loc, 8, 'trailLength');
@@ -6605,7 +6605,7 @@
           const cost = String(locVal(loc, 14, 'cost') || 'N/A');
           const rating = String(locVal(loc, 13, 'rating') || 'N/A');
           const driveTime = String(locVal(loc, 4, 'driveTime') || 'Unknown');
-          const hours = String(locVal(loc, 5, 'hours') || 'Hours unavailable');
+          const hours = String(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')) || 'Hours unavailable');
           const tags = getLocationTags(loc).slice(0, 4);
           return `
             <div class="loc-compare-card" data-compare-loc-id="${escAttr(locId)}">
@@ -6725,6 +6725,69 @@
         }
       }
       return (loc && fallbackKey ? loc[fallbackKey] : '') || '';
+    }
+
+    function formatHoursClock(hours, minutes) {
+      var h = Number(hours);
+      var m = Number(minutes);
+      if (!Number.isFinite(h)) h = 0;
+      if (!Number.isFinite(m)) m = 0;
+      h = ((h % 24) + 24) % 24;
+      var suffix = h >= 12 ? 'PM' : 'AM';
+      var h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      var mm = String(Math.max(0, Math.min(59, Math.round(m)))).padStart(2, '0');
+      return h12 + ':' + mm + ' ' + suffix;
+    }
+
+    function extractHoursLinesFromPeriods(periods) {
+      if (!Array.isArray(periods) || !periods.length) return [];
+      var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      var lines = [];
+      periods.forEach(function (period) {
+        var open = period && period.open ? period.open : null;
+        var close = period && period.close ? period.close : null;
+        if (!open || !Number.isFinite(Number(open.day))) return;
+        var dayLabel = dayNames[((Number(open.day) % 7) + 7) % 7] || 'Day';
+        var openText = formatHoursClock(open.hour, open.minute);
+        var closeText = close ? formatHoursClock(close.hour, close.minute) : 'Open';
+        lines.push(dayLabel + ': ' + openText + ' - ' + closeText);
+      });
+      return lines;
+    }
+
+    function normalizeHoursLinesFromPayload(payload) {
+      var safe = payload && typeof payload === 'object' ? payload : null;
+      if (!safe) return [];
+      var weekday = [];
+      if (Array.isArray(safe.weekdayDescriptions)) weekday = safe.weekdayDescriptions;
+      else if (Array.isArray(safe.weekday_descriptions)) weekday = safe.weekday_descriptions;
+      else if (Array.isArray(safe.weekday_text)) weekday = safe.weekday_text;
+      else if (safe.regularOpeningHours && typeof safe.regularOpeningHours === 'object') {
+        weekday = normalizeHoursLinesFromPayload(safe.regularOpeningHours);
+      }
+      var cleanedWeekday = (weekday || []).map(function (line) {
+        return String(line || '').replace(/\s+/g, ' ').trim();
+      }).filter(Boolean);
+      if (cleanedWeekday.length) return cleanedWeekday;
+      var periods = Array.isArray(safe.periods) ? safe.periods : [];
+      return extractHoursLinesFromPeriods(periods);
+    }
+
+    function formatLocationHoursForDisplay(rawHours) {
+      if (rawHours == null) return '';
+      var text = typeof rawHours === 'string' ? rawHours.trim() : '';
+      var payload = null;
+      if (rawHours && typeof rawHours === 'object') {
+        payload = rawHours;
+      } else if (text && (text.charAt(0) === '{' || text.charAt(0) === '[')) {
+        try { payload = JSON.parse(text); } catch (_err) { payload = null; }
+      }
+      if (payload) {
+        var lines = normalizeHoursLinesFromPayload(payload);
+        if (lines.length) return lines.join('; ');
+      }
+      return text;
     }
 
     function isPlaceholderText(value) {
@@ -7097,7 +7160,7 @@
         const tags = getLocationTags(loc).join(',').toLowerCase();
         const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
         const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
-        const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+        const openInfo = getOpenInfoForToday(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')));
 
         if (filters.searchTerm && !name.includes(filters.searchTerm)) out.search += 1;
         if (filters.diffFilter && !difficulty.includes(filters.diffFilter)) out.difficulty += 1;
@@ -7247,7 +7310,7 @@
         const website = locVal(loc, 2, 'website');
         const driveTime = locVal(loc, 4, 'driveTime');
         const locAnimDelay = `${Math.min(idx * 0.035, 0.5).toFixed(3)}s`;
-        const hours = locVal(loc, 5, 'hours');
+        const hours = formatLocationHoursForDisplay(locVal(loc, 5, 'hours'));
         const duration = locVal(loc, 6, 'duration');
         const difficulty = locVal(loc, 7, 'difficulty');
         const trailLen = locVal(loc, 8, 'trailLength');

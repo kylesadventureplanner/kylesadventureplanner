@@ -79,6 +79,24 @@ jobs:
           echo '- **Diagnostics artifact:** `playwright-diagnostics-${{ github.run_id }}` (Actions run page -> **Artifacts**)' >> "$GITHUB_STEP_SUMMARY"
       - name: Reliability Release Gate
         run: npm run reliability:gate
+      - name: Stamp Deployment Metadata
+        run: |
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-8)"
+          DEPLOYMENT_TAG="ci.${GITHUB_RUN_NUMBER}.${SHORT_SHA}"
+          DEPLOYED_AT_ISO="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          echo "DEPLOYMENT_TAG=${DEPLOYMENT_TAG}" >> "$GITHUB_ENV"
+          echo "DEPLOYED_AT_ISO=${DEPLOYED_AT_ISO}" >> "$GITHUB_ENV"
+
+          DEPLOYMENT_TAG="${DEPLOYMENT_TAG}" DEPLOYED_AT_ISO="${DEPLOYED_AT_ISO}" node scripts/stamp-deployment-metadata.js
+
+          grep -n "const DEPLOYMENT_TAG" index.html
+          grep -n "const DEPLOYED_AT_ISO" index.html
+
+          {
+            echo "- **Deployment tag:** ${DEPLOYMENT_TAG}"
+            echo "- **Deployed at (UTC):** ${DEPLOYED_AT_ISO}"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Stop Local Static Server
         if: always()
         run: |
@@ -148,6 +166,13 @@ jobs:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
         run: |
           echo "Running non-blocking live smoke check against ${APP_URL}"
-          curl -fsS "${APP_URL}" >/dev/null
+          LIVE_HTML="$(curl -fsS "${APP_URL}")"
+          if echo "${LIVE_HTML}" | grep -F "${DEPLOYMENT_TAG}" >/dev/null 2>&1; then
+            echo "::notice::Live app contains current deployment tag: ${DEPLOYMENT_TAG}"
+            echo "- **Live deployment tag check:** found ${DEPLOYMENT_TAG}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Live app does not yet show deployment tag ${DEPLOYMENT_TAG} (cache/propagation may still be in progress)"
+            echo "- **Live deployment tag check:** tag not found yet (${DEPLOYMENT_TAG})" >> "$GITHUB_STEP_SUMMARY"
+          fi
           npx playwright test tests/reliability-smoke.spec.js --grep "first-click success: nature explore" --reporter=list
 
