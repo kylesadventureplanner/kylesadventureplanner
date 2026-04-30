@@ -5411,6 +5411,22 @@
     #errorNotificationBar.collapsed {
       max-height: 44px;
       overflow: hidden;
+      left: auto;
+      right: 12px;
+      bottom: 12px;
+      width: min(520px, calc(100vw - 24px));
+      border: 1px solid #dc2626;
+      border-radius: 10px;
+      border-top-width: 1px;
+      pointer-events: none !important;
+    }
+
+    #errorNotificationBar.collapsed .error-header {
+      pointer-events: none !important;
+    }
+
+    #errorNotificationBar.collapsed * {
+      pointer-events: none !important;
     }
 
     #errorNotificationBar.collapsed #errorDetailsPanel {
@@ -5732,6 +5748,18 @@
 
     #debuggingConsole.collapsed {
       max-height: 44px;
+      left: auto;
+      right: 12px;
+      bottom: 64px;
+      width: min(520px, calc(100vw - 24px));
+      border: 1px solid #3b82f6;
+      border-radius: 10px;
+      border-top-width: 1px;
+      pointer-events: none !important;
+    }
+
+    #debuggingConsole.collapsed * {
+      pointer-events: none !important;
     }
 
     #debuggingConsole.collapsed .debug-console-content {
@@ -9899,14 +9927,10 @@
       return;
     }
 
-    // Show error bar and mark it as having errors
+    // Show error bar and mark it as having errors.
+    // Keep it collapsed unless the user explicitly expands it.
     errorBar.classList.add('has-errors');
-    // Do NOT auto-expand here — user controls collapsed/expanded state.
-    // Only expand automatically on the very first error (bar transitions from clean to errored).
-    if (!errorBar.dataset.hasHadErrors) {
-      errorBar.dataset.hasHadErrors = '1';
-      errorBar.classList.remove('collapsed');
-    }
+    if (!errorBar.dataset.hasHadErrors) errorBar.dataset.hasHadErrors = '1';
     if (errorCount) errorCount.textContent = errorLog.length;
 
     const taggedIssues = errorLog.map((entry, index) => ({

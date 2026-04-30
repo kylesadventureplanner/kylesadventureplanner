@@ -439,18 +439,21 @@
 
   <div id="tabs" class="tabs ui-control-bar" aria-label="Adventure details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
+    <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
     <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
     <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
-    <button class="tab-btn" data-tab="nearby" type="button">📌 Nearby</button>
+    <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
     <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
     <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
     <button class="tab-btn" data-tab="map" type="button">🗺️ Map View</button>
   </div>
 
-  <div id="pane-overview" class="tab-pane active"></div>
+  <div id="pane-overview" class="tab-pane"></div>
+  <div id="pane-details" class="tab-pane active"></div>
   <div id="pane-notes" class="tab-pane"></div>
   <div id="pane-contact" class="tab-pane"></div>
   <div id="pane-nearby" class="tab-pane"></div>
+  <div id="pane-additional" class="tab-pane"></div>
   <div id="pane-tag-management" class="tab-pane"></div>
   <div id="pane-photos" class="tab-pane"></div>
   <div id="pane-map" class="tab-pane"></div>
@@ -755,6 +758,17 @@
   function getActiveDetailTabId() {
     var active = document.querySelector('#tabs .tab-btn[aria-selected="true"]') || document.querySelector('#tabs .tab-btn.active');
     return active ? String(active.getAttribute('data-tab') || 'overview').trim() || 'overview' : 'overview';
+  }
+
+  function resolveDetailTabIdForPane(tabId) {
+    var safe = String(tabId || '').trim().toLowerCase();
+    if (!safe || safe === 'overview' || safe === 'details') return 'details';
+    if (safe === 'nearby' || safe === 'additional') return 'additional';
+    return safe;
+  }
+
+  function getDetailPaneIdForTab(tabId) {
+    return 'pane-' + resolveDetailTabIdForPane(tabId);
   }
 
   function getDetailNavigationContext(payload) {
@@ -5607,7 +5621,8 @@
       return /nature_locations/i.test(fp) || /mylist/i.test((openerWin && openerWin.tableName) || '');
     })();
 
-    document.getElementById('pane-overview').innerHTML =
+    var detailsPane = document.getElementById('pane-details') || document.getElementById('pane-overview');
+    if (detailsPane) detailsPane.innerHTML =
       '<div class="grid">' +
       card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
       card('City', data.city, 'city') +
@@ -5652,7 +5667,8 @@
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
 
-    document.getElementById('pane-nearby').innerHTML =
+    var additionalPane = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
+    if (additionalPane) additionalPane.innerHTML =
       renderNearbyControlsHtml(data) +
       '<div class="card" data-detail-field-card="nearby" style="margin-top:0;border-top:none;border-radius:0 0 10px 10px;border-top:1px solid #f1f5f9;">' +
         '<div id="nearbyAttractionsValue">' +
@@ -6919,6 +6935,8 @@
     var bar = document.getElementById('actionBar');
     if (!bar) return;
     bar.classList.remove('u-hidden');
+    bar.classList.add('ab-expanded');
+    var embeddedMode = getParams().get('embedded') === '1';
 
     var locationKey = getLocationKey(data);
     void locationKey;
@@ -7213,6 +7231,15 @@
 
     // Expand / collapse the overflow actions in the Quick Actions bar
     var expandToggle = document.getElementById('abExpandToggle');
+    if (expandToggle) {
+      expandToggle.setAttribute('aria-expanded', bar.classList.contains('ab-expanded') ? 'true' : 'false');
+      expandToggle.textContent = bar.classList.contains('ab-expanded') ? '▲ Less' : '▼ More';
+    }
+    if (expandToggle && embeddedMode) {
+      expandToggle.setAttribute('aria-expanded', 'true');
+      expandToggle.textContent = '▲ Less';
+      expandToggle.style.display = 'none';
+    }
     if (expandToggle && !expandToggle.dataset.bound) {
       expandToggle.dataset.bound = '1';
       expandToggle.addEventListener('click', function () {
@@ -7246,7 +7273,7 @@
     var currentTab = getActiveDetailTabId();
     var inlineEditState = window.__detailInlineEditState;
     var hasDirtyInlineEdits = !!(
-      currentTab === 'overview' &&
+      (currentTab === 'overview' || currentTab === 'details') &&
       inlineEditState &&
       inlineEditState.open &&
       inlineEditState.dirtyMap &&
@@ -7280,7 +7307,7 @@
     selectedTab.classList.add('active');
     selectedTab.setAttribute('aria-selected', 'true');
     selectedTab.setAttribute('tabindex', '0');
-    var pane = document.getElementById('pane-' + selectedTab.getAttribute('data-tab'));
+    var pane = document.getElementById(getDetailPaneIdForTab(selectedTab.getAttribute('data-tab')));
     if (pane) {
       pane.classList.add('active');
       pane.hidden = false;
@@ -7468,7 +7495,7 @@
         var radiusVal = Number(nearbyRadiusBtn.getAttribute('data-nearby-radius'));
         var curUi = getNearbyUiState();
         persistNearbyUiState(Object.assign({}, curUi, { radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles }));
-        var additionalPane = document.getElementById('pane-nearby');
+        var additionalPane = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
         if (additionalPane) {
           var controlsWrap = document.getElementById('nearbyControlsWrap');
           var _curData = window.__detailInlineEditState && window.__detailInlineEditState.data;
@@ -7484,7 +7511,7 @@
         if (!NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === categoryVal; })) categoryVal = 'all';
         var curUi2 = getNearbyUiState();
         persistNearbyUiState(Object.assign({}, curUi2, { category: categoryVal }));
-        var additionalPane2 = document.getElementById('pane-nearby');
+        var additionalPane2 = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
         if (additionalPane2) {
           var controlsWrap2 = document.getElementById('nearbyControlsWrap');
           var _curData2 = window.__detailInlineEditState && window.__detailInlineEditState.data;
