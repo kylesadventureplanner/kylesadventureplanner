@@ -26906,7 +26906,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     panel.id = 'deploymentFingerprintPanel';
     panel.style.position = 'fixed';
     panel.style.right = '14px';
-    panel.style.bottom = '14px';
+    // Stack above the collapsed error bar (bottom:12px, h:44px → top:56px) and
+    // debug console (bottom:64px, h:44px → top:108px) so nothing overlaps.
+    panel.style.bottom = '120px';
     panel.style.zIndex = '100000';
     panel.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
     panel.style.fontSize = '12px';
