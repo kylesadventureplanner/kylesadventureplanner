@@ -27,6 +27,7 @@
     "reliability:ownership": "node scripts/check-control-ownership.js",
     "nearby:tuning-report": "node scripts/nearby-tuning-report.js",
     "reliability:source-routing": "node scripts/validate-adventure-source-routing.js",
+    "lint:test-helper-names": "node scripts/check-test-helper-naming.js",
     "places:health-check": "node scripts/places-health-check-live.js",
     "reliability:gate": "npm run reliability:source-routing && node scripts/reliability-gate.js",
     "known-good:mark": "node scripts/known-good-mark.js",

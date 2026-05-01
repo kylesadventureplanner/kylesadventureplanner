@@ -18,6 +18,21 @@ const EXPECTED_TARGET_IDS = [
   'ent_general'
 ];
 
+const RESULT_KEYS = {
+  LAST_ADDED_ROW_VALUES: '__lastAddedRowValues',
+  ADD_PERSIST_RESULT: '__addPersistResult',
+  GRAPH_PAYLOAD_CAPTURE: '__graphPayloadCapture',
+  GRAPH_REREAD_SNAPSHOT: '__graphRereadSnapshot',
+  GRAPH_PARITY_RESULT: '__graphParityResult',
+  GRAPH_REORDERED_PAYLOAD_CAPTURE: '__graphReorderedPayloadCapture',
+  GRAPH_REORDERED_REREAD_SNAPSHOT: '__graphReorderedRereadSnapshot',
+  GRAPH_REORDERED_RESULT: '__graphReorderedResult',
+  POPULATE_PERSIST_RESULT: '__populatePersistResult',
+  HOURS_PERSIST_RESULT: '__hoursPersistResult',
+  TAG_PERSIST_RESULT: '__tagPersistResult',
+  NEGATIVE_ROW_REREAD_RESULT: '__negativeRowRereadResult'
+};
+
 // Navigate directly to the edit-mode page (no auth required for UI smoke).
 async function gotoEditMode(page, url = '/HTML Files/edit-mode-enhanced.html') {
   await page.goto(url);
@@ -50,6 +65,254 @@ async function expandTabCardsIfAvailable(page, tabName) {
       }
     });
   }, `${tabName}-tab`);
+}
+
+async function installGraphRowsMock(page, schemaColumns) {
+  const graphPostBodies = [];
+  const graphStoredRows = [];
+
+  await page.route('https://graph.microsoft.com/**', async (route) => {
+    const request = route.request();
+    const url = request.url();
+    const method = request.method();
+
+    if (method === 'GET' && /\/workbook\/tables\/[^/]+\/columns(?:\?|$)/.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ value: schemaColumns.map((name, index) => ({ index, name })) })
+      });
+      return;
+    }
+
+    if (method === 'POST' && /\/workbook\/tables\/[^/]+\/rows(?:\/add)?(?:\?|$)/.test(url)) {
+      const payload = JSON.parse(request.postData() || '{}');
+      graphPostBodies.push(payload);
+      const values = Array.isArray(payload?.values?.[0]) ? payload.values[0].slice() : [];
+      graphStoredRows.push({ values: [values] });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ index: graphStoredRows.length - 1, values: [values] })
+      });
+      return;
+    }
+
+    if (method === 'GET' && /\/workbook\/tables\/[^/]+\/rows(?:\?|$)/.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ value: graphStoredRows })
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: [] }) });
+  });
+
+  return { graphPostBodies, graphStoredRows };
+}
+
+async function runAddFlowWithGraphBackedWriter(page, options) {
+  await page.evaluate(async (rawOptions) => {
+    const opts = rawOptions && typeof rawOptions === 'object' ? rawOptions : {};
+    const schemaColumns = Array.isArray(opts.schemaColumns) ? opts.schemaColumns : [];
+    const resolvedDetails = opts.resolvedDetails && typeof opts.resolvedDetails === 'object' ? opts.resolvedDetails : {};
+    const inputLabel = String(opts.inputLabel || resolvedDetails.name || 'Playwright Graph Location').trim() || 'Playwright Graph Location';
+    const resultKey = String(opts.resultKey || '__graphParityResult').trim() || '__graphParityResult';
+    const payloadKey = String(opts.payloadKey || '__graphPayloadCapture').trim() || '__graphPayloadCapture';
+    const rereadKey = String(opts.rereadKey || '__graphRereadSnapshot').trim() || '__graphRereadSnapshot';
+    const buildRowMode = String(opts.buildRowMode || 'legacy-indexed').trim() || 'legacy-indexed';
+
+    window.filePath = 'Nature_Locations.xlsx';
+    window.tableName = 'nature_locations';
+    window.accessToken = 'playwright-token';
+    window.adventuresData = [];
+    window.__excelSchemaColumns = schemaColumns.map((name, index) => ({ name, index }));
+    window.__excelColumnCount = window.__excelSchemaColumns.length;
+
+    window.resolvePlaceInputWithGoogleData = async () => ({ ...resolvedDetails });
+
+    if (buildRowMode === 'legacy-indexed') {
+      window.buildExcelRow = (placeId, details) => {
+        const row = new Array(schemaColumns.length || 30).fill('');
+        row[0] = String(details.name || '');
+        row[1] = String(placeId || '');
+        row[11] = String(details.address || '');
+        row[16] = String(details.description || '');
+        row[27] = String(details.coordinates?.lat ?? '');
+        row[28] = String(details.coordinates?.lng ?? '');
+        row[29] = details.coordinates ? `${details.coordinates.lat}, ${details.coordinates.lng}` : '';
+        return row;
+      };
+    } else if (typeof window.buildExcelRow !== 'function') {
+      window.buildExcelRow = (placeId, details) => {
+        const row = new Array(window.__excelSchemaColumns.length).fill('');
+        const setByName = (names, value) => {
+          const normalizedNames = (Array.isArray(names) ? names : []).map((n) => String(n || '').trim().toLowerCase());
+          const idx = window.__excelSchemaColumns.findIndex((entry) => normalizedNames.includes(String(entry?.name || '').trim().toLowerCase()));
+          if (idx >= 0) row[idx] = value == null ? '' : String(value);
+        };
+        setByName(['Name'], details?.name || '');
+        setByName(['Google Place ID', 'GooglePlaceId'], placeId || '');
+        setByName(['Address'], details?.address || '');
+        setByName(['Description'], details?.description || '');
+        if (details?.coordinates) {
+          setByName(['Latitude', 'Lat'], details.coordinates.lat);
+          setByName(['Longitude', 'Lng', 'Long'], details.coordinates.lng);
+          setByName(['GPS Coordinates', 'GPS'], `${details.coordinates.lat}, ${details.coordinates.lng}`);
+        }
+        return row;
+      };
+    }
+
+    window[payloadKey] = [];
+    window[rereadKey] = [];
+
+    window.addRowToExcel = async (rowValues) => {
+      const schemaResp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/columns`, {
+        headers: { Authorization: `Bearer ${window.accessToken}` }
+      });
+      const schemaData = await schemaResp.json();
+      const cols = Array.isArray(schemaData?.value) ? schemaData.value : [];
+      window.__excelSchemaColumns = cols.map((entry, index) => ({ name: String(entry?.name || ''), index }));
+      window.__excelColumnCount = window.__excelSchemaColumns.length;
+
+      const normalized = typeof window.normalizeExcelRowForSchema === 'function'
+        ? window.normalizeExcelRowForSchema(rowValues, window)
+        : (Array.isArray(rowValues) ? rowValues.slice() : []);
+
+      const payload = { values: [normalized] };
+      window[payloadKey].push(payload);
+
+      await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const rereadResp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`, {
+        headers: { Authorization: `Bearer ${window.accessToken}` }
+      });
+      const rereadData = await rereadResp.json();
+      window[rereadKey] = Array.isArray(rereadData?.value) ? rereadData.value : [];
+      window.adventuresData = window[rereadKey].map((entry) => ({ values: [Array.isArray(entry?.values?.[0]) ? entry.values[0].slice() : []] }));
+
+      return {
+        success: true,
+        rowsChanged: 1,
+        persistedRows: 1,
+        verifiedRowsChanged: 1,
+        rowsVerifiedPresent: 1,
+        postWriteVerified: true,
+        verificationMode: 'row-reread'
+      };
+    };
+
+    if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
+      const status = document.createElement('div');
+      document.body.appendChild(status);
+      window[resultKey] = await window.handleAddSinglePlaceWithProgress(inputLabel, 'placeName', status, false, {});
+      return;
+    }
+    if (window.enhancedAutomation && typeof window.enhancedAutomation.addSinglePlace === 'function') {
+      window[resultKey] = await window.enhancedAutomation.addSinglePlace(inputLabel, 'placeName', false, {});
+      return;
+    }
+    throw new Error('No add handler available for Graph parity test harness');
+  }, options || {});
+}
+
+function normalizeExpectedGpsFields(expected) {
+  const safe = expected && typeof expected === 'object' ? expected : {};
+  return {
+    description: String(safe.description || ''),
+    latitude: String(safe.latitude || ''),
+    longitude: String(safe.longitude || ''),
+    gps: String(safe.gps || '')
+  };
+}
+
+function assertGpsFieldsInRow(rowValues, indexes, expected) {
+  const row = Array.isArray(rowValues) ? rowValues : [];
+  const idx = indexes && typeof indexes === 'object' ? indexes : {};
+  const target = normalizeExpectedGpsFields(expected);
+  expect(String(row[idx.description] || '')).toBe(target.description);
+  expect(String(row[idx.latitude] || '')).toBe(target.latitude);
+  expect(String(row[idx.longitude] || '')).toBe(target.longitude);
+  expect(String(row[idx.gps] || '')).toBe(target.gps);
+}
+
+async function pollGpsFieldsFromRowArrayKey(page, rowKey, indexes, expected) {
+  const key = String(rowKey || '').trim();
+  const target = normalizeExpectedGpsFields(expected);
+  await expect.poll(() => page.evaluate(({ sourceKey, sourceIndexes }) => ({
+    description: String(window[sourceKey]?.[sourceIndexes.description] || ''),
+    latitude: String(window[sourceKey]?.[sourceIndexes.latitude] || ''),
+    longitude: String(window[sourceKey]?.[sourceIndexes.longitude] || ''),
+    gps: String(window[sourceKey]?.[sourceIndexes.gps] || '')
+  }), { sourceKey: key, sourceIndexes: indexes }), { timeout: 10000 }).toEqual(target);
+}
+
+async function pollGpsFieldsFromRowContainerKey(page, containerKey, indexes, expected) {
+  const key = String(containerKey || '').trim();
+  const target = normalizeExpectedGpsFields(expected);
+  await expect.poll(() => page.evaluate(({ sourceKey, sourceIndexes }) => ({
+    description: String(window[sourceKey]?.[0]?.values?.[0]?.[sourceIndexes.description] || ''),
+    latitude: String(window[sourceKey]?.[0]?.values?.[0]?.[sourceIndexes.latitude] || ''),
+    longitude: String(window[sourceKey]?.[0]?.values?.[0]?.[sourceIndexes.longitude] || ''),
+    gps: String(window[sourceKey]?.[0]?.values?.[0]?.[sourceIndexes.gps] || '')
+  }), { sourceKey: key, sourceIndexes: indexes }), { timeout: 10000 }).toEqual(target);
+}
+
+async function assertRowRereadSuccess(page, resultKey, expected = {}) {
+  const key = String(resultKey || '').trim();
+  const match = expected && typeof expected === 'object' ? expected : {};
+  await expect.poll(() => page.evaluate((sourceKey) => {
+    const result = window[sourceKey];
+    if (!result || typeof result !== 'object') return null;
+    return {
+      ...result,
+      __successTruthy: !!result.success
+    };
+  }, key), { timeout: 10000 })
+    .toMatchObject({
+      __successTruthy: true,
+      persistedRows: 1,
+      verificationMode: 'row-reread',
+      ...match
+    });
+}
+
+async function assertGraphGpsPayloadAndReread(page, options) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const graphPostBodies = Array.isArray(opts.graphPostBodies) ? opts.graphPostBodies : [];
+  const schemaLength = Number(opts.schemaLength) || 0;
+  const payloadIndexes = opts.payloadIndexes && typeof opts.payloadIndexes === 'object' ? opts.payloadIndexes : {};
+  const rereadIndexes = opts.rereadIndexes && typeof opts.rereadIndexes === 'object' ? opts.rereadIndexes : payloadIndexes;
+  const expected = opts.expected && typeof opts.expected === 'object' ? opts.expected : {};
+  const rereadKey = String(opts.rereadKey || RESULT_KEYS.GRAPH_REREAD_SNAPSHOT).trim() || RESULT_KEYS.GRAPH_REREAD_SNAPSHOT;
+  const resultKey = String(opts.resultKey || RESULT_KEYS.GRAPH_PARITY_RESULT).trim() || RESULT_KEYS.GRAPH_PARITY_RESULT;
+  const blankPayloadIndexes = Array.isArray(opts.blankPayloadIndexes) ? opts.blankPayloadIndexes : [];
+
+  expect(graphPostBodies.length).toBe(1);
+  expect(Array.isArray(graphPostBodies[0]?.values?.[0])).toBe(true);
+  if (schemaLength > 0) {
+    expect(graphPostBodies[0].values[0].length).toBe(schemaLength);
+  }
+
+  assertGpsFieldsInRow(graphPostBodies[0].values[0], payloadIndexes, expected);
+
+  blankPayloadIndexes.forEach((idx) => {
+    expect(String(graphPostBodies[0].values[0][idx] || '')).toBe('');
+  });
+
+  await pollGpsFieldsFromRowContainerKey(page, rereadKey, rereadIndexes, expected);
+
+  await assertRowRereadSuccess(page, resultKey);
 }
 
 test.describe('Edit Mode – global header button', () => {
@@ -134,7 +397,7 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(searchBtn).toBeVisible();
     await expect(searchBtn).toHaveText(/Search Missing Place IDs/i);
 
-    await page.evaluate(() => {
+    await page.evaluate((keys) => {
       const header = [
         'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
         'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
@@ -181,7 +444,7 @@ test.describe('Edit Mode – target-table selectors', () => {
       };
     });
 
-    await page.evaluate(() => {
+    await page.evaluate((keys) => {
       const checkbox = document.getElementById('searchPlaceIdsDryRun');
       if (!checkbox) throw new Error('searchPlaceIdsDryRun checkbox missing');
       checkbox.checked = true;
@@ -201,7 +464,7 @@ test.describe('Edit Mode – target-table selectors', () => {
     await page.click('.tab-btn[data-tab="automation"]');
     await expandTabCardsIfAvailable(page, 'automation');
 
-    await page.evaluate(() => {
+    await page.evaluate((keys) => {
       const header = [
         'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
         'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
@@ -253,6 +516,270 @@ test.describe('Edit Mode – target-table selectors', () => {
     await page.click('#automationCopyAllDiagnosticsBtn');
     await expect.poll(() => page.evaluate(() => String(window.__lastAutomationAllDiagnosticsCopiedText || '')), { timeout: 10000 })
       .toContain('search-place-ids-write-diagnostics');
+  });
+
+  test('add flow persists coordinates and description across cache clear and reread', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="places"]');
+
+    await page.evaluate((keys) => {
+      const schemaNames = Array.from({ length: 30 }, (_, idx) => `Column ${idx + 1}`);
+      schemaNames[0] = 'Name';
+      schemaNames[1] = 'Google Place ID';
+      schemaNames[11] = 'Address';
+      schemaNames[16] = 'Description';
+      schemaNames[27] = 'Latitude';
+      schemaNames[28] = 'Longitude';
+      schemaNames[29] = 'GPS Coordinates';
+
+      window.__excelColumnCount = schemaNames.length;
+      window.__excelSchemaColumns = schemaNames.map((name, index) => ({ name, index }));
+      window.adventuresData = [];
+      window.accessToken = 'playwright-token';
+
+      window.resolvePlaceInputWithGoogleData = async () => ({
+        placeId: 'pid-playwright-add-persist-1',
+        name: 'Playwright Scenic Overlook',
+        address: '500 Ridge Rd, Asheville, NC 28801',
+        description: 'A scenic mountain overlook with long-range Blue Ridge views and a short family-friendly stop.',
+        coordinates: {
+          lat: 35.777777,
+          lng: -82.777777
+        }
+      });
+
+      window.buildExcelRow = (placeId, details) => {
+        const row = new Array(schemaNames.length).fill('');
+        row[0] = String(details.name || '');
+        row[1] = String(placeId || '');
+        row[11] = String(details.address || '');
+        row[16] = String(details.description || '');
+        row[27] = String(details.coordinates?.lat ?? details.latitude ?? '');
+        row[28] = String(details.coordinates?.lng ?? details.longitude ?? '');
+        row[29] = details.coordinates ? `${details.coordinates.lat}, ${details.coordinates.lng}` : '';
+        return row;
+      };
+
+      window.__mockPersistedRows = [];
+      window[keys.lastAdded] = null;
+      window.addRowToExcel = async (rowValues) => {
+        const copy = Array.isArray(rowValues) ? rowValues.slice() : [];
+        window[keys.lastAdded] = copy;
+        window.__mockPersistedRows.push(copy);
+        window.adventuresData.push({ values: [copy] });
+        return {
+          success: true,
+          persisted: true,
+          rowsChanged: 1,
+          persistedRows: 1,
+          verifiedRowsChanged: 1,
+          rowsVerifiedPresent: 1,
+          postWriteVerified: true,
+          verificationMode: 'playwright-mock'
+        };
+      };
+
+      window.loadTargetRows = async () => {
+        const rows = Array.isArray(window.__mockPersistedRows) ? window.__mockPersistedRows : [];
+        window.adventuresData = rows.map((values) => ({ values: [Array.isArray(values) ? values.slice() : []] }));
+        return true;
+      };
+    }, { lastAdded: RESULT_KEYS.LAST_ADDED_ROW_VALUES });
+
+    await page.evaluate(async (keys) => {
+      const status = document.createElement('div');
+      document.body.appendChild(status);
+      if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
+        window[keys.addPersistResult] = await window.handleAddSinglePlaceWithProgress(
+          'Playwright Scenic Overlook',
+          'placeName',
+          status,
+          false,
+          {}
+        );
+        return;
+      }
+      if (window.enhancedAutomation && typeof window.enhancedAutomation.addSinglePlace === 'function') {
+        window[keys.addPersistResult] = await window.enhancedAutomation.addSinglePlace('Playwright Scenic Overlook', 'placeName', false, {});
+        return;
+      }
+      throw new Error('No add handler available for persistence test');
+    }, { addPersistResult: RESULT_KEYS.ADD_PERSIST_RESULT });
+
+    await pollGpsFieldsFromRowArrayKey(page, RESULT_KEYS.LAST_ADDED_ROW_VALUES, {
+      description: 16,
+      latitude: 27,
+      longitude: 28,
+      gps: 29
+    }, {
+      description: 'A scenic mountain overlook with long-range Blue Ridge views and a short family-friendly stop.',
+      latitude: '35.777777',
+      longitude: '-82.777777',
+      gps: '35.777777, -82.777777'
+    });
+
+    await page.evaluate(async () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.adventuresData = [];
+      await window.loadTargetRows();
+    });
+
+    await pollGpsFieldsFromRowContainerKey(page, 'adventuresData', {
+      description: 16,
+      latitude: 27,
+      longitude: 28,
+      gps: 29
+    }, {
+      description: 'A scenic mountain overlook with long-range Blue Ridge views and a short family-friendly stop.',
+      latitude: '35.777777',
+      longitude: '-82.777777',
+      gps: '35.777777, -82.777777'
+    });
+    await expect.poll(() => page.evaluate((key) => window[key], RESULT_KEYS.ADD_PERSIST_RESULT), { timeout: 10000 })
+      .toMatchObject({ success: true, persistedRows: 1, rowsChanged: 1 });
+  });
+
+  test('add flow keeps Graph rows payload aligned with schema for GPS columns', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="places"]');
+
+    const schemaColumns = Array.from({ length: 30 }, (_, idx) => `Column ${idx + 1}`);
+    schemaColumns[0] = 'Name';
+    schemaColumns[1] = 'Google Place ID';
+    schemaColumns[11] = 'Address';
+    schemaColumns[16] = 'Description';
+    schemaColumns[27] = 'Latitude';
+    schemaColumns[28] = 'Longitude';
+    schemaColumns[29] = 'GPS Coordinates';
+
+    const { graphPostBodies } = await installGraphRowsMock(page, schemaColumns);
+
+    await runAddFlowWithGraphBackedWriter(page, {
+      schemaColumns,
+      resolvedDetails: {
+        placeId: 'pid-playwright-graph-parity-1',
+        name: 'Playwright Graph Ridge',
+        address: '900 Graph Ridge Rd, Asheville, NC 28801',
+        description: 'A ridgeline stop with layered mountain views, picnic pull-offs, and sunset overlooks.',
+        coordinates: { lat: 35.812345, lng: -82.654321 }
+      },
+      inputLabel: 'Playwright Graph Ridge',
+      resultKey: RESULT_KEYS.GRAPH_PARITY_RESULT,
+      payloadKey: RESULT_KEYS.GRAPH_PAYLOAD_CAPTURE,
+      rereadKey: RESULT_KEYS.GRAPH_REREAD_SNAPSHOT,
+      buildRowMode: 'legacy-indexed'
+    });
+
+    await assertGraphGpsPayloadAndReread(page, {
+      graphPostBodies,
+      schemaLength: schemaColumns.length,
+      payloadIndexes: {
+        description: 16,
+        latitude: 27,
+        longitude: 28,
+        gps: 29
+      },
+      rereadIndexes: {
+        description: 16,
+        latitude: 27,
+        longitude: 28,
+        gps: 29
+      },
+      expected: {
+        description: 'A ridgeline stop with layered mountain views, picnic pull-offs, and sunset overlooks.',
+        latitude: '35.812345',
+        longitude: '-82.654321',
+        gps: '35.812345, -82.654321'
+      },
+      rereadKey: RESULT_KEYS.GRAPH_REREAD_SNAPSHOT,
+      resultKey: RESULT_KEYS.GRAPH_PARITY_RESULT
+    });
+  });
+
+  test('add flow keeps Graph payload GPS mapping correct when schema columns are reordered', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="places"]');
+
+    const schemaColumns = Array.from({ length: 30 }, (_, idx) => `Column ${idx + 1}`);
+    schemaColumns[2] = 'Longitude';
+    schemaColumns[4] = 'Description';
+    schemaColumns[7] = 'Name';
+    schemaColumns[9] = 'Google Place ID';
+    schemaColumns[13] = 'GPS Coordinates';
+    schemaColumns[18] = 'Address';
+    schemaColumns[22] = 'Latitude';
+
+    const idxDescription = schemaColumns.indexOf('Description');
+    const idxLatitude = schemaColumns.indexOf('Latitude');
+    const idxLongitude = schemaColumns.indexOf('Longitude');
+    const idxGps = schemaColumns.indexOf('GPS Coordinates');
+
+    const { graphPostBodies } = await installGraphRowsMock(page, schemaColumns);
+
+    await runAddFlowWithGraphBackedWriter(page, {
+      schemaColumns,
+      resolvedDetails: {
+        placeId: 'pid-playwright-graph-reorder-1',
+        name: 'Playwright Reordered Ridge',
+        address: '901 Reorder Ridge Rd, Asheville, NC 28801',
+        description: 'A reordered-schema location used to validate name-based GPS payload mapping.',
+        coordinates: { lat: 35.901234, lng: -82.210987 }
+      },
+      inputLabel: 'Playwright Reordered Ridge',
+      resultKey: RESULT_KEYS.GRAPH_REORDERED_RESULT,
+      payloadKey: RESULT_KEYS.GRAPH_REORDERED_PAYLOAD_CAPTURE,
+      rereadKey: RESULT_KEYS.GRAPH_REORDERED_REREAD_SNAPSHOT,
+      buildRowMode: 'schema-aware'
+    });
+
+    await assertGraphGpsPayloadAndReread(page, {
+      graphPostBodies,
+      schemaLength: schemaColumns.length,
+      payloadIndexes: {
+        description: idxDescription,
+        latitude: idxLatitude,
+        longitude: idxLongitude,
+        gps: idxGps
+      },
+      rereadIndexes: {
+        description: 4,
+        latitude: 22,
+        longitude: 2,
+        gps: 13
+      },
+      expected: {
+        description: 'A reordered-schema location used to validate name-based GPS payload mapping.',
+        latitude: '35.901234',
+        longitude: '-82.210987',
+        gps: '35.901234, -82.210987'
+      },
+      rereadKey: RESULT_KEYS.GRAPH_REORDERED_REREAD_SNAPSHOT,
+      resultKey: RESULT_KEYS.GRAPH_REORDERED_RESULT,
+      blankPayloadIndexes: [16, 27, 28, 29]
+    });
+  });
+
+  test('row-reread helper rejects non-row-reread or non-persisted contracts', async ({ page }) => {
+    await page.evaluate((key) => {
+      window[key] = {
+        success: true,
+        rowsChanged: 1,
+        persistedRows: 0,
+        verifiedRowsChanged: 0,
+        postWriteVerified: false,
+        verificationMode: 'loaded-data-presence'
+      };
+    }, RESULT_KEYS.NEGATIVE_ROW_REREAD_RESULT);
+
+    let helperRejected = false;
+    let helperError = '';
+    try {
+      await assertRowRereadSuccess(page, RESULT_KEYS.NEGATIVE_ROW_REREAD_RESULT);
+    } catch (error) {
+      helperRejected = true;
+      helperError = String(error && error.message ? error.message : error);
+    }
+
+    expect(helperRejected).toBe(true);
+    expect(helperError).toContain('persistedRows');
   });
 
   test('automation mode selectors show recommendation hints and emit change toast', async ({ page }) => {
@@ -487,10 +1014,10 @@ test.describe('Edit Mode – target-table selectors', () => {
       }
     });
 
-    await page.evaluate(async () => {
+    await page.evaluate(async (keys) => {
       const mount = document.createElement('div');
       document.body.appendChild(mount);
-      window.__populatePersistResult = await window.handlePopulateMissingFields(mount, false);
+      window[keys.populatePersist] = await window.handlePopulateMissingFields(mount, false);
       // Reset hours cell so the hours handler still has something to write
       // (handlePopulateMissingFields already populated it; the refresh-all optimisation
       // would otherwise skip rows whose value already matches Google).
@@ -499,8 +1026,12 @@ test.describe('Edit Mode – target-table selectors', () => {
           ? Number(window.getColumnIndexByName('Hours of Operation', ['Hours'])) : 5;
         if (hoursIdx >= 0) window.adventuresData[0].values[0][hoursIdx] = '';
       }
-      window.__hoursPersistResult = await window.handleUpdateHoursOnly(mount, false);
-      window.__tagPersistResult = await window.autoTagAllLocationsUnified({ dryRun: false });
+      window[keys.hoursPersist] = await window.handleUpdateHoursOnly(mount, false);
+      window[keys.tagPersist] = await window.autoTagAllLocationsUnified({ dryRun: false });
+    }, {
+      populatePersist: RESULT_KEYS.POPULATE_PERSIST_RESULT,
+      hoursPersist: RESULT_KEYS.HOURS_PERSIST_RESULT,
+      tagPersist: RESULT_KEYS.TAG_PERSIST_RESULT
     });
 
     await expect.poll(() => page.evaluate(() => Number(window.__saveCalls || 0)), { timeout: 10000 }).toBeGreaterThanOrEqual(2);
@@ -561,12 +1092,9 @@ test.describe('Edit Mode – target-table selectors', () => {
 
     await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
       .toContain('saved to Excel');
-    await expect.poll(() => page.evaluate(() => window.__populatePersistResult), { timeout: 10000 })
-      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
-    await expect.poll(() => page.evaluate(() => window.__hoursPersistResult), { timeout: 10000 })
-      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
-    await expect.poll(() => page.evaluate(() => window.__tagPersistResult), { timeout: 10000 })
-      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
+    await assertRowRereadSuccess(page, RESULT_KEYS.POPULATE_PERSIST_RESULT, { rowsChanged: 1, verifiedRowsChanged: 1, postWriteVerified: true });
+    await assertRowRereadSuccess(page, RESULT_KEYS.HOURS_PERSIST_RESULT, { rowsChanged: 1, verifiedRowsChanged: 1, postWriteVerified: true });
+    await assertRowRereadSuccess(page, RESULT_KEYS.TAG_PERSIST_RESULT, { rowsChanged: 1, verifiedRowsChanged: 1, postWriteVerified: true });
     await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
       .toContain('1 row changed');
     await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })

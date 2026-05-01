@@ -39,8 +39,12 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const persistedRows = asCount(raw.persistedRows, rowsChanged);
     const verifiedRowsChanged = asCount(raw.verifiedRowsChanged, asCount(raw.rowsVerifiedPresent, 0));
     const rowsRequested = asCount(raw.rowsRequested, asCount(raw.total, asCount(fallback.rowsRequested, rowsChanged)));
+    const success = typeof raw.success === 'boolean'
+      ? raw.success
+      : (typeof raw.ok === 'boolean' ? raw.ok : (persistedRows > 0 || rowsChanged > 0 || rowsRequested === 0));
     return {
       ...raw,
+      success,
       rowsRequested,
       rowsChanged,
       persistedRows,
@@ -62,7 +66,40 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
   }
 
   function looksLikePlaceId(value) {
-    return /^ChI[A-Za-z0-9_-]{6,}$/.test(safeString(value));
+    const text = safeString(value);
+    if (!text) return false;
+    const lower = text.toLowerCase();
+    if (['skip', 'undefined', 'unavailable', 'not available', 'n/a', 'na', 'none', 'null'].includes(lower)) return false;
+    if (/\s/.test(text)) return false;
+    return text.length >= 8;
+  }
+
+  function extractNarrativeDescription(details) {
+    const safe = details && typeof details === 'object' ? details : {};
+    const direct = safeString(safe.description);
+    if (direct) return direct;
+
+    const editorial = safeString(safe.editorialSummaryText || (safe.editorialSummary && safe.editorialSummary.text));
+    if (editorial) return editorial;
+
+    const reviewSnippet = safeString(safe.reviewSnippet);
+    if (reviewSnippet) return reviewSnippet;
+
+    const reviewText = Array.isArray(safe.reviews)
+      ? safe.reviews
+          .map((review) => {
+            if (!review) return '';
+            if (review.text && typeof review.text === 'object' && review.text.text) return safeString(review.text.text);
+            return safeString(review.text || review.originalText || review.snippet);
+          })
+          .filter(Boolean)
+          .slice(0, 2)
+          .join(' ')
+          .trim()
+      : '';
+    if (reviewText) return reviewText;
+
+    return '';
   }
 
   function getActiveEditTarget(mainWindow) {
@@ -1658,6 +1695,27 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const address = safeString(safeDetails.address || safeSearch.address);
     const fallbackWebsite = looksLikeUrl(rawInput) ? normalizeUrlCandidate(rawInput) : '';
 
+    const safeCoordinates = safeDetails.coordinates || safeSearch.coordinates || null;
+    const lat = Number(
+      (safeCoordinates && (safeCoordinates.lat != null ? safeCoordinates.lat : safeCoordinates.latitude))
+      ?? safeDetails.latitude
+      ?? safeDetails.lat
+      ?? safeSearch.latitude
+      ?? safeSearch.lat
+    );
+    const lng = Number(
+      (safeCoordinates && (safeCoordinates.lng != null ? safeCoordinates.lng : (safeCoordinates.longitude != null ? safeCoordinates.longitude : safeCoordinates.long)))
+      ?? safeDetails.longitude
+      ?? safeDetails.lng
+      ?? safeDetails.long
+      ?? safeSearch.longitude
+      ?? safeSearch.lng
+      ?? safeSearch.long
+    );
+    const normalizedCoordinates = Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : null;
+
     return {
       placeId: resolvedPlaceId,
       name,
@@ -1669,14 +1727,16 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       hours: safeDetails.hours || safeSearch.hours || '',
       businessStatus: safeString(safeDetails.businessStatus || safeSearch.businessStatus || 'UNKNOWN'),
       businessType: safeString(safeDetails.businessType || safeSearch.businessType || inferBusinessType(safeDetails.types || safeSearch.types)),
-      description: safeString(safeDetails.description || safeSearch.description),
+      description: extractNarrativeDescription(safeDetails) || extractNarrativeDescription(safeSearch) || '',
       eventDate: safeString(safeDetails.eventDate || safeSearch.eventDate),
       sourceProvider: safeString(safeDetails.sourceProvider || safeSearch.sourceProvider || (fallbackWebsite ? 'Official Festival URL' : '')),
       sourceType: safeString(safeDetails.sourceType || safeSearch.sourceType),
       openLinkUrl: safeString(safeDetails.openLinkUrl || safeSearch.openLinkUrl || safeDetails.googlePlaceUrl || safeSearch.googlePlaceUrl || fallbackWebsite),
       openLinkLabel: safeString(safeDetails.openLinkLabel || safeSearch.openLinkLabel),
       types: Array.isArray(safeDetails.types) ? safeDetails.types : (Array.isArray(safeSearch.types) ? safeSearch.types : []),
-      coordinates: safeDetails.coordinates || safeSearch.coordinates || null,
+      coordinates: normalizedCoordinates,
+      latitude: normalizedCoordinates ? String(normalizedCoordinates.lat) : '',
+      longitude: normalizedCoordinates ? String(normalizedCoordinates.lng) : '',
       directions: safeString(safeDetails.directions || safeSearch.directions) || (resolvedPlaceId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(resolvedPlaceId)}` : '')
     };
   }
@@ -1703,7 +1763,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
     if (!host || !Array.isArray(rowValues)) return;
 
-    const description = getColumnValueByNames(rowValues, host, ['Description'], 12);
+    const description = getColumnValueByNames(rowValues, host, ['Description'], 16);
     const driveTime = getColumnValueByNames(rowValues, host, ['Drive Time', 'DriveTime'], 4);
     const tags = getColumnValueByNames(rowValues, host, ['Tags'], 3);
     const latitude = getColumnValueByNames(rowValues, host, ['Latitude', 'Lat', 'GPS Latitude'], -1);
@@ -1894,11 +1954,16 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
   };
 
   window.normalizeExcelRowForSchema = window.normalizeExcelRowForSchema || function(rowValues, sourceWindow = getMainWindow()) {
-    const schemaCount = Number(
-      sourceWindow?.__excelColumnCount ||
-      sourceWindow?.adventuresData?.[0]?.values?.[0]?.length ||
-      window.__excelColumnCount ||
-      24
+    const schemaColumns = Array.isArray(sourceWindow?.__excelSchemaColumns)
+      ? sourceWindow.__excelSchemaColumns
+      : (Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : []);
+    const schemaCount = Math.max(
+      Number(sourceWindow?.__excelColumnCount) || 0,
+      Number(window.__excelColumnCount) || 0,
+      Array.isArray(sourceWindow?.adventuresData?.[0]?.values?.[0]) ? sourceWindow.adventuresData[0].values[0].length : 0,
+      Array.isArray(rowValues) ? rowValues.length : 0,
+      schemaColumns.length,
+      13
     );
 
     const normalized = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
@@ -2020,12 +2085,13 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           throw buildDuplicateError(details, activeTarget);
         }
 
+        let writeOutcome = null;
         try {
           if (typeof mainWindow.addRowToExcel === 'function') {
-            await mainWindow.addRowToExcel(rowValues);
+            writeOutcome = await mainWindow.addRowToExcel(rowValues);
           } else if (Array.isArray(mainWindow.adventuresData) && typeof mainWindow.saveToExcel === 'function') {
             mainWindow.adventuresData.push({ values: [rowValues] });
-            await mainWindow.saveToExcel();
+            writeOutcome = await mainWindow.saveToExcel();
           } else {
             throw new Error('Main window Excel save helpers are unavailable.');
           }
@@ -2104,11 +2170,24 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         }
 
         const rowPresent = hasLoadedRowForPlace(mainWindow, details, placeId);
+        const normalizedWriteOutcome = normalizeWriteResultContractLocal(writeOutcome, {
+          rowsRequested: 1,
+          rowsChanged: 1,
+          rowsAppended: 1,
+          persistedRows: 1,
+          verifiedRowsChanged: rowPresent ? 1 : 0,
+          rowsVerifiedPresent: rowPresent ? 1 : 0,
+          postWriteVerified: rowPresent,
+          persistMode: 'add-row',
+          persistReason: '',
+          verificationMode: 'loaded-data-presence',
+          verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
+        });
         recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, {
           queued: false,
-          verified: rowPresent,
-          verificationStatus: rowPresent ? 'verified' : 'unverified',
-          verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
+          verified: !!normalizedWriteOutcome.postWriteVerified,
+          verificationStatus: normalizedWriteOutcome.postWriteVerified ? 'verified' : 'unverified',
+          verificationReason: normalizedWriteOutcome.verificationReason || ''
         });
 
         return normalizeWriteResultContractLocal({
@@ -2117,18 +2196,20 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           placeName: details.name,
           placeId,
           details,
-          rowsChanged: 1,
-          persistedRows: 1,
-          verifiedRowsChanged: rowPresent ? 1 : 0,
-          postWriteVerified: rowPresent,
-          rowsAppended: 1,
-          rowsVerifiedPresent: rowPresent ? 1 : 0,
-          rowsRequested: 1,
-          persisted: true,
-          persistMode: 'add-row',
-          persistReason: '',
-          verificationMode: 'loaded-data-presence',
-          verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
+          rowsChanged: normalizedWriteOutcome.rowsChanged,
+          persistedRows: normalizedWriteOutcome.persistedRows,
+          verifiedRowsChanged: normalizedWriteOutcome.verifiedRowsChanged,
+          postWriteVerified: normalizedWriteOutcome.postWriteVerified,
+          rowsAppended: normalizedWriteOutcome.rowsAppended,
+          rowsVerifiedPresent: normalizedWriteOutcome.rowsVerifiedPresent,
+          rowsRequested: normalizedWriteOutcome.rowsRequested,
+          persisted: typeof normalizedWriteOutcome.persisted === 'boolean'
+            ? normalizedWriteOutcome.persisted
+            : normalizedWriteOutcome.persistedRows > 0,
+          persistMode: normalizedWriteOutcome.persistMode || 'add-row',
+          persistReason: normalizedWriteOutcome.persistReason || '',
+          verificationMode: normalizedWriteOutcome.verificationMode || 'loaded-data-presence',
+          verificationReason: normalizedWriteOutcome.verificationReason || ''
         }, { rowsRequested: 1 });
       } catch (error) {
         const requestIdPrefix = error?.requestId ? `[${error.requestId}] ` : '';

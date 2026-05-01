@@ -41,9 +41,14 @@
     const rowsChanged = asCount(raw.rowsChanged, asCount(defaults.rowsChanged, 0));
     const persistedRows = asCount(raw.persistedRows, rowsChanged);
     const verifiedRowsChanged = asCount(raw.verifiedRowsChanged, asCount(raw.rowsVerifiedPresent, 0));
+    const rowsRequested = asCount(raw.rowsRequested, asCount(raw.total, asCount(defaults.rowsRequested, rowsChanged)));
+    const success = typeof raw.success === 'boolean'
+      ? raw.success
+      : (typeof raw.ok === 'boolean' ? raw.ok : (persistedRows > 0 || rowsChanged > 0 || rowsRequested === 0));
     return {
       ...raw,
-      rowsRequested: asCount(raw.rowsRequested, asCount(raw.total, asCount(defaults.rowsRequested, rowsChanged))),
+      success,
+      rowsRequested,
       rowsChanged,
       rowsAppended: asCount(raw.rowsAppended, rowsChanged),
       persistedRows,
@@ -463,12 +468,23 @@
     }
   };
 
-  function renderDelegationStatus(displayElement, text, isError = false) {
+  function renderDelegationStatus(displayElement, text, isError = false, percent = null) {
     if (!displayElement) return;
     const bg = isError ? '#fee2e2' : '#eff6ff';
     const border = isError ? '#fca5a5' : '#bfdbfe';
     const color = isError ? '#7f1d1d' : '#1e40af';
-    displayElement.innerHTML = `<div style="padding: 12px; background: ${bg}; border: 1px solid ${border}; border-radius: 8px; color: ${color}; font-size: 13px;">${text}</div>`;
+    const safePercent = Number.isFinite(Number(percent)) ? Math.max(0, Math.min(100, Math.round(Number(percent)))) : null;
+    const progressHtml = safePercent == null
+      ? ''
+      : `
+        <div style="margin-top: 8px;">
+          <div style="font-size: 12px; margin-bottom: 4px;">Progress: ${safePercent}%</div>
+          <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden;">
+            <div style="width: ${safePercent}%; height: 100%; background: ${isError ? '#ef4444' : '#3b82f6'};"></div>
+          </div>
+        </div>
+      `;
+    displayElement.innerHTML = `<div style="padding: 12px; background: ${bg}; border: 1px solid ${border}; border-radius: 8px; color: ${color}; font-size: 13px;">${text}${progressHtml}</div>`;
   }
 
   function buildStrictWrapperMessage(label, code) {
@@ -487,13 +503,23 @@
       return { success: false, error: msg };
     }
 
-    renderDelegationStatus(displayElement, `⏳ Running real ${label} handler...`);
+    renderDelegationStatus(displayElement, `⏳ Running real ${label} handler...`, false, 0);
 
     const result = await resolvedHandler(displayElement, dryRun);
-    if (result && typeof result === 'object') return result;
+    if (result && typeof result === 'object') {
+      renderDelegationStatus(
+        displayElement,
+        result.success
+          ? `✅ ${label} completed`
+          : `⚠️ ${label} completed with issues`,
+        !result.success,
+        100
+      );
+      return result;
+    }
 
     const failMsg = buildStrictWrapperMessage(label, 'NON_OBJECT_RESULT');
-    renderDelegationStatus(displayElement, failMsg, true);
+    renderDelegationStatus(displayElement, failMsg, true, 100);
     return { success: false, error: failMsg };
   }
 
