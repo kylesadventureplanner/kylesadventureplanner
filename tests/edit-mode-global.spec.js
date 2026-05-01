@@ -193,6 +193,66 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect.poll(() => page.evaluate(() => window.__searchMissingPlaceIdsCalls[0]), { timeout: 10000 })
       .toMatchObject({ dryRun: true });
     await expect(page.locator('#search-place-ids-write-diagnostics')).toContainText(/dry run only/i);
+    await expect(page.locator('#automationPreflightBanner')).toBeVisible();
+    await expect(page.locator('#automationPreflightBanner')).toContainText(/Preflight:/i);
+  });
+
+  test('hard preflight block toggle prevents automation run when auth is missing', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await expandTabCardsIfAvailable(page, 'automation');
+
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Blocked Preflight Cafe';
+      row[11] = '123 Guardrail Ln, Durham, NC 27701';
+      window.adventuresData = [{ values: [row] }];
+      window.__excelSchemaColumns = header.map((name, index) => ({ name, index }));
+      window.__searchMissingPlaceIdsCalls = [];
+      window.searchMissingGooglePlaceIds = async (options = {}) => {
+        window.__searchMissingPlaceIdsCalls.push({ ...options });
+        return { success: true, dryRun: !!options.dryRun, processedTargets: 1, persisted: false };
+      };
+      try { window.accessToken = ''; } catch (_error) {}
+      try {
+        if (window.opener && !window.opener.closed) window.opener.accessToken = '';
+      } catch (_error) {}
+    });
+
+    await page.evaluate(() => {
+      const dryRunToggle = document.getElementById('searchPlaceIdsDryRun');
+      if (dryRunToggle) {
+        dryRunToggle.checked = true;
+        dryRunToggle.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const hardBlock = document.getElementById('automationHardPreflightToggle');
+      if (!hardBlock) throw new Error('automationHardPreflightToggle missing');
+      hardBlock.checked = true;
+      hardBlock.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await page.click('#searchMissingPlaceIdsBtn');
+
+    await expect.poll(() => page.evaluate(() => Number(window.__searchMissingPlaceIdsCalls.length || 0)), { timeout: 10000 }).toBe(0);
+    await expect(page.locator('#automationPreflightBanner')).toContainText(/Preflight blocked:/i);
+    await expect(page.locator('#search-place-ids-write-diagnostics')).toContainText(/blocked by preflight guardrail/i);
+    await expect(page.locator('#automationPreflightWhyBlocked')).toBeVisible();
+    await expect(page.locator('#automationPreflightWhyBlocked')).toContainText('missing-auth');
+    await expect(page.locator('#automationPreflightWhyBlocked')).toContainText(/Sign in again/i);
+
+    await expect(page.locator('#automationCopyPreflightDiagnosticsBtn')).toBeVisible();
+    await page.click('#automationCopyPreflightDiagnosticsBtn');
+    await expect.poll(() => page.evaluate(() => String(window.__lastAutomationPreflightDiagnosticsCopiedText || '')), { timeout: 10000 })
+      .toContain('missing-auth');
+
+    await expect(page.locator('#automationCopyAllDiagnosticsBtn')).toBeVisible();
+    await page.click('#automationCopyAllDiagnosticsBtn');
+    await expect.poll(() => page.evaluate(() => String(window.__lastAutomationAllDiagnosticsCopiedText || '')), { timeout: 10000 })
+      .toContain('search-place-ids-write-diagnostics');
   });
 
   test('automation mode selectors show recommendation hints and emit change toast', async ({ page }) => {
@@ -284,6 +344,95 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toContain('Playwright Mock Description Place');
     await expect.poll(() => page.evaluate(() => String(window.__lastDescriptionPreviewCopiedText || '')), { timeout: 10000 })
       .toContain('Google editorial summary for Playwright Mock Description Place.');
+  });
+
+  test('Update Descriptions automation accepts non-ChI place IDs when overwrite is enabled', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Non ChI Place';
+      row[1] = 'pid-playwright-12345';
+      row[9] = 'NC';
+      row[10] = 'Durham';
+      row[11] = '700 Test Lane, Durham, NC 27701';
+      row[16] = 'Legacy description to overwrite';
+      window.adventuresData = [{ values: [row] }];
+      window.getPlaceDetails = async () => ({
+        description: 'Updated description from Google for non-ChI place id.',
+        address: '700 Test Lane, Durham, NC 27701',
+        rating: 4.7,
+        reviews: []
+      });
+      window.saveToExcel = async () => true;
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__updateDescriptionsNonChIResult = await window.handleUpdateAllDescriptions(mount, false, true);
+    });
+
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[16] || '')), { timeout: 10000 })
+      .toBe('Updated description from Google for non-ChI place id.');
+    await expect.poll(() => page.evaluate(() => window.__updateDescriptionsNonChIResult), { timeout: 10000 })
+      .toMatchObject({ success: true, updatedCount: 1 });
+
+    await page.evaluate(() => {
+      const panel = document.createElement('div');
+      panel.id = 'playwright-desc-skip-chip-panel';
+      panel.textContent = 'Diagnostics baseline';
+      document.body.appendChild(panel);
+      window.appendUpdateDescriptionsDiagnosticsSuffix('playwright-desc-skip-chip-panel', {
+        updateDescriptionsDiagnostics: {
+          skipReasonCounts: {
+            'invalid-place-id-format': 2,
+            'already-has-description': 1
+          },
+          googleApi: {
+            checked: true,
+            attemptedRows: 3,
+            returnedRows: 2,
+            emptyRows: 1,
+            errorRows: 0,
+            sourceCounts: {}
+          }
+        }
+      });
+    });
+    await expect(page.locator('#playwright-desc-skip-chip-panel-skip-reasons')).toContainText('invalid-place-id-format: 2');
+
+    await page.evaluate(() => {
+      window.renderAutomationHeaderSkipSummary({
+        updateDescriptionsDiagnostics: {
+          skipReasonCounts: {
+            'invalid-place-id-format': 4,
+            'already-has-description': 2,
+            'no-description-generated': 1
+          },
+          googleApi: {
+            checked: true,
+            attemptedRows: 7,
+            returnedRows: 3,
+            emptyRows: 4,
+            errorRows: 0,
+            sourceCounts: {}
+          }
+        }
+      });
+    });
+    await expect(page.locator('#automationSkipSummaryTop3')).toBeVisible();
+    await expect(page.locator('#automationSkipSummaryTop3')).toContainText('invalid-place-id-format: 4');
   });
 
   test('automation handlers persist workbook writes when rows are updated', async ({ page }) => {

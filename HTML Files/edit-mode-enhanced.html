@@ -113,6 +113,147 @@
       margin-top: var(--ui-space-24, 24px);
     }
 
+    .automation-header-diagnostics {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .automation-hard-preflight-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.15);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .automation-hard-preflight-toggle input[type="checkbox"] {
+      margin: 0;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .automation-preflight-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .automation-preflight-banner.is-warning {
+      border-color: #fcd34d;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .automation-preflight-why {
+      margin-top: -2px;
+      width: 100%;
+      max-width: 780px;
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.14);
+      color: #f8fafc;
+      padding: 6px 8px;
+    }
+
+    .automation-preflight-why > summary {
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      list-style: none;
+      user-select: none;
+    }
+
+    .automation-preflight-why > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .automation-preflight-why-list {
+      margin-top: 6px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .automation-preflight-why-item {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .automation-preflight-why-code {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      padding: 1px 8px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .automation-top-skip-summary {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 26px;
+    }
+
+    .automation-top-skip-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      margin-right: 2px;
+    }
+
+    .automation-copy-diagnostics-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.16);
+      color: #ffffff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .automation-copy-diagnostics-btn:hover {
+      background: rgba(255,255,255,0.24);
+    }
+
+    .automation-copy-diagnostics-status {
+      font-size: 11px;
+      color: rgba(255,255,255,0.9);
+      min-height: 14px;
+      margin-left: 4px;
+    }
+
     .tab-btn {
       padding: 12px 20px;
       background: none;
@@ -210,6 +351,27 @@
       border-color: #fcd34d;
       background: #fffbeb;
       color: #92400e;
+    }
+
+    .automation-skip-reason-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .automation-skip-reason-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
     }
 
     .edit-critical-config-card {
@@ -1099,6 +1261,21 @@
             <span style="opacity:0.75;font-weight:400;">Editing:</span>
             <span id="activeTargetBannerTableName" style="color:#fde68a;font-weight:800;font-size:14px;">—</span>
             <span id="activeTargetBannerFile" style="opacity:0.7;font-weight:400;font-size:11px;"></span>
+          </div>
+          <div id="automationHeaderDiagnostics" class="automation-header-diagnostics" hidden>
+            <label class="automation-hard-preflight-toggle" for="automationHardPreflightToggle" title="When enabled, automation runs are blocked on critical preflight failures like missing auth or no targets.">
+              <input id="automationHardPreflightToggle" type="checkbox" />
+              Hard preflight block
+            </label>
+            <div id="automationPreflightBanner" class="automation-preflight-banner" hidden></div>
+            <details id="automationPreflightWhyBlocked" class="automation-preflight-why" hidden>
+              <summary>Why blocked?</summary>
+              <div id="automationPreflightWhyBlockedList" class="automation-preflight-why-list"></div>
+            </details>
+            <button id="automationCopyPreflightDiagnosticsBtn" type="button" class="automation-copy-diagnostics-btn" onclick="copyAutomationPreflightDiagnostics()" hidden>Copy diagnostics</button>
+            <button id="automationCopyAllDiagnosticsBtn" type="button" class="automation-copy-diagnostics-btn" onclick="copyAutomationAllDiagnostics()" hidden>Copy all diagnostics</button>
+            <span id="automationPreflightCopyStatus" class="automation-copy-diagnostics-status" hidden aria-live="polite"></span>
+            <div id="automationSkipSummaryTop3" class="automation-top-skip-summary" hidden></div>
           </div>
         </div>
         <button class="close-btn" onclick="closeEditModeWindow()">✕</button>
@@ -2492,6 +2669,15 @@
       } else {
         updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
       }
+
+      const isAutomationTab = tabName === 'automation';
+      setAutomationHeaderDiagnosticsVisible(isAutomationTab);
+      if (isAutomationTab) {
+        renderAutomationPreflightBanner(buildAutomationPreflightState(getAutomationTargetsForRun(), {
+          actionLabel: 'automation run',
+          hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+        }));
+      }
     }
 
     function moveTabSelectionFromKey(currentButton, key) {
@@ -3811,6 +3997,327 @@
       }
     }
 
+    const AUTOMATION_HARD_PREFLIGHT_BLOCK_STORAGE_KEY = 'automationHardPreflightBlockV1';
+
+    function getAutomationHardPreflightBlockPreference() {
+      try {
+        const raw = String(localStorage.getItem(AUTOMATION_HARD_PREFLIGHT_BLOCK_STORAGE_KEY) || '').trim().toLowerCase();
+        return raw === 'on' || raw === 'true' || raw === '1';
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function isAutomationHardPreflightBlockEnabled() {
+      const toggle = document.getElementById('automationHardPreflightToggle');
+      if (toggle) return !!toggle.checked;
+      return getAutomationHardPreflightBlockPreference();
+    }
+
+    function persistAutomationHardPreflightBlockPreference(enabled) {
+      const next = !!enabled;
+      try {
+        localStorage.setItem(AUTOMATION_HARD_PREFLIGHT_BLOCK_STORAGE_KEY, next ? 'on' : 'off');
+      } catch (_error) {}
+      const toggle = document.getElementById('automationHardPreflightToggle');
+      if (toggle) toggle.checked = next;
+      return next;
+    }
+
+    function initAutomationHardPreflightToggle() {
+      const toggle = document.getElementById('automationHardPreflightToggle');
+      if (!toggle) return;
+      const enabled = getAutomationHardPreflightBlockPreference();
+      toggle.checked = !!enabled;
+      toggle.addEventListener('change', () => {
+        const next = persistAutomationHardPreflightBlockPreference(toggle.checked);
+        renderAutomationPreflightBanner(buildAutomationPreflightState(getAutomationTargetsForRun(), {
+          actionLabel: 'automation run',
+          hardBlockEnabled: next
+        }));
+      });
+    }
+
+    function getActiveEditModeTabName() {
+      const activeButton = document.querySelector('.tab-btn.active[data-tab]');
+      return activeButton ? String(activeButton.getAttribute('data-tab') || '').trim() : 'places';
+    }
+
+    function setAutomationHeaderDiagnosticsVisible(visible) {
+      const wrap = document.getElementById('automationHeaderDiagnostics');
+      const preflight = document.getElementById('automationPreflightBanner');
+      const whyBlocked = document.getElementById('automationPreflightWhyBlocked');
+      const whyBlockedList = document.getElementById('automationPreflightWhyBlockedList');
+      const copyBtn = document.getElementById('automationCopyPreflightDiagnosticsBtn');
+      const copyAllBtn = document.getElementById('automationCopyAllDiagnosticsBtn');
+      const copyStatus = document.getElementById('automationPreflightCopyStatus');
+      const summary = document.getElementById('automationSkipSummaryTop3');
+      if (!wrap || !preflight || !summary || !whyBlocked || !whyBlockedList || !copyBtn || !copyAllBtn || !copyStatus) return;
+      const show = Boolean(visible);
+      wrap.hidden = !show;
+      if (!show) {
+        preflight.hidden = true;
+        preflight.classList.remove('is-warning');
+        preflight.textContent = '';
+        whyBlocked.hidden = true;
+        whyBlocked.open = false;
+        whyBlockedList.innerHTML = '';
+        copyBtn.hidden = true;
+        copyAllBtn.hidden = true;
+        copyStatus.hidden = true;
+        copyStatus.textContent = '';
+        summary.hidden = true;
+        summary.innerHTML = '';
+      }
+    }
+
+    let lastAutomationPreflightState = null;
+
+    function setAutomationPreflightCopyStatus(message) {
+      const el = document.getElementById('automationPreflightCopyStatus');
+      if (!el) return;
+      const text = String(message || '').trim();
+      if (!text) {
+        el.hidden = true;
+        el.textContent = '';
+        return;
+      }
+      el.hidden = false;
+      el.textContent = text;
+      window.setTimeout(() => {
+        if (el.textContent === text) {
+          el.hidden = true;
+          el.textContent = '';
+        }
+      }, 1800);
+    }
+
+    function buildAutomationPreflightDiagnosticsText(state) {
+      const safe = state && typeof state === 'object' ? state : {};
+      const lines = [];
+      lines.push(`Preflight: ${String(safe.message || 'No preflight message available.')}`);
+      lines.push(`Hard block enabled: ${isAutomationHardPreflightBlockEnabled() ? 'yes' : 'no'}`);
+      const blockers = Array.isArray(safe.blockers) ? safe.blockers.filter(Boolean) : [];
+      if (blockers.length) {
+        lines.push('Blockers:');
+        blockers.forEach((code) => {
+          const normalizedCode = String(code || '').trim() || 'unknown';
+          const hint = String(AUTOMATION_PREFLIGHT_BLOCKER_HINTS[normalizedCode] || 'Review automation prerequisites and try again.');
+          lines.push(`- ${normalizedCode}: ${hint}`);
+        });
+      } else {
+        lines.push('Blockers: none');
+      }
+      const topSkipText = String((document.getElementById('automationSkipSummaryTop3') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+      if (topSkipText) lines.push(`Top skips: ${topSkipText}`);
+      return lines.join('\n');
+    }
+
+    const AUTOMATION_WRITE_DIAGNOSTIC_ELEMENT_IDS = [
+      'search-place-ids-write-diagnostics',
+      'refresh-write-diagnostics',
+      'autotag-write-diagnostics',
+      'missing-write-diagnostics',
+      'hours-write-diagnostics',
+      'desc-write-diagnostics',
+      'force-update-write-diagnostics',
+      'dupes-write-diagnostics'
+    ];
+
+    function buildAutomationWriteDiagnosticsSnapshotText() {
+      const rows = [];
+      AUTOMATION_WRITE_DIAGNOSTIC_ELEMENT_IDS.forEach((id) => {
+        const node = document.getElementById(id);
+        const text = String(node && (node.textContent || node.innerText) || '').replace(/\s+/g, ' ').trim();
+        if (text) rows.push(`- ${id}: ${text}`);
+      });
+      return rows;
+    }
+
+    function buildAutomationAllDiagnosticsText(state) {
+      const sections = [buildAutomationPreflightDiagnosticsText(state)];
+      const writeLines = buildAutomationWriteDiagnosticsSnapshotText();
+      if (writeLines.length) {
+        sections.push(['Write diagnostics:', ...writeLines].join('\n'));
+      }
+      return sections.join('\n\n');
+    }
+
+    async function copyTextWithClipboardFallback(payload) {
+      let copied = false;
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          await navigator.clipboard.writeText(payload);
+          copied = true;
+        }
+      } catch (_error) {
+        copied = false;
+      }
+      if (!copied) {
+        const input = document.createElement('textarea');
+        input.value = payload;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'fixed';
+        input.style.left = '-9999px';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        try {
+          copied = document.execCommand('copy');
+        } catch (_error) {
+          copied = false;
+        }
+        document.body.removeChild(input);
+      }
+      return copied;
+    }
+
+    async function copyAutomationPreflightDiagnostics() {
+      const payload = buildAutomationPreflightDiagnosticsText(lastAutomationPreflightState);
+      const copied = await copyTextWithClipboardFallback(payload);
+      window.__lastAutomationPreflightDiagnosticsCopiedText = payload;
+      setAutomationPreflightCopyStatus(copied ? 'Diagnostics copied.' : 'Could not copy automatically.');
+      return copied;
+    }
+
+    async function copyAutomationAllDiagnostics() {
+      const payload = buildAutomationAllDiagnosticsText(lastAutomationPreflightState);
+      const copied = await copyTextWithClipboardFallback(payload);
+      window.__lastAutomationAllDiagnosticsCopiedText = payload;
+      setAutomationPreflightCopyStatus(copied ? 'All diagnostics copied.' : 'Could not copy automatically.');
+      return copied;
+    }
+
+    const AUTOMATION_PREFLIGHT_BLOCKER_HINTS = {
+      'missing-auth': 'Sign in again so Graph auth is available, then retry.',
+      'no-targets': 'Select at least one target table in Automation target controls.'
+    };
+
+    function renderAutomationPreflightWhyBlocked(state) {
+      const details = document.getElementById('automationPreflightWhyBlocked');
+      const list = document.getElementById('automationPreflightWhyBlockedList');
+      const copyBtn = document.getElementById('automationCopyPreflightDiagnosticsBtn');
+      const copyAllBtn = document.getElementById('automationCopyAllDiagnosticsBtn');
+      if (!details || !list) return;
+      const blockers = state && Array.isArray(state.blockers) ? state.blockers.filter(Boolean) : [];
+      if (!blockers.length) {
+        details.hidden = true;
+        details.open = false;
+        list.innerHTML = '';
+        if (copyBtn) copyBtn.hidden = true;
+        if (copyAllBtn) copyAllBtn.hidden = true;
+        return;
+      }
+      details.hidden = false;
+      details.open = !!(state && state.blocked);
+      if (copyBtn) copyBtn.hidden = false;
+      if (copyAllBtn) copyAllBtn.hidden = false;
+      list.innerHTML = blockers.map((code) => {
+        const normalizedCode = String(code || '').trim() || 'unknown';
+        const hint = String(AUTOMATION_PREFLIGHT_BLOCKER_HINTS[normalizedCode] || 'Review automation prerequisites and try again.');
+        return `<div class="automation-preflight-why-item"><span class="automation-preflight-why-code">${normalizedCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span><span>${hint.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>`;
+      }).join('');
+    }
+
+    function buildAutomationPreflightState(targets, options = {}) {
+      const safeTargets = Array.isArray(targets) ? targets : [];
+      const actionLabel = String(options.actionLabel || 'automation run').trim();
+      const hardBlockEnabled = options.hardBlockEnabled === true;
+      const mainWindow = getMainWindowSafe();
+      const hasAuth = !!(mainWindow && (mainWindow.accessToken || window.accessToken));
+      const hasSchema = !!(mainWindow && Array.isArray(mainWindow.__excelSchemaColumns) && mainWindow.__excelSchemaColumns.length > 0);
+      const blockers = [];
+
+      if (!safeTargets.length) {
+        blockers.push('no-targets');
+      }
+      if (!hasAuth) {
+        blockers.push('missing-auth');
+      }
+
+      const hasCriticalBlockers = blockers.length > 0;
+      const blocked = hardBlockEnabled && hasCriticalBlockers;
+      if (blocked) {
+        return {
+          tone: 'warning',
+          blocked: true,
+          hasCriticalBlockers: true,
+          blockers,
+          message: `Preflight blocked: ${safeTargets.length ? `${safeTargets.length} target${safeTargets.length === 1 ? '' : 's'} selected` : 'no targets selected'} and ${blockers.includes('missing-auth') ? 'Graph auth is missing' : 'target selection is incomplete'}. Disable Hard preflight block to proceed anyway.`
+        };
+      }
+      if (hasCriticalBlockers) {
+        if (blockers.includes('no-targets')) {
+          return {
+            tone: 'warning',
+            blocked: false,
+            hasCriticalBlockers: true,
+            blockers,
+            message: `Preflight: select at least one target before ${actionLabel}.`
+          };
+        }
+        return {
+          tone: 'warning',
+          blocked: false,
+          hasCriticalBlockers: true,
+          blockers,
+          message: `Preflight: ${safeTargets.length} target${safeTargets.length === 1 ? '' : 's'} selected, but Graph auth is missing.`
+        };
+      }
+
+      if (!hasSchema) {
+        return {
+          tone: 'warning',
+          blocked: false,
+          hasCriticalBlockers: false,
+          blockers,
+          message: `Preflight: ${safeTargets.length} target${safeTargets.length === 1 ? '' : 's'} selected; schema will be probed at runtime.`
+        };
+      }
+      return {
+        tone: 'ok',
+        blocked: false,
+        hasCriticalBlockers: false,
+        blockers,
+        message: `Preflight ready: ${safeTargets.length} target${safeTargets.length === 1 ? '' : 's'} selected for ${actionLabel}.`
+      };
+    }
+
+    function renderAutomationPreflightBanner(state) {
+      const banner = document.getElementById('automationPreflightBanner');
+      if (!banner) return;
+      const safe = state && typeof state === 'object' ? state : null;
+      lastAutomationPreflightState = safe;
+      if (!safe || !safe.message) {
+        banner.hidden = true;
+        banner.classList.remove('is-warning');
+        banner.textContent = '';
+        renderAutomationPreflightWhyBlocked(null);
+        return;
+      }
+      banner.hidden = false;
+      banner.classList.toggle('is-warning', String(safe.tone || 'ok') !== 'ok');
+      banner.textContent = String(safe.message || '');
+      renderAutomationPreflightWhyBlocked(safe);
+    }
+
+    function renderAutomationHeaderSkipSummary(result) {
+      const summary = document.getElementById('automationSkipSummaryTop3');
+      if (!summary) return;
+      const merged = collectUpdateDescriptionsDiagnostics(result);
+      const entries = Object.entries(merged && merged.skipReasonCounts ? merged.skipReasonCounts : {})
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
+        .slice(0, 3);
+      if (!entries.length) {
+        summary.hidden = true;
+        summary.innerHTML = '';
+        return;
+      }
+      summary.hidden = false;
+      summary.innerHTML = `<span class="automation-top-skip-label">Top skips:</span>${entries.map(([reason, count]) => `<span class="automation-skip-reason-chip" title="Rows skipped: ${Number(count)}">${String(reason || 'unspecified').replace(/</g, '&lt;').replace(/>/g, '&gt;')}: ${Number(count)}</span>`).join('')}`;
+    }
+
     function resolveInitialEditModeTargetId() {
       const sourceSubtab = getEmbeddedSourceSubtabKey();
       const preferredId = String(EDIT_MODE_SUBTAB_DEFAULT_TARGETS[sourceSubtab] || '').trim();
@@ -4481,7 +4988,40 @@
       }
     }
 
-    async function runAutomationAcrossTargets(targets, statusDiv, runner) {
+    async function runAutomationAcrossTargets(targets, statusDiv, runner, options = {}) {
+      const actionLabel = String(options && options.actionLabel || 'automation run').trim() || 'automation run';
+      const hardBlockEnabled = isAutomationHardPreflightBlockEnabled();
+      const preflightState = buildAutomationPreflightState(targets, { actionLabel, hardBlockEnabled });
+      renderAutomationPreflightBanner(preflightState);
+      if (preflightState && preflightState.blocked) {
+        renderEditModeStatus(statusDiv, {
+          icon: '⛔',
+          text: `Blocked by preflight guardrail before ${actionLabel}.`,
+          detail: String(preflightState.message || 'Critical prerequisites failed.')
+        }, 'warning');
+        return {
+          success: false,
+          blocked: true,
+          persisted: false,
+          persistMode: 'blocked',
+          persistReason: 'blocked-by-preflight',
+          processedTargets: 0,
+          persistedTargets: 0,
+          dryRun: false,
+          failedTargets: 1,
+          rowsChanged: 0,
+          persistedRows: 0,
+          verifiedRowsChanged: 0,
+          postWriteVerified: false,
+          verificationMode: 'blocked',
+          verificationReason: 'blocked-by-preflight',
+          descriptionIndex: -1,
+          descriptionColumnName: '',
+          updateDescriptionsDiagnostics: null,
+          targetSummaries: [],
+          preflight: preflightState
+        };
+      }
       if (!targets.length) {
         renderEditModeStatus(statusDiv, 'Select one or more automation target tables.', 'error');
         return {
@@ -4729,6 +5269,9 @@
       } else if (persistReason === 'no-updates') {
         text = `💾 Workbook write diagnostics: No changes needed (already up to date • no workbook write required)`;
         color = '#0f766e';
+      } else if (persistReason === 'blocked-by-preflight' || persistMode === 'blocked') {
+        text = '💾 Workbook write diagnostics: blocked by preflight guardrail (critical prerequisites failed)';
+        color = '#b45309';
       } else if (processedTargets > 0) {
         const suffix = persistReason || verificationReason || persistMode || (failedTargets ? 'one or more targets failed' : 'no workbook changes persisted');
         text = `💾 Workbook write diagnostics: not persisted${suffix ? ` (${suffix})` : ''}`;
@@ -4769,9 +5312,7 @@
       el.textContent = `${el.textContent} • Description column: index ${hasIndex ? Math.round(descIndex) : 'n/a'}${descName ? ` (${descName})` : ''}`;
     }
 
-    function appendUpdateDescriptionsDiagnosticsSuffix(elementId, result) {
-      const el = document.getElementById(elementId);
-      if (!el) return;
+    function collectUpdateDescriptionsDiagnostics(result) {
       const safe = result && typeof result === 'object' ? result : {};
       const merged = {
         updateMode: '',
@@ -4829,6 +5370,46 @@
       if (Array.isArray(safe.targetSummaries)) {
         safe.targetSummaries.forEach((summary) => mergeIncoming(summary && summary.updateDescriptionsDiagnostics));
       }
+      return merged;
+    }
+
+    function renderAutomationSkipReasonChips(elementId, result) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const containerId = `${elementId}-skip-reasons`;
+      const escapeInline = (value) => String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      const merged = collectUpdateDescriptionsDiagnostics(result);
+      const skipEntries = Object.entries(merged.skipReasonCounts)
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+
+      const existing = document.getElementById(containerId);
+      if (!skipEntries.length) {
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        return;
+      }
+
+      const host = existing || document.createElement('div');
+      host.id = containerId;
+      host.className = 'automation-skip-reason-chips';
+      host.innerHTML = skipEntries
+        .slice(0, 8)
+        .map(([reason, count]) => `<span class="automation-skip-reason-chip" title="Rows skipped: ${Number(count)}">${escapeInline(String(reason || 'unspecified'))}: ${Number(count)}</span>`)
+        .join('');
+      if (!existing && el.parentNode) {
+        el.parentNode.insertBefore(host, el.nextSibling);
+      }
+    }
+
+    function appendUpdateDescriptionsDiagnosticsSuffix(elementId, result) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const merged = collectUpdateDescriptionsDiagnostics(result);
       const skipEntries = Object.entries(merged.skipReasonCounts)
         .filter(([, count]) => Number(count) > 0)
         .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
@@ -4872,6 +5453,7 @@
           }).join(' | ')}`
         : '';
       el.textContent = `${el.textContent}${modeText}${skipText}${googleText}${sourceText}${sampleText}${failureText}${rowSampleText}`;
+      renderAutomationSkipReasonChips(elementId, result);
     }
 
     function normalizeGoogleAutomationMode(rawMode, fallback = 'missing-only') {
@@ -7378,6 +7960,10 @@
       const statusDiv = document.getElementById('missing-status');
       const targets = getAutomationTargetsForRun();
       const updateMode = getGoogleAutomationModeValue('populateMissingMode', 'missing-only');
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Fill Missing Fields',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
@@ -7390,10 +7976,11 @@
           return await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
         }
         throw new Error('System not ready');
-      });
+      }, { actionLabel: 'Fill Missing Fields' });
       renderAutomationWriteDiagnostics('missing-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('missing-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('missing-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
       return;
     }
 
@@ -7405,6 +7992,10 @@
       const statusDiv = document.getElementById('hours-status');
       const targets = getAutomationTargetsForRun();
       const updateMode = getGoogleAutomationModeValue('updateHoursMode', 'refresh-all');
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Update Hours',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateHoursWithProgress === 'function') {
@@ -7420,10 +8011,11 @@
           return await window.enhancedAutomation.updateHoursOnly(dryRun);
         }
         throw new Error('System not ready');
-      });
+      }, { actionLabel: 'Update Hours' });
       renderAutomationWriteDiagnostics('hours-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('hours-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('hours-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
       return;
     }
 
@@ -7435,6 +8027,10 @@
       const statusDiv = document.getElementById('refresh-status');
       const targets = getAutomationTargetsForRun();
       const updateMode = getGoogleAutomationModeValue('refreshPlaceIdsMode', 'missing-only');
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Refresh Place IDs',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         const host = getMainWindowSafe();
@@ -7456,9 +8052,10 @@
           return await host.runGoogleAutomation('refreshPlaceIds', dryRun);
         }
         throw new Error('Refresh system not available');
-      });
+      }, { actionLabel: 'Refresh Place IDs' });
       renderAutomationWriteDiagnostics('refresh-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('refresh-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
       return;
     }
 
@@ -7466,6 +8063,10 @@
       const dryRun = document.getElementById('searchPlaceIdsDryRun').checked;
       const statusDiv = document.getElementById('search-place-ids-status');
       const targets = getAutomationTargetsForRun();
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Search Missing Place IDs',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         const host = getMainWindowSafe();
@@ -7479,9 +8080,10 @@
           return await host.runGoogleAutomation('searchPlaceIds', dryRun);
         }
         throw new Error('Search Missing Place IDs system not available');
-      });
+      }, { actionLabel: 'Search Missing Place IDs' });
       renderAutomationWriteDiagnostics('search-place-ids-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('search-place-ids-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
       return;
     }
 
@@ -7492,6 +8094,10 @@
       const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
       const targets = getAutomationTargetsForRun();
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Auto-Tag All',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleAutoTagWithProgress === 'function') {
@@ -7501,9 +8107,10 @@
           return await window.autoTagAllLocationsUnified({ dryRun: dryRun });
         }
         throw new Error('Auto-tag system not available');
-      });
+      }, { actionLabel: 'Auto-Tag All' });
       renderAutomationWriteDiagnostics('autotag-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('autotag-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
       return;
     }
 
@@ -8196,16 +8803,22 @@
       const richOnlyEnabled = !!document.getElementById('descRichOnlyMode')?.checked;
       const statusDiv = document.getElementById('desc-status');
       const targets = getAutomationTargetsForRun();
+      const updateDescActionLabel = overwrite ? 'Update Descriptions (overwrite)' : 'Update Descriptions';
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: updateDescActionLabel,
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateAllDescriptions === 'function') {
           return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite, strictModeEnabled, richOnlyEnabled);
         }
         throw new Error('Update descriptions handler not available');
-      });
+      }, { actionLabel: updateDescActionLabel });
       renderAutomationWriteDiagnostics('desc-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('desc-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('desc-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
     }
 
     async function submitCleanupReviewLikeDescriptions() {
@@ -8214,6 +8827,10 @@
       const richOnlyEnabled = !!document.getElementById('descRichOnlyMode')?.checked;
       const statusDiv = document.getElementById('desc-status');
       const targets = getAutomationTargetsForRun();
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Cleanup Review-like Descriptions',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       if (!dryRun) {
         const ok = window.confirm(
@@ -8230,10 +8847,11 @@
           return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, true, strictModeEnabled, richOnlyEnabled, true);
         }
         throw new Error('Update descriptions handler not available');
-      });
+      }, { actionLabel: 'Cleanup Review-like Descriptions' });
       renderAutomationWriteDiagnostics('desc-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('desc-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('desc-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
     }
 
     /**
@@ -8243,6 +8861,10 @@
       const dryRun = document.getElementById('forceUpdateDryRun').checked;
       const statusDiv = document.getElementById('force-update-status');
       const targets = getAutomationTargetsForRun();
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Force Update All Fields',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       if (!dryRun) {
         const ok = window.confirm(
@@ -8260,16 +8882,21 @@
           return await window.handleForceUpdateAllFields(document.createElement('div'), dryRun);
         }
         throw new Error('Force update handler not available');
-      });
+      }, { actionLabel: 'Force Update All Fields' });
       renderAutomationWriteDiagnostics('force-update-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('force-update-write-diagnostics', result);
       appendUpdateDescriptionsDiagnosticsSuffix('force-update-write-diagnostics', result);
+      renderAutomationHeaderSkipSummary(result);
     }
 
     async function submitRemoveExactDuplicates() {
       const dryRun = document.getElementById('dedupeDryRun').checked;
       const statusDiv = document.getElementById('dupes-status');
       const targets = getAutomationTargetsForRun();
+      renderAutomationPreflightBanner(buildAutomationPreflightState(targets, {
+        actionLabel: 'Remove Exact Duplicates',
+        hardBlockEnabled: isAutomationHardPreflightBlockEnabled()
+      }));
 
       if (!dryRun) {
         const ok = window.confirm(
@@ -8289,9 +8916,10 @@
           return await window.handleRemoveExactDuplicates(document.createElement('div'), dryRun);
         }
         throw new Error('Duplicate cleanup handler not available');
-      });
+      }, { actionLabel: 'Remove Exact Duplicates' });
       renderAutomationWriteDiagnostics('dupes-write-diagnostics', result);
       renderDedupeRemovedCountChip(result, { dryRun });
+      renderAutomationHeaderSkipSummary(result);
     }
 
     function renderDedupeRemovedCountChip(result, options = {}) {
@@ -8396,6 +9024,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initializeGoogleAutomationModeControls();
+      initAutomationHardPreflightToggle();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();
@@ -8425,6 +9054,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initializeGoogleAutomationModeControls();
+      initAutomationHardPreflightToggle();
       initUpdateDescriptionsStrictModeToggle();
       initUpdateDescriptionsRichOnlyToggle();
       initBatchTagSearchUi();

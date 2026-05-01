@@ -1182,6 +1182,17 @@ function isLikelyReviewStyleDescription(value) {
   return sentenceCount >= 3 && /( i | my | we | our )/i.test(` ${lower} `);
 }
 
+function isUsableGooglePlaceId(value) {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  if (['skip', 'undefined', 'unavailable', 'not available', 'n/a', 'na', 'none', 'null'].includes(lower)) {
+    return false;
+  }
+  if (/\s/.test(text)) return false;
+  return text.length >= 8;
+}
+
 function normalizePlaceDetailsForBulkOps(placeId, details, mainWindow) {
   const safe = details && typeof details === 'object' ? details : {};
   return {
@@ -1970,7 +1981,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
           continue;
         }
 
-        if (!placeId || !placeId.startsWith('ChI')) {
+        if (!isUsableGooglePlaceId(placeId)) {
           const placeIdReason = placeId ? 'invalid-place-id-format' : 'missing-place-id';
           results.push({
             name: name || '(no name)',
@@ -2359,7 +2370,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false, op
           continue;
         }
 
-        if (!placeId || !String(placeId).startsWith('ChI')) {
+        if (!isUsableGooglePlaceId(placeId)) {
           results.push({
             name: name || '(no name)',
             status: 'skipped',
@@ -3025,7 +3036,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           continue;
         }
 
-        if (!placeId || !placeId.startsWith('ChI')) {
+        if (!isUsableGooglePlaceId(placeId)) {
           markSkipReason('invalid-place-id');
           rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'invalid-place-id' });
           pushWorkbookWriteDebug('update-descriptions-row-skipped', {
@@ -3606,7 +3617,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         const name = (values[activeCols.NAME] || '').toString().trim();
         const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
 
-        if (!placeId || !placeId.startsWith('ChI')) {
+        if (!isUsableGooglePlaceId(placeId)) {
           results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
           skippedCount++;
           markSkipReason('invalid-place-id');

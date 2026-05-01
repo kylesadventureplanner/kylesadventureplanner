@@ -810,6 +810,177 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
   });
 
+  test('detail view keyboard shortcuts navigate next and previous cards while ignoring typing fields', async ({ page }) => {
+    await openTestCity(page);
+
+    const riverCard = page.locator('.loc-card', { hasText: 'River Falls' }).first();
+    await riverCard.locator('.loc-card-name').click();
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
+    await expect(page.locator('.location-detail-keyboard-hint')).toContainText('Use ←/→ to browse');
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#locationDetailTitle')).toContainText('Skyline Overlook');
+
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
+
+    await page.evaluate(() => toggleLocationDetailEditor(true));
+    const nameInput = page.locator('#locDetailEdit_name');
+    await expect(nameInput).toBeVisible();
+    await nameInput.focus();
+    await page.keyboard.press('ArrowRight');
+
+    // Focused text input should not trigger detail navigation shortcuts.
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls');
+  });
+
+  test('one-click core refresh updates description, hours, and coordinates then syncs to Excel', async ({ page }) => {
+    const graphPatchCalls = [];
+    const headers = [
+      'Name',
+      'Google Place ID',
+      'Website',
+      'Tags',
+      'Drive Time',
+      'Hours of Operation',
+      'Duration',
+      'Difficulty',
+      'Trail Length',
+      'Address',
+      'Phone Number',
+      'Google Rating',
+      'Cost',
+      'Description',
+      'Google URL',
+      'Latitude',
+      'Longitude',
+      'GPS Coordinates'
+    ];
+    const rowValues = [
+      'River Falls',
+      'pid-river-falls',
+      'https://example.com/river-falls',
+      'waterfall, scenic, family',
+      '15m',
+      'Open daily',
+      '90 minutes',
+      'moderate',
+      '2.0 miles',
+      '1 Falls Rd, Testville, NC',
+      '555-0001',
+      '4.9',
+      'free',
+      'Legacy description',
+      'https://maps.google.com/?q=River+Falls',
+      '',
+      '',
+      ''
+    ];
+
+    await page.route('https://graph.microsoft.com/**', async (route) => {
+      const request = route.request();
+      const url = request.url();
+      const method = request.method();
+      if (url.includes('/headerRowRange')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ values: [headers] })
+        });
+        return;
+      }
+      if (method === 'GET' && url.includes('/rows')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ value: [{ values: [rowValues] }] })
+        });
+        return;
+      }
+      if (method === 'PATCH' && url.includes('/rows/itemAt(index=')) {
+        graphPatchCalls.push(JSON.parse(request.postData() || '{}'));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true })
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: [] }) });
+    });
+
+    await seedCityViewer(page, {
+      adventuresData: TEST_LOCATIONS.map((loc) => {
+        if (String(loc.name) === 'River Falls') {
+          return { ...loc, googlePlaceId: 'pid-river-falls' };
+        }
+        return { ...loc };
+      })
+    });
+    await openTestCity(page);
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-graph-token';
+      window.getPlaceDetails = async () => ({
+        description: 'Fresh place description from Google Places.',
+        hours: {
+          weekdayDescriptions: [
+            'Monday: 9:00 AM - 5:00 PM',
+            'Tuesday: 9:00 AM - 5:00 PM'
+          ]
+        },
+        coordinates: {
+          lat: 35.654321,
+          lng: -82.123456
+        }
+      });
+    });
+
+    const riverCard = page.locator('.loc-card', { hasText: 'River Falls' }).first();
+    await expect(riverCard.locator('button', { hasText: 'Refresh Core Fields' })).toBeVisible();
+    const locId = await riverCard.getAttribute('data-loc-id');
+    await page.evaluate((id) => {
+      window.runQuickActionByEncodedId(encodeURIComponent(String(id || '')), 'refresh-core-fields');
+    }, locId);
+
+    await expect.poll(() => page.evaluate(() => {
+      const city = citiesData && citiesData[currentCityKey];
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry?.name || '') === 'River Falls')
+        : null;
+      if (!loc) return null;
+      return {
+        hours: String(loc.hours || ''),
+        description: String(loc.description || ''),
+        latitude: String(loc.latitude || loc.lat || ''),
+        longitude: String(loc.longitude || loc.lng || '')
+      };
+    }), { timeout: 10000 }).toEqual({
+      hours: 'Monday: 9:00 AM - 5:00 PM; Tuesday: 9:00 AM - 5:00 PM',
+      description: 'Fresh place description from Google Places.',
+      latitude: '35.654321',
+      longitude: '-82.123456'
+    });
+    await expect(riverCard.locator('.loc-refresh-badge')).toContainText('Last refreshed: just now');
+
+    const synced = await page.evaluate(async () => {
+      const city = citiesData && citiesData[currentCityKey];
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry?.name || '') === 'River Falls')
+        : null;
+      if (!loc) return false;
+      return await syncLocationEditsToGraph(getLocId(loc));
+    });
+    expect(synced).toBe(true);
+
+    await expect.poll(() => graphPatchCalls.length, { timeout: 10000 }).toBeGreaterThan(0);
+    const updatedRow = graphPatchCalls[graphPatchCalls.length - 1].values[0];
+    expect(updatedRow[5]).toContain('Monday: 9:00 AM - 5:00 PM');
+    expect(updatedRow[13]).toBe('Fresh place description from Google Places.');
+    expect(updatedRow[15]).toBe('35.654321');
+    expect(updatedRow[16]).toBe('-82.123456');
+    expect(updatedRow[17]).toBe('35.654321, -82.123456');
+  });
+
   test('quick action map view opens split map and focuses selected location', async ({ page }) => {
     await openTestCity(page);
 
