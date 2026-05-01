@@ -255,7 +255,8 @@ async function ensureDetailsFrameReady(detailsFrame) {
 }
 
 async function activateDetailsTab(detailsFrame, detailsFrameLocator, tabId) {
-  const normalizedTabId = String(tabId || 'overview');
+  const requestedTabId = String(tabId || 'overview').trim().toLowerCase();
+  const normalizedTabId = requestedTabId === 'details' ? 'overview' : requestedTabId;
   const tabButton = detailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${normalizedTabId}"]`);
   await expect(detailsFrameLocator.locator('#tabs')).toBeVisible();
   await expect(tabButton).toBeVisible();
@@ -272,7 +273,12 @@ async function activateDetailsTab(detailsFrame, detailsFrameLocator, tabId) {
 
   await expect.poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 10000 }).toBe('true');
   await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate((targetTabId) => {
-    const pane = document.querySelector(`#pane-${String(targetTabId || '').replace(/"/g, '')}`);
+    const safeTab = String(targetTabId || '').replace(/"/g, '').trim().toLowerCase();
+    const paneKey = (!safeTab || safeTab === 'overview' || safeTab === 'details')
+      ? 'details'
+      : (safeTab === 'additional' ? 'nearby' : safeTab);
+    var pane = document.querySelector(`#pane-${paneKey}`);
+    if (!pane && paneKey === 'nearby') pane = document.querySelector('#pane-additional');
     if (!pane) return false;
     return (
       pane.getAttribute('aria-hidden') === 'false'
@@ -623,7 +629,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       waitUntil: 'domcontentloaded'
     });
 
-    await page.locator('#tabs .tab-btn[data-tab="details"]').click();
+    await page.locator('#tabs .tab-btn[data-tab="overview"]').click();
     const hoursValue = page.locator('[data-detail-field-card="hoursOfOperation"] .value');
     await expect(hoursValue).toContainText('Monday: 9:00 AM - 6:00 PM');
     await expect(hoursValue).toContainText('Tuesday: 9:00 AM - 6:00 PM');
@@ -852,10 +858,9 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(liveFrame).not.toBeNull();
 
-    await activateDetailsTab(detailsFrame, details, 'additional');
-    await expect(details.locator('#pane-additional')).toBeVisible();
+    await activateDetailsTab(detailsFrame, details, 'nearby');
+    await expect(details.locator('#pane-nearby')).toBeVisible();
     const nearbyPane = details.locator('#nearbyAttractionsValue');
-    const refreshNearbyBtn = details.locator('#refreshNearbyBtn');
 
     async function refreshNearbyAndWaitForState() {
       const previousUpdatedAt = await liveFrame.evaluate(() => Number(window.__detailNearbyState?.updatedAt || 0));
@@ -997,7 +1002,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       });
 
       await refreshNearbyAndWaitForState();
-      await expect(nearbyPane).toContainText(/No nearby attractions (found|detected) yet\.?/i, { timeout: 12000 });
+      await expect(nearbyPane).toContainText(/(No nearby attractions (found|detected) yet\.?|Only your in-app locations are shown\.)/i, { timeout: 12000 });
 
       const nearbyAfterEmptyRefresh = await liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.nearby || ''));
       expect(nearbyAfterEmptyRefresh).toBe('Saved Nearby Snapshot - Preserve Me');

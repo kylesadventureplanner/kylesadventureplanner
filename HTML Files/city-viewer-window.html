@@ -1040,6 +1040,119 @@
       color: #991b1b;
     }
 
+    .loc-rank-badge.nearby-profile {
+      background: #ecfeff;
+      border-color: #67e8f9;
+      color: #155e75;
+    }
+
+    .loc-smart-nearby {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #e5e7eb;
+      display: grid;
+      gap: 8px;
+    }
+    .loc-smart-nearby-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .loc-smart-nearby-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: #334155;
+    }
+    .loc-smart-nearby-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .loc-smart-nearby-list {
+      display: grid;
+      gap: 6px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+    .loc-smart-nearby-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 7px 9px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .loc-smart-nearby-item-main {
+      display: grid;
+      gap: 2px;
+      min-width: 180px;
+      flex: 1;
+    }
+    .loc-smart-nearby-item-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .loc-smart-nearby-item-meta {
+      font-size: 11px;
+      color: #475569;
+    }
+    .loc-smart-nearby-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .loc-smart-nearby-status {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .loc-smart-nearby-empty {
+      font-size: 12px;
+      color: #64748b;
+      font-style: italic;
+      padding: 6px 2px;
+    }
+    .loc-smart-itinerary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .loc-smart-itinerary-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #c7d2fe;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+      max-width: 100%;
+    }
+    .loc-smart-itinerary-empty {
+      font-size: 11px;
+      color: #64748b;
+    }
+
     .loc-card-footer {
       display: flex;
       gap: 8px;
@@ -3030,6 +3143,7 @@
 
     <script src="../JS Files/family-experience-foundation.js"></script>
     <script src="../JS Files/ui-status-message-composer.js"></script>
+    <script src="../nearby-attractions-finder.js"></script>
     <script>
             function composeSharedStatus(options) {
               if (typeof window.composeStatusMessageHTML === 'function') {
@@ -3354,6 +3468,7 @@
 
       console.log('🌆 City Viewer initializing with', adventuresData.length, 'adventures');
       runDeferredCityViewerWork(renderActiveSources);
+      runDeferredCityViewerWork(syncNearbyFinderAppLocations);
 
       // Group by city
       adventuresData.forEach(adventure => {
@@ -3626,9 +3741,14 @@
     const CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT = 1.25;
     const CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT = 0.2;
     const CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT = 0.12;
+    const CITY_VIEWER_SMART_NEARBY_RADIUS_MILES = 5;
+    const CITY_VIEWER_SMART_NEARBY_MAX_ITEMS = 4;
+    const CITY_VIEWER_SMART_CONTEXT_TTL_MS = 1000 * 60 * 30;
     let cityViewerNearbyCityMatchMiles = CITY_VIEWER_NEARBY_CITY_MATCH_MILES_DEFAULT;
     let cityViewerNearbyDedupeGeoMiles = CITY_VIEWER_NEARBY_DEDUPE_GEO_MILES_DEFAULT;
     let cityViewerNearbyDedupeNameGeoMiles = CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT;
+    const cityViewerSmartNearbyState = Object.create(null);
+    const cityViewerSmartWeatherState = Object.create(null);
 
     function runDeferredCityViewerWork(task) {
       if (typeof task !== 'function') return;
@@ -4711,6 +4831,339 @@
 
     function getCurrentCityLocationsForView() {
       return currentCityKey ? getCityLocationsForView(citiesData[currentCityKey]) : [];
+    }
+
+    function syncNearbyFinderAppLocations() {
+      const finder = window.nearbyAttractionsFinder;
+      if (!finder || typeof finder.setAppLocations !== 'function') return;
+      try {
+        finder.setAppLocations(Array.isArray(adventuresData) ? adventuresData : []);
+      } catch (error) {
+        console.warn('⚠️ Failed to sync City Explorer rows to nearby finder:', error && error.message ? error.message : error);
+      }
+    }
+
+    function getLocationDomKey(locId) {
+      const raw = String(locId || '').trim();
+      const safe = raw.replace(/[^a-zA-Z0-9_-]+/g, '_');
+      return safe ? safe.slice(0, 90) : 'location';
+    }
+
+    function getProfileChipModel(profileKey) {
+      const key = String(profileKey || 'general').trim().toLowerCase();
+      const labels = {
+        outdoor_adventure: { icon: '🌲', label: 'Outdoor Adventure' },
+        dining: { icon: '🍽️', label: 'Dining' },
+        culture: { icon: '🏛️', label: 'Culture' },
+        entertainment: { icon: '🎭', label: 'Entertainment' },
+        shopping: { icon: '🛍️', label: 'Shopping' },
+        family: { icon: '👨‍👩‍👧‍👦', label: 'Family' },
+        general: { icon: '📍', label: 'General' }
+      };
+      return labels[key] || labels.general;
+    }
+
+    function inferCityViewerLocationProfile(loc) {
+      if (!loc) return 'general';
+      if (typeof window.inferLocationProfile !== 'function') return 'general';
+      const payload = {
+        name: String(locVal(loc, 0, 'name') || loc.name || '').trim(),
+        description: String(locVal(loc, 16, 'description') || loc.description || '').trim(),
+        tags: String(locVal(loc, 3, 'tags') || loc.tags || '').trim(),
+        type: String(loc.sourceType || '').trim()
+      };
+      try {
+        return String(window.inferLocationProfile(payload) || 'general').trim() || 'general';
+      } catch (_error) {
+        return 'general';
+      }
+    }
+
+    function isFreshSmartContext(entry) {
+      return !!(entry && Number.isFinite(entry.updatedAt) && (Date.now() - Number(entry.updatedAt) <= CITY_VIEWER_SMART_CONTEXT_TTL_MS));
+    }
+
+    function collectNearbySuggestionsFromCityCache(loc) {
+      const point = getLocationLatLng(loc);
+      if (!point) return [];
+      const thresholdMiles = Math.max(0.35, CITY_VIEWER_SMART_NEARBY_RADIUS_MILES);
+      const buckets = readNearbyAttractionsCacheEntries();
+      if (!buckets.length) return [];
+      const all = [];
+      buckets.forEach((entry) => {
+        const center = parseNearbyCacheCenter(entry.key);
+        if (!center) return;
+        if (calculateGeoMilesBetween(center.lat, center.lng, point.lat, point.lng) > thresholdMiles) return;
+        (entry.data || []).forEach((item) => {
+          if (item) all.push(item);
+        });
+      });
+      const deduped = [];
+      const seen = new Set();
+      all.forEach((item) => {
+        const key = getNearbyAttractionIdentityKey(item);
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        deduped.push(item);
+      });
+      return deduped.slice(0, 10).map((item) => {
+        if (item.distanceText || item.driveTimeText || item.googleUrl) return item;
+        return {
+          ...item,
+          googleUrl: buildNearbyRecommendationGoogleUrl(item),
+          distanceText: Number.isFinite(Number(item.distance)) ? `${Number(item.distance).toFixed(1)} mi` : '',
+          driveTimeText: estimateNearbyDriveTimeText(item)
+        };
+      });
+    }
+
+    function renderSmartNearbyListMarkup(items) {
+      const list = Array.isArray(items) ? items.slice(0, CITY_VIEWER_SMART_NEARBY_MAX_ITEMS) : [];
+      if (!list.length) {
+        return '<div class="loc-smart-nearby-empty">No nearby suggestions yet. Try Refresh Nearby.</div>';
+      }
+      return `<ul class="loc-smart-nearby-list">${list.map((item) => {
+        const title = String(item && item.name || 'Nearby stop').trim() || 'Nearby stop';
+        const ratingValue = Number(item && item.rating);
+        const rating = Number.isFinite(ratingValue) && ratingValue > 0 ? `⭐ ${ratingValue.toFixed(1)}` : '';
+        const distance = String(item && (item.distanceText || '')).trim();
+        const drive = String(item && (item.driveTimeText || '')).trim();
+        const openNow = item && item.openNow === true ? 'Open now' : '';
+        const bits = [distance, drive, rating, openNow].filter(Boolean);
+        const googleUrl = buildNearbyRecommendationGoogleUrl(item);
+        const reason = String(item && (item.rankingReasonText || '')).trim();
+        return `<li class="loc-smart-nearby-item"><div class="loc-smart-nearby-item-main"><div class="loc-smart-nearby-item-title">${escHtml(title)}</div><div class="loc-smart-nearby-item-meta">${escHtml(bits.join(' · ') || 'Nearby suggestion')}</div>${reason ? `<div class="loc-smart-nearby-item-meta">${escHtml(reason)}</div>` : ''}</div><div class="loc-smart-nearby-actions">${googleUrl ? `<a class="loc-mini-btn ui-btn ui-btn--mini" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Map</a>` : ''}</div></li>`;
+      }).join('')}</ul>`;
+    }
+
+    function renderSmartItineraryPreviewMarkup(profile, nearbyItems, weatherBias) {
+      const normalizedProfile = String(profile || 'general').trim().toLowerCase() || 'general';
+      const items = Array.isArray(nearbyItems) ? nearbyItems : [];
+      if (!items.length) return '<div class="loc-smart-itinerary-empty">Build nearby picks to generate itinerary hints.</div>';
+      if (typeof window.buildSmartItineraryGroups !== 'function') {
+        return '<div class="loc-smart-itinerary-empty">Smart itinerary helper unavailable in this session.</div>';
+      }
+
+      let groups = [];
+      try {
+        groups = window.buildSmartItineraryGroups(normalizedProfile, items, {
+          weatherBias: String(weatherBias || 'none').trim().toLowerCase() || 'none',
+          minRating: 0,
+          timeBudgetHours: 3
+        }) || [];
+      } catch (error) {
+        console.warn('⚠️ Smart itinerary preview failed in City Explorer:', error && error.message ? error.message : error);
+        groups = [];
+      }
+
+      if (!Array.isArray(groups) || !groups.length) {
+        return '<div class="loc-smart-itinerary-empty">No itinerary groups yet for this nearby mix.</div>';
+      }
+
+      const chips = groups
+        .filter((group) => group && Array.isArray(group.suggestions) && group.suggestions.length)
+        .slice(0, 3)
+        .map((group) => {
+          const top = group.suggestions[0] || {};
+          const role = String(group.role || 'Suggested stop').trim();
+          const icon = String(group.icon || '🧭').trim() || '🧭';
+          const topName = String(top.name || 'Nearby pick').trim();
+          return `<span class="loc-smart-itinerary-chip" title="${escAttr(role)}">${escHtml(icon)} ${escHtml(role)}: ${escHtml(topName)}</span>`;
+        });
+
+      if (!chips.length) return '<div class="loc-smart-itinerary-empty">No itinerary groups yet for this nearby mix.</div>';
+      return chips.join('');
+    }
+
+    async function refreshLocationSmartNearbyById(locId, forceRefresh) {
+      const targetId = String(locId || '').trim();
+      if (!targetId) return;
+      const loc = findLocationById(targetId);
+      if (!loc) return;
+      const domKey = getLocationDomKey(targetId);
+      const listEl = document.getElementById(`locSmartNearbyList-${domKey}`);
+      const weatherEl = document.getElementById(`locSmartNearbyWeather-${domKey}`);
+      const statusEl = document.getElementById(`locSmartNearbyStatus-${domKey}`);
+      const addBtnEl = document.getElementById(`locSmartNearbyAddBtn-${domKey}`);
+      if (!listEl || !statusEl || !addBtnEl) return;
+
+      const point = getLocationLatLng(loc);
+      if (!point) {
+        listEl.innerHTML = '<div class="loc-smart-nearby-empty">Nearby needs coordinates for this location.</div>';
+        if (weatherEl) weatherEl.textContent = '🌤️ Weather unavailable (missing coordinates)';
+        statusEl.textContent = 'Add coordinates to enable nearby recommendations.';
+        addBtnEl.disabled = true;
+        return;
+      }
+
+      listEl.innerHTML = '<div class="loc-smart-nearby-empty">Refreshing nearby suggestions...</div>';
+      statusEl.textContent = 'Loading nearby recommendations...';
+      addBtnEl.disabled = true;
+
+      const profile = inferCityViewerLocationProfile(loc);
+      let nearbyEntry = cityViewerSmartNearbyState[targetId];
+      const needsNearbyRefresh = !!forceRefresh || !isFreshSmartContext(nearbyEntry);
+
+      if (needsNearbyRefresh) {
+        const finder = window.nearbyAttractionsFinder;
+        try {
+          if (finder && typeof finder.getFormattedNearbyAttractions === 'function') {
+            const name = String(locVal(loc, 0, 'name') || loc.name || 'Location').trim() || 'Location';
+            const fetched = await finder.getFormattedNearbyAttractions(point.lat, point.lng, name, {
+              radiusMiles: CITY_VIEWER_SMART_NEARBY_RADIUS_MILES,
+              forceRefresh: !!forceRefresh
+            });
+            nearbyEntry = {
+              updatedAt: Date.now(),
+              profile: profile,
+              items: Array.isArray(fetched) ? fetched : []
+            };
+          } else {
+            nearbyEntry = {
+              updatedAt: Date.now(),
+              profile: profile,
+              items: collectNearbySuggestionsFromCityCache(loc)
+            };
+          }
+          cityViewerSmartNearbyState[targetId] = nearbyEntry;
+        } catch (error) {
+          console.warn('⚠️ Nearby fetch failed in City Explorer detail:', error && error.message ? error.message : error);
+          nearbyEntry = {
+            updatedAt: Date.now(),
+            profile: profile,
+            items: collectNearbySuggestionsFromCityCache(loc)
+          };
+          cityViewerSmartNearbyState[targetId] = nearbyEntry;
+        }
+      }
+
+      let weatherEntry = cityViewerSmartWeatherState[targetId];
+      const needsWeatherRefresh = !!forceRefresh || !isFreshSmartContext(weatherEntry);
+      if (needsWeatherRefresh && typeof window.fetchWeatherCondition === 'function') {
+        try {
+          const weather = await window.fetchWeatherCondition(point.lat, point.lng);
+          weatherEntry = { updatedAt: Date.now(), weather: weather || null };
+          cityViewerSmartWeatherState[targetId] = weatherEntry;
+        } catch (error) {
+          console.warn('⚠️ Weather fetch failed in City Explorer detail:', error && error.message ? error.message : error);
+        }
+      }
+
+      const updatedListEl = document.getElementById(`locSmartNearbyList-${domKey}`);
+      const updatedWeatherEl = document.getElementById(`locSmartNearbyWeather-${domKey}`);
+      const updatedStatusEl = document.getElementById(`locSmartNearbyStatus-${domKey}`);
+      const updatedItineraryEl = document.getElementById(`locSmartNearbyItinerary-${domKey}`);
+      const updatedAddBtnEl = document.getElementById(`locSmartNearbyAddBtn-${domKey}`);
+      if (!updatedListEl || !updatedStatusEl || !updatedAddBtnEl) return;
+
+      const items = Array.isArray(nearbyEntry && nearbyEntry.items) ? nearbyEntry.items : [];
+      updatedListEl.innerHTML = renderSmartNearbyListMarkup(items);
+      updatedStatusEl.textContent = items.length
+        ? `${Math.min(items.length, CITY_VIEWER_SMART_NEARBY_MAX_ITEMS)} nearby picks shown (${CITY_VIEWER_SMART_NEARBY_RADIUS_MILES} mi radius).`
+        : 'No nearby picks yet — try a refresh or expand nearby diagnostics.';
+      updatedAddBtnEl.disabled = !items.length;
+
+      if (updatedWeatherEl) {
+        const weather = weatherEntry && weatherEntry.weather ? weatherEntry.weather : null;
+        if (weather && (weather.condition || weather.emoji || weather.description)) {
+          const parts = [
+            weather.emoji || '🌤️',
+            String(weather.condition || weather.description || 'Weather').trim()
+          ].filter(Boolean);
+          updatedWeatherEl.textContent = parts.join(' ');
+        } else {
+          updatedWeatherEl.textContent = '🌤️ Weather unavailable';
+        }
+      }
+
+      if (updatedItineraryEl) {
+        const weatherBias = weatherEntry && weatherEntry.weather ? String(weatherEntry.weather.bias || 'none') : 'none';
+        updatedItineraryEl.innerHTML = renderSmartItineraryPreviewMarkup(profile, items, weatherBias);
+      }
+    }
+
+    function findMatchingSavedLocationIdForNearby(item) {
+      const list = getCurrentCityLocationsForView();
+      if (!Array.isArray(list) || !list.length) return '';
+      const itemModel = buildIdentityModel(item || {});
+      for (let i = 0; i < list.length; i += 1) {
+        const loc = list[i];
+        if (getLocSourceKey(loc) === 'web') continue;
+        const locModel = getLocationIdentityModel(loc);
+        if (modelsLikelySameLocation(locModel, itemModel)) {
+          return getLocId(loc);
+        }
+      }
+      const itemName = normalizeLocationIdentityText(item && item.name);
+      if (!itemName) return '';
+      for (let j = 0; j < list.length; j += 1) {
+        const loc = list[j];
+        if (getLocSourceKey(loc) === 'web') continue;
+        const locName = normalizeLocationIdentityText(locVal(loc, 0, 'name') || loc.name);
+        if (!locName) continue;
+        if (locName === itemName || locName.includes(itemName) || itemName.includes(locName)) {
+          return getLocId(loc);
+        }
+      }
+      return '';
+    }
+
+    function addSmartNearbyToPlanById(locId) {
+      const targetId = String(locId || '').trim();
+      if (!targetId) return;
+      const entry = cityViewerSmartNearbyState[targetId];
+      const items = Array.isArray(entry && entry.items) ? entry.items.slice(0, CITY_VIEWER_SMART_NEARBY_MAX_ITEMS) : [];
+      if (!items.length) {
+        showRouteToast('No nearby picks are loaded for this location yet.', true);
+        return;
+      }
+      const shortlist = getShortlistSet();
+      let added = 0;
+      items.forEach((item) => {
+        const matchId = findMatchingSavedLocationIdForNearby(item);
+        if (!matchId || shortlist.has(matchId)) return;
+        shortlist.add(matchId);
+        added += 1;
+      });
+      if (!added) {
+        showRouteToast('Nearby picks did not match saved city locations yet.', true);
+        return;
+      }
+      setShortlistSet(shortlist);
+      updateUrlFromState();
+      showRouteToast(`Added ${added} nearby match${added === 1 ? '' : 'es'} to your plan.`, false);
+    }
+
+    function refreshLocationSmartNearbyByEncodedId(encoded) {
+      refreshLocationSmartNearbyById(decodeURIComponent(String(encoded || '')), true);
+    }
+
+    function addSmartNearbyToPlanByEncodedId(encoded) {
+      addSmartNearbyToPlanById(decodeURIComponent(String(encoded || '')));
+    }
+
+    function renderLocationSmartNearbyMarkup(loc, encodedLocId) {
+      const locId = getLocId(loc);
+      const domKey = getLocationDomKey(locId);
+      const profile = inferCityViewerLocationProfile(loc);
+      const profileChip = getProfileChipModel(profile);
+      return `
+        <div class="loc-smart-nearby" data-loc-smart-nearby="${escAttr(locId)}">
+          <div class="loc-smart-nearby-head">
+            <div class="loc-smart-nearby-meta">
+              <span class="loc-smart-nearby-pill">🎯 Nearby Picks</span>
+              <span class="loc-smart-nearby-pill">${escHtml(profileChip.icon)} ${escHtml(profileChip.label)}</span>
+              <span class="loc-smart-nearby-pill" id="locSmartNearbyWeather-${escAttr(domKey)}">🌤️ Checking weather...</span>
+            </div>
+            <div class="loc-smart-nearby-actions">
+              <button class="loc-mini-btn ui-btn ui-btn--mini" type="button" onclick="refreshLocationSmartNearbyByEncodedId('${encodedLocId}')">🔄 Refresh Nearby</button>
+              <button class="loc-mini-btn ui-btn ui-btn--mini" id="locSmartNearbyAddBtn-${escAttr(domKey)}" type="button" onclick="addSmartNearbyToPlanByEncodedId('${encodedLocId}')" disabled>➕ Add Nearby to Plan</button>
+            </div>
+          </div>
+          <div id="locSmartNearbyList-${escAttr(domKey)}" class="loc-smart-nearby-empty">Loading nearby suggestions...</div>
+          <div class="loc-smart-itinerary" id="locSmartNearbyItinerary-${escAttr(domKey)}"><span class="loc-smart-itinerary-empty">Preparing itinerary hints...</span></div>
+          <div id="locSmartNearbyStatus-${escAttr(domKey)}" class="loc-smart-nearby-status">Preparing nearby recommendations...</div>
+        </div>`;
     }
 
     function buildNearbyRecommendationGoogleUrl(item) {
@@ -5808,9 +6261,12 @@
       const badges = getLocationRankBadgeModels(loc);
       const confidence = getLocationConfidenceModel(loc);
       const whyReasons = Array.isArray(confidence.reasons) ? confidence.reasons.slice(0, 3) : [];
+      const profile = inferCityViewerLocationProfile(loc);
+      const profileChip = getProfileChipModel(profile);
       return `
         <div class="loc-card-insights" data-location-insights="${escAttr(getLocId(loc))}">
           <div class="loc-rank-badges">
+            <span class="loc-rank-badge nearby-profile">${escHtml(profileChip.icon)} ${escHtml(profileChip.label)}</span>
             ${badges.map(badge => `<span class="loc-rank-badge ${escAttr(badge.className)}" data-rank-badge="${escAttr(badge.key)}">${escHtml(badge.label)}</span>`).join('')}
           </div>
           <div class="loc-confidence-indicator ${escAttr(confidence.level)}" data-confidence-indicator="${escAttr(confidence.level)}" title="${escAttr(confidence.reason)}">🧭 ${escHtml(confidence.label)}</div>
@@ -6476,6 +6932,7 @@
             ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
           </div>
           ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
+          ${renderLocationSmartNearbyMarkup(loc, encodedLocId)}
           <div class="loc-card-footer">
             ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
             ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
@@ -6487,6 +6944,10 @@
           </div>
           ${buildLocationDetailEditorPanel(loc)}
         </div>`;
+
+          runDeferredCityViewerWork(function () {
+            refreshLocationSmartNearbyById(locId, false);
+          });
     }
 
     function openLocationDetailById(locId) {
@@ -8138,6 +8599,8 @@
     window.openLocationDetailByEncodedId = openLocationDetailByEncodedId;
     window.handleLocCardKeydown = handleLocCardKeydown;
     window.goBackToLocationResults = goBackToLocationResults;
+    window.refreshLocationSmartNearbyByEncodedId = refreshLocationSmartNearbyByEncodedId;
+    window.addSmartNearbyToPlanByEncodedId = addSmartNearbyToPlanByEncodedId;
     window.toggleLocFilterPanel = toggleLocFilterPanel;
     window.toggleLocStatusPanel = toggleLocStatusPanel;
     window.scrollToTop = scrollToTop;

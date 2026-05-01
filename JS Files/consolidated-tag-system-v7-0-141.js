@@ -1146,9 +1146,6 @@ class TagManager {
   }
 }
 
-// Create global instance
-window.tagManager = window.tagManager || new TagManager();
-
 // ============================================================
 // SECTION 4: CROSS-CONTEXT UTILITIES
 // ============================================================
@@ -2204,6 +2201,9 @@ function normalizeTags(tags) {
     .filter(Boolean)
     .filter((t) => !isDisabledTagOption(t))));
 }
+
+// Create global instance after alias lookup is initialized (avoids TDZ crash).
+window.tagManager = window.tagManager || new TagManager();
 
 window.isDisabledTagOption = window.isDisabledTagOption || isDisabledTagOption;
 window.cleanupDisabledTagList = window.cleanupDisabledTagList || cleanupDisabledTagList;

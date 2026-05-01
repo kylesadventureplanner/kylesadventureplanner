@@ -459,10 +459,9 @@
 
   <div id="tabs" class="tabs ui-control-bar" aria-label="Adventure details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
-    <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
     <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
     <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
-    <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
+    <button class="tab-btn" data-tab="nearby" type="button">📍 Nearby</button>
     <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
     <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
     <button class="tab-btn" data-tab="map" type="button">🗺️ Map View</button>
@@ -818,10 +817,20 @@
     return active ? String(active.getAttribute('data-tab') || 'overview').trim() || 'overview' : 'overview';
   }
 
-  function resolveDetailTabIdForPane(tabId) {
+  function normalizeDetailTabId(tabId) {
     var safe = String(tabId || '').trim().toLowerCase();
-    if (!safe || safe === 'overview' || safe === 'details') return 'details';
-    if (safe === 'nearby' || safe === 'additional') return 'additional';
+    if (!safe) return 'overview';
+    if (safe === 'details') return 'overview';
+    if (safe === 'additional') return 'nearby';
+    return safe;
+  }
+
+  function resolveDetailTabIdForPane(tabId) {
+    var safe = normalizeDetailTabId(tabId);
+    // 'overview' and legacy 'details' both map to the main details pane
+    if (!safe || safe === 'overview') return 'details';
+    // Canonical tab key is 'nearby'; keep legacy 'additional' as an alias.
+    if (safe === 'nearby') return 'nearby';
     return safe;
   }
 
@@ -3704,6 +3713,245 @@
 
   var NEARBY_UI_PREFS_KEY = '__detail_nearby_ui_prefs_v3';
   var NEARBY_DEFAULT_UI_STATE = { radiusMiles: 5, category: 'all', minRating: 0, openNow: false, timeBudgetHours: 0 };
+  var NEARBY_USER_RATINGS_KEY = '__nb_user_ratings_v1';
+
+  function getNearbyUserRatings() {
+    try { return JSON.parse(window.localStorage.getItem(NEARBY_USER_RATINGS_KEY) || '{}'); } catch (_e) { return {}; }
+  }
+
+  function getUserAttractionRating(attractionId) {
+    var id = String(attractionId || '').trim();
+    if (!id) return 0;
+    return Number(getNearbyUserRatings()[id] || 0);
+  }
+
+  function setUserAttractionRating(attractionId, rating) {
+    var id = String(attractionId || '').trim();
+    if (!id) return;
+    var map = getNearbyUserRatings();
+    var r = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    if (r === 0) { delete map[id]; } else { map[id] = r; }
+    try { window.localStorage.setItem(NEARBY_USER_RATINGS_KEY, JSON.stringify(map)); } catch (_e) {}
+  }
+
+  function renderNearbyUserStars(attractionId, currentRating) {
+    var id = String(attractionId || '').trim().replace(/[^a-z0-9_-]/gi, '_');
+    var stars = '';
+    for (var i = 1; i <= 5; i++) {
+      var filled = Number(currentRating || 0) >= i;
+      stars += '<button type="button" class="nb-user-star' + (filled ? ' nb-user-star--on' : '') + '" ' +
+        'data-nb-star-id="' + id + '" data-nb-star-val="' + i + '" ' +
+        'title="Rate ' + i + ' star' + (i > 1 ? 's' : '') + '" ' +
+        'onclick="handleNearbyUserRating(\'' + id + '\',' + i + ',\'' + attractionId.replace(/'/g, "\\'") + '\')">' +
+        (filled ? '★' : '☆') + '</button>';
+    }
+    var labelText = currentRating > 0 ? 'You: ' + currentRating + '★' : 'Rate:';
+    return '<div class="nb-user-rating-wrap" id="nb-stars-' + id + '">' +
+      '<span class="nb-user-rating-label">' + labelText + '</span>' +
+      '<div class="nb-user-stars">' + stars + '</div>' +
+    '</div>';
+  }
+
+  window.handleNearbyUserRating = function (safeId, starVal, attractionId) {
+    var prev = getUserAttractionRating(attractionId);
+    var next = (prev === starVal) ? 0 : starVal;
+    setUserAttractionRating(attractionId, next);
+    var wrap = document.getElementById('nb-stars-' + safeId);
+    if (wrap) wrap.outerHTML = renderNearbyUserStars(attractionId, next);
+    if (next > 0 && typeof window.showDetailToast === 'function') {
+      window.showDetailToast('⭐ Rated ' + next + ' star' + (next > 1 ? 's' : '') + '!', 'success', 1400);
+    }
+  };
+
+  // ─── Favorites & Visited Tracking ────────────────────────────────────────────
+  var NEARBY_FAVORITES_KEY = '__nb_user_favorites_v1';
+  var NEARBY_VISITED_KEY   = '__nb_user_visited_v1';
+
+  function getNearbyFavorites() {
+    try { return JSON.parse(window.localStorage.getItem(NEARBY_FAVORITES_KEY) || '{}'); } catch (_e) { return {}; }
+  }
+  function getNearbyVisited() {
+    try { return JSON.parse(window.localStorage.getItem(NEARBY_VISITED_KEY) || '{}'); } catch (_e) { return {}; }
+  }
+  function isAttractionFavorited(id) { return !!getNearbyFavorites()[String(id || '').trim()]; }
+  function isAttractionVisited(id)   { return !!getNearbyVisited()[String(id || '').trim()]; }
+  function getAttractionVisitCount(id) { return Number(getNearbyVisited()[String(id || '').trim()] || 0); }
+
+  function toggleAttractionFavorite(id) {
+    var map = getNearbyFavorites();
+    var key = String(id || '').trim();
+    if (map[key]) { delete map[key]; } else { map[key] = true; }
+    try { window.localStorage.setItem(NEARBY_FAVORITES_KEY, JSON.stringify(map)); } catch (_e) {}
+    return !!map[key];
+  }
+
+  function markAttractionVisited(id) {
+    var map = getNearbyVisited();
+    var key = String(id || '').trim();
+    map[key] = (Number(map[key] || 0)) + 1;
+    try { window.localStorage.setItem(NEARBY_VISITED_KEY, JSON.stringify(map)); } catch (_e) {}
+    return map[key];
+  }
+
+  window.handleNearbyFavorite = function (safeId, attractionId) {
+    var next = toggleAttractionFavorite(attractionId);
+    var btn = document.getElementById('nb-fav-' + safeId);
+    if (btn) {
+      btn.textContent = next ? '❤️' : '🤍';
+      btn.title = next ? 'Remove from favorites' : 'Add to favorites';
+      btn.classList.toggle('nb-fav-btn--on', next);
+    }
+    if (typeof window.showDetailToast === 'function') {
+      window.showDetailToast(next ? '❤️ Added to favorites!' : 'Removed from favorites.', next ? 'success' : 'info', 1400);
+    }
+  };
+
+  window.handleNearbyMarkVisited = function (safeId, attractionId, name) {
+    var count = markAttractionVisited(attractionId);
+    var btn = document.getElementById('nb-vis-' + safeId);
+    if (btn) {
+      btn.textContent = '✅ Visited (' + count + 'x)';
+      btn.classList.add('nb-vis-btn--on');
+    }
+    if (typeof window.showDetailToast === 'function') {
+      window.showDetailToast('✅ Marked "' + (name || attractionId) + '" as visited!', 'success', 1800);
+    }
+  };
+
+  // ─── Route Optimization (nearest-neighbor) ───────────────────────────────────
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    var R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function optimizeDayPlanRoute(stops) {
+    if (!Array.isArray(stops) || stops.length < 3) return { stops: stops, savedMinutes: 0, changed: false };
+    // Only optimize stops that have valid coordinates
+    var hasCoords = stops.every(function (s) {
+      return Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude));
+    });
+    if (!hasCoords) return { stops: stops, savedMinutes: 0, changed: false };
+
+    // Keep first stop fixed (current location anchor), optimize the rest
+    var anchor = stops[0];
+    var remaining = stops.slice(1);
+    var ordered = [];
+    var current = anchor;
+
+    while (remaining.length) {
+      var bestIdx = 0;
+      var bestDist = Infinity;
+      remaining.forEach(function (s, i) {
+        var d = haversineKm(Number(current.latitude), Number(current.longitude), Number(s.latitude), Number(s.longitude));
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      });
+      ordered.push(remaining[bestIdx]);
+      current = remaining[bestIdx];
+      remaining.splice(bestIdx, 1);
+    }
+
+    var optimized = [anchor].concat(ordered);
+
+    // Estimate time saved: original vs optimized total distance
+    function totalKm(arr) {
+      var km = 0;
+      for (var i = 1; i < arr.length; i++) {
+        km += haversineKm(Number(arr[i-1].latitude), Number(arr[i-1].longitude), Number(arr[i].latitude), Number(arr[i].longitude));
+      }
+      return km;
+    }
+    var originalKm  = totalKm(stops);
+    var optimizedKm = totalKm(optimized);
+    var savedKm = originalKm - optimizedKm;
+    var savedMinutes = Math.round(savedKm / 40 * 60); // ~40 km/h average
+
+    // Check if order actually changed
+    var changed = optimized.some(function (s, i) { return (s.id || s.name) !== (stops[i].id || stops[i].name); });
+
+    return { stops: optimized, savedMinutes: Math.max(0, savedMinutes), changed: changed };
+  }
+
+  window.handleOptimizeDayPlan = function () {
+    var plan = loadDetailDayPlan();
+    if (plan.length < 3) {
+      if (typeof window.showDetailToast === 'function') window.showDetailToast('Add at least 3 stops to optimize.', 'info', 2000);
+      return;
+    }
+    var result = optimizeDayPlanRoute(plan);
+    if (!result.changed) {
+      if (typeof window.showDetailToast === 'function') window.showDetailToast('✅ Route is already optimal!', 'success', 2000);
+      return;
+    }
+    saveDetailDayPlan(result.stops);
+    var body = document.getElementById('dayPlanDrawerBody');
+    if (body) body.innerHTML = renderDayPlanDrawerHtml();
+    var countEl = document.getElementById('dayPlanCount');
+    if (countEl) countEl.textContent = result.stops.length + ' stop(s) saved';
+    var msg = result.savedMinutes > 0
+      ? '🗺️ Route optimized! Saves ~' + result.savedMinutes + ' min of driving.'
+      : '🗺️ Route reordered for shortest path!';
+    if (typeof window.showDetailToast === 'function') window.showDetailToast(msg, 'success', 3000);
+  };
+
+  // ─── Print / PDF Export ───────────────────────────────────────────────────────
+  window.printDayPlan = function () {
+    var plan = loadDetailDayPlan();
+    if (!plan.length) {
+      if (typeof window.showDetailToast === 'function') window.showDetailToast('Your day plan is empty.', 'info', 2000);
+      return;
+    }
+    var totalDriveMins = plan.reduce(function (sum, s) { return sum + (Number(s.driveTimeMinutes) || 0); }, 0);
+    var estTotalMins = totalDriveMins + plan.length * 60;
+    var estH = Math.floor(estTotalMins / 60), estM = estTotalMins % 60;
+    var estLabel = estH > 0 ? estH + 'h ' + (estM > 0 ? estM + 'm' : '') : estM + 'm';
+    var routeUrl = buildRouteUrl(plan);
+    var dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    var locationName = (window.__detailInlineEditState && window.__detailInlineEditState.data && window.__detailInlineEditState.data.name) || 'Adventure';
+
+    var stopsHtml = plan.map(function (s, i) {
+      return '<tr>' +
+        '<td style="padding:8px 10px;font-weight:700;color:#64748b;width:28px;">' + (i + 1) + '</td>' +
+        '<td style="padding:8px 10px;font-weight:600;">' + escapeHtml(s.name) + '</td>' +
+        '<td style="padding:8px 10px;color:#64748b;white-space:nowrap;">' + escapeHtml(s.distanceText || '—') + '</td>' +
+        '<td style="padding:8px 10px;color:#64748b;white-space:nowrap;">' + escapeHtml(s.driveTimeText || '—') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    var printWin = window.open('', '_blank', 'width=700,height=800');
+    if (!printWin) {
+      if (typeof window.showDetailToast === 'function') window.showDetailToast('⚠️ Allow pop-ups to export PDF.', 'info', 2800);
+      return;
+    }
+    printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+      '<title>Day Plan – ' + escapeHtml(locationName) + '</title>' +
+      '<style>' +
+        'body{font-family:system-ui,-apple-system,sans-serif;max-width:680px;margin:32px auto;padding:0 20px;color:#1e293b;}' +
+        'h1{font-size:22px;margin-bottom:4px;}' +
+        '.meta{font-size:13px;color:#64748b;margin-bottom:24px;}' +
+        'table{width:100%;border-collapse:collapse;margin-bottom:20px;}' +
+        'thead th{text-align:left;padding:6px 10px;background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;}' +
+        'tbody tr{border-bottom:1px solid #f0f4f8;}' +
+        '.summary{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:20px;}' +
+        '.route-link{font-size:12px;color:#2563eb;word-break:break-all;}' +
+        '@media print{.no-print{display:none}body{margin:0;padding:16px}}' +
+      '</style></head><body>' +
+      '<h1>📋 ' + escapeHtml(locationName) + ' – Day Plan</h1>' +
+      '<div class="meta">' + escapeHtml(dateStr) + ' &nbsp;·&nbsp; ' + plan.length + ' stop' + (plan.length > 1 ? 's' : '') + '</div>' +
+      '<div class="summary">⏱️ Estimated total time: <strong>' + estLabel.trim() + '</strong> (drive + ~60 min per stop)' +
+        (routeUrl ? '<br><span class="route-link">🗺️ ' + routeUrl + '</span>' : '') +
+      '</div>' +
+      '<table><thead><tr><th>#</th><th>Stop</th><th>Distance</th><th>Drive Time</th></tr></thead>' +
+      '<tbody>' + stopsHtml + '</tbody></table>' +
+      '<button class="no-print" onclick="window.print()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;margin-right:8px;">🖨️ Print / Save as PDF</button>' +
+      '<button class="no-print" onclick="window.close()" style="padding:10px 20px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;cursor:pointer;">Close</button>' +
+      '</body></html>');
+    printWin.document.close();
+    printWin.focus();
+  };
+
   var PARKING_META_STORAGE_KEY = '__detail_parking_meta_v1';
   var PARKING_CACHE_STORAGE_KEY = '__detail_parking_cache_v1';
   var PARKING_UI_PREFS_KEY = '__detail_parking_ui_v1';
@@ -3715,15 +3963,16 @@
     sourceToggles: { google: true, osm: true, municipal: true, official: true, unknown: true }
   };
   var NEARBY_CATEGORY_CHIPS = [
-    { id: 'all', label: '🗺️ All' },
-    { id: 'food', label: '🍽️ Food' },
-    { id: 'nature', label: '🌿 Nature' },
-    { id: 'scenic', label: '🏞️ Scenic' },
-    { id: 'coffee_dessert', label: '☕ Coffee & Treats' },
-    { id: 'family', label: '👨‍👩‍👧 Family' },
-    { id: 'nightlife', label: '🍸 Nightlife' },
-    { id: 'culture', label: '🏛️ Culture' },
-    { id: 'shopping', label: '🛍️ Shopping' }
+    { id: 'all',           label: '🗺️ All' },
+    { id: 'food',          label: '🍽️ Food' },
+    { id: 'nature',        label: '🌿 Nature' },
+    { id: 'scenic',        label: '🏞️ Scenic' },
+    { id: 'coffee_dessert',label: '☕ Coffee & Treats' },
+    { id: 'family',        label: '👨‍👩‍👧 Family' },
+    { id: 'nightlife',     label: '🍸 Nightlife' },
+    { id: 'culture',       label: '🏛️ Culture' },
+    { id: 'shopping',      label: '🛍️ Shopping' },
+    { id: 'favorites',     label: '❤️ My Favorites' }
   ];
 
   // ─── Smart Itinerary Helpers ─────────────────────────────────────────────────
@@ -3957,9 +4206,17 @@
     }).join('');
 
     var routeUrl = buildRouteUrl(plan);
-    return summaryHtml + stopsHtml +
-      '<div style="margin-top:10px; display:flex; gap:8px;">' +
+    // Route optimization hint
+    var optimResult = optimizeDayPlanRoute(plan);
+    var optimHint = '';
+    if (plan.length >= 3 && optimResult.changed && optimResult.savedMinutes > 0) {
+      optimHint = '<div style="font-size:11px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:5px 8px;margin-bottom:8px;">💡 Route optimization available — could save ~' + optimResult.savedMinutes + ' min. <button type="button" class="nb-card-btn" style="padding:2px 8px;font-size:10px;" onclick="handleOptimizeDayPlan()">Optimize Now</button></div>';
+    }
+    return summaryHtml + optimHint + stopsHtml +
+      '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">' +
         (routeUrl ? '<a class="tm-btn primary" href="' + escapeHtml(routeUrl) + '" target="_blank" rel="noopener">📍 Plan Route in Google Maps</a>' : '') +
+        (plan.length >= 3 ? '<button class="tm-btn" onclick="handleOptimizeDayPlan()">🗺️ Optimize Route</button>' : '') +
+        '<button class="tm-btn" onclick="printDayPlan()">🖨️ Print / PDF</button>' +
         '<button class="tm-btn" onclick="handleClearDayPlan()" style="color:#ef4444;">🗑 Clear All</button>' +
       '</div>';
   }
@@ -3969,11 +4226,15 @@
     if (existing) { existing.remove(); return; }
     var drawer = document.createElement('div');
     drawer.id = 'dayPlanDrawer';
-    drawer.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:60vh;overflow-y:auto;background:#fff;border-top:2px solid #3b82f6;box-shadow:0 -4px 24px rgba(0,0,0,0.15);padding:16px;z-index:9999;font-family:inherit;';
+    drawer.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:65vh;overflow-y:auto;background:#fff;border-top:2px solid #3b82f6;box-shadow:0 -4px 24px rgba(0,0,0,0.15);padding:16px;z-index:9999;font-family:inherit;';
     drawer.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">' +
         '<h3 style="margin:0;font-size:15px;color:#1e293b;">📋 Today\'s Adventure Itinerary</h3>' +
-        '<button class="tm-btn" onclick="document.getElementById(\'dayPlanDrawer\').remove()">✕ Close</button>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<button class="tm-btn" onclick="printDayPlan()" title="Export as PDF">🖨️ Print / PDF</button>' +
+          '<button class="tm-btn" onclick="handleOptimizeDayPlan()" title="Reorder stops for shortest drive">🗺️ Optimize</button>' +
+          '<button class="tm-btn" onclick="document.getElementById(\'dayPlanDrawer\').remove()">✕ Close</button>' +
+        '</div>' +
       '</div>' +
       '<div id="dayPlanDrawerBody">' + renderDayPlanDrawerHtml() + '</div>';
     document.body.appendChild(drawer);
@@ -4095,8 +4356,7 @@
         var radius = Number(parsed.radiusMiles);
         if (Number.isFinite(radius) && radius > 0) next.radiusMiles = radius;
         var category = String(parsed.category || 'all').toLowerCase();
-        if (NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === category; })) next.category = category;
-        var mr = Number(parsed.minRating);
+        if (NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === category; })) next.category = category;        var mr = Number(parsed.minRating);
         if ([0, 3, 4, 4.5].indexOf(mr) !== -1) next.minRating = mr;
         next.openNow = !!parsed.openNow;
         var tb = Number(parsed.timeBudgetHours);
@@ -4128,11 +4388,21 @@
 
   function renderNearbyControlsHtml(data) {
     var uiState = getNearbyUiState();
+    var currentRadius = Number(uiState.radiusMiles) || 5;
     var radii = [2, 5, 10, 25];
     var radiusHtml = radii.map(function (r) {
-      var active = Number(uiState.radiusMiles) === Number(r);
+      var active = currentRadius === Number(r);
       return '<button type="button" class="nb-chip' + (active ? ' nb-chip--active' : '') + '" data-nearby-radius="' + r + '">' + r + ' mi</button>';
     }).join('');
+    // Radius slider (continuous 0.5–25 mi, syncs with chips)
+    var sliderHtml = '<div class="nb-radius-slider-wrap">' +
+      '<input type="range" class="nb-radius-slider" id="nbRadiusSlider" ' +
+        'min="0.5" max="25" step="0.5" value="' + currentRadius + '" ' +
+        'title="Drag to set search radius" ' +
+        'oninput="(function(s){var v=parseFloat(s.value);document.getElementById(\'nbRadiusVal\').textContent=v===Math.round(v)?v+\' mi\':v.toFixed(1)+\' mi\';document.querySelectorAll(\'[data-nearby-radius]\').forEach(function(c){c.classList.toggle(\'nb-chip--active\',Number(c.dataset.nearbyRadius)===v)});})(this)" ' +
+        'onchange="(function(s){var v=parseFloat(s.value);var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.radiusMiles=v;try{window.localStorage.setItem(window.NEARBY_UI_PREFS_KEY||\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false);})(this)">' +
+      '<span class="nb-radius-slider-val" id="nbRadiusVal">' + (currentRadius === Math.round(currentRadius) ? currentRadius + ' mi' : currentRadius.toFixed(1) + ' mi') + '</span>' +
+    '</div>';
     var categoryHtml = NEARBY_CATEGORY_CHIPS.map(function (chip) {
       var active = String(uiState.category || 'all') === chip.id;
       return '<button type="button" class="nb-chip' + (active ? ' nb-chip--active' : '') + '" data-nearby-category="' + chip.id + '">' + escapeHtml(chip.label) + '</button>';
@@ -4217,7 +4487,18 @@
         '.nb-chip-dot{width:7px;height:7px;border-radius:50%;background:#d1d5db;flex-shrink:0;}',
         '.nb-chip-dot--on{background:#22c55e;}',
         '.nb-chip--active .nb-chip-dot{background:rgba(255,255,255,.7);}',
-        '.nb-chip--active .nb-chip-dot--on{background:#fff;}'
+        '.nb-chip--active .nb-chip-dot--on{background:#fff;}',
+        /* ── Radius Slider ── */
+        '.nb-radius-slider-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:160px;}',
+        '.nb-radius-slider{flex:1;height:5px;border-radius:999px;accent-color:#3b82f6;cursor:pointer;min-width:80px;}',
+        '.nb-radius-slider-val{font-size:12px;font-weight:700;color:#2563eb;min-width:44px;text-align:right;white-space:nowrap;}',
+        /* ── User Ratings ── */
+        '.nb-user-rating-wrap{display:inline-flex;align-items:center;gap:4px;margin-top:4px;}',
+        '.nb-user-rating-label{font-size:10px;font-weight:600;color:#64748b;white-space:nowrap;}',
+        '.nb-user-stars{display:inline-flex;gap:1px;}',
+        '.nb-user-star{background:none;border:none;cursor:pointer;font-size:14px;color:#d1d5db;padding:0 1px;line-height:1;transition:color .1s;}',
+        '.nb-user-star:hover,.nb-user-star--on{color:#f59e0b;}',
+        '.nb-user-star:hover ~ .nb-user-star{color:#d1d5db;}'
       ].join('');
       (document.head || document.body).appendChild(nbStyle);
     }
@@ -4250,7 +4531,7 @@
           '<div class="nb-filters-body">',
             '<div class="nb-filter-row">',
               '<span class="nb-filter-label">Radius</span>',
-              '<div class="nb-chip-group">' + radiusHtml + '</div>',
+              '<div style="display:flex;flex-direction:column;gap:5px;flex:1;">' + sliderHtml + '<div class="nb-chip-group">' + radiusHtml + '</div></div>',
             '</div>',
             '<div class="nb-filter-row">',
               '<span class="nb-filter-label">Category</span>',
@@ -4309,24 +4590,72 @@
     var uiState = getNearbyUiState();
     var minRating  = Number(uiState.minRating || 0);
     var openOnly   = !!uiState.openNow;
-    var hasFilters = minRating > 0 || openOnly;
+    var favOnly    = String(uiState.category || 'all') === 'favorites';
+    var hasFilters = minRating > 0 || openOnly || favOnly;
 
     var filtered = Array.isArray(attractions) ? attractions.filter(function (a) {
       if (minRating > 0 && (!(a.rating) || Number(a.rating) < minRating)) return false;
       if (openOnly && !a.openNow) return false;
+      if (favOnly && !isAttractionFavorited(String(a.id || a.name || '').trim())) return false;
       return true;
     }) : [];
 
     if (!filtered.length) {
-      var emptyMsg = hasFilters
-        ? 'No results match your current filters. Try relaxing the Min Rating or Open Now filter.'
-        : 'No nearby attractions found yet.';
-      var emptyHint = hasFilters ? '' : 'Click <strong>Refresh Nearby</strong> above to scan for places around this location.';
+      // ── Smarter Empty State ──────────────────────────────────────────────
+      var detailData = data || (window.__detailInlineEditState && window.__detailInlineEditState.data) || {};
+      var hasCoords = !!(detailData.latitude || detailData.longitude);
+      var hasApiKey = !!(window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.config && window.nearbyAttractionsFinder.config.googlePlacesApiKey);
+      var currentRadius = Number(uiState.radiusMiles) || 5;
+      var isSmallRadius = currentRadius <= 2;
+      var emptyIcon, emptyTitle, emptyHint, emptyAction;
+
+      if (favOnly) {
+        emptyIcon = '❤️';
+        emptyTitle = 'No favorites yet in this area.';
+        emptyHint = 'Tap the ❤️ on any attraction card to save it as a favorite.';
+        emptyAction = '<button type="button" class="nb-card-btn nb-card-btn--primary" style="margin-top:8px;" onclick="(function(){var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.category=\'all\';try{window.localStorage.setItem(\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false)})()">🗺️ Show All Nearby</button>';
+      } else if (minRating > 0 && openOnly) {
+        emptyIcon = '⚙️';
+        emptyTitle = 'No open, highly-rated results right now.';
+        emptyHint = 'Try removing the "Open Now" filter or lowering the minimum rating.';
+        emptyAction = '<button type="button" class="nb-card-btn nb-card-btn--primary" style="margin-top:8px;" onclick="(function(){var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.minRating=0;ui.openNow=false;try{window.localStorage.setItem(\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false)})()">Clear Rating &amp; Open Now Filters</button>';
+      } else if (minRating > 0) {
+        emptyIcon = '⭐';
+        emptyTitle = 'No attractions match the ' + minRating + '★+ rating filter.';
+        emptyHint = 'Lower the minimum rating to see more results.';
+        emptyAction = '<button type="button" class="nb-card-btn nb-card-btn--primary" style="margin-top:8px;" onclick="(function(){var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.minRating=0;try{window.localStorage.setItem(\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false)})()">Show Any Rating</button>';
+      } else if (openOnly) {
+        emptyIcon = '🕐';
+        emptyTitle = 'No open locations found right now.';
+        emptyHint = 'Try turning off the Open Now filter to see all nearby places.';
+        emptyAction = '<button type="button" class="nb-card-btn nb-card-btn--primary" style="margin-top:8px;" onclick="(function(){var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.openNow=false;try{window.localStorage.setItem(\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false)})()">Remove Open Now Filter</button>';
+      } else if (!hasCoords) {
+        emptyIcon = '📍';
+        emptyTitle = 'Coordinates needed to find nearby places.';
+        emptyHint = 'Open the <strong>Details</strong> tab and add or refresh this location\'s coordinates, then come back here.';
+        emptyAction = '';
+      } else if (isSmallRadius) {
+        emptyIcon = '🔭';
+        emptyTitle = 'Nothing found within ' + currentRadius + ' miles.';
+        emptyHint = 'Try expanding the search radius — there may be great spots just a bit further away.';
+        emptyAction = '<button type="button" class="nb-card-btn nb-card-btn--primary" style="margin-top:8px;" onclick="(function(){var ui=window.__detailNearbyUiState||(window.__detailNearbyUiState={});ui.radiusMiles=10;try{window.localStorage.setItem(\'' + NEARBY_UI_PREFS_KEY + '\',JSON.stringify(ui))}catch(e){}if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(false)})()">Try 10 miles</button>';
+      } else if (!hasApiKey) {
+        emptyIcon = '🔑';
+        emptyTitle = 'Only your in-app locations are shown.';
+        emptyHint = 'Add a Google Places API key in Settings to discover thousands more nearby places.';
+        emptyAction = '<button type="button" class="nb-card-btn" style="margin-top:8px;" onclick="if(typeof refreshNearbyAttractionsForDetail===\'function\')refreshNearbyAttractionsForDetail(true)">🔄 Refresh with Local Data</button>';
+      } else {
+        emptyIcon = '🔍';
+        emptyTitle = 'No nearby attractions found yet.';
+        emptyHint = 'Click <strong>Refresh Nearby</strong> above to scan for places around this location.';
+        emptyAction = '';
+      }
       return [
-        '<div style="text-align:center;padding:24px 16px;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:10px;margin-top:4px;">',
-          '<div style="font-size:28px;margin-bottom:8px;">🔍</div>',
-          '<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">' + emptyMsg + '</div>',
-          emptyHint ? '<div style="font-size:12px;color:#6b7280;">' + emptyHint + '</div>' : '',
+        '<div style="text-align:center;padding:28px 16px;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:10px;margin-top:4px;">',
+          '<div style="font-size:32px;margin-bottom:10px;">' + emptyIcon + '</div>',
+          '<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">' + emptyTitle + '</div>',
+          emptyHint ? '<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">' + emptyHint + '</div>' : '',
+          emptyAction,
         '</div>'
       ].join('');
     }
@@ -4364,6 +4693,11 @@
         '.nb-results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}',
         '.nb-results-title{font-size:12px;font-weight:600;color:#374151;}',
         '.nb-results-count{font-size:11px;color:#9ca3af;}',
+        /* Favorite / Visited */
+        '.nb-fav-btn{background:none;border:1px solid #e2e8f0;border-radius:7px;padding:4px 8px;cursor:pointer;font-size:13px;line-height:1;transition:all .12s;}',
+        '.nb-fav-btn:hover{border-color:#f43f5e;background:#fff1f2;}',
+        '.nb-fav-btn--on{border-color:#f43f5e;background:#fff1f2;}',
+        '.nb-vis-btn--on{background:#dcfce7;border-color:#86efac;color:#15803d;}',
       '</style>'
     ].join('');
 
@@ -4394,6 +4728,27 @@
         ? '<span class="nb-card-rating">★ ' + Number(a.rating).toFixed(1) + '</span>'
         : '';
 
+      // User rating
+      var attractionRatingId = String(a.id || a.name || '').trim();
+      var storedUserRating = getUserAttractionRating(attractionRatingId);
+      var userRatingHtml = (typeof renderNearbyUserStars === 'function')
+        ? renderNearbyUserStars(attractionRatingId, storedUserRating)
+        : '';
+
+      // Favorite & Visited buttons
+      var safeCrdId = attractionRatingId.replace(/[^a-z0-9_-]/gi, '_');
+      var isFav     = isAttractionFavorited(attractionRatingId);
+      var visitCnt  = getAttractionVisitCount(attractionRatingId);
+      var favBtn    = '<button type="button" class="nb-fav-btn' + (isFav ? ' nb-fav-btn--on' : '') + '" ' +
+        'id="nb-fav-' + safeCrdId + '" ' +
+        'title="' + (isFav ? 'Remove from favorites' : 'Add to favorites') + '" ' +
+        'onclick="handleNearbyFavorite(\'' + safeCrdId + '\',\'' + attractionRatingId.replace(/'/g, "\\'") + '\')">' +
+        (isFav ? '❤️' : '🤍') + '</button>';
+      var visBtn = '<button type="button" class="nb-card-btn' + (visitCnt > 0 ? ' nb-vis-btn--on' : '') + '" ' +
+        'id="nb-vis-' + safeCrdId + '" ' +
+        'onclick="handleNearbyMarkVisited(\'' + safeCrdId + '\',\'' + attractionRatingId.replace(/'/g, "\\'") + '\',\'' + escapeHtml(a.name || '').replace(/'/g, "\\'") + '\')">' +
+        (visitCnt > 0 ? '✅ Visited (' + visitCnt + 'x)' : '☑️ Mark Visited') + '</button>';
+
       // Distance / drive meta
       var distHtml = '<span class="nb-card-meta-item">📍 ' + escapeHtml(a.distanceText || '—') + '</span>' +
         '<span class="nb-card-meta-item">🚗 ' + escapeHtml(a.driveTimeText || '—') + '</span>';
@@ -4419,13 +4774,17 @@
         '<div class="nb-card-top">' +
           '<div class="nb-card-icon">' + cardIcon + '</div>' +
           '<div class="nb-card-info">' +
-            '<div class="nb-card-name">' + escapeHtml(a.name || 'Nearby location') + '</div>' +
+            '<div style="display:flex;align-items:flex-start;gap:6px;">' +
+              '<div class="nb-card-name" style="flex:1;">' + escapeHtml(a.name || 'Nearby location') + '</div>' +
+              favBtn +
+            '</div>' +
             '<div class="nb-card-meta">' + distHtml + ratingHtml + statusBadge + openBadge + '</div>' +
           '</div>' +
         '</div>' +
         (a.description ? '<div class="nb-card-desc">' + escapeHtml(a.description) + '</div>' : '') +
         (reasons ? '<div class="nb-card-why">Why ranked: ' + escapeHtml(reasons) + '</div>' : '') +
-        '<div class="nb-card-actions">' + actionHtml + dayAddBtn + '</div>' +
+        (userRatingHtml ? '<div style="padding-top:5px;">' + userRatingHtml + '</div>' : '') +
+        '<div class="nb-card-actions">' + actionHtml + visBtn + dayAddBtn + '</div>' +
       '</div>';
     }).join('') + '</div>';
 
@@ -5794,7 +6153,7 @@
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
 
-    var additionalPane = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
+    var additionalPane = document.getElementById('pane-nearby') || document.getElementById('pane-additional');
     if (additionalPane) additionalPane.innerHTML =
       renderNearbyControlsHtml(data) +
       '<div class="card" data-detail-field-card="nearby" style="margin-top:0;border-top:none;border-radius:0 0 10px 10px;border-top:1px solid #f1f5f9;">' +
@@ -7552,8 +7911,7 @@
 
   function activateTab(target) {
     var tabs = document.querySelectorAll('.tab-btn');
-    var normalized = String(target || '').trim();
-    if (!normalized) normalized = 'overview';
+    var normalized = normalizeDetailTabId(target);
     var currentTab = getActiveDetailTabId();
     var inlineEditState = window.__detailInlineEditState;
     var hasDirtyInlineEdits = !!(
@@ -7778,8 +8136,14 @@
       if (nearbyRadiusBtn) {
         var radiusVal = Number(nearbyRadiusBtn.getAttribute('data-nearby-radius'));
         var curUi = getNearbyUiState();
-        persistNearbyUiState(Object.assign({}, curUi, { radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles }));
-        var additionalPane = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
+        var nextRadius = Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles;
+        persistNearbyUiState(Object.assign({}, curUi, { radiusMiles: nextRadius }));
+        // Sync slider position and label
+        var sliderEl = document.getElementById('nbRadiusSlider');
+        if (sliderEl) sliderEl.value = nextRadius;
+        var sliderValEl = document.getElementById('nbRadiusVal');
+        if (sliderValEl) sliderValEl.textContent = nextRadius + ' mi';
+        var additionalPane = document.getElementById('pane-nearby') || document.getElementById('pane-additional');
         if (additionalPane) {
           var controlsWrap = document.getElementById('nearbyControlsWrap');
           var _curData = window.__detailInlineEditState && window.__detailInlineEditState.data;
@@ -7795,7 +8159,7 @@
         if (!NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === categoryVal; })) categoryVal = 'all';
         var curUi2 = getNearbyUiState();
         persistNearbyUiState(Object.assign({}, curUi2, { category: categoryVal }));
-        var additionalPane2 = document.getElementById('pane-additional') || document.getElementById('pane-nearby');
+        var additionalPane2 = document.getElementById('pane-nearby') || document.getElementById('pane-additional');
         if (additionalPane2) {
           var controlsWrap2 = document.getElementById('nearbyControlsWrap');
           var _curData2 = window.__detailInlineEditState && window.__detailInlineEditState.data;
