@@ -770,6 +770,18 @@
       document.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach(ensureQuickActionButton);
     }
 
+    function safeClosest(target, selector) {
+      if (!target || !selector) return null;
+      if (typeof target.closest === 'function') return target.closest(selector);
+      if (target.nodeType === 3 && target.parentElement && typeof target.parentElement.closest === 'function') {
+        return target.parentElement.closest(selector);
+      }
+      if (target.parentElement && typeof target.parentElement.closest === 'function') {
+        return target.parentElement.closest(selector);
+      }
+      return null;
+    }
+
     function bindEnhancer() {
       const root = getVisitedRoot();
       if (!root) return false;
@@ -785,18 +797,18 @@
       if (!document.body.dataset.visitedBulkRefreshClickBound) {
         document.body.dataset.visitedBulkRefreshClickBound = '1';
         document.addEventListener('click', function(event) {
-          const bulkBtn = event.target.closest('[data-visited-explorer-bulk-refresh]');
+          const bulkBtn = safeClosest(event.target, '[data-visited-explorer-bulk-refresh]');
           if (bulkBtn) {
             const subtabKey = String(bulkBtn.getAttribute('data-visited-explorer-subtab') || '').trim();
             const itemId = String(bulkBtn.getAttribute('data-visited-explorer-bulk-refresh') || '').trim();
             if (subtabKey && itemId) openBulkRefreshModal(subtabKey, itemId);
             return;
           }
-          if (event.target.closest('#visitedBulkRefreshCloseBtn, #visitedBulkRefreshBackdrop, #visitedBulkRefreshCancelBtn')) {
+          if (safeClosest(event.target, '#visitedBulkRefreshCloseBtn, #visitedBulkRefreshBackdrop, #visitedBulkRefreshCancelBtn')) {
             closeBulkRefreshModal();
             return;
           }
-          if (event.target.closest('#visitedBulkRefreshRunBtn')) {
+          if (safeClosest(event.target, '#visitedBulkRefreshRunBtn')) {
             runBulkRefresh();
           }
         }, true);
@@ -1241,8 +1253,19 @@
       if (document.body.dataset.visitedMoveClickBound === '1') return;
       document.body.dataset.visitedMoveClickBound = '1';
       document.addEventListener('click', function(event) {
+        const safeClosestMove = function(target, selector) {
+          if (!target || !selector) return null;
+          if (typeof target.closest === 'function') return target.closest(selector);
+          if (target.nodeType === 3 && target.parentElement && typeof target.parentElement.closest === 'function') {
+            return target.parentElement.closest(selector);
+          }
+          if (target.parentElement && typeof target.parentElement.closest === 'function') {
+            return target.parentElement.closest(selector);
+          }
+          return null;
+        };
         /* Single-item move */
-        const moveBtn = event.target.closest('[data-visited-explorer-move-table]');
+        const moveBtn = safeClosestMove(event.target, '[data-visited-explorer-move-table]');
         if (moveBtn) {
           const subtabKey = String(moveBtn.getAttribute('data-visited-explorer-subtab') || '').trim();
           const itemId    = String(moveBtn.getAttribute('data-visited-explorer-move-table') || '').trim();
@@ -1251,7 +1274,7 @@
           return;
         }
         /* Card checkbox */
-        const cbEl = event.target.closest('[data-visited-move-select-checkbox]');
+        const cbEl = safeClosestMove(event.target, '[data-visited-move-select-checkbox]');
         if (cbEl) {
           const subtabKey = String(cbEl.getAttribute('data-subtab-key') || '').trim();
           const itemId    = String(cbEl.getAttribute('data-item-id') || '').trim();
@@ -1259,7 +1282,7 @@
           return;
         }
         /* "Move Selected" bar button */
-        const moveRunBtn = event.target.closest('[data-visited-move-run]');
+        const moveRunBtn = safeClosestMove(event.target, '[data-visited-move-run]');
         if (moveRunBtn) {
           const subtabKey = String(moveRunBtn.getAttribute('data-visited-move-run') || '').trim();
           const items = getSelectedItems(subtabKey);
@@ -1268,7 +1291,7 @@
           return;
         }
         /* "Clear selection" bar button */
-        const moveClearBtn = event.target.closest('[data-visited-move-clear]');
+        const moveClearBtn = safeClosestMove(event.target, '[data-visited-move-clear]');
         if (moveClearBtn) {
           const subtabKey = String(moveClearBtn.getAttribute('data-visited-move-clear') || '').trim();
           if (subtabKey) { selectedBySubtab[subtabKey] = new Set(); refreshSelectionBars(); }

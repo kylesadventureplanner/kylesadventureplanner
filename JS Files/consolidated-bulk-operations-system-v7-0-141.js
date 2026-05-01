@@ -2805,6 +2805,120 @@ window.handleBulkRefreshRatings = async function(displayElement, dryRun = false,
   });
 };
 
+function buildDescriptionPreviewItems(mainWindow, operationResult, activeCols) {
+  const rows = Array.isArray(mainWindow && mainWindow.adventuresData)
+    ? mainWindow.adventuresData
+    : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
+  const resultRows = Array.isArray(operationResult && operationResult.results) ? operationResult.results : [];
+  const updatedNames = new Set(resultRows
+    .filter((entry) => {
+      const status = String(entry && entry.status || '').trim().toLowerCase();
+      return status === 'updated' || status === 'would-update';
+    })
+    .map((entry) => String(entry && entry.name || '').trim())
+    .filter(Boolean));
+
+  const preview = [];
+  rows.forEach((entry) => {
+    if (!updatedNames.size) return;
+    const values = entry && Array.isArray(entry.values && entry.values[0]) ? entry.values[0] : null;
+    if (!values) return;
+    const name = String(values[activeCols.NAME] || '').trim();
+    if (!name || !updatedNames.has(name)) return;
+    const description = String(values[activeCols.DESCRIPTION] || '').trim();
+    if (!description) return;
+    preview.push({ name, description });
+  });
+
+  return preview.slice(0, 24);
+}
+
+function escapeHtmlBulkOps(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+window.handleUpdateHoursOnly = window.handleUpdateHoursOnly || async function(displayElement, dryRun = false, options = {}) {
+  if (typeof window.handleForceUpdateAllFields !== 'function') {
+    return { success: false, error: 'Update hours handler not available' };
+  }
+  const updateMode = normalizeGoogleAutomationUpdateMode(options && options.updateMode, 'missing-only');
+  return window.handleForceUpdateAllFields(displayElement, dryRun, {
+    fields: ['hours'],
+    updateMode
+  });
+};
+
+window.handleUpdateAllDescriptions = window.handleUpdateAllDescriptions || async function(
+  displayElement,
+  dryRun = false,
+  overwrite = false,
+  strictModeEnabled,
+  richOnlyEnabled,
+  cleanupReviewLikeOnly = false
+) {
+  if (typeof window.handleForceUpdateAllFields !== 'function') {
+    return { success: false, error: 'Update descriptions handler not available' };
+  }
+
+  const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+  const activeCols = getActiveCols(mainWindow);
+  const strictVerification = resolveUpdateDescriptionsStrictVerification(strictModeEnabled);
+  const richDescriptionsOnly = resolveUpdateDescriptionsRichOnly(richOnlyEnabled);
+  const updateMode = overwrite ? 'refresh-all' : 'missing-only';
+
+  const result = await window.handleForceUpdateAllFields(displayElement, dryRun, {
+    fields: ['description'],
+    updateMode
+  });
+
+  const previewItems = buildDescriptionPreviewItems(mainWindow, result, activeCols);
+  window.__lastDescriptionPreviewItems = previewItems;
+
+  if (displayElement && previewItems.length) {
+    const previewList = previewItems
+      .map((item) => `<li style="margin-bottom:8px;"><div style="font-weight:600;color:#1f2937;">${escapeHtmlBulkOps(item.name)}</div><div style="font-size:12px;color:#374151;">${escapeHtmlBulkOps(item.description)}</div></li>`)
+      .join('');
+    displayElement.insertAdjacentHTML('beforeend',
+      `<div style="margin-top:12px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">` +
+      `<div style="font-weight:700;color:#1f2937;margin-bottom:8px;">Preview of updated descriptions</div>` +
+      `<ol style="margin:0 0 10px 18px;padding:0;">${previewList}</ol>` +
+      `<button type="button" onclick="copyDescriptionPreviewText()" style="padding:6px 10px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Copy preview text</button>` +
+      `</div>`
+    );
+  }
+
+  return Object.assign({}, result || {}, {
+    success: !!(result && result.success !== false),
+    strictVerification,
+    strictVerificationMode: strictVerification ? 'fail-closed' : 'warn-only',
+    richDescriptionsOnly,
+    richDescriptionsMode: richDescriptionsOnly ? 'rich-only' : 'allow-fallbacks',
+    cleanupReviewLikeOnly: !!cleanupReviewLikeOnly,
+    previewItems,
+    descriptionIndex: Number(activeCols.DESCRIPTION),
+    descriptionColumnName: 'Description'
+  });
+};
+
+// Safety override: preserve expected populate-missing behavior even if earlier legacy block drifts.
+window.handlePopulateMissingFields = async function(displayElement, dryRun = false, options = {}) {
+  if (typeof window.handleForceUpdateAllFields !== 'function') {
+    return { success: false, error: 'Populate missing fields handler not available' };
+  }
+  const updateMode = normalizeGoogleAutomationUpdateMode(options && options.updateMode, 'missing-only');
+  return window.handleForceUpdateAllFields(displayElement, dryRun, {
+    fields: ['website', 'phone', 'hours', 'address', 'rating'],
+    updateMode
+  });
+};
+
+window.handlePopulateMissingFieldsEnhanced = window.handlePopulateMissingFieldsEnhanced || window.handlePopulateMissingFields;
+
 // ============================================================
 // INITIALIZATION
 // ============================================================

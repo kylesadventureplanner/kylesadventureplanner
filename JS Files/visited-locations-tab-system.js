@@ -1085,6 +1085,18 @@
     return Boolean(target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]'));
   }
 
+  function closestFromEventTarget(target, selector) {
+    if (!target || !selector) return null;
+    if (typeof target.closest === 'function') return target.closest(selector);
+    if (target.nodeType === 3 && target.parentElement && typeof target.parentElement.closest === 'function') {
+      return target.parentElement.closest(selector);
+    }
+    if (target.parentElement && typeof target.parentElement.closest === 'function') {
+      return target.parentElement.closest(selector);
+    }
+    return null;
+  }
+
   function installVisitedClickTracer(root) {
     if (!root || root.dataset.visitedClickTracerBound === '1') return;
     root.dataset.visitedClickTracerBound = '1';
@@ -1101,7 +1113,7 @@
         ts: Date.now()
       };
 
-      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      const targetBtn = closestFromEventTarget(event.target, 'button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
       const topBtn = topAtPoint && topAtPoint.closest
         ? topAtPoint.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]')
         : null;
@@ -1118,7 +1130,7 @@
       if (!state.tracerEnabled) return;
       if (!isTraceCandidateTarget(event.target)) return;
 
-      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      const targetBtn = closestFromEventTarget(event.target, 'button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
       if (!targetBtn) return;
 
       const topAtPoint = document.elementFromPoint(event.clientX, event.clientY);
@@ -1686,7 +1698,7 @@
     }, true);
 
     subTabs.addEventListener('click', (event) => {
-      const progressTabBtn = event.target.closest('[data-progress-subtab]');
+      const progressTabBtn = closestFromEventTarget(event.target, '[data-progress-subtab]');
       if (!progressTabBtn || !subTabs.contains(progressTabBtn)) return;
       event.preventDefault();
       state.mobileTooltip.longPressActive = false;
@@ -1700,7 +1712,7 @@
     });
 
     subTabs.addEventListener('keydown', (event) => {
-      const currentTabBtn = event.target.closest('[data-progress-subtab]');
+      const currentTabBtn = closestFromEventTarget(event.target, '[data-progress-subtab]');
       if (!currentTabBtn || !subTabs.contains(currentTabBtn)) return;
 
       const buttons = getProgressSubTabButtons(root);
@@ -9388,7 +9400,7 @@
       }
 
       root.addEventListener('mousemove', (event) => {
-      const hotspot = event.target.closest('[data-hotspot-tooltip]');
+      const hotspot = closestFromEventTarget(event.target, '[data-hotspot-tooltip]');
       if (!hotspot) {
         hideHeatmapTooltip();
         return;
@@ -9458,7 +9470,7 @@
 
 
     root.addEventListener('pointerdown', (event) => {
-      if (!event.target.closest || !event.target.closest('[data-progress-subtab]')) return;
+      if (!closestFromEventTarget(event.target, '[data-progress-subtab]')) return;
       scheduleVisitedSubTabInterceptionCheck(root, 0);
     }, true);
 
