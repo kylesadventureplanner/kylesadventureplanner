@@ -5,25 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_COPY_PASTE_INTEGRATION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_ENHANCEMENT_RECOMMENDATIONS.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_ENHANCEMENT_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_FEATURES_IMPLEMENTATION_GUIDE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_QUICK_START.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nearby-attractions-all-features-example.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nearby-attractions-integration-example.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nearby-attractions-v3.1-preview.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-global-Edit-Mode-53f51-s-when-overwrite-is-enabled/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-global-Edit-Mode-5a4ff-rites-when-rows-are-updated/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-global-Edit-Mode-5caba--payloads-before-persisting/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-global-Edit-Mode-dce67-book-row-ids-when-available/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-global-Edit-Mode-f35a6-iptions-from-Google-details/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -115,7 +101,7 @@
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
-      <workItem from="1777494531732" duration="70898000" />
+      <workItem from="1777494531732" duration="73330000" />
     </task>
     <servers />
   </component>
