@@ -489,6 +489,7 @@ class TagAutocompleteInput {
     // Filter out already selected tags
     const filtered = results.filter(
       result => !this.selectedTags.includes(result.tag)
+        && !(window.isDisabledTagOption && window.isDisabledTagOption(result.tag))
     );
 
     // Limit results
@@ -561,6 +562,11 @@ class TagAutocompleteInput {
   addTag(tag) {
     // Resolve alias
     const canonical = resolveTagAlias?.(tag) || tag;
+
+    if (window.isDisabledTagOption && window.isDisabledTagOption(canonical)) {
+      this.addValidationMessage(`"${canonical}" is no longer available as a tag option`, 'warning');
+      return;
+    }
 
     // Check if already selected
     if (this.selectedTags.includes(canonical)) {
@@ -727,7 +733,11 @@ class TagAutocompleteInput {
    * Set selected tags
    */
   setSelectedTags(tags) {
-    this.selectedTags = tags.map(t => resolveTagAlias?.(t) || t);
+    this.selectedTags = Array.from(new Set((Array.isArray(tags) ? tags : [])
+      .map((t) => resolveTagAlias?.(t) || t)
+      .map((t) => String(t || '').trim())
+      .filter(Boolean)
+      .filter((t) => !(window.isDisabledTagOption && window.isDisabledTagOption(t)))));
     this.renderSelectedTags();
     this.triggerSelectionChange();
   }

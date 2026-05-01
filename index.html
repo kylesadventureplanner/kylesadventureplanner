@@ -30,6 +30,76 @@
       more: 'Show more',
       less: 'Show less'
     };
+
+    window.PAGE_SHORTCUTS_HELP = {
+      title: 'Adventure Planner Shortcuts',
+      buttonLabel: '⌨️ Shortcuts',
+      sections: [
+        {
+          title: 'Search & Filters',
+          items: [
+            {
+              keys: ['Ctrl/Cmd + K', 'Ctrl/Cmd + F'],
+              description: 'Focus the main adventure search field',
+              buttonSelector: '#searchName',
+              tooltip: 'Focus the main adventure search field'
+            },
+            {
+              keys: ['Ctrl/Cmd + R'],
+              description: 'Reset all filters',
+              buttonSelector: '#resetAllFiltersTop, #resetAllFiltersBottom',
+              tooltip: 'Clear all applied filters'
+            },
+            {
+              keys: ['Ctrl/Cmd + Z'],
+              description: 'Undo the most recent filter change'
+            },
+            {
+              keys: ['Ctrl/Cmd + Shift + Z'],
+              description: 'Redo the most recent undone filter change'
+            }
+          ]
+        },
+        {
+          title: 'Selection & Views',
+          items: [
+            {
+              keys: ['Ctrl/Cmd + A'],
+              description: 'Select all currently visible planner rows'
+            },
+            {
+              keys: ['Ctrl + Alt + T'],
+              description: 'Toggle TV / 10-foot mode',
+              buttonSelector: '#tvModeHeaderBtn',
+              tooltip: 'Toggle TV / 10-foot UI mode'
+            },
+            {
+              keys: ['Esc'],
+              description: 'Exit iPhone view when the mobile preview is active',
+              buttonSelector: '#iphoneToggleBtn',
+              tooltip: 'Switch to iPhone mobile view'
+            }
+          ]
+        },
+        {
+          title: 'Diagnostics',
+          items: [
+            {
+              keys: ['Ctrl + Shift + D'],
+              description: 'Toggle the advanced debug console',
+              buttonSelector: '#debuggingConsole .debug-console-header',
+              tooltip: 'Toggle the advanced debug console'
+            },
+            {
+              keys: ['Ctrl + Shift + E'],
+              description: 'Expand the errors panel',
+              buttonSelector: '#errorNotificationBar .error-header',
+              tooltip: 'Expand the errors panel'
+            }
+          ]
+        }
+      ]
+    };
   </script>
 
     <!-- MSAL Browser Library - Required for Microsoft Authentication -->

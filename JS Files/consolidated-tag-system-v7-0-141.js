@@ -316,6 +316,35 @@ const TAG_CONFIG = {
   }
 };
 
+const DISABLED_TAG_OPTIONS = new Set([
+  'Farm-to-Table',
+  'Vegetarian-Friendly',
+  'Gluten-Free Options',
+  'Family-Friendly',
+  'Top Rated',
+  'Worth Visiting',
+  'Relaxing',
+  'Dining'
+]);
+
+function isDisabledTagOption(tagName) {
+  const raw = String(tagName || '').trim();
+  if (!raw) return false;
+  if (DISABLED_TAG_OPTIONS.has(raw)) return true;
+  const lowered = raw.toLowerCase();
+  for (const option of DISABLED_TAG_OPTIONS) {
+    if (String(option || '').toLowerCase() === lowered) return true;
+  }
+  return false;
+}
+
+function cleanupDisabledTagList(tags) {
+  return Array.from(new Set((Array.isArray(tags) ? tags : [])
+    .map((tag) => String(tag || '').trim())
+    .filter(Boolean)
+    .filter((tag) => !isDisabledTagOption(tag))));
+}
+
 /**
  * Get tag styling information
  */
@@ -357,7 +386,9 @@ function renderTagBadge(tagName) {
  * Get all available tags
  */
 function getAllAvailableTags() {
-  return Object.keys(TAG_CONFIG).sort();
+  return Object.keys(TAG_CONFIG)
+    .filter((tagName) => !isDisabledTagOption(tagName))
+    .sort();
 }
 
 // ============================================================
@@ -641,7 +672,16 @@ class TagManager {
     if (stored) {
       try {
         const data = JSON.parse(stored);
-        this.tags = new Map(Object.entries(data));
+        const cleaned = Object.entries(data || {}).reduce((acc, entry) => {
+          const key = String(entry && entry[0] || '').trim();
+          if (!key) return acc;
+          acc[key] = cleanupDisabledTagList(normalizeTags(Array.isArray(entry[1]) ? entry[1] : []));
+          return acc;
+        }, {});
+        this.tags = new Map(Object.entries(cleaned));
+        if (JSON.stringify(cleaned) !== JSON.stringify(data || {})) {
+          localStorage.setItem(this.storageKey, JSON.stringify(cleaned));
+        }
       } catch (e) {
         console.error('Failed to load tags:', e);
         this.tags = new Map();
@@ -653,7 +693,12 @@ class TagManager {
    * Save tags to localStorage
    */
   saveTags() {
-    const data = Object.fromEntries(this.tags);
+    const cleanedEntries = Array.from(this.tags.entries()).map(([placeId, tags]) => [
+      placeId,
+      cleanupDisabledTagList(normalizeTags(Array.isArray(tags) ? tags : []))
+    ]);
+    const data = Object.fromEntries(cleanedEntries);
+    this.tags = new Map(cleanedEntries);
     localStorage.setItem(this.storageKey, JSON.stringify(data));
   }
 
@@ -661,16 +706,20 @@ class TagManager {
    * Get tags for a place
    */
   getTagsForPlace(placeIdentifier) {
-    return this.tags.get(placeIdentifier) || [];
+    const tags = cleanupDisabledTagList(normalizeTags(this.tags.get(placeIdentifier) || []));
+    this.tags.set(placeIdentifier, tags);
+    return tags;
   }
 
   /**
    * Add a single tag to a place
    */
   addTagToPlace(placeIdentifier, tag) {
+    const canonical = resolveTagAlias(tag);
+    if (!canonical || isDisabledTagOption(canonical)) return false;
     const currentTags = this.getTagsForPlace(placeIdentifier);
-    if (!currentTags.includes(tag)) {
-      currentTags.push(tag);
+    if (!currentTags.includes(canonical)) {
+      currentTags.push(canonical);
       this.tags.set(placeIdentifier, currentTags);
       this.saveTags();
       return true;
@@ -700,8 +749,10 @@ class TagManager {
     const currentTags = this.getTagsForPlace(placeIdentifier);
     let added = 0;
     tagsToAdd.forEach(tag => {
-      if (!currentTags.includes(tag)) {
-        currentTags.push(tag);
+      const canonical = resolveTagAlias(tag);
+      if (!canonical || isDisabledTagOption(canonical)) return;
+      if (!currentTags.includes(canonical)) {
+        currentTags.push(canonical);
         added++;
       }
     });
@@ -736,7 +787,7 @@ class TagManager {
    * Replace all tags for a place
    */
   setTagsForPlace(placeIdentifier, newTags) {
-    this.tags.set(placeIdentifier, newTags);
+    this.tags.set(placeIdentifier, cleanupDisabledTagList(normalizeTags(newTags || [])));
     this.saveTags();
   }
 
@@ -761,7 +812,7 @@ class TagManager {
   getAllTags() {
     const allTags = new Set();
     this.tags.forEach(tagArray => {
-      tagArray.forEach(tag => allTags.add(tag));
+      cleanupDisabledTagList(normalizeTags(tagArray || [])).forEach(tag => allTags.add(tag));
     });
     return Array.from(allTags).sort();
   }
@@ -1242,6 +1293,198 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
   }
 
   /**
+   * Priority 2b: High-specificity venue and specialty tagging.
+   * These tags intentionally favor concrete place types over broad labels.
+   */
+  function detectSpecificVenueAndSpecialtyTags(text) {
+    const tags = new Set();
+    const rules = [
+      { pattern: /\b(book\s*store|bookshop|book\s*shop|used\s*books?)\b/gi, tags: ['Book Store'] },
+      { pattern: /\b(thrift\s*store|thrift\s*shop|consignment|resale\s*store|second\s*hand)\b/gi, tags: ['Thrift Store'] },
+      { pattern: /\b(farmers?\s*market|farm\s*market)\b/gi, tags: ['Farmers Market'] },
+      { pattern: /\b(grocery\s*store|supermarket)\b/gi, tags: ['Grocery Store'] },
+      { pattern: /\b(food\s*market|food\s*hall)\b/gi, tags: ['Food Market'] },
+      { pattern: /\b(tea\s*cafe|tea\s*house|tea\s*room)\b/gi, tags: ['Tea Cafe'] },
+      { pattern: /\b(coffee\s*shop|coffeehouse|espresso\s*bar|cafe)\b/gi, tags: ['Coffee Shop'] },
+      { pattern: /\b(antique\s*store|antique\s*shop|antiques?)\b/gi, tags: ['Antique Store'] },
+      { pattern: /\b(locally\s*owned|independent\s*business|family\s*owned|mom\s*and\s*pop)\b/gi, tags: ['Locally Owned'] },
+      { pattern: /\b(german)\b/gi, tags: ['German Food'] },
+      { pattern: /\b(italian|pasta|risotto|trattoria)\b/gi, tags: ['Italian Food'] },
+      { pattern: /\b(greek)\b/gi, tags: ['Greek Food'] },
+      { pattern: /\b(mediterranean|mediterranian)\b/gi, tags: ['Mediterranean Food'] },
+      { pattern: /\b(comfort\s*food|home\s*style|homestyle)\b/gi, tags: ['Comfort Food'] },
+      { pattern: /\b(breakfast\s*joint|breakfast\s*spot|brunch\s*spot)\b/gi, tags: ['Breakfast Joint'] },
+      { pattern: /\b(diner)\b/gi, tags: ['Diner'] },
+      { pattern: /\b(country\s*cooking|southern\s*cooking)\b/gi, tags: ['Country Cooking'] },
+      { pattern: /\b(salad\s*bar)\b/gi, tags: ['Salad Bar'] },
+      { pattern: /\b(noodle\s*house|noodle\s*bar|noodle\s*shop)\b/gi, tags: ['Noodle House'] },
+      { pattern: /\b(pho)\b/gi, tags: ['Pho'] },
+      { pattern: /\b(sushi|shushi)\b/gi, tags: ['Sushi'] },
+      { pattern: /\b(chinese)\b/gi, tags: ['Chinese Food'] },
+      { pattern: /\b(japanese)\b/gi, tags: ['Japanese Food'] },
+      { pattern: /\b(korean)\b/gi, tags: ['Korean Food'] },
+      { pattern: /\b(korean\s*bbq|kbbq)\b/gi, tags: ['Korean BBQ'] },
+      { pattern: /\b(carolina\s*bbq)\b/gi, tags: ['Carolina BBQ'] },
+      { pattern: /\b(tennessee\s*bbq|memphis\s*bbq)\b/gi, tags: ['Tennessee BBQ'] },
+      { pattern: /\b(ramen\s*bar|ramen\s*shop|ramen)\b/gi, tags: ['Ramen Bar'] },
+      { pattern: /\b(polish)\b/gi, tags: ['Polish Food'] },
+      { pattern: /\b(seafood|oyster|shellfish|fish\s*market)\b/gi, tags: ['Seafood'] },
+      { pattern: /\b(buffet|all\s*you\s*can\s*eat)\b/gi, tags: ['Buffet'] },
+      { pattern: /\b(irish)\b/gi, tags: ['Irish Food'] },
+      { pattern: /\b(pub)\b/gi, tags: ['Pub'] },
+      { pattern: /\b(mexican)\b/gi, tags: ['Mexican Food'] },
+      { pattern: /\b(thai)\b/gi, tags: ['Thai Food'] },
+      { pattern: /\b(hibachi|teppanyaki)\b/gi, tags: ['Hibachi'] },
+      { pattern: /\b(indian|curry\s*house)\b/gi, tags: ['Indian Food'] },
+      { pattern: /\b(sandwich\s*shop|sandwiches?)\b/gi, tags: ['Sandwich Shop'] },
+      { pattern: /\b(sub\s*shop|submarine\s*sandwich)\b/gi, tags: ['Sub Shop'] },
+      { pattern: /\b(dive\s*bar)\b/gi, tags: ['Dive Bar'] },
+      { pattern: /\b(cajun|creole)\b/gi, tags: ['Cajun Food'] },
+      { pattern: /\b(steak\s*house|steakhouse)\b/gi, tags: ['Steakhouse'] },
+      { pattern: /\b(fast\s*food|drive\s*thru|drive\s*through)\b/gi, tags: ['Fast Food'] },
+      { pattern: /\b(bakery|bakeshop)\b/gi, tags: ['Bakery'] },
+      { pattern: /\b(mexican\s*pastr(y|ies)|panaderia)\b/gi, tags: ['Mexican Pastries'] },
+      { pattern: /\b(german\s*pastr(y|ies))\b/gi, tags: ['German Pastries'] },
+      { pattern: /\b(ice\s*cream\s*shop|gelato\s*shop)\b/gi, tags: ['Ice Cream Shop'] },
+      { pattern: /\b(snow\s*cone\s*shop|shaved\s*ice)\b/gi, tags: ['Snow Cone Shop'] },
+      { pattern: /\b(frozen\s*yogurt\s*shop|froyo)\b/gi, tags: ['Frozen Yogurt Shop'] },
+      { pattern: /\b(frozen\s*custard\s*shop|custard\s*stand)\b/gi, tags: ['Frozen Custard Shop'] },
+      { pattern: /\b(free\s*admission|no\s*admission\s*fee|free\s*entry)\b/gi, tags: ['Free Admission'] },
+      { pattern: /\b(free\s*parking)\b/gi, tags: ['Free Parking'] },
+      { pattern: /\b(open\s*late|late\s*night|open\s*until\s*midnight|24\s*hours?)\b/gi, tags: ['Open Late'] },
+      { pattern: /\b(bicycle\s*shop|bike\s*shop|cycling\s*shop)\b/gi, tags: ['Bicycle Shop'] },
+      { pattern: /\b(garden\s*center)\b/gi, tags: ['Garden Center'] },
+      { pattern: /\b(plant\s*nursery|nursery)\b/gi, tags: ['Plant Nursery'] },
+      { pattern: /\b(hardware\s*store)\b/gi, tags: ['Hardware Store'] },
+      { pattern: /\b(discount\s*store|dollar\s*store|outlet)\b/gi, tags: ['Discount Store'] },
+      { pattern: /\b(flea\s*market)\b/gi, tags: ['Flea Market'] },
+      { pattern: /\b(swap\s*meet)\b/gi, tags: ['Swap Meet'] },
+      { pattern: /\b(hiking\s*trail|trailhead|hike)\b/gi, tags: ['Hiking Trail'] },
+      { pattern: /\b(waterfall\s*trail)\b/gi, tags: ['Waterfall Trail'] },
+      { pattern: /\b(waterfall\s*drive\s*up|drive\s*up\s*waterfall)\b/gi, tags: ['Waterfall Drive Up'] },
+      { pattern: /\b(scenic\s*overlook|vista\s*point|lookout\s*point)\b/gi, tags: ['Scenic Overlook'] },
+      { pattern: /\b(scenic\s*drive|parkway\s*drive)\b/gi, tags: ['Scenic Drive'] },
+      { pattern: /\b(state\s*park)\b/gi, tags: ['State Park'] },
+      { pattern: /\b(national\s*park)\b/gi, tags: ['National Park'] },
+      { pattern: /\b(wildlife\s*sanctuary)\b/gi, tags: ['Wildlife Sanctuary'] },
+      { pattern: /\b(wildlife\s*refuge)\b/gi, tags: ['Wildlife Refuge'] },
+      { pattern: /\b(wildlife\s*preserve)\b/gi, tags: ['Wildlife Preserve'] },
+      { pattern: /\b(swimming\s*access|swim\s*area)\b/gi, tags: ['Swimming Access'] },
+      { pattern: /\b(kayak\s*access|kayak\s*launch|paddle\s*launch)\b/gi, tags: ['Kayak Access'] },
+      { pattern: /\b(camping\s*access|campground\s*access|camp\s*site)\b/gi, tags: ['Camping Access'] },
+      { pattern: /\b(lake)\b/gi, tags: ['Lake'] },
+      { pattern: /\b(pond)\b/gi, tags: ['Pond'] },
+      { pattern: /\b(farm)\b/gi, tags: ['Farm'] },
+      { pattern: /\b(animal\s*encounter)\b/gi, tags: ['Animal Encounter'] },
+      { pattern: /\b(aquarium)\b/gi, tags: ['Aquarium'] },
+      { pattern: /\b(zoo)\b/gi, tags: ['Zoo'] },
+      { pattern: /\b(wildlife\s*rehabilitation|rehab\s*center)\b/gi, tags: ['Wildlife Rehabilitation'] },
+      { pattern: /\b(petting\s*zoo)\b/gi, tags: ['Petting Zoo'] },
+      { pattern: /\b(historic\s*location|historic\s*site|historical\s*site)\b/gi, tags: ['Historic Location'] },
+      { pattern: /\b(historic\s*battlefield|battlefield)\b/gi, tags: ['Historic Battlefield'] },
+      { pattern: /\b(orchard)\b/gi, tags: ['Orchard'] },
+      { pattern: /\b(you\s*pick\s*flowers?|u\s*pick\s*flowers?)\b/gi, tags: ['You Pick Flowers'] },
+      { pattern: /\b(you\s*pick\s*fruit|u\s*pick\s*fruit)\b/gi, tags: ['You Pick Fruit'] },
+      { pattern: /\b(department\s*store)\b/gi, tags: ['Department Store'] },
+      { pattern: /\b(outdoor\s*store|outfitter)\b/gi, tags: ['Outdoor Store'] },
+      { pattern: /\b(zip\s*lining|zipline)\b/gi, tags: ['Ziplining'] },
+      { pattern: /\b(ropes\s*course|high\s*ropes)\b/gi, tags: ['Ropes Course'] },
+      { pattern: /\b(mini\s*golf|putt\s*putt)\b/gi, tags: ['Mini Golf'] },
+      { pattern: /\b(dairy\s*farm)\b/gi, tags: ['Dairy Farm'] },
+      { pattern: /\b(cheese\s*creamery|creamery|cheese\s*shop)\b/gi, tags: ['Cheese Creamery'] },
+      { pattern: /\b(paved\s*bike\s*trail|greenway|rail\s*trail)\b/gi, tags: ['Paved Bike Trail'] },
+      { pattern: /\b(sporting\s*goods\s*store)\b/gi, tags: ['Sporting Goods Store'] },
+      { pattern: /\b(tattoo\s*parlor|tattoo\s*shop)\b/gi, tags: ['Tattoo Parlor'] },
+      { pattern: /\b(arcade)\b/gi, tags: ['Arcade'] },
+      { pattern: /\b(theme\s*park)\b/gi, tags: ['Theme Park'] },
+      { pattern: /\b(amusement\s*park|amuesment\s*park)\b/gi, tags: ['Amusement Park'] },
+      { pattern: /\b(water\s*park)\b/gi, tags: ['Water Park'] },
+      { pattern: /\b(beach)\b/gi, tags: ['Beach'] },
+      { pattern: /\b(boardwalk)\b/gi, tags: ['Boardwalk'] },
+      { pattern: /\b(sand\s*dunes?|dunes?)\b/gi, tags: ['Sand Dunes'] },
+      { pattern: /\b(pet\s*supply|pet\s*store)\b/gi, tags: ['Pet Supply'] },
+      { pattern: /\b(asian\s*supermarket|asian\s*market)\b/gi, tags: ['Asian Supermarket'] },
+      { pattern: /\b(indian\s*market)\b/gi, tags: ['Indian Market'] },
+      { pattern: /\b(european\s*market|international\s*market)\b/gi, tags: ['European Market'] },
+      { pattern: /\b(butcher\s*shop|meat\s*market|butchery)\b/gi, tags: ['Butcher Shop'] },
+      { pattern: /\b(botanical\s*garden)\b/gi, tags: ['Botanical Garden'] },
+      { pattern: /\b(public\s*garden|community\s*garden)\b/gi, tags: ['Public Gardens'] },
+      { pattern: /\b(light\s*house|lighthouse)\b/gi, tags: ['Lighthouse'] },
+      { pattern: /\b(general\s*store)\b/gi, tags: ['General Store'] },
+      { pattern: /\b(wildlife\s*safari|safari\s*park)\b/gi, tags: ['Wildlife Safari'] },
+      { pattern: /\b(science\s*museum)\b/gi, tags: ['Science Museum'] },
+      { pattern: /\b(art\s*museum)\b/gi, tags: ['Art Museum'] },
+      { pattern: /\b(history\s*museum|historical\s*museum)\b/gi, tags: ['History Museum'] },
+      { pattern: /\b(bowling\s*alley)\b/gi, tags: ['Bowling Alley'] },
+      { pattern: /\b(ice\s*skating\s*rink)\b/gi, tags: ['Ice Skating Rink'] },
+      { pattern: /\b(roller\s*rink|roller\s*skating)\b/gi, tags: ['Roller Rink'] },
+      { pattern: /\b(beer\s*garden)\b/gi, tags: ['Beer Garden'] },
+      { pattern: /\b(dog\s*park)\b/gi, tags: ['Dog Park'] },
+      { pattern: /\b(dog\s*friendly|pet\s*friendly)\b/gi, tags: ['Dog Friendly'] },
+      { pattern: /\b(water\s*garden|water\s*gardens)\b/gi, tags: ['Water Gardens'] },
+      { pattern: /\b(produce\s*stand|roadside\s*produce)\b/gi, tags: ['Produce Stand'] },
+
+      // Additional high-signal tags beyond the provided list.
+      { pattern: /\b(farm\s*to\s*table|farm-to-table)\b/gi, tags: ['Farm-to-Table'] },
+      { pattern: /\b(vegetarian\s*friendly|veggie\s*friendly)\b/gi, tags: ['Vegetarian-Friendly'] },
+      { pattern: /\b(gluten\s*free|gluten-free)\b/gi, tags: ['Gluten-Free Options'] },
+      { pattern: /\b(craft\s*brewery|microbrewery)\b/gi, tags: ['Craft Brewery'] },
+      { pattern: /\b(live\s*music)\b/gi, tags: ['Live Music'] },
+      { pattern: /\b(picnic\s*area)\b/gi, tags: ['Picnic Area'] },
+      { pattern: /\b(boat\s*launch|public\s*launch)\b/gi, tags: ['Boat Launch'] },
+      { pattern: /\b(fishing\s*access|bank\s*fishing)\b/gi, tags: ['Fishing Access'] },
+      { pattern: /\b(bird\s*watching|birding)\b/gi, tags: ['Birdwatching'] },
+      { pattern: /\b(sunrise\s*spot)\b/gi, tags: ['Sunrise Spot'] },
+      { pattern: /\b(sunset\s*spot)\b/gi, tags: ['Sunset Spot'] }
+    ];
+
+    rules.forEach((rule) => {
+      if (rule.pattern.test(text)) {
+        rule.tags.forEach((tag) => tags.add(tag));
+      }
+    });
+
+    return Array.from(tags);
+  }
+
+  function pruneGenericRecommendationTags(inputTags) {
+    const tags = new Set(inputTags || []);
+    const hasAny = (list) => list.some((tag) => tags.has(tag));
+
+    const specificDining = [
+      'German Food', 'Italian Food', 'Greek Food', 'Mediterranean Food', 'Mexican Food', 'Thai Food',
+      'Indian Food', 'Japanese Food', 'Chinese Food', 'Korean Food', 'Korean BBQ', 'Carolina BBQ',
+      'Tennessee BBQ', 'Ramen Bar', 'Pho', 'Sushi', 'Breakfast Joint', 'Diner', 'Cajun Food',
+      'Steakhouse', 'Sandwich Shop', 'Sub Shop', 'Coffee Shop', 'Tea Cafe', 'Bakery'
+    ];
+    const specificShopping = [
+      'Book Store', 'Thrift Store', 'Farmers Market', 'Grocery Store', 'Food Market', 'Antique Store',
+      'Bicycle Shop', 'Garden Center', 'Plant Nursery', 'Hardware Store', 'Discount Store', 'Flea Market',
+      'Swap Meet', 'Department Store', 'Outdoor Store', 'Sporting Goods Store', 'Pet Supply',
+      'Asian Supermarket', 'Indian Market', 'European Market', 'Butcher Shop', 'Cheese Creamery',
+      'General Store', 'Produce Stand'
+    ];
+    const specificOutdoor = [
+      'Hiking Trail', 'Waterfall Trail', 'Waterfall Drive Up', 'Scenic Overlook', 'Scenic Drive',
+      'State Park', 'National Park', 'Wildlife Sanctuary', 'Wildlife Refuge', 'Wildlife Preserve',
+      'Swimming Access', 'Kayak Access', 'Camping Access', 'Lake', 'Pond', 'Farm', 'Dog Park',
+      'Beach', 'Boardwalk', 'Sand Dunes', 'Botanical Garden', 'Public Gardens'
+    ];
+    const specificEntertainment = [
+      'Theme Park', 'Amusement Park', 'Water Park', 'Arcade', 'Mini Golf', 'Bowling Alley',
+      'Ice Skating Rink', 'Roller Rink', 'Science Museum', 'Art Museum', 'History Museum'
+    ];
+
+    if (hasAny(specificDining)) tags.delete('Dining');
+    if (hasAny(specificShopping)) tags.delete('Shopping');
+    if (hasAny(specificOutdoor)) tags.delete('Outdoor');
+    if (hasAny(specificEntertainment)) tags.delete('Entertainment');
+    if (hasAny(specificOutdoor)) tags.delete('Nature');
+
+    return Array.from(tags);
+  }
+
+  /**
    * Priority 3: Detect activity attributes (duration, difficulty, accessibility)
    */
   function detectActivityAttributes(text) {
@@ -1550,6 +1793,10 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
 
     const recommended = new Set();
 
+    // Priority 0: High-specificity tags first (concrete place/category matches).
+    const specificTags = detectSpecificVenueAndSpecialtyTags(lowerText);
+    specificTags.forEach((tag) => recommended.add(tag));
+
     // Priority 1: Detect location type
     const types = detectLocationType(lowerText);
     const primaryType = types[0];
@@ -1624,8 +1871,11 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
 
     // Feature 12: Smart Multi-Pattern Combinations
     const withCombos = detectMultiPatternCombos(fullText, recommended);
+    const pruned = pruneGenericRecommendationTags(Array.from(withCombos));
+    const canonical = normalizeTags(pruned)
+      .filter((tag) => !isDisabledTagOption(tag));
 
-    return Array.from(withCombos);
+    return Array.from(new Set(canonical));
   }
 
   // Expose enhanced text recommendation helper for detail windows and other tools.
@@ -1793,7 +2043,7 @@ const TAG_ALIASES = {
   'Trekking': ['Hiking', 'Backpacking', 'Mountain Walking'],
 
   // Dining Tags
-  'Coffee Shop': ['Coffee', 'Espresso Bar', 'Coffee Cafe', 'Coffeehouse', 'Cafe'],
+  'Coffee Shop': ['Coffee', 'Espresso Bar', 'Coffee Cafe', 'Coffeehouse', 'Cafe', 'Tea Cafe'],
   'Coffee': ['Coffee Shop', 'Espresso Bar', 'Coffeehouse', 'Cafe'],
 
   // Upscale Dining
@@ -1835,7 +2085,7 @@ const TAG_ALIASES = {
   'Mountain': ['Alpine', 'Peak', 'Summit', 'Highland', 'Mountainous'],
 
   // Wildlife
-  'Wildlife': ['Animals', 'Animals Spotting', 'Wild Life', 'Nature Wildlife', 'Animal Viewing'],
+  'Wildlife': ['Animals', 'Animals Spotting', 'Wild Life', 'Nature Wildlife', 'Animal Viewing', 'Wilfelife'],
   'Birding': ['Bird Watching', 'Bird Spotting', 'Ornithology'],
 
   // Easy/Hard
@@ -1865,8 +2115,36 @@ const TAG_ALIASES = {
   'Outdoor': ['Outdoors', 'Exterior', 'Outside', 'Nature-Based'],
 
   // Bookstore suggestion
-  'Bookstore': ['Books', 'Library', 'Book Shop'],
-  'Library': ['Bookstore', 'Books', 'Learning Centre']
+  'Book Store': ['Bookstore', 'Book Shop', 'Bookseller'],
+  'Bookstore': ['Book Store', 'Books', 'Library', 'Book Shop'],
+  'Library': ['Bookstore', 'Books', 'Learning Centre'],
+
+  // User-requested typo + wording normalization
+  'Thrift Store': ['Thift Store', 'Thrift shop', 'Second Hand Store', 'Resale Store'],
+  'Farmers Market': ['Farmer Market', 'Farmers market'],
+  'Restaurant': ['Restuarant', 'Eatery'],
+  'Mediterranean Food': ['Mediteranian Food', 'Mediterranian', 'Mediterranean'],
+  'Sushi': ['Shushi', 'Sushi Bar'],
+  'Plant Nursery': ['Plant Nursey', 'Nursery'],
+  'Hardware Store': ['Hardeware Store'],
+  'Historic Location': ['Histroric Location', 'Historic Site'],
+  'Asian Supermarket': ['Asain Supermarket', 'Asian Market'],
+  'Amusement Park': ['Amuesment Park'],
+  'Mexican Pastries': ['Mexican Pasteries'],
+  'Cheese Creamery': ['Cheese Creamory', 'Creamery'],
+  'You Pick Flowers': ['You Pick Flower', 'U-Pick Flowers'],
+  'You Pick Fruit': ['You pick Fruit', 'U-Pick Fruit'],
+
+  // Additional specificity aliases
+  'Tea Cafe': ['Tea House', 'Tea Room'],
+  'Korean BBQ': ['KBBQ'],
+  'Carolina BBQ': ['NC BBQ'],
+  'Tennessee BBQ': ['TN BBQ', 'Memphis BBQ'],
+  'Fast Food': ['Quick Service', 'Drive Through'],
+  'Dog Friendly': ['Pet Friendly'],
+  'Public Gardens': ['Community Garden'],
+  'Science Museum': ['Science Center'],
+  'History Museum': ['Historical Museum']
 };
 
 /**
@@ -1874,21 +2152,38 @@ const TAG_ALIASES = {
  */
 function resolveTagAlias(tagName) {
   if (!tagName) return null;
-
-  // Check if the tag itself is in TAG_ALIASES (it's the primary)
-  if (TAG_ALIASES[tagName]) {
-    return tagName;
-  }
-
-  // Check if this tag is an alias of something else
-  for (const [primary, aliases] of Object.entries(TAG_ALIASES)) {
-    if (aliases.includes(tagName)) {
-      return primary;
-    }
-  }
-
-  return tagName; // Return as-is if no alias found
+  const raw = String(tagName || '').trim();
+  if (!raw) return null;
+  const normalizedKey = normalizeTagAliasKey(raw);
+  return TAG_ALIAS_LOOKUP[normalizedKey] || raw;
 }
+
+function normalizeTagAliasKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const TAG_ALIAS_LOOKUP = (function buildTagAliasLookup() {
+  const lookup = Object.create(null);
+  Object.keys(TAG_ALIASES).forEach((primary) => {
+    const canonical = String(primary || '').trim();
+    if (!canonical) return;
+    const canonicalKey = normalizeTagAliasKey(canonical);
+    if (canonicalKey && !lookup[canonicalKey]) lookup[canonicalKey] = canonical;
+
+    const aliases = Array.isArray(TAG_ALIASES[primary]) ? TAG_ALIASES[primary] : [];
+    aliases.forEach((alias) => {
+      const key = normalizeTagAliasKey(alias);
+      if (key && !lookup[key]) lookup[key] = canonical;
+    });
+  });
+  return lookup;
+})();
 
 /**
  * Get all aliases for a tag
@@ -1903,8 +2198,104 @@ function getTagAliases(tagName) {
  */
 function normalizeTags(tags) {
   if (!Array.isArray(tags)) return [];
-  return tags.map(t => resolveTagAlias(t)).filter(Boolean);
+  return Array.from(new Set(tags
+    .map((t) => resolveTagAlias(t))
+    .map((t) => String(t || '').trim())
+    .filter(Boolean)
+    .filter((t) => !isDisabledTagOption(t))));
 }
+
+window.isDisabledTagOption = window.isDisabledTagOption || isDisabledTagOption;
+window.cleanupDisabledTagList = window.cleanupDisabledTagList || cleanupDisabledTagList;
+
+window.cleanupDisabledTagsEverywhere = async function cleanupDisabledTagsEverywhere(options = {}) {
+  const dryRun = options && options.dryRun === true;
+  const localOnly = options && options.localOnly === true;
+  const summary = {
+    dryRun,
+    localOnly,
+    cleanedPlaces: 0,
+    removedTags: 0,
+    workbookRowsChanged: 0,
+    persisted: false,
+    localStorageUpdated: false
+  };
+
+  try {
+    if (window.tagManager && window.tagManager.tags instanceof Map) {
+      let changed = false;
+      window.tagManager.tags.forEach((tags, placeId) => {
+        const cleaned = cleanupDisabledTagList(normalizeTags(tags || []));
+        const before = Array.isArray(tags) ? tags.length : 0;
+        const removed = Math.max(0, before - cleaned.length);
+        if (removed > 0) {
+          changed = true;
+          summary.cleanedPlaces += 1;
+          summary.removedTags += removed;
+          if (!dryRun) window.tagManager.tags.set(placeId, cleaned);
+        }
+      });
+      if (changed && !dryRun) {
+        window.tagManager.saveTags();
+        summary.localStorageUpdated = true;
+      }
+    }
+
+    if (!dryRun && !localOnly && Array.isArray(window.adventuresData) && typeof window.saveToExcel === 'function') {
+      for (let index = 0; index < window.adventuresData.length; index += 1) {
+        const row = window.adventuresData[index];
+        const values = row && row.values && Array.isArray(row.values[0]) ? row.values[0] : null;
+        if (!values) continue;
+        const existing = String(values[3] || '').split(',').map((tag) => String(tag || '').trim()).filter(Boolean);
+        const cleaned = cleanupDisabledTagList(normalizeTags(existing));
+        if (cleaned.join(', ') === existing.join(', ')) continue;
+        values[3] = cleaned.join(', ');
+        summary.workbookRowsChanged += 1;
+        try {
+          const rowRef = row && Object.prototype.hasOwnProperty.call(row, 'rowId') ? row.rowId : index;
+          await window.saveToExcel(rowRef, values);
+        } catch (_error) {
+          try { await window.saveToExcel(); } catch (_saveError) {}
+        }
+      }
+      summary.persisted = summary.workbookRowsChanged > 0;
+    }
+  } catch (error) {
+    summary.error = String(error && error.message ? error.message : error);
+  }
+
+  return summary;
+};
+
+try {
+  if (window.localStorage && window.localStorage.getItem && window.localStorage.getItem('__disabled_tag_cleanup_v1') !== '1') {
+    window.cleanupDisabledTagsEverywhere({ localOnly: true }).finally(function () {
+      try { window.localStorage.setItem('__disabled_tag_cleanup_v1', '1'); } catch (_err) {}
+    });
+  }
+} catch (_cleanupBootstrapError) {}
+
+try {
+  if (window.localStorage && window.localStorage.getItem && window.localStorage.getItem('__disabled_tag_workbook_cleanup_v1') !== '1') {
+    var disabledTagWorkbookCleanupAttempts = 0;
+    var disabledTagWorkbookCleanupTimer = window.setInterval(function () {
+      disabledTagWorkbookCleanupAttempts += 1;
+      var canAttemptWorkbookCleanup = Array.isArray(window.adventuresData)
+        && window.adventuresData.length > 0
+        && typeof window.saveToExcel === 'function';
+      if (canAttemptWorkbookCleanup) {
+        window.clearInterval(disabledTagWorkbookCleanupTimer);
+        window.cleanupDisabledTagsEverywhere({ localOnly: false }).finally(function () {
+          try { window.localStorage.setItem('__disabled_tag_workbook_cleanup_v1', '1'); } catch (_err) {}
+        });
+        return;
+      }
+      if (disabledTagWorkbookCleanupAttempts >= 8) {
+        window.clearInterval(disabledTagWorkbookCleanupTimer);
+      }
+    }, 2500);
+  }
+} catch (_cleanupWorkbookBootstrapError) {}
 
 // ============================================================
 // SECTION 7: CUSTOM TAG REGISTRY
@@ -2716,6 +3107,9 @@ if (typeof module !== 'undefined' && module.exports) {
     resolveTagAlias,
     getTagAliases,
     normalizeTags,
+    isDisabledTagOption,
+    cleanupDisabledTagList,
+    cleanupDisabledTagsEverywhere: window.cleanupDisabledTagsEverywhere,
 
     // Global instances
     tagManager: window.tagManager,

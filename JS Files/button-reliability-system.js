@@ -35,7 +35,23 @@
       updateBannerShown: 0,
       updateBannerReloadClicked: 0,
       updateBannerDismissClicked: 0
-    }
+    },
+    shortcutDrawerOpen: false
+  };
+
+  const SHORTCUT_HELP_STYLE_ID = 'pageShortcutHelpStyles';
+  const SHORTCUT_HELP_DEFAULTS = {
+    title: 'Keyboard Shortcuts',
+    buttonLabel: '⌨️ Shortcuts',
+    sections: [
+      {
+        title: 'General',
+        items: [
+          { keys: ['?'], description: 'Open keyboard shortcuts' },
+          { keys: ['Esc'], description: 'Close the shortcuts drawer or active dialog' }
+        ]
+      }
+    ]
   };
 
   // ============================================================
@@ -63,6 +79,150 @@
 
   function getInteractiveSelector() {
     return 'button, [role="button"], a[href], input:not([type="hidden"]), select, textarea, summary, .pill-button, .planner-top-btn, .nature-explore-birds-btn, .nature-command-btn, .quick-filter-btn, .card-btn, .action-btn';
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getPageShortcutConfig() {
+    const raw = window.PAGE_SHORTCUTS_HELP && typeof window.PAGE_SHORTCUTS_HELP === 'object'
+      ? window.PAGE_SHORTCUTS_HELP
+      : {};
+    const rawSections = Array.isArray(raw.sections) ? raw.sections : [];
+    const sections = SHORTCUT_HELP_DEFAULTS.sections.concat(rawSections).map((section) => ({
+      title: String(section && section.title || 'Shortcuts').trim() || 'Shortcuts',
+      items: Array.isArray(section && section.items) ? section.items : []
+    })).filter((section) => section.items.length);
+    return {
+      disabled: raw.disabled === true,
+      title: String(raw.title || SHORTCUT_HELP_DEFAULTS.title).trim() || SHORTCUT_HELP_DEFAULTS.title,
+      buttonLabel: String(raw.buttonLabel || SHORTCUT_HELP_DEFAULTS.buttonLabel).trim() || SHORTCUT_HELP_DEFAULTS.buttonLabel,
+      sections: sections.length ? sections : SHORTCUT_HELP_DEFAULTS.sections
+    };
+  }
+
+  function ensureShortcutHelpStyles() {
+    if (document.getElementById(SHORTCUT_HELP_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = SHORTCUT_HELP_STYLE_ID;
+    style.textContent = [
+      '#pageShortcutHelpToggle{position:fixed;left:14px;bottom:14px;z-index:10030;display:inline-flex;align-items:center;gap:8px;border:1px solid #bfdbfe;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);color:#1d4ed8;border-radius:999px;padding:10px 14px;font-size:12px;font-weight:700;box-shadow:0 10px 24px rgba(30,64,175,.18);cursor:pointer;}',
+      '#pageShortcutHelpToggle:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(30,64,175,.24);}',
+      '#pageShortcutHelpBackdrop{position:fixed;inset:0;background:rgba(15,23,42,.3);backdrop-filter:blur(2px);z-index:10028;display:none;}',
+      '#pageShortcutHelpBackdrop.open{display:block;}',
+      '#pageShortcutHelpDrawer{position:fixed;top:0;right:0;height:100vh;width:min(420px,calc(100vw - 24px));background:#fff;border-left:1px solid #dbeafe;box-shadow:-12px 0 36px rgba(15,23,42,.18);z-index:10029;transform:translateX(104%);transition:transform .22s ease;display:flex;flex-direction:column;}',
+      '#pageShortcutHelpDrawer.open{transform:translateX(0);}',
+      '.page-shortcut-help-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 100%);color:#fff;}',
+      '.page-shortcut-help-body{padding:16px 18px;overflow:auto;display:grid;gap:18px;}',
+      '.page-shortcut-help-section{display:grid;gap:10px;}',
+      '.page-shortcut-help-section-title{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b;}',
+      '.page-shortcut-help-item{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:12px;align-items:start;}',
+      '.page-shortcut-help-keys{display:flex;flex-wrap:wrap;gap:6px;}',
+      '.page-shortcut-help-desc{font-size:13px;color:#334155;line-height:1.45;}',
+      '.page-shortcut-help-close{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;}',
+      '@media (max-width:640px){#pageShortcutHelpToggle{left:12px;right:12px;bottom:12px;justify-content:center;}#pageShortcutHelpDrawer{width:min(100vw,420px);}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  function renderShortcutKeys(keys) {
+    const list = Array.isArray(keys) ? keys : [keys];
+    return list.map((key) => '<span class="ui-kbd-shortcut">' + escapeHtml(String(key || '').trim()) + '</span>').join('');
+  }
+
+  function ensureShortcutHelpUi() {
+    const config = getPageShortcutConfig();
+    if (config.disabled) return;
+    ensureShortcutHelpStyles();
+
+    let toggle = document.getElementById('pageShortcutHelpToggle');
+    let backdrop = document.getElementById('pageShortcutHelpBackdrop');
+    let drawer = document.getElementById('pageShortcutHelpDrawer');
+    if (!toggle) {
+      toggle = document.createElement('button');
+      toggle.id = 'pageShortcutHelpToggle';
+      toggle.type = 'button';
+      toggle.className = 'ui-focusable';
+      document.body.appendChild(toggle);
+    }
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'pageShortcutHelpBackdrop';
+      document.body.appendChild(backdrop);
+    }
+    if (!drawer) {
+      drawer = document.createElement('aside');
+      drawer.id = 'pageShortcutHelpDrawer';
+      drawer.setAttribute('role', 'dialog');
+      drawer.setAttribute('aria-modal', 'true');
+      drawer.setAttribute('aria-labelledby', 'pageShortcutHelpTitle');
+      document.body.appendChild(drawer);
+    }
+
+    toggle.textContent = config.buttonLabel;
+    toggle.title = config.buttonLabel + ' (?)';
+    toggle.setAttribute('data-tooltip', config.buttonLabel + ' (?)');
+    drawer.innerHTML = '<div class="page-shortcut-help-head">'
+      + '<div><div id="pageShortcutHelpTitle" style="font-size:18px;font-weight:800;">' + escapeHtml(config.title) + '</div>'
+      + '<div style="font-size:12px;opacity:.9;margin-top:4px;">Available shortcuts for this page</div></div>'
+      + '<button type="button" id="pageShortcutHelpCloseBtn" class="page-shortcut-help-close">Close</button></div>'
+      + '<div class="page-shortcut-help-body">'
+      + config.sections.map((section) => '<section class="page-shortcut-help-section"><div class="page-shortcut-help-section-title">' + escapeHtml(section.title) + '</div>'
+        + section.items.map((item) => '<div class="page-shortcut-help-item"><div class="page-shortcut-help-keys">' + renderShortcutKeys(item.keys) + '</div><div class="page-shortcut-help-desc">' + escapeHtml(item.description || '') + '</div></div>').join('')
+        + '</section>').join('')
+      + '</div>';
+
+    if (!toggle.dataset.shortcutHelpBound) {
+      toggle.dataset.shortcutHelpBound = '1';
+      toggle.addEventListener('click', function () { toggleShortcutHelpDrawer(true); });
+    }
+    if (!backdrop.dataset.shortcutHelpBound) {
+      backdrop.dataset.shortcutHelpBound = '1';
+      backdrop.addEventListener('click', function () { toggleShortcutHelpDrawer(false); });
+    }
+    const closeBtn = document.getElementById('pageShortcutHelpCloseBtn');
+    if (closeBtn && !closeBtn.dataset.shortcutHelpBound) {
+      closeBtn.dataset.shortcutHelpBound = '1';
+      closeBtn.addEventListener('click', function () { toggleShortcutHelpDrawer(false); });
+    }
+    applyShortcutTooltips(config);
+  }
+
+  function toggleShortcutHelpDrawer(forceOpen) {
+    const backdrop = document.getElementById('pageShortcutHelpBackdrop');
+    const drawer = document.getElementById('pageShortcutHelpDrawer');
+    if (!backdrop || !drawer) return;
+    const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !SYSTEM.shortcutDrawerOpen;
+    SYSTEM.shortcutDrawerOpen = nextOpen;
+    backdrop.classList.toggle('open', nextOpen);
+    drawer.classList.toggle('open', nextOpen);
+    if (nextOpen) {
+      const closeBtn = document.getElementById('pageShortcutHelpCloseBtn');
+      if (closeBtn && typeof closeBtn.focus === 'function') closeBtn.focus();
+    }
+  }
+
+  function applyShortcutTooltips(config) {
+    (config.sections || []).forEach((section) => {
+      (section.items || []).forEach((item) => {
+        const selector = String(item && item.buttonSelector || '').trim();
+        if (!selector) return;
+        document.querySelectorAll(selector).forEach((element) => {
+          if (!element) return;
+          const suffix = 'Shortcut: ' + (Array.isArray(item.keys) ? item.keys.join(' / ') : String(item.keys || ''));
+          const base = String(item.tooltip || element.getAttribute('title') || element.getAttribute('data-tooltip') || element.textContent || '').trim();
+          const nextTip = (base ? (base + ' • ' + suffix) : suffix).trim();
+          element.setAttribute('title', nextTip);
+          element.setAttribute('data-tooltip', nextTip);
+        });
+      });
+    });
   }
 
   function describeElement(element) {
@@ -405,6 +565,23 @@
     });
 
     window.addEventListener('reliability:update-banner-event', recordUpdateBannerTelemetry);
+    ensureShortcutHelpUi();
+
+    document.addEventListener('keydown', function (event) {
+      if (!event) return;
+      if (event.key === 'Escape' && SYSTEM.shortcutDrawerOpen) {
+        event.preventDefault();
+        toggleShortcutHelpDrawer(false);
+        return;
+      }
+      if ((event.key === '?' || (event.key === '/' && event.shiftKey)) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        var target = event.target;
+        var editable = target && target.closest && target.closest('input, textarea, select, [contenteditable], [role="textbox"]');
+        if (editable) return;
+        event.preventDefault();
+        toggleShortcutHelpDrawer(true);
+      }
+    }, true);
 
     log('info', '✅ Button Reliability System v1.0.2 initialized', { buttonsFound: SYSTEM.stats.totalButtonsTracked });
   }
@@ -631,6 +808,20 @@
         updateBannerReloadClicked: Number(SYSTEM.stats.updateBannerReloadClicked || 0),
         updateBannerDismissClicked: Number(SYSTEM.stats.updateBannerDismissClicked || 0)
       };
+    },
+
+    refreshShortcutHelp() {
+      ensureShortcutHelpUi();
+      return { open: SYSTEM.shortcutDrawerOpen, config: getPageShortcutConfig() };
+    },
+
+    openShortcutHelp() {
+      ensureShortcutHelpUi();
+      toggleShortcutHelpDrawer(true);
+    },
+
+    closeShortcutHelp() {
+      toggleShortcutHelpDrawer(false);
     },
 
     /**

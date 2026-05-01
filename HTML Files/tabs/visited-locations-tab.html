@@ -405,6 +405,7 @@
   <div id="visitedExplorerDetailsBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedPhotoGalleryBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedUrlSearchBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedBulkRefreshBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedLocationTextParserBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <!-- Photo Gallery Modal -->
   <div id="visitedPhotoGalleryModal" class="visited-explorer-details-modal visited-photo-gallery-modal" role="dialog" aria-modal="true" aria-labelledby="visitedPhotoGalleryTitle" hidden tabindex="-1" data-location-id="" data-subtab-key="">
@@ -432,6 +433,61 @@
       <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;">
         <button type="button" id="visitedUrlSearchSaveBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Links</button>
         <button type="button" id="visitedUrlSearchCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <!-- Move to Table Backdrop & Modal -->
+  <div id="visitedMoveTableBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedMoveTableModal" class="visited-explorer-details-modal visited-url-search-modal" role="dialog" aria-modal="true" aria-labelledby="visitedMoveTableTitle" hidden tabindex="-1">
+    <div class="visited-explorer-details-head">
+      <div id="visitedMoveTableTitle" class="card-title">📦 Move to Table</div>
+      <button type="button" id="visitedMoveTableCloseBtn" class="pill-button" aria-label="Close">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <p style="margin:0 0 10px;font-size:13px;color:#475569;line-height:1.5;" id="visitedMoveTableLead">Select a destination table and confirm to move the location(s) below.</p>
+      <div id="visitedMoveTableItemList" style="margin-bottom:14px;max-height:130px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;background:#f8fafc;font-size:13px;"></div>
+      <label class="visited-visit-log-label" for="visitedMoveTableDestSelect">Destination table</label>
+      <select id="visitedMoveTableDestSelect" class="filter-input" style="margin-bottom:12px;"></select>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#374151;cursor:pointer;margin-bottom:4px;">
+        <input type="checkbox" id="visitedMoveTableKeepCopy" style="width:16px;height:16px;accent-color:#2563eb;" />
+        Keep a copy in the source table (copy instead of move)
+      </label>
+      <div id="visitedMoveTableStatus" style="font-size:13px;color:#475569;margin:12px 0 4px;min-height:18px;"></div>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:12px;">
+        <button type="button" id="visitedMoveTableRunBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">📦 Move</button>
+        <button type="button" id="visitedMoveTableCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Data Refresh Modal -->
+  <div id="visitedBulkRefreshModal" class="visited-explorer-details-modal visited-url-search-modal" role="dialog" aria-modal="true" aria-labelledby="visitedBulkRefreshTitle" hidden tabindex="-1" data-subtab-key="" data-item-id="">
+    <div class="visited-explorer-details-head">
+      <div id="visitedBulkRefreshTitle" class="card-title">🔄 Bulk Data Refresh</div>
+      <button type="button" id="visitedBulkRefreshCloseBtn" class="pill-button" aria-label="Close bulk refresh">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <div id="visitedBulkRefreshSummary" class="visited-url-search-hint" style="margin-bottom:12px;">Choose which Google-backed fields to refresh for this table.</div>
+      <label class="visited-visit-log-label" style="margin-bottom:8px;">Fields to refresh</label>
+      <div id="visitedBulkRefreshFieldsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:12px;">
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="website" checked /> Website</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="phone" checked /> Phone</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="address" checked /> Address</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="hours" checked /> Hours</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="rating" checked /> Rating</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="description" checked /> Description</label>
+        <label class="visited-visit-log-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;margin:0;padding:10px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;"><input type="checkbox" data-bulk-refresh-field="coordinates" checked /> Coordinates</label>
+      </div>
+      <label class="visited-visit-log-label" for="visitedBulkRefreshMode">Refresh mode</label>
+      <select id="visitedBulkRefreshMode" class="filter-input" style="margin-bottom:10px;">
+        <option value="missing-only" selected>Only fill empty / missing values</option>
+        <option value="refresh-all">Overwrite all selected fields with fresh Google data</option>
+      </select>
+      <div id="visitedBulkRefreshModeHint" class="visited-url-search-hint" style="margin-bottom:12px;">Safe mode preserves existing values and only fills blanks.</div>
+      <div id="visitedBulkRefreshStatus" class="visited-url-search-hint" style="margin-bottom:12px;">This will open Edit Mode and run the selected refresh against the source table for this card.</div>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;">
+        <button type="button" id="visitedBulkRefreshRunBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Open &amp; Run Refresh</button>
+        <button type="button" id="visitedBulkRefreshCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
       </div>
     </div>
   </div>
@@ -514,3 +570,734 @@
     window.AdventureAchievements.init();
   }
 </script>
+
+<script>
+  (function initVisitedBulkRefreshQuickAction() {
+    if (window.__visitedBulkRefreshQuickActionInit) return;
+    window.__visitedBulkRefreshQuickActionInit = true;
+
+    const SUBTAB_TARGET_FALLBACKS = {
+      outdoors: { filePath: 'Nature_Locations.xlsx', tableName: 'Nature_Locations' },
+      entertainment: { filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' },
+      'food-drink': { filePath: 'Retail_Food_and_Drink.xlsx', tableName: 'Restaurants' },
+      retail: { filePath: 'Retail_Food_and_Drink.xlsx', tableName: 'Retail' },
+      'wildlife-animals': { filePath: 'Entertainment_Locations.xlsx', tableName: 'Wildlife_Animals' },
+      'regional-festivals': { filePath: 'Entertainment_Locations.xlsx', tableName: 'Festivals' }
+    };
+    const FIELD_DEFAULTS = ['website', 'phone', 'address', 'hours', 'rating', 'description', 'coordinates'];
+
+    function getVisitedRoot() {
+      return document.getElementById('visitedLocationsRoot');
+    }
+
+    function getVisitedStateSafe() {
+      return window.__visitedState && typeof window.__visitedState === 'object' ? window.__visitedState : null;
+    }
+
+    function getExplorerItemById(subtabKey, itemId) {
+      const state = getVisitedStateSafe();
+      const explorer = state && state.subtabExplorer && state.subtabExplorer[subtabKey];
+      const items = explorer && Array.isArray(explorer.items) ? explorer.items : [];
+      return items.find((item) => item && String(item.id || '').trim() === String(itemId || '').trim()) || null;
+    }
+
+    function basename(path) {
+      const clean = String(path || '').trim();
+      return clean ? clean.split('/').filter(Boolean).slice(-1)[0] : '';
+    }
+
+    function resolveTargetMeta(subtabKey, item) {
+      const fallback = SUBTAB_TARGET_FALLBACKS[String(subtabKey || '').trim()] || {};
+      return {
+        filePath: basename(item && item.sourceWorkbookPath) || String(fallback.filePath || '').trim(),
+        tableName: String((item && item.sourceTable) || fallback.tableName || '').trim(),
+        title: String((item && (item.title || item.name)) || '').trim() || 'Selected location'
+      };
+    }
+
+    function getSelectedFields() {
+      return Array.from(document.querySelectorAll('[data-bulk-refresh-field]'))
+        .filter((input) => input && input.checked)
+        .map((input) => String(input.getAttribute('data-bulk-refresh-field') || '').trim())
+        .filter(Boolean);
+    }
+
+    function updateModeHint() {
+      const mode = String((document.getElementById('visitedBulkRefreshMode') || {}).value || 'missing-only').trim();
+      const hint = document.getElementById('visitedBulkRefreshModeHint');
+      if (!hint) return;
+      hint.textContent = mode === 'refresh-all'
+        ? 'Overwrite mode refreshes every selected field with fresh Google data, even when a value already exists.'
+        : 'Safe mode preserves existing values and only fills blanks / missing fields.';
+    }
+
+    function setBulkRefreshStatus(message, tone) {
+      const status = document.getElementById('visitedBulkRefreshStatus');
+      if (!status) return;
+      status.textContent = String(message || '').trim();
+      status.style.color = tone === 'error' ? '#b91c1c' : (tone === 'success' ? '#166534' : '#475569');
+    }
+
+    function openBulkRefreshModal(subtabKey, itemId) {
+      const modal = document.getElementById('visitedBulkRefreshModal');
+      const backdrop = document.getElementById('visitedBulkRefreshBackdrop');
+      const item = getExplorerItemById(subtabKey, itemId);
+      if (!modal || !backdrop || !item) return;
+      const targetMeta = resolveTargetMeta(subtabKey, item);
+      modal.dataset.subtabKey = String(subtabKey || '').trim();
+      modal.dataset.itemId = String(itemId || '').trim();
+      modal.dataset.targetFilePath = targetMeta.filePath;
+      modal.dataset.targetTableName = targetMeta.tableName;
+      const title = document.getElementById('visitedBulkRefreshTitle');
+      const summary = document.getElementById('visitedBulkRefreshSummary');
+      if (title) title.textContent = `🔄 Bulk Data Refresh — ${targetMeta.title}`;
+      if (summary) {
+        summary.textContent = targetMeta.tableName
+          ? `Run a Google-backed bulk refresh for ${targetMeta.tableName}${targetMeta.filePath ? ` (${targetMeta.filePath})` : ''}. Choose the fields to refresh below.`
+          : 'Choose which Google-backed fields to refresh for this table.';
+      }
+      FIELD_DEFAULTS.forEach((fieldKey) => {
+        const input = document.querySelector(`[data-bulk-refresh-field="${fieldKey}"]`);
+        if (input) input.checked = true;
+      });
+      const mode = document.getElementById('visitedBulkRefreshMode');
+      if (mode) mode.value = 'missing-only';
+      updateModeHint();
+      setBulkRefreshStatus('This will open Edit Mode and run the selected refresh against the source table for this card.', 'info');
+      backdrop.hidden = false;
+      modal.hidden = false;
+      modal.focus();
+    }
+
+    function closeBulkRefreshModal() {
+      const modal = document.getElementById('visitedBulkRefreshModal');
+      const backdrop = document.getElementById('visitedBulkRefreshBackdrop');
+      if (modal) {
+        modal.hidden = true;
+        modal.dataset.subtabKey = '';
+        modal.dataset.itemId = '';
+        modal.dataset.targetFilePath = '';
+        modal.dataset.targetTableName = '';
+      }
+      if (backdrop) backdrop.hidden = true;
+    }
+
+    function buildEditModeUrl(subtabKey, options) {
+      const url = new URL(
+        typeof window.resolvePlannerPageUrl === 'function'
+          ? window.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html')
+          : new URL('HTML%20Files/edit-mode-enhanced.html', window.location.href).toString()
+      );
+      const key = String(subtabKey || '').trim();
+      url.searchParams.set('embedded', '1');
+      url.searchParams.set('sourceSubtab', key);
+      url.searchParams.set('targetFilePath', String(options.targetFilePath || ''));
+      url.searchParams.set('targetTableName', String(options.targetTableName || ''));
+      url.searchParams.set('bulkRefreshAction', '1');
+      url.searchParams.set('bulkRefreshFields', String(options.bulkRefreshFields || ''));
+      url.searchParams.set('bulkRefreshMode', String(options.bulkRefreshMode || 'missing-only'));
+      if (options.bulkRefreshTitle) url.searchParams.set('bulkRefreshTitle', String(options.bulkRefreshTitle));
+      url.searchParams.set('ts', String(Date.now()));
+      const hashParams = new URLSearchParams(url.searchParams);
+      url.hash = hashParams.toString();
+      return url.toString();
+    }
+
+    function openEditModeForBulkRefresh(subtabKey, options) {
+      const safeSubtabKey = String(subtabKey || '').trim();
+      const progressBtn = document.querySelector(`[data-progress-subtab="${safeSubtabKey}"]`);
+      if (progressBtn) progressBtn.click();
+      const actionBtn = document.querySelector(`[data-visited-subtab-action="open-edit-mode-${safeSubtabKey}"]`);
+      if (actionBtn) actionBtn.click();
+      const frameId = `visitedEditModeFrame-${safeSubtabKey}`;
+      const nextSrc = buildEditModeUrl(subtabKey, options);
+      let attempts = 0;
+      const applySrc = function() {
+        attempts += 1;
+        const frame = document.getElementById(frameId);
+        if (frame) {
+          frame.src = nextSrc;
+          return;
+        }
+        if (attempts < 10) window.setTimeout(applySrc, 80);
+      };
+      window.setTimeout(applySrc, 40);
+    }
+
+    function runBulkRefresh() {
+      const modal = document.getElementById('visitedBulkRefreshModal');
+      if (!modal) return;
+      const subtabKey = String(modal.dataset.subtabKey || '').trim();
+      const itemId = String(modal.dataset.itemId || '').trim();
+      const item = getExplorerItemById(subtabKey, itemId);
+      const fields = getSelectedFields();
+      const mode = String((document.getElementById('visitedBulkRefreshMode') || {}).value || 'missing-only').trim();
+      if (!fields.length) {
+        setBulkRefreshStatus('Select at least one field to refresh.', 'error');
+        return;
+      }
+      openEditModeForBulkRefresh(subtabKey, {
+        targetFilePath: String(modal.dataset.targetFilePath || '').trim(),
+        targetTableName: String(modal.dataset.targetTableName || '').trim(),
+        bulkRefreshFields: fields.join(','),
+        bulkRefreshMode: mode,
+        bulkRefreshTitle: String((item && (item.title || item.name)) || 'Selected location').trim()
+      });
+      closeBulkRefreshModal();
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Opening Edit Mode to run bulk refresh (${mode === 'refresh-all' ? 'overwrite' : 'missing only'})…`, 'info', 2600);
+      }
+    }
+
+    function ensureQuickActionButton(menu) {
+      if (!menu || menu.querySelector('[data-visited-explorer-bulk-refresh]')) return;
+      const findUrlsBtn = menu.querySelector('[data-visited-explorer-find-urls]');
+      if (!findUrlsBtn) return;
+      const itemId = String(findUrlsBtn.getAttribute('data-visited-explorer-find-urls') || '').trim();
+      const subtabKey = String(findUrlsBtn.getAttribute('data-visited-explorer-subtab') || '').trim();
+      if (!itemId || !subtabKey) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'visited-card-mini-menu-item visited-explorer-quick-action-item';
+      btn.setAttribute('data-visited-explorer-bulk-refresh', itemId);
+      btn.setAttribute('data-visited-explorer-subtab', subtabKey);
+      btn.setAttribute('role', 'menuitem');
+      btn.textContent = '🔄 Bulk Data Refresh';
+      findUrlsBtn.insertAdjacentElement('afterend', btn);
+    }
+
+    function scanQuickActionMenus() {
+      document.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach(ensureQuickActionButton);
+    }
+
+    function bindEnhancer() {
+      const root = getVisitedRoot();
+      if (!root) return false;
+      scanQuickActionMenus();
+      updateModeHint();
+
+      const modeSelect = document.getElementById('visitedBulkRefreshMode');
+      if (modeSelect && modeSelect.dataset.bulkRefreshBound !== '1') {
+        modeSelect.dataset.bulkRefreshBound = '1';
+        modeSelect.addEventListener('change', updateModeHint);
+      }
+
+      if (!document.body.dataset.visitedBulkRefreshClickBound) {
+        document.body.dataset.visitedBulkRefreshClickBound = '1';
+        document.addEventListener('click', function(event) {
+          const bulkBtn = event.target.closest('[data-visited-explorer-bulk-refresh]');
+          if (bulkBtn) {
+            const subtabKey = String(bulkBtn.getAttribute('data-visited-explorer-subtab') || '').trim();
+            const itemId = String(bulkBtn.getAttribute('data-visited-explorer-bulk-refresh') || '').trim();
+            if (subtabKey && itemId) openBulkRefreshModal(subtabKey, itemId);
+            return;
+          }
+          if (event.target.closest('#visitedBulkRefreshCloseBtn, #visitedBulkRefreshBackdrop, #visitedBulkRefreshCancelBtn')) {
+            closeBulkRefreshModal();
+            return;
+          }
+          if (event.target.closest('#visitedBulkRefreshRunBtn')) {
+            runBulkRefresh();
+          }
+        }, true);
+        document.addEventListener('keydown', function(event) {
+          if (event.key !== 'Escape') return;
+          const modal = document.getElementById('visitedBulkRefreshModal');
+          if (modal && !modal.hidden) closeBulkRefreshModal();
+        });
+      }
+
+      if (!window.__visitedBulkRefreshObserver) {
+        window.__visitedBulkRefreshObserver = new MutationObserver(scanQuickActionMenus);
+        window.__visitedBulkRefreshObserver.observe(root, { childList: true, subtree: true });
+      }
+      return true;
+    }
+
+    if (!bindEnhancer()) {
+      const retry = window.setInterval(function() {
+        if (bindEnhancer()) window.clearInterval(retry);
+      }, 250);
+      window.setTimeout(function() { window.clearInterval(retry); }, 12000);
+    }
+  }());
+</script>
+
+<script>
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * Move Location(s) Between Tables
+   * Adds "📦 Move to Table" to every card quick-actions menu (single) and a
+   * per-list checkbox-based multi-select bar for bulk moves.
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  (function initVisitedMoveToTableFeature() {
+    if (window.__visitedMoveToTableFeatureInit) return;
+    window.__visitedMoveToTableFeatureInit = true;
+
+    /* ── Known tables ─────────────────────────────────────────────────── */
+    const ALL_KNOWN_TABLES = [
+      { label: '🌲 Outdoors',              workbook: 'Nature_Locations.xlsx',        table: 'Nature_Locations',      subtab: 'outdoors' },
+      { label: '🎬 Entertainment',         workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment', subtab: 'entertainment' },
+      { label: '🍽️ Restaurants',           workbook: 'Retail_Food_and_Drink.xlsx',  table: 'Restaurants',           subtab: 'food-drink' },
+      { label: '☕ Coffee',                workbook: 'Retail_Food_and_Drink.xlsx',  table: 'Coffee',                subtab: 'food-drink' },
+      { label: '🛍️ Retail',               workbook: 'Retail_Food_and_Drink.xlsx',  table: 'Retail',                subtab: 'retail' },
+      { label: '🦌 Wildlife & Animals',    workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals',      subtab: 'wildlife-animals' },
+      { label: '🎉 Regional Festivals',    workbook: 'Entertainment_Locations.xlsx', table: 'Festivals',             subtab: 'regional-festivals' },
+    ];
+
+    /* ── State ────────────────────────────────────────────────────────── */
+    let pendingMoveItems = [];
+    const selectedBySubtab = {}; // { [subtabKey]: Set<itemId> }
+
+    /* ── Tiny helpers ─────────────────────────────────────────────────── */
+    function esc(text) {
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function normHeader(value) {
+      return String(value || '').trim().toLowerCase().replace(/[\s_\-]+/g, '');
+    }
+
+    function baseFilename(path) {
+      return String(path || '').split('/').filter(Boolean).pop() || '';
+    }
+
+    function encodeGraphPath(filePath) {
+      return String(filePath || '').split('/').filter(Boolean).map(encodeURIComponent).join('/');
+    }
+
+    function getVisitedRoot() {
+      return document.getElementById('visitedLocationsRoot');
+    }
+
+    function getExplorerItemById(subtabKey, itemId) {
+      const state = window.__visitedState && typeof window.__visitedState === 'object' ? window.__visitedState : null;
+      const explorer = state && state.subtabExplorer && state.subtabExplorer[subtabKey];
+      const items = explorer && Array.isArray(explorer.items) ? explorer.items : [];
+      return items.find(function(item) { return item && String(item.id || '').trim() === String(itemId || '').trim(); }) || null;
+    }
+
+    /* ── Graph API ────────────────────────────────────────────────────── */
+    async function graphFetch(url, options) {
+      if (!window.accessToken) throw new Error('Sign in required to move locations.');
+      const resp = await fetch(url, Object.assign({
+        headers: { Authorization: 'Bearer ' + window.accessToken, 'Content-Type': 'application/json' }
+      }, options || {}));
+      return resp;
+    }
+
+    async function fetchTableColumns(workbook, tableName) {
+      const encodedPath = encodeGraphPath(workbook);
+      const url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/'
+        + encodeURIComponent(tableName) + '/columns?$select=name,index';
+      const resp = await graphFetch(url);
+      if (!resp.ok) throw new Error('Could not read columns for ' + tableName + ' (HTTP ' + resp.status + ')');
+      const data = await resp.json().catch(function() { return {}; });
+      return Array.isArray(data.value) ? data.value : [];
+    }
+
+    async function fetchRowValues(workbook, tableName, rowIndex) {
+      const encodedPath = encodeGraphPath(workbook);
+      const url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/'
+        + encodeURIComponent(tableName) + '/rows/itemAt(index=' + rowIndex + ')?$select=values';
+      const resp = await graphFetch(url);
+      if (!resp.ok) throw new Error('Could not read row ' + rowIndex + ' from ' + tableName + ' (HTTP ' + resp.status + ')');
+      const data = await resp.json().catch(function() { return {}; });
+      return Array.isArray(data.values) && Array.isArray(data.values[0]) ? data.values[0] : [];
+    }
+
+    async function appendRowToTable(workbook, tableName, rowValues) {
+      const encodedPath = encodeGraphPath(workbook);
+      const url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/'
+        + encodeURIComponent(tableName) + '/rows/add';
+      const resp = await graphFetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ values: [rowValues] })
+      });
+      if (!resp.ok) {
+        const msg = await resp.text().catch(function() { return ''; });
+        throw new Error('Could not add row to ' + tableName + ' (HTTP ' + resp.status + '): ' + msg);
+      }
+    }
+
+    async function deleteRowFromTable(workbook, tableName, rowIndex) {
+      const encodedPath = encodeGraphPath(workbook);
+      const url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/'
+        + encodeURIComponent(tableName) + '/rows/itemAt(index=' + rowIndex + ')';
+      const resp = await graphFetch(url, { method: 'DELETE' });
+      if (!resp.ok) {
+        const msg = await resp.text().catch(function() { return ''; });
+        throw new Error('Could not delete row ' + rowIndex + ' from ' + tableName + ' (HTTP ' + resp.status + '): ' + msg);
+      }
+    }
+
+    /* Maps source column values → destination row array by column-name matching */
+    function buildMappedRow(srcCols, destCols, srcValues) {
+      const destRow = new Array(destCols.length).fill('');
+      srcCols.forEach(function(srcCol) {
+        const srcNorm = normHeader(srcCol.name);
+        const srcVal = srcValues[srcCol.index] !== undefined ? srcValues[srcCol.index] : '';
+        const destCol = destCols.find(function(dc) { return normHeader(dc.name) === srcNorm; });
+        if (destCol && Number.isInteger(destCol.index) && destCol.index < destRow.length) {
+          destRow[destCol.index] = srcVal;
+        }
+      });
+      return destRow;
+    }
+
+    async function moveSingleItem(item, destWorkbook, destTable, keepCopy) {
+      const srcWorkbook = String(item.sourceWorkbookPath || '').trim();
+      const srcTable   = String(item.sourceTable || '').trim();
+      const rowIdx     = Number(item.sourceRowIndex);
+      const name       = String(item.title || item.name || item.id || '').trim();
+      if (!srcWorkbook || !srcTable || !Number.isInteger(rowIdx) || rowIdx < 0) {
+        throw new Error('Missing source info for "' + name + '"');
+      }
+      const [srcCols, destCols] = await Promise.all([
+        fetchTableColumns(srcWorkbook, srcTable),
+        fetchTableColumns(destWorkbook, destTable)
+      ]);
+      const srcValues = await fetchRowValues(srcWorkbook, srcTable, rowIdx);
+      const destRow   = buildMappedRow(srcCols, destCols, srcValues);
+      await appendRowToTable(destWorkbook, destTable, destRow);
+      if (!keepCopy) {
+        await deleteRowFromTable(srcWorkbook, srcTable, rowIdx);
+      }
+      return { name: name, moved: true };
+    }
+
+    /* ── Modal helpers ────────────────────────────────────────────────── */
+    function setMoveStatus(message, tone) {
+      const el = document.getElementById('visitedMoveTableStatus');
+      if (!el) return;
+      el.textContent = String(message || '').trim();
+      el.style.color = tone === 'error' ? '#b91c1c' : tone === 'success' ? '#166534' : '#475569';
+    }
+
+    function buildDestOptions(items) {
+      /* Exclude all tables that every item already lives in */
+      const srcKeys = new Set(items.map(function(item) {
+        return baseFilename(item.sourceWorkbookPath) + '::' + (item.sourceTable || '');
+      }));
+      return ALL_KNOWN_TABLES.filter(function(t) { return !srcKeys.has(t.workbook + '::' + t.table); });
+    }
+
+    function openMoveTableModal(items) {
+      if (!items || !items.length) return;
+      pendingMoveItems = items.slice();
+      const modal    = document.getElementById('visitedMoveTableModal');
+      const backdrop = document.getElementById('visitedMoveTableBackdrop');
+      if (!modal || !backdrop) return;
+
+      const lead = document.getElementById('visitedMoveTableLead');
+      if (lead) lead.textContent = pendingMoveItems.length === 1
+        ? 'Choose a destination table, then confirm to move this location.'
+        : 'Choose a destination table and confirm to move these ' + pendingMoveItems.length + ' locations.';
+
+      const listEl = document.getElementById('visitedMoveTableItemList');
+      if (listEl) {
+        listEl.innerHTML = pendingMoveItems.map(function(item) {
+          const name = String(item.title || item.name || item.id || '').trim();
+          const src  = item.sourceTable ? item.sourceTable + (Number.isInteger(item.sourceRowIndex) ? ' (row ' + (item.sourceRowIndex + 1) + ')' : '') : 'unknown source';
+          return '<div class="visited-move-table-item-row">'
+            + '<strong>' + esc(name) + '</strong>'
+            + ' <span style="color:#64748b;font-size:11px;">from ' + esc(src) + '</span>'
+            + '</div>';
+        }).join('');
+      }
+
+      const selectEl = document.getElementById('visitedMoveTableDestSelect');
+      if (selectEl) {
+        const opts = buildDestOptions(pendingMoveItems);
+        selectEl.innerHTML = opts.map(function(t) {
+          return '<option value="' + esc(t.workbook) + '::' + esc(t.table) + '">'
+            + esc(t.label) + ' — ' + esc(t.table)
+            + '</option>';
+        }).join('');
+      }
+
+      const copyChk = document.getElementById('visitedMoveTableKeepCopy');
+      if (copyChk) copyChk.checked = false;
+
+      setMoveStatus('Ready to ' + (pendingMoveItems.length === 1 ? 'move 1 location.' : 'move ' + pendingMoveItems.length + ' locations.'), 'info');
+      backdrop.hidden = false;
+      modal.hidden    = false;
+      const runBtn = document.getElementById('visitedMoveTableRunBtn');
+      if (runBtn) runBtn.focus();
+    }
+
+    function closeMoveTableModal() {
+      const modal    = document.getElementById('visitedMoveTableModal');
+      const backdrop = document.getElementById('visitedMoveTableBackdrop');
+      if (modal)    modal.hidden    = true;
+      if (backdrop) backdrop.hidden = true;
+      pendingMoveItems = [];
+    }
+
+    async function runMoveOperation() {
+      if (!pendingMoveItems.length) return;
+      const selectEl  = document.getElementById('visitedMoveTableDestSelect');
+      const runBtn    = document.getElementById('visitedMoveTableRunBtn');
+      const cancelBtn = document.getElementById('visitedMoveTableCancelBtn');
+
+      if (!selectEl || !selectEl.value) {
+        setMoveStatus('Choose a destination table first.', 'error');
+        return;
+      }
+      const parts = selectEl.value.split('::');
+      const destWorkbook = parts[0];
+      const destTable    = parts[1];
+      if (!destWorkbook || !destTable) { setMoveStatus('Invalid destination.', 'error'); return; }
+      if (!window.accessToken) { setMoveStatus('⚠️ Sign in required to move locations.', 'error'); return; }
+
+      const keepCopy = !!(document.getElementById('visitedMoveTableKeepCopy') || {}).checked;
+
+      if (runBtn)    { runBtn.disabled = true;    runBtn.textContent = '⏳ Moving…'; }
+      if (cancelBtn)   cancelBtn.disabled = true;
+
+      /* Sort by rowIndex DESCENDING within each source table so deletes don't shift earlier rows */
+      const sorted = pendingMoveItems.slice().sort(function(a, b) {
+        const aKey = (a.sourceWorkbookPath || '') + '::' + (a.sourceTable || '');
+        const bKey = (b.sourceWorkbookPath || '') + '::' + (b.sourceTable || '');
+        if (aKey !== bKey) return 0;
+        return ((Number.isInteger(b.sourceRowIndex) ? b.sourceRowIndex : -1)
+              - (Number.isInteger(a.sourceRowIndex) ? a.sourceRowIndex : -1));
+      });
+
+      const total = sorted.length;
+      let succeeded = 0, failed = 0;
+      const errors = [];
+
+      for (let i = 0; i < sorted.length; i++) {
+        const item = sorted[i];
+        const name = String(item.title || item.name || '').trim() || ('Item ' + (i + 1));
+        setMoveStatus('Moving ' + (i + 1) + '/' + total + ': ' + name + '…', 'info');
+        try {
+          await moveSingleItem(item, destWorkbook, destTable, keepCopy);
+          succeeded++;
+        } catch (err) {
+          failed++;
+          errors.push(name + ': ' + (err && err.message ? err.message : 'unknown error'));
+        }
+      }
+
+      if (runBtn)    { runBtn.disabled = false;    runBtn.textContent = '📦 Move'; }
+      if (cancelBtn)   cancelBtn.disabled = false;
+
+      const verb = keepCopy ? 'Copied' : 'Moved';
+      if (failed === 0) {
+        setMoveStatus('✅ ' + verb + ' ' + succeeded + ' location' + (succeeded === 1 ? '' : 's') + ' to ' + destTable + '.', 'success');
+        if (typeof window.showToast === 'function') {
+          window.showToast('✅ ' + verb + ' ' + succeeded + ' location' + (succeeded === 1 ? '' : 's') + ' to ' + destTable + '.', 'success', 3400);
+        }
+        /* Clear multi-select state for all subtabs */
+        Object.keys(selectedBySubtab).forEach(function(k) { selectedBySubtab[k] = new Set(); });
+        refreshSelectionBars();
+        window.setTimeout(closeMoveTableModal, 1800);
+      } else if (succeeded > 0) {
+        setMoveStatus('⚠️ ' + verb + ' ' + succeeded + ', failed ' + failed + '. ' + errors.join('; '), 'error');
+      } else {
+        setMoveStatus('❌ All ' + failed + ' move(s) failed. ' + errors.join('; '), 'error');
+      }
+    }
+
+    /* ── Multi-select UI ──────────────────────────────────────────────── */
+    function getSelectedItems(subtabKey) {
+      const ids = selectedBySubtab[subtabKey] || new Set();
+      return Array.from(ids).map(function(id) { return getExplorerItemById(subtabKey, id); }).filter(Boolean);
+    }
+
+    function refreshSelectionBars() {
+      document.querySelectorAll('[data-visited-move-select-bar]').forEach(function(bar) {
+        const subtabKey = String(bar.getAttribute('data-visited-move-select-bar') || '').trim();
+        const count = (selectedBySubtab[subtabKey] || new Set()).size;
+        bar.hidden = count === 0;
+        const countEl = bar.querySelector('[data-visited-move-count]');
+        if (countEl) countEl.textContent = count + ' selected';
+      });
+      document.querySelectorAll('[data-visited-move-select-checkbox]').forEach(function(cb) {
+        const subtabKey = String(cb.getAttribute('data-subtab-key') || '').trim();
+        const itemId    = String(cb.getAttribute('data-item-id') || '').trim();
+        cb.checked = !!(selectedBySubtab[subtabKey] && selectedBySubtab[subtabKey].has(itemId));
+      });
+    }
+
+    function toggleItemSelected(subtabKey, itemId) {
+      if (!selectedBySubtab[subtabKey]) selectedBySubtab[subtabKey] = new Set();
+      if (selectedBySubtab[subtabKey].has(itemId)) selectedBySubtab[subtabKey].delete(itemId);
+      else selectedBySubtab[subtabKey].add(itemId);
+      refreshSelectionBars();
+    }
+
+    function ensureSelectBar(listEl, subtabKey) {
+      if (!listEl || !subtabKey || !listEl.parentElement) return;
+      const barId = 'visitedMoveSelectBar-' + subtabKey;
+      if (document.getElementById(barId)) return;
+      const bar = document.createElement('div');
+      bar.id   = barId;
+      bar.setAttribute('data-visited-move-select-bar', subtabKey);
+      bar.className = 'visited-move-select-bar';
+      bar.hidden = true;
+      bar.innerHTML =
+        '<span data-visited-move-count class="visited-move-select-count">0 selected</span>'
+        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" '
+        + 'data-visited-move-run="' + esc(subtabKey) + '" style="white-space:nowrap;">📦 Move Selected</button>'
+        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" '
+        + 'data-visited-move-clear="' + esc(subtabKey) + '" style="white-space:nowrap;">✕ Clear</button>';
+      listEl.parentElement.insertBefore(bar, listEl);
+    }
+
+    function ensureCardCheckbox(card, subtabKey, itemId) {
+      if (!card || card.querySelector('[data-visited-move-select-checkbox]')) return;
+      const cb = document.createElement('input');
+      cb.type      = 'checkbox';
+      cb.className = 'visited-move-card-checkbox';
+      cb.setAttribute('data-visited-move-select-checkbox', '1');
+      cb.setAttribute('data-subtab-key', subtabKey);
+      cb.setAttribute('data-item-id',    itemId);
+      cb.title     = 'Select this location for a bulk move';
+      cb.checked   = !!(selectedBySubtab[subtabKey] && selectedBySubtab[subtabKey].has(itemId));
+      card.style.position = 'relative'; /* ensure absolute positioning of child works */
+      card.insertAdjacentElement('afterbegin', cb);
+    }
+
+    /* ── Scan & inject ────────────────────────────────────────────────── */
+    function scanExplorerCards(root) {
+      root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach(function(menu) {
+        /* Determine subtabKey */
+        let subtabKey = String(menu.getAttribute('data-visited-explorer-subtab') || '').trim();
+        if (!subtabKey) {
+          const pane = menu.closest('[data-progress-pane]');
+          subtabKey = pane ? String(pane.getAttribute('data-progress-pane') || '').trim() : '';
+        }
+        const itemId = String(menu.getAttribute('data-visited-explorer-quick-actions-menu') || '').trim();
+        if (!subtabKey || !itemId) return;
+
+        /* Inject "📦 Move to Table" item if not already present */
+        if (!menu.querySelector('[data-visited-explorer-move-table]')) {
+          const refBtn = menu.querySelector('[data-visited-explorer-bulk-refresh]')
+                      || menu.querySelector('[data-visited-explorer-find-urls]');
+          const btn = document.createElement('button');
+          btn.type      = 'button';
+          btn.className = 'visited-card-mini-menu-item visited-explorer-quick-action-item';
+          btn.setAttribute('data-visited-explorer-move-table', itemId);
+          btn.setAttribute('data-visited-explorer-subtab', subtabKey);
+          btn.setAttribute('role', 'menuitem');
+          btn.textContent = '📦 Move to Table';
+          if (refBtn) refBtn.insertAdjacentElement('afterend', btn);
+          else        menu.appendChild(btn);
+        }
+
+        /* Inject checkbox on the card */
+        const card = menu.closest('[class*="card"], .visited-explorer-card, .adventure-card, [class*="location-card"]');
+        if (card) ensureCardCheckbox(card, subtabKey, itemId);
+      });
+
+      /* Inject selection bar above each explorer list */
+      root.querySelectorAll('[id^="visitedExplorerList-"]').forEach(function(listEl) {
+        const key = listEl.id.replace('visitedExplorerList-', '').trim();
+        if (key) ensureSelectBar(listEl, key);
+      });
+    }
+
+    /* ── CSS ──────────────────────────────────────────────────────────── */
+    function injectMoveStyles() {
+      if (document.getElementById('visitedMoveTableStyles')) return;
+      const style = document.createElement('style');
+      style.id = 'visitedMoveTableStyles';
+      style.textContent = [
+        '.visited-move-select-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;',
+        'background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:10px;}',
+        '.visited-move-select-count{font-size:13px;font-weight:700;color:#1d4ed8;flex:1 1 auto;}',
+        '.visited-move-card-checkbox{position:absolute;top:10px;left:10px;width:17px;height:17px;',
+        'cursor:pointer;z-index:5;accent-color:#2563eb;border-radius:4px;}',
+        '.visited-move-table-item-row{padding:6px 0;border-bottom:1px solid #f1f5f9;line-height:1.4;}',
+        '.visited-move-table-item-row:last-child{border-bottom:none;}'
+      ].join('');
+      document.head.appendChild(style);
+    }
+
+    /* ── Event delegation ─────────────────────────────────────────────── */
+    function bindModalControls() {
+      if (window.__visitedMoveModalBound) return;
+      window.__visitedMoveModalBound = true;
+      const ids = ['visitedMoveTableCloseBtn', 'visitedMoveTableCancelBtn'];
+      ids.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', closeMoveTableModal);
+      });
+      const backdrop = document.getElementById('visitedMoveTableBackdrop');
+      if (backdrop) backdrop.addEventListener('click', closeMoveTableModal);
+      const runBtn = document.getElementById('visitedMoveTableRunBtn');
+      if (runBtn) runBtn.addEventListener('click', runMoveOperation);
+      document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Escape') return;
+        const modal = document.getElementById('visitedMoveTableModal');
+        if (modal && !modal.hidden) { event.preventDefault(); closeMoveTableModal(); }
+      }, true);
+    }
+
+    function bindGlobalDelegation() {
+      if (document.body.dataset.visitedMoveClickBound === '1') return;
+      document.body.dataset.visitedMoveClickBound = '1';
+      document.addEventListener('click', function(event) {
+        /* Single-item move */
+        const moveBtn = event.target.closest('[data-visited-explorer-move-table]');
+        if (moveBtn) {
+          const subtabKey = String(moveBtn.getAttribute('data-visited-explorer-subtab') || '').trim();
+          const itemId    = String(moveBtn.getAttribute('data-visited-explorer-move-table') || '').trim();
+          const item = getExplorerItemById(subtabKey, itemId);
+          if (item) { bindModalControls(); openMoveTableModal([item]); }
+          return;
+        }
+        /* Card checkbox */
+        const cbEl = event.target.closest('[data-visited-move-select-checkbox]');
+        if (cbEl) {
+          const subtabKey = String(cbEl.getAttribute('data-subtab-key') || '').trim();
+          const itemId    = String(cbEl.getAttribute('data-item-id') || '').trim();
+          if (subtabKey && itemId) toggleItemSelected(subtabKey, itemId);
+          return;
+        }
+        /* "Move Selected" bar button */
+        const moveRunBtn = event.target.closest('[data-visited-move-run]');
+        if (moveRunBtn) {
+          const subtabKey = String(moveRunBtn.getAttribute('data-visited-move-run') || '').trim();
+          const items = getSelectedItems(subtabKey);
+          if (items.length) { bindModalControls(); openMoveTableModal(items); }
+          else if (typeof window.showToast === 'function') window.showToast('No locations selected yet.', 'info', 2200);
+          return;
+        }
+        /* "Clear selection" bar button */
+        const moveClearBtn = event.target.closest('[data-visited-move-clear]');
+        if (moveClearBtn) {
+          const subtabKey = String(moveClearBtn.getAttribute('data-visited-move-clear') || '').trim();
+          if (subtabKey) { selectedBySubtab[subtabKey] = new Set(); refreshSelectionBars(); }
+        }
+      }, true);
+    }
+
+    /* ── Bootstrap ────────────────────────────────────────────────────── */
+    function bindEnhancer() {
+      const root = getVisitedRoot();
+      if (!root) return false;
+      injectMoveStyles();
+      scanExplorerCards(root);
+      bindGlobalDelegation();
+      if (!window.__visitedMoveTableObserver) {
+        window.__visitedMoveTableObserver = new MutationObserver(function() { scanExplorerCards(root); });
+        window.__visitedMoveTableObserver.observe(root, { childList: true, subtree: true });
+      }
+      return true;
+    }
+
+    if (!bindEnhancer()) {
+      const retryId = window.setInterval(function() {
+        if (bindEnhancer()) window.clearInterval(retryId);
+      }, 250);
+      window.setTimeout(function() { window.clearInterval(retryId); }, 12000);
+    }
+  }());
+</script>
+
+
+

@@ -140,7 +140,7 @@ function escapeCsvCell(value) {
 }
 
 function buildPerRowWriteLogCsv(audit) {
-  const payload = audit && typeof audit === 'object' ? audit : null;
+  const payload = audit && typeof audit === 'object' ? audit : {};
   const rows = Array.isArray(payload && payload.perRowWriteLog) ? payload.perRowWriteLog : [];
   if (!rows.length) return { ok: false, reason: 'empty', csv: '', rowCount: 0, headers: [] };
 
@@ -238,7 +238,9 @@ const COLS = {
   RATING: 10,
   DIRECTIONS: 11,
   DESCRIPTION: 12,
-  COST: 14
+  COST: 14,
+  LATITUDE: -1,
+  LONGITUDE: -1
 };
 
 // Result contract field indices/names for the normalized write result objects.
@@ -286,7 +288,9 @@ function getActiveCols(mainWindow) {
     RATING: pick('Google Rating', ['Rating'], COLS.RATING),
     COST: pick('Cost', [], COLS.COST),
     DIRECTIONS: pick('Directions', ['Directions '], COLS.DIRECTIONS),
-    DESCRIPTION: pick('Description', [], COLS.DESCRIPTION)
+    DESCRIPTION: pick('Description', [], COLS.DESCRIPTION),
+    LATITUDE: pick('Latitude', ['Lat', 'GPS Latitude'], COLS.LATITUDE),
+    LONGITUDE: pick('Longitude', ['Lng', 'Lon', 'GPS Longitude'], COLS.LONGITUDE)
   };
 }
 
@@ -910,7 +914,7 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
           verificationMode: enableDescriptionReadback ? 'description-cell-reread' : 'not-verified',
           verificationReason: enableDescriptionReadback
             ? (strictVerificationFailed
-              ? `strict verification failed: ${unresolvedReadbackCount} unresolved readback issue(s)`
+              ? `strict verification failed: ${unresolvedReadbackCount} unresolved issue(s)`
               : (verifiedRowsChanged === persistedRows ? '' : 'one-or-more-description-readbacks-failed'))
             : 'direct-patch-no-verify',
           operationRunId,
@@ -1554,7 +1558,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
           <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700, color: #ef4444;">❌ ${failCount}</div>
+            <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
           <div style="padding: 10px; background: #fef3c7; border-radius: 6px; text-align: center;">
@@ -1700,7 +1704,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
           <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700, color: #ef4444;">❌ ${failCount}</div>
+            <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
           <div style="padding: 10px; background: #fef3c7; border-radius: 6px; text-align: center;">
@@ -2146,1102 +2150,6 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
     }
 
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
-      operation: 'populate-missing-fields',
-      dryRun,
-      updatedCount,
-      changedRows
-    });
-    const operationDiagnostics = diag.build({
-      totalRows: adventuresData.length,
-      updatedRows: updatedCount,
-      skippedRows: skippedCount,
-      errorRows: errorCount,
-      persistedRows: persistence.persistedRows
-    });
-
-    const keyStatus = window.DiagnosticsReport && typeof window.DiagnosticsReport.getGoogleApiKeyStatus === 'function'
-      ? window.DiagnosticsReport.getGoogleApiKeyStatus()
-      : null;
-    const apiKeyWarning = keyStatus && !keyStatus.configured ? `
-      <div style="padding: 12px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 4px; margin-bottom: 12px; color: #9a3412;">
-        <strong>⚠️ Google key diagnostics:</strong> ${keyStatus.placeholder ? 'A placeholder-style key is configured.' : 'No Google key was detected on window.GOOGLE_PLACES_API_KEY.'}
-        <br><span style="font-size:12px;">This does <strong>not</strong> always mean Google failed for this run. Check the per-row skip/error reasons below and the diagnostics hub for the exact failure stage.</span>
-      </div>
-    ` : '';
-
-    const resultHTML = `
-      ${apiKeyWarning}
-      <div style="padding: 16px; background: ${errorCount === 0 ? '#ecfdf5' : '#fef3c7'}; border: 1px solid ${errorCount === 0 ? '#6ee7b7' : '#fbbf24'}; border-radius: 8px;">
-        <div style="font-weight: 600; color: ${errorCount === 0 ? '#047857' : '#92400e'}; margin-bottom: 12px; font-size: 15px;">
-          ${dryRun ? '🧪 DRY RUN COMPLETE' : '✅ GOOGLE FIELD UPDATE COMPLETE'}
-        </div>
-        <div style="font-size:12px;color:#374151;margin-bottom:10px;">Mode used: <strong>${getGoogleAutomationModeLabel(updateMode)}</strong></div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 13px; margin-bottom: 12px;">
-          <div style="padding: 8px; background: #ecfdf5; border-radius: 4px; color: #047857;">
-            ✅ Updated: ${updatedCount}
-          </div>
-          <div style="padding: 8px; background: #f3f4f6; border-radius: 4px; color: #4b5563;">
-            ⏭️ Skipped: ${skippedCount}
-          </div>
-          <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
-            ❌ Errors: ${errorCount}
-          </div>
-        </div>
-        <div style="font-size:12px; color:${persistence.persisted ? '#047857' : '#92400e'}; margin-bottom:10px;">
-          💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}
-        </div>
-        <div style="font-size:12px;color:#334155;margin-bottom:10px;">
-          🩺 Google diagnostics: ${operationDiagnostics.googleApi.checked ? `checked ${operationDiagnostics.googleApi.attemptedRows} row(s), ${operationDiagnostics.googleApi.returnedRows} meaningful response(s), ${operationDiagnostics.googleApi.errorRows} API error row(s)` : 'No live Google lookup was attempted.'}
-        </div>
-        <div style="max-height: 300px; overflow-y: auto; background: white; padding: 12px; border-radius: 4px; border: 1px solid #e5e7eb; font-family: monospace; font-size: 12px; color: #1f2937; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;">
-          ${results.map((r, idx) => {
-            const statusIcon = r.status === 'updated' ? '✅' : r.status === 'complete' ? '✔️' : r.status === 'error' ? '❌' : '⏭️';
-            if (r.status === 'updated') {
-              return `${idx + 1}. ${statusIcon} ${r.name}\n   Missing: ${r.missingFields.join(', ')}\n   Corrected: ${r.correctedFields.join(', ') || 'none'}`;
-            }
-            return `${idx + 1}. ${statusIcon} ${r.name} - ${r.message}`;
-          }).join('\n')}
-        </div>
-        <button id="populateResultsCopyBtn" style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-          📋 Copy Results to Clipboard
-        </button>
-      </div>
-    `;
-    updateDisplay(resultHTML);
-
-    // Add copy button handler after DOM update
-    setTimeout(() => {
-      const copyBtn = document.getElementById('populateResultsCopyBtn');
-      if (copyBtn) {
-        copyBtn.onclick = () => {
-          const resultsSummary = `Populate Missing Fields Results (${new Date().toLocaleString()})
-Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}
-- Mode: ${getGoogleAutomationModeLabel(updateMode)}
-- Updated: ${updatedCount}
-- Skipped: ${skippedCount}
-- Errors: ${errorCount}
-
-${results.map((r, i) => {
-            if (r.status === 'updated') {
-              return `${i + 1}. ✅ ${r.name} - Missing: ${r.missingFields.join(', ')} Corrected: ${r.correctedFields.join(', ') || 'none'}`;
-            }
-            return `${i + 1}. ${r.status === 'error' ? '❌' : r.status === 'complete' ? '✔️' : '⏭️'} ${r.name} - ${r.message}`;
-          }).join('\n')}`;
-
-          navigator.clipboard.writeText(resultsSummary).then(() => {
-            alert('✅ Results copied to clipboard!');
-          }).catch(err => {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard');
-          });
-        };
-      }
-    }, 0);
-
-    recordGoogleAutomationRunSummary(operationName, updateMode, {
-      dryRun,
-      success: errorCount === 0,
-      summary: `${dryRun ? 'Previewed' : 'Processed'} ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`,
-      target: String(mainWindow.tableName || '').trim(),
-      totals: {
-        totalRows: adventuresData.length,
-        updatedRows: updatedCount,
-        skippedRows: skippedCount,
-        errorRows: errorCount,
-        persistedRows: persistence.persistedRows
-      },
-      skipReasonCounts: operationDiagnostics.skipReasonCounts,
-      googleApi: operationDiagnostics.googleApi,
-      samples: operationDiagnostics.rowSamples
-    });
-
-    return {
-      success: errorCount === 0,
-      updatedCount,
-      skippedCount,
-      errorCount,
-      results,
-      dryRun,
-      persisted: !!persistence.persisted,
-      persistMode: persistence.mode,
-      persistReason: persistence.reason,
-      rowsChanged: changedRows.length,
-      persistedRows: persistence.persistedRows,
-      verifiedRowsChanged: persistence.verifiedRowsChanged,
-      postWriteVerified: persistence.postWriteVerified,
-      verificationMode: persistence.verificationMode,
-      verificationReason: persistence.verificationReason,
-      updateMode,
-      updateDescriptionsDiagnostics: operationDiagnostics
-    };
-  } catch (err) {
-    console.error('❌ Error:', err);
-    updateDisplay(`
-      <div style="padding: 16px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; color: #7f1d1d;">
-        <strong>❌ Error:</strong> ${err.message}
-      </div>
-    `);
-    const operationDiagnostics = buildOperationDiagnostics();
-    recordGoogleAutomationRunSummary(operationName, updateMode, {
-      dryRun,
-      success: false,
-      summary: String(err && err.message ? err.message : 'Populate missing fields failed'),
-      target: String(mainWindow.tableName || '').trim(),
-      totals: {
-        totalRows: adventuresData.length,
-        updatedRows: updatedCount,
-        skippedRows: skippedCount,
-        errorRows: errorCount || 1,
-        persistedRows: 0
-      },
-      skipReasonCounts: operationDiagnostics.skipReasonCounts,
-      googleApi: operationDiagnostics.googleApi,
-      samples: operationDiagnostics.rowSamples
-    });
-    return { success: false, error: err.message, updateMode, updateDescriptionsDiagnostics: operationDiagnostics };
-  }
-};
-
-// Alias
-window.handlePopulateMissingFieldsEnhanced = window.handlePopulateMissingFields;
-
-console.log('✅ Populate Missing Fields ready');
-
-// ============================================================
-// SECTION 4: UPDATE HOURS ONLY
-// ============================================================
-
-/**
- * Update Hours Only
- */
-window.handleUpdateHoursOnly = async function(displayElement, dryRun = false, options = {}) {
-  const updateMode = normalizeGoogleAutomationUpdateMode(options && options.updateMode, 'refresh-all');
-  const operationName = 'update-hours-only';
-  console.log(`🕐 Starting update hours only, dryRun=${dryRun}, mode=${updateMode}`);
-
-  if (!displayElement) {
-    console.error('❌ No display element provided');
-    return { success: false, error: 'No display element' };
-  }
-
-  const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-  const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-  if (!adventuresData || adventuresData.length === 0) {
-    displayElement.innerHTML = `
-      <div style="padding: 16px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; color: #7f1d1d;">
-        <strong>❌ Error:</strong> No data available.
-      </div>
-    `;
-    return { success: false, error: 'No data available' };
-  }
-
-  const results = [];
-  let updatedCount = 0;
-  let skippedCount = 0;
-  let errorCount = 0;
-  const changedRows = [];
-  const diag = createGoogleAutomationDiagnostics(operationName, updateMode);
-  const markSkipReason = (reason) => diag.markSkipReason(reason);
-  const recordGoogleDiag = (details, placeId, placeName) => diag.recordGoogleDiag(details, placeId, placeName);
-  const buildOperationDiagnostics = (persistedRows = 0) => diag.build({
-    totalRows: adventuresData.length,
-    updatedRows: updatedCount,
-    skippedRows: skippedCount,
-    errorRows: errorCount,
-    persistedRows
-  });
-  const updateDisplay = (status) => {
-    displayElement.innerHTML = status;
-  };
-
-  updateDisplay(`
-    <div style="padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
-      <div style="font-weight: 600; color: #1e40af; margin-bottom: 12px;">
-        ${dryRun ? '🧪 DRY RUN - Preview' : '⏳ Processing'} Update Hours
-      </div>
-      <div style="font-size: 14px; color: #1f2937;">
-        📊 Total locations: ${adventuresData.length}
-      </div>
-      <div style="margin-top: 6px; font-size: 12px; color: #334155;">
-        Update mode: <strong>${getGoogleAutomationModeLabel(updateMode)}</strong>
-      </div>
-      <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 4px; font-size: 12px; color: #1f2937;">
-        ⏳ Fetching current hours from Google...
-      </div>
-    </div>
-  `);
-
-  try {
-    const activeCols = getActiveCols(mainWindow);
-    for (let i = 0; i < adventuresData.length; i++) {
-      const place = adventuresData[i];
-      const values = place.values ? place.values[0] : place;
-      let name = '';
-      let placeId = '';
-
-      if (!values || values.length === 0) {
-        skippedCount++;
-        markSkipReason('empty-row-values');
-        diag.noteRow({ name: `(row ${i + 1})`, status: 'skipped', reason: 'Row had no cell values' });
-        continue;
-      }
-
-      try {
-        if (i > 0) await delay(PLACES_API_DELAY_MS);
-
-        name = values[activeCols.NAME] || '';
-        placeId = values[activeCols.PLACE_ID] || '';
-        const currentHours = values[activeCols.HOURS] || '';
-
-        if (updateMode === 'missing-only' && String(currentHours || '').trim()) {
-          results.push({
-            name: name || '(no name)',
-            status: 'skipped',
-            message: 'Skipped: hours already had a value and mode is missing-only'
-          });
-          skippedCount++;
-          markSkipReason('hours-already-present');
-          diag.noteRow({ name: name || '(no name)', placeId, status: 'skipped', reason: 'Hours already had a value before this run' });
-          continue;
-        }
-
-        if (!isUsableGooglePlaceId(placeId)) {
-          results.push({
-            name: name || '(no name)',
-            status: 'skipped',
-            message: placeId ? 'Skipped: Place ID is not in a valid Google format' : 'Skipped: row has no Place ID'
-          });
-          skippedCount++;
-          markSkipReason(placeId ? 'invalid-place-id-format' : 'missing-place-id');
-          diag.noteRow({ name: name || '(no name)', placeId, status: 'skipped', reason: placeId ? 'Malformed Place ID' : 'Row had no Place ID' });
-          continue;
-        }
-
-        const details = await getPlaceDetailsFromAPI(placeId, 0, 1, { forceRefresh: true, allowCachedFallback: false, context: operationName });
-        recordGoogleDiag(details, placeId, name);
-
-        if (!details.hours) {
-          results.push({
-            name: name || '(no name)',
-            status: 'skipped',
-            message: 'No hours available from Google'
-          });
-          skippedCount++;
-          markSkipReason('no-hours-from-google');
-          diag.noteRow({ name: name || '(no name)', placeId, status: 'skipped', reason: 'Google returned no hours data for this Place ID' });
-          continue;
-        }
-
-        if (updateMode === 'refresh-all' && String(currentHours || '').trim() === String(details.hours || '').trim()) {
-          results.push({
-            name: name || '(no name)',
-            status: 'skipped',
-            message: 'Skipped: hours already match Google'
-          });
-          skippedCount++;
-          markSkipReason('hours-already-current');
-          diag.noteRow({ name: name || '(no name)', placeId, status: 'skipped', reason: 'Existing hours already matched the latest Google response' });
-          continue;
-        }
-
-        if (!dryRun) {
-          values[activeCols.HOURS] = details.hours;
-          updatedCount++;
-          changedRows.push(buildChangedWorkbookRow(place, i, values));
-        } else {
-          updatedCount++;
-        }
-        diag.noteRow({ name: name || '(no name)', placeId, status: 'updated', reason: `${dryRun ? 'Would update' : 'Updated'} hours` });
-
-        results.push({
-          name,
-          status: 'updated',
-          oldHours: currentHours || '(empty)',
-          newHours: details.hours,
-          message: `${dryRun ? 'Would update' : 'Updated'} hours: ${details.hours}`
-        });
-      } catch (err) {
-        console.error(`❌ Error updating ${values[0]}:`, err);
-        results.push({
-          name: values[activeCols.NAME] || '(unknown)',
-          status: 'error',
-          message: err.message
-        });
-        errorCount++;
-        diag.noteRow({ name: values[activeCols.NAME] || '(unknown)', placeId, status: 'error', reason: err.message });
-      }
-
-      if ((i + 1) % 5 === 0 || i === adventuresData.length - 1) {
-        const percent = Math.round(((i + 1) / adventuresData.length) * 100);
-        updateDisplay(`
-          <div style="padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
-            <div style="font-weight: 600; color: #1e40af; margin-bottom: 12px;">
-              ${dryRun ? '🧪 DRY RUN' : '⏳ Processing'} Update Hours
-            </div>
-            <div style="font-size:12px;color:#334155;margin-bottom:10px;">Mode: <strong>${getGoogleAutomationModeLabel(updateMode)}</strong></div>
-            <div style="margin-bottom: 12px;">
-              <div style="font-size: 14px; color: #1f2937; margin-bottom: 4px;">
-                Progress: ${i + 1}/${adventuresData.length} (${percent}%)
-              </div>
-              <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${percent}%; height: 100%; background: #3b82f6; transition: width 0.3s;"></div>
-              </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 13px;">
-              <div style="padding: 8px; background: #ecfdf5; border-radius: 4px; color: #047857;">
-                ✅ Updated: ${updatedCount}
-              </div>
-              <div style="padding: 8px; background: #f3f4f6; border-radius: 4px; color: #4b5563;">
-                ⏭️ Skipped: ${skippedCount}
-              </div>
-              <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
-                ❌ Errors: ${errorCount}
-              </div>
-            </div>
-          </div>
-        `);
-      }
-    }
-
-    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
-      operation: 'update-hours-only',
-      dryRun,
-      updatedCount,
-      changedRows
-    });
-    const operationDiagnostics = buildOperationDiagnostics(persistence.persistedRows);
-
-    const resultHTML = `
-      <div style="padding: 16px; background: ${errorCount === 0 ? '#ecfdf5' : '#fef3c7'}; border: 1px solid ${errorCount === 0 ? '#6ee7b7' : '#fbbf24'}; border-radius: 8px;">
-        <div style="font-weight: 600; color: ${errorCount === 0 ? '#047857' : '#92400e'}; margin-bottom: 12px; font-size: 15px;">
-          ${dryRun ? '🧪 DRY RUN COMPLETE' : '✅ HOURS UPDATE COMPLETE'}
-        </div>
-        <div style="font-size:12px;color:#374151;margin-bottom:10px;">Mode used: <strong>${getGoogleAutomationModeLabel(updateMode)}</strong></div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 13px; margin-bottom: 12px;">
-          <div style="padding: 8px; background: #ecfdf5; border-radius: 4px; color: #047857;">
-            ✅ Updated: ${updatedCount}
-          </div>
-          <div style="padding: 8px; background: #f3f4f6; border-radius: 4px; color: #4b5563;">
-            ⏭️ Skipped: ${skippedCount}
-          </div>
-          <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
-            ❌ Errors: ${errorCount}
-          </div>
-        </div>
-        <div style="font-size:12px; color:${persistence.persisted ? '#047857' : '#92400e'}; margin-bottom:10px;">
-          💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}
-        </div>
-        <div style="font-size:12px;color:#334155;margin-bottom:10px;">
-          🩺 Google diagnostics: ${operationDiagnostics.googleApi.checked ? `checked ${operationDiagnostics.googleApi.attemptedRows} row(s), ${operationDiagnostics.googleApi.returnedRows} meaningful response(s), ${operationDiagnostics.googleApi.errorRows} API error row(s)` : 'No live Google lookup was attempted.'}
-        </div>
-        <div style="max-height: 300px; overflow-y: auto; background: white; padding: 12px; border-radius: 4px; border: 1px solid #e5e7eb; font-family: monospace; font-size: 12px; color: #1f2937; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;">
-          ${results.map((r, idx) => {
-            const statusIcon = r.status === 'updated' ? '✅' : r.status === 'error' ? '❌' : '⏭️';
-            if (r.status === 'updated') {
-              return `${idx + 1}. ${statusIcon} ${r.name}\n   Old: ${r.oldHours}\n   New: ${r.newHours}`;
-            }
-            return `${idx + 1}. ${statusIcon} ${r.name} - ${r.message}`;
-          }).join('\n')}
-        </div>
-        <button id="hoursResultsCopyBtn" style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-          📋 Copy Results to Clipboard
-        </button>
-      </div>
-    `;
-    updateDisplay(resultHTML);
-
-    // Add copy button handler after DOM update
-    setTimeout(() => {
-      const copyBtn = document.getElementById('hoursResultsCopyBtn');
-      if (copyBtn) {
-        copyBtn.onclick = () => {
-          const resultsSummary = `Update Hours Results (${new Date().toLocaleString()})
-Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}
-- Mode: ${getGoogleAutomationModeLabel(updateMode)}
-- Updated: ${updatedCount}
-- Skipped: ${skippedCount}
-- Errors: ${errorCount}
-
-${results.map((r, i) => {
-            if (r.status === 'updated') {
-              return `${i + 1}. ✅ ${r.name} - Old: ${r.oldHours} New: ${r.newHours}`;
-            }
-            return `${i + 1}. ${r.status === 'error' ? '❌' : '⏭️'} ${r.name} - ${r.message}`;
-          }).join('\n')}`;
-
-          navigator.clipboard.writeText(resultsSummary).then(() => {
-            alert('✅ Results copied to clipboard!');
-          }).catch(err => {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard');
-          });
-        };
-      }
-    }, 0);
-
-    recordGoogleAutomationRunSummary(operationName, updateMode, {
-      dryRun,
-      success: errorCount === 0,
-      summary: `${dryRun ? 'Previewed' : 'Processed'} ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`,
-      target: String(mainWindow.tableName || '').trim(),
-      totals: {
-        totalRows: adventuresData.length,
-        updatedRows: updatedCount,
-        skippedRows: skippedCount,
-        errorRows: errorCount,
-        persistedRows: persistence.persistedRows
-      },
-      skipReasonCounts: operationDiagnostics.skipReasonCounts,
-      googleApi: operationDiagnostics.googleApi,
-      samples: operationDiagnostics.rowSamples
-    });
-
-    return {
-      success: errorCount === 0,
-      updatedCount,
-      skippedCount,
-      errorCount,
-      results,
-      dryRun,
-      persisted: !!persistence.persisted,
-      persistMode: persistence.mode,
-      persistReason: persistence.reason,
-      rowsChanged: changedRows.length,
-      persistedRows: persistence.persistedRows,
-      verifiedRowsChanged: persistence.verifiedRowsChanged,
-      postWriteVerified: persistence.postWriteVerified,
-      verificationMode: persistence.verificationMode,
-      verificationReason: persistence.verificationReason,
-      updateMode,
-      updateDescriptionsDiagnostics: operationDiagnostics
-    };
-  } catch (err) {
-    console.error('❌ Error:', err);
-    updateDisplay(`
-      <div style="padding: 16px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; color: #7f1d1d;">
-        <strong>❌ Error:</strong> ${err.message}
-      </div>
-    `);
-    const operationDiagnostics = buildOperationDiagnostics();
-    recordGoogleAutomationRunSummary(operationName, updateMode, {
-      dryRun,
-      success: false,
-      summary: String(err && err.message ? err.message : 'Update hours failed'),
-      target: String(mainWindow.tableName || '').trim(),
-      totals: {
-        totalRows: adventuresData.length,
-        updatedRows: updatedCount,
-        skippedRows: skippedCount,
-        errorRows: errorCount || 1,
-        persistedRows: 0
-      },
-      skipReasonCounts: operationDiagnostics.skipReasonCounts,
-      googleApi: operationDiagnostics.googleApi,
-      samples: operationDiagnostics.rowSamples
-    });
-    return { success: false, error: err.message, updateMode, updateDescriptionsDiagnostics: operationDiagnostics };
-  }
-};
-
-// Alias
-window.handleUpdateHoursOnlyEnhanced = window.handleUpdateHoursOnly;
-
-console.log('✅ Update Hours Only ready');
-
-// ============================================================
-// SECTION 6: M365 EXCEL WRITE INTEGRATION
-// ============================================================
-// Provides methods to write refreshed data back to M365 Excel
-
-/**
- * Write updated place details back to M365 Excel row
- * Uses the same Office.js approach as bulk add operations
- */
-window.writeUpdatedPlaceToM365 = async function(rowIndex, placeData) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Get reference to main window if in edit mode
-      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-      // Check if Office.js context is available
-      if (typeof Office !== 'undefined' &&
-          typeof Office.onReady !== 'undefined' &&
-          typeof Excel !== 'undefined') {
-
-        Excel.run(async (context) => {
-          try {
-            const sheet = context.workbook.worksheets.getActiveWorksheet();
-
-            // Calculate the actual row number (assuming row 1 is headers)
-            const excelRow = rowIndex + 2;
-
-            // Build the range of cells to update
-            const range = sheet.getRange(`A${excelRow}:P${excelRow}`);
-
-            // Prepare the data in column order matching COLS definition
-            const rowData = [[
-              placeData.name || '',           // Column A (NAME)
-              placeData.placeId || '',        // Column B (PLACE_ID)
-              placeData.website || '',        // Column C (WEBSITE)
-              placeData.phone || '',          // Column D (PHONE)
-              placeData.hours || '',          // Column E (HOURS)
-              '',                             // Column F (unused)
-              '',                             // Column G (unused)
-              '',                             // Column H (unused)
-              '',                             // Column I (unused)
-              '',                             // Column J (unused)
-              '',                             // Column K (unused)
-              placeData.address || '',        // Column L (ADDRESS)
-              '',                             // Column M (unused)
-              placeData.rating || '',         // Column N (RATING)
-              '',                             // Column O (unused)
-              placeData.directions || ''      // Column P (DIRECTIONS)
-            ]];
-
-            range.values = rowData;
-
-            await context.sync();
-
-            console.log(`✅ Updated M365 row ${excelRow}: ${placeData.name}`);
-            resolve({
-              success: true,
-              message: `Updated row ${excelRow}`,
-              rowIndex,
-              location: placeData.name
-            });
-
-          } catch (err) {
-            console.error(`❌ Error updating M365 row ${rowIndex}:`, err);
-            reject({
-              success: false,
-              error: err.message,
-              rowIndex
-            });
-          }
-        });
-
-      } else {
-        // Office.js not available - provide guidance
-        console.warn(`⚠️ Office.js not available for row ${rowIndex}`);
-        resolve({
-          success: false,
-          message: 'Office.js context not available. Data updates available in browser memory only.',
-          rowIndex,
-          note: 'User should manually copy-paste results to Excel'
-        });
-      }
-
-    } catch (error) {
-      console.error(`❌ Error in writeUpdatedPlaceToM365:`, error);
-      reject({
-        success: false,
-        error: error.message,
-        rowIndex
-      });
-    }
-  });
-};
-
-/**
- * Batch write multiple updated rows to M365 Excel
- */
-window.writeBatchPlacesToM365 = async function(placesData) {
-  console.log(`📝 Writing ${placesData.length} place updates to M365 Excel...`);
-
-  return new Promise((resolve, reject) => {
-    try {
-      if (typeof Office !== 'undefined' &&
-          typeof Excel !== 'undefined') {
-
-        Excel.run(async (context) => {
-          try {
-            const sheet = context.workbook.worksheets.getActiveWorksheet();
-            let successCount = 0;
-            let failCount = 0;
-
-            for (let i = 0; i < placesData.length; i++) {
-              const placeData = placesData[i];
-              const excelRow = placeData.rowIndex + 2;
-
-              try {
-                const range = sheet.getRange(`A${excelRow}:P${excelRow}`);
-
-                const rowData = [[
-                  placeData.name || '',
-                  placeData.placeId || '',
-                  placeData.website || '',
-                  placeData.phone || '',
-                  placeData.hours || '',
-                  '',
-                  '',
-                  '',
-                  '',
-                  '',
-                  '',
-                  placeData.address || '',
-                  '',
-                  placeData.rating || '',
-                  '',
-                  placeData.directions || ''
-                ]];
-
-                range.values = rowData;
-                successCount++;
-
-              } catch (err) {
-                console.warn(`⚠️ Skipped row ${excelRow}:`, err.message);
-                failCount++;
-              }
-            }
-
-            await context.sync();
-
-            console.log(`✅ Batch write complete: ${successCount} updated, ${failCount} failed`);
-            resolve({
-              success: true,
-              successCount,
-              failCount,
-              totalCount: placesData.length
-            });
-
-          } catch (err) {
-            console.error(`❌ Error in batch write:`, err);
-            reject({
-              success: false,
-              error: err.message
-            });
-          }
-        });
-
-      } else {
-        console.warn(`⚠️ Office.js not available for batch write`);
-        resolve({
-          success: false,
-          message: 'Office.js context not available',
-          note: 'Data available in browser memory. User should copy-paste to Excel.'
-        });
-      }
-
-    } catch (error) {
-      console.error(`❌ Error in writeBatchPlacesToM365:`, error);
-      reject({
-        success: false,
-        error: error.message
-      });
-    }
-  });
-};
-
-console.log('✅ M365 Excel Write Integration ready');
-
-// ============================================================
-// SECTION 7: UPDATE ALL DESCRIPTIONS
-// ============================================================
-
-/**
- * Update description fields for all locations using Google Places API.
- * Only fills empty descriptions unless overwrite=true.
- */
-window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false, strictModeOverride, richDescriptionsOnlyOverride, cleanupReviewLikeOnlyOverride) {
-  const strictVerification = resolveUpdateDescriptionsStrictVerification(strictModeOverride);
-  const strictVerificationMode = strictVerification ? 'fail-closed' : 'warn-only';
-  const richDescriptionsOnly = resolveUpdateDescriptionsRichOnly(richDescriptionsOnlyOverride);
-  const richDescriptionsMode = richDescriptionsOnly ? 'rich-only' : 'allow-fallbacks';
-  const cleanupReviewLikeOnly = !!cleanupReviewLikeOnlyOverride;
-  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}, strictMode=${strictVerificationMode}, richMode=${richDescriptionsMode}, cleanupReviewLikeOnly=${cleanupReviewLikeOnly}`);
-
-  if (!displayElement) return { success: false, error: 'No display element' };
-
-  const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-  const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-  if (!adventuresData || adventuresData.length === 0) {
-    displayElement.innerHTML = `<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> No data available.</div>`;
-    return { success: false, error: 'No data available' };
-  }
-
-  const activeCols = getActiveCols(mainWindow);
-  const schemaColumns = Array.isArray(mainWindow.__excelSchemaColumns) ? mainWindow.__excelSchemaColumns : [];
-  const descriptionSchemaCol = schemaColumns.find((col) => Number(col && col.index) === Number(activeCols.DESCRIPTION));
-  const resolvedColsDebug = {
-    target: (document.getElementById('automationTargetSelect') || {}).value || '',
-    descriptionIndex: activeCols.DESCRIPTION,
-    descriptionColumnName: descriptionSchemaCol && descriptionSchemaCol.name ? String(descriptionSchemaCol.name) : '',
-    activeCols
-  };
-  const operationRunId = `update-descriptions-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  window.__lastUpdateDescriptionsActiveCols = resolvedColsDebug;
-  window.__lastUpdateDescriptionsRunId = operationRunId;
-  console.info('🧭 Update Descriptions resolved columns:', resolvedColsDebug);
-  pushWorkbookWriteDebug('update-descriptions-start', {
-    operationRunId,
-    dryRun: !!dryRun,
-    overwrite: !!overwrite,
-    strictVerification,
-    strictVerificationMode,
-    richDescriptionsOnly,
-    richDescriptionsMode,
-    descriptionIndex: Number(activeCols.DESCRIPTION),
-    descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
-    totalRows: adventuresData.length
-  });
-
-  const results = [];
-  let updatedCount = 0;
-  let skippedCount = 0;
-  let skippedNonRichCount = 0;
-  let errorCount = 0;
-  const previewItems = [];
-  const changedRows = [];
-  const rowAuditTrail = [];
-  const skipReasonCounts = Object.create(null);
-  const googleApiDiagnostics = {
-    attemptedRows: 0,
-    returnedRows: 0,
-    emptyRows: 0,
-    errorRows: 0,
-    sourceCounts: Object.create(null),
-    sampleReturns: []
-  };
-  const bumpCounter = (bucket, key) => {
-    const safeKey = String(key || 'unspecified').trim() || 'unspecified';
-    bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
-  };
-  const markSkipReason = (reason) => bumpCounter(skipReasonCounts, reason);
-
-  const emptyRunDiagnostics = {
-    skipReasonCounts: {},
-    googleApi: {
-      checked: false,
-      attemptedRows: 0,
-      returnedRows: 0,
-      emptyRows: 0,
-      errorRows: 0,
-      sourceCounts: {},
-      sampleReturns: []
-    }
-  };
-
-  const escapeHtml = (value) => String(value == null ? '' : value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  const truncateText = (value, maxLen = 180) => {
-    const text = String(value == null ? '' : value).trim();
-    if (text.length <= maxLen) return text;
-    return `${text.slice(0, Math.max(0, maxLen - 1)).trim()}…`;
-  };
-
-  const buildPreviewHtml = () => {
-    if (!previewItems.length) return '';
-    window.__lastDescriptionPreviewItems = previewItems.slice(0, 3).map((item) => ({
-      name: String(item && item.name || '').trim(),
-      description: String(item && item.description || '').trim()
-    }));
-    return `<div style="margin-top:12px;padding:12px;background:#ffffff;border:1px solid #d1fae5;border-radius:8px;">`
-      + `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">`
-      + `<div style="font-weight:600;color:#065f46;">Preview of updated descriptions</div>`
-      + `<button type="button" onclick="window.copyDescriptionPreviewText && window.copyDescriptionPreviewText()" style="padding:6px 10px;border:1px solid #a7f3d0;border-radius:6px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;">📋 Copy preview text</button>`
-      + `</div>`
-      + previewItems.slice(0, 3).map((item, index) => {
-        const label = dryRun ? 'Would set' : 'Set';
-        return `<div style="${index > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px solid #ecfdf5;' : ''}">`
-          + `<div style="font-size:12px;font-weight:600;color:#1f2937;">${escapeHtml(item.name || '(no name)')}</div>`
-          + `<div style="font-size:12px;color:#4b5563;line-height:1.5;margin-top:4px;">${label}: ${escapeHtml(truncateText(item.description, 220))}</div>`
-          + `</div>`;
-      }).join('')
-      + `</div>`;
-  };
-
-  const updateDisplay = (status) => { displayElement.innerHTML = status; };
-
-  updateDisplay(`<div style="padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <div style="font-weight:600;color:#1e40af;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Update Descriptions${overwrite ? ' (overwrite all)' : ' (missing only)'}${richDescriptionsOnly ? ' (rich only)' : ''}${cleanupReviewLikeOnly ? ' (cleanup review-like only)' : ''}</div>
-    <div style="font-size:14px;color:#1f2937;">📊 Total locations: ${adventuresData.length}</div>
-    <div style="margin-top:8px;padding:8px;background:rgba(59,130,246,0.1);border-radius:4px;font-size:12px;color:#1f2937;">⏳ Scanning descriptions…</div>
-  </div>`);
-
-  try {
-    const requirePreflight = true;
-    const preflight = dryRun
-      ? { ok: true, reason: 'dry-run-skipped', detail: 'preflight-skipped-for-dry-run', operationRunId }
-      : await preflightValidateDescriptionWriteTarget(mainWindow, {
-          operationRunId,
-          descriptionColumnIndex: Number(activeCols.DESCRIPTION),
-          descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
-        });
-    pushWorkbookWriteDebug('update-descriptions-preflight', {
-      operationRunId,
-      stage: 'handler',
-      ok: !!preflight.ok,
-      reason: String(preflight.reason || ''),
-      detail: String(preflight.detail || ''),
-      writeTarget: preflight.writeTarget || null,
-      expectedDescriptionColumnIndex: Number(activeCols.DESCRIPTION),
-      expectedDescriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
-    });
-
-    if (!preflight.ok) {
-      window.__lastUpdateDescriptionsAudit = {
-        at: new Date().toISOString(),
-        operationRunId,
-        overwrite: !!overwrite,
-        dryRun: !!dryRun,
-        strictVerification,
-        strictVerificationMode,
-        richDescriptionsOnly,
-        richDescriptionsMode,
-        preflight,
-        updateDescriptionsDiagnostics: emptyRunDiagnostics,
-        rowAuditTrail: [],
-        perRowWriteLog: []
-      };
-      updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;">
-        <div style="font-weight:700;">❌ Update Descriptions blocked by preflight check</div>
-        <div style="margin-top:6px;font-size:12px;">Reason: ${escapeHtml(String(preflight.detail || preflight.reason || 'schema mismatch'))}</div>
-        <div style="margin-top:4px;font-size:12px;">Target: ${escapeHtml(`${String(preflight?.writeTarget?.resolvedFilePath || '')} | ${String(preflight?.writeTarget?.tableName || '')}`)}</div>
-      </div>`);
-      return {
-        success: false,
-        runFailed: true,
-        operationRunId,
-        strictVerification,
-        strictVerificationMode,
-        richDescriptionsOnly,
-        richDescriptionsMode,
-        preflight,
-        updateDescriptionsDiagnostics: emptyRunDiagnostics,
-        error: String(preflight.detail || preflight.reason || 'preflight-failed')
-      };
-    }
-
-    for (let i = 0; i < adventuresData.length; i++) {
-      const place = adventuresData[i];
-      const values = place.values ? place.values[0] : place;
-      if (!values || values.length === 0) {
-        skippedCount++;
-        markSkipReason('empty-row-values');
-        continue;
-      }
-
-      try {
-        if (i > 0) await delay(PLACES_API_DELAY_MS);
-
-        const name = (values[activeCols.NAME] || '').toString().trim();
-        const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
-        const existingDesc = (values[activeCols.DESCRIPTION] || '').toString().trim();
-        const baseAudit = {
-          rowIndex: i,
-          name,
-          placeId,
-          descriptionColumnIndex: Number(activeCols.DESCRIPTION),
-          descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
-          descriptionBefore: existingDesc
-        };
-
-        if (cleanupReviewLikeOnly) {
-          if (!existingDesc) {
-            skippedCount++;
-            markSkipReason('cleanup-no-existing-description');
-            rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'cleanup-no-existing-description' });
-            results.push({ name: name || '(no name)', status: 'skipped', message: 'Skipped: no existing description to clean' });
-            continue;
-          }
-          if (!isLikelyReviewStyleDescription(existingDesc)) {
-            skippedCount++;
-            markSkipReason('cleanup-not-review-like');
-            rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'cleanup-not-review-like' });
-            results.push({ name: name || '(no name)', status: 'skipped', message: 'Skipped: description did not look review-like' });
-            continue;
-          }
-        }
-
-        if (!overwrite && existingDesc) {
-          markSkipReason('already-has-description');
-          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'already-has-description' });
-          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
-            ...baseAudit,
-            reason: 'already-has-description'
-          });
-          results.push({ name: name || '(no name)', status: 'skipped', message: 'Already has description' });
-          skippedCount++;
-          continue;
-        }
-
-        if (!isUsableGooglePlaceId(placeId)) {
-          markSkipReason('invalid-place-id');
-          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'invalid-place-id' });
-          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
-            ...baseAudit,
-            reason: 'invalid-place-id'
-          });
-          results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
-          skippedCount++;
-          continue;
-        }
-
-        const details = await getPlaceDetailsFromAPI(placeId, 0, 1, {
-          forceRefresh: true,
-          allowCachedFallback: false,
-          context: 'update-descriptions'
-        });
-        const sourceDiag = details && typeof details.__sourceDiag === 'object' ? details.__sourceDiag : null;
-        if (sourceDiag) {
-          bumpCounter(googleApiDiagnostics.sourceCounts, sourceDiag.source || 'unknown');
-          if (sourceDiag.liveLookupAttempted) googleApiDiagnostics.attemptedRows += 1;
-          if (sourceDiag.hasMeaningfulDetails) googleApiDiagnostics.returnedRows += 1;
-          else googleApiDiagnostics.emptyRows += 1;
-          const sourceStatus = String(sourceDiag.liveLookupStatus || '').trim();
-          if (sourceStatus === 'error' || sourceStatus === 'helper-error') {
-            googleApiDiagnostics.errorRows += 1;
-          }
-          if (googleApiDiagnostics.sampleReturns.length < 3) {
-            googleApiDiagnostics.sampleReturns.push({
-              placeId,
-              source: String(sourceDiag.source || 'unknown').trim() || 'unknown',
-              status: sourceStatus || 'unknown',
-              descriptionPreview: String((details && details.description) || '').trim().slice(0, 120)
-            });
-          }
-        }
-
-        const newDesc = (details && details.description) ? details.description.trim() : '';
-        const generatedDesc = newDesc || (() => {
-          const city = (values[activeCols.CITY] || '').toString().trim();
-          const state = (values[activeCols.STATE] || '').toString().trim();
-          const rating = (values[activeCols.RATING] || '').toString().trim();
-          if (!name) return '';
-          let desc = name;
-          if (city && state) desc += ` is located in ${city}, ${state}.`;
-          else if (city) desc += ` is located in ${city}.`;
-          if (rating) desc += ` Google Rating: ${rating}.`;
-          return desc;
-        })();
-
-        let descriptionSource = 'none';
-        if (newDesc) {
-          descriptionSource = /\bRated\s+[0-9.]+★/i.test(newDesc) || /\([0-9,]+\s+reviews\)/i.test(newDesc)
-            ? 'google-details-fallback-summary'
-            : 'google-details-editorial-or-reviews';
-        } else if (generatedDesc) {
-          descriptionSource = 'local-fallback-name-city-rating';
-        }
-        const isRichDescription = descriptionSource === 'google-details-editorial-or-reviews';
-
-        if (richDescriptionsOnly && generatedDesc && !isRichDescription) {
-          skippedCount++;
-          skippedNonRichCount++;
-          markSkipReason('non-rich-description-source');
-          rowAuditTrail.push({
-            ...baseAudit,
-            status: 'skipped',
-            reason: 'non-rich-description-source',
-            descriptionSource,
-            generatedDescPreview: generatedDesc.slice(0, 120)
-          });
-          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
-            ...baseAudit,
-            reason: 'non-rich-description-source',
-            descriptionSource
-          });
-          results.push({ name, status: 'skipped', message: `Skipped non-rich description source (${descriptionSource})` });
-          continue;
-        }
-
-        if (!dryRun && generatedDesc) {
-          values[activeCols.DESCRIPTION] = generatedDesc;
-          if (COLS.DESCRIPTION !== activeCols.DESCRIPTION && COLS.DESCRIPTION < values.length) {
-            const legacyValue = values[COLS.DESCRIPTION];
-            if (isAutoGeneratedDescriptionPlaceholder(legacyValue)) {
-              values[COLS.DESCRIPTION] = generatedDesc;
-            }
-          }
-
-          updatedCount++;
-          const rowMeta = {
-            operation: 'update-descriptions',
-            name,
-            placeId,
-            descriptionBefore: existingDesc,
-            descriptionAfter: generatedDesc,
-            descriptionSource,
-            descriptionColumnIndex: Number(activeCols.DESCRIPTION),
-            descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
-          };
-          changedRows.push(buildChangedWorkbookRow(place, i, values, rowMeta));
-          rowAuditTrail.push({ ...baseAudit, status: 'updated', descriptionAfter: generatedDesc, descriptionSource });
-          pushWorkbookWriteDebug('update-descriptions-row-prepared', {
-            ...baseAudit,
-            descriptionAfter: generatedDesc,
-            descriptionSource
-          });
-          results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
-          if (previewItems.length < 3) {
-            previewItems.push({ name: name || '(no name)', description: generatedDesc });
-          }
-        } else if (dryRun && generatedDesc) {
-          updatedCount++;
-          rowAuditTrail.push({ ...baseAudit, status: 'would-update', descriptionAfter: generatedDesc, descriptionSource });
-          pushWorkbookWriteDebug('update-descriptions-row-would-update', {
-            ...baseAudit,
-            descriptionAfter: generatedDesc,
-            descriptionSource
-          });
-          results.push({ name, status: 'would-update', message: `Would set: "${generatedDesc.slice(0, 60)}…"` });
-          if (previewItems.length < 3) {
-            previewItems.push({ name: name || '(no name)', description: generatedDesc });
-          }
-        } else {
-          skippedCount++;
-          markSkipReason('no-description-generated');
-          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'no-description-generated' });
-          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
-            ...baseAudit,
-            reason: 'no-description-generated'
-          });
-          results.push({ name, status: 'skipped', message: 'No description available from API' });
-        }
-      } catch (e) {
-        errorCount++;
-        rowAuditTrail.push({ rowIndex: i, status: 'error', error: String(e && e.message ? e.message : e) });
-        pushWorkbookWriteDebug('update-descriptions-row-error', {
-          rowIndex: i,
-          error: String(e && e.message ? e.message : e)
-        });
-        results.push({ name: '(error)', status: 'error', message: e.message });
-      }
-    }
-
-    const normalizedSkipReasonCounts = Object.keys(skipReasonCounts)
-      .sort((a, b) => a.localeCompare(b))
-      .reduce((acc, key) => {
-        acc[key] = Number(skipReasonCounts[key] || 0);
-        return acc;
-      }, {});
-    const normalizedGoogleSourceCounts = Object.keys(googleApiDiagnostics.sourceCounts)
-      .sort((a, b) => a.localeCompare(b))
-      .reduce((acc, key) => {
-        acc[key] = Number(googleApiDiagnostics.sourceCounts[key] || 0);
-        return acc;
-      }, {});
-    const updateDescriptionsDiagnostics = {
-      skipReasonCounts: normalizedSkipReasonCounts,
-      googleApi: {
-        checked: Number(googleApiDiagnostics.attemptedRows || 0) > 0,
-        attemptedRows: Number(googleApiDiagnostics.attemptedRows || 0),
-        returnedRows: Number(googleApiDiagnostics.returnedRows || 0),
-        emptyRows: Number(googleApiDiagnostics.emptyRows || 0),
-        errorRows: Number(googleApiDiagnostics.errorRows || 0),
-        sourceCounts: normalizedGoogleSourceCounts,
-        sampleReturns: Array.isArray(googleApiDiagnostics.sampleReturns) ? googleApiDiagnostics.sampleReturns.slice(0, 3) : []
-      }
-    };
-
-    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'update-descriptions',
       operationRunId,
       dryRun,
@@ -3505,16 +2413,15 @@ window.handleRemoveExactDuplicates = async function(displayElement, dryRun = fal
     <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Duplicate Cleanup Complete'}</div>
     <div style="font-size:13px;color:#334155;">🗑️ ${dryRun ? 'Would remove' : 'Removed'}: ${rowsChanged} duplicate row${rowsChanged === 1 ? '' : 's'}</div>
     <div style="font-size:12px;color:#334155;margin-top:4px;">⏭️ Non-duplicates or incomplete rows: ${skippedCount}</div>
-    <div style="font-size:12px;color:${persisted ? '#047857' : '#92400e'};margin-top:6px;">💾 Workbook write: ${persisted ? 'saved to Excel' : (dryRun ? 'dry run only' : `not persisted (${persistReason || persistMode})`)}</div>
+    <div style="font-size:12px;color:${persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persisted ? 'saved to Excel' : (dryRun ? 'dry run only' : `not persisted (${persistReason || persistMode})`)}</div>
   </div>`;
 
   recordGoogleAutomationRunSummary('remove-exact-duplicates', 'refresh-all', {
     dryRun,
     success: dryRun ? true : (rowsChanged === 0 || persisted),
     target: String(mainWindow.tableName || '').trim(),
-    summary: rowsChanged
-      ? `${dryRun ? 'Would remove' : 'Removed'} ${rowsChanged} exact duplicate row${rowsChanged === 1 ? '' : 's'} (Name + Address).`
-      : 'No exact duplicates found.',
+    summary: `${dryRun ? 'Would remove' : 'Removed'} ${rowsChanged} exact duplicate row${rowsChanged === 1 ? '' : 's'} (Name + Address).`
+      + (skippedCount > 0 ? ` ${dryRun ? '' : 'Non-duplicates or incomplete rows skipped: ' + skippedCount}` : ''),
     totals: {
       totalRows: totalRowsBeforeCleanup,
       updatedRows: rowsChanged,
@@ -3552,11 +2459,47 @@ window.handleRemoveExactDuplicates = async function(displayElement, dryRun = fal
 // SECTION 9: FORCE UPDATE ALL FIELDS
 // ============================================================
 
+const FORCE_UPDATE_FIELD_DEFS = {
+  website: { label: 'Website', column: 'WEBSITE', detailsKey: 'website' },
+  phone: { label: 'Phone', column: 'PHONE', detailsKey: 'phone' },
+  hours: { label: 'Hours', column: 'HOURS', detailsKey: 'hours' },
+  address: { label: 'Address', column: 'ADDRESS', detailsKey: 'address' },
+  rating: { label: 'Rating', column: 'RATING', detailsKey: 'rating' },
+  description: { label: 'Description', column: 'DESCRIPTION', detailsKey: 'description' },
+  coordinates: { label: 'Coordinates', coordinate: true }
+};
+
+const FORCE_UPDATE_DEFAULT_FIELDS = ['website', 'phone', 'hours', 'address', 'rating', 'description', 'coordinates'];
+
+function normalizeForceUpdateFieldSelection(rawFields) {
+  if (!Array.isArray(rawFields) || !rawFields.length) return FORCE_UPDATE_DEFAULT_FIELDS.slice();
+  const normalized = rawFields
+    .map((field) => String(field || '').trim().toLowerCase())
+    .filter((field) => Object.prototype.hasOwnProperty.call(FORCE_UPDATE_FIELD_DEFS, field));
+  return normalized.length ? Array.from(new Set(normalized)) : FORCE_UPDATE_DEFAULT_FIELDS.slice();
+}
+
+function normalizeBulkCoordinates(details) {
+  const source = details && typeof details === 'object' ? details.coordinates : null;
+  const lat = Number(source && (source.lat != null ? source.lat : source.latitude));
+  const lng = Number(source && (source.lng != null ? source.lng : (source.lon != null ? source.lon : source.longitude)));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    lat: Number(lat.toFixed(7)),
+    lng: Number(lng.toFixed(7))
+  };
+}
+
 /**
  * Force-refresh all fields for every location regardless of existing data.
  */
-window.handleForceUpdateAllFields = async function(displayElement, dryRun = false) {
-  console.log(`🔄 Starting force-update all fields, dryRun=${dryRun}`);
+window.handleForceUpdateAllFields = async function(displayElement, dryRun = false, options = {}) {
+  const safeOptions = options && typeof options === 'object' ? options : {};
+  const updateMode = normalizeGoogleAutomationUpdateMode(safeOptions.updateMode, 'refresh-all');
+  const selectedFields = normalizeForceUpdateFieldSelection(safeOptions.fields);
+  const selectedFieldLabels = selectedFields.map((fieldKey) => FORCE_UPDATE_FIELD_DEFS[fieldKey].label);
+  const modeLabel = getGoogleAutomationModeLabel(updateMode);
+  console.log(`🔄 Starting force-update fields, dryRun=${dryRun}, mode=${updateMode}, fields=${selectedFields.join(',')}`);
 
   if (!displayElement) return { success: false, error: 'No display element' };
 
@@ -3569,6 +2512,8 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
   }
 
   const activeCols = getActiveCols(mainWindow);
+  const hasCoordinateColumns = Number.isInteger(activeCols.LATITUDE) && activeCols.LATITUDE >= 0
+    && Number.isInteger(activeCols.LONGITUDE) && activeCols.LONGITUDE >= 0;
   const results = [];
   let updatedCount = 0;
   let skippedCount = 0;
@@ -3636,9 +2581,12 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
   const updateDisplay = (status) => { displayElement.innerHTML = status; };
 
   updateDisplay(`<div style="padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
-    <div style="font-weight:600;color:#9a3412;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Force Update All Fields</div>
+    <div style="font-weight:600;color:#9a3412;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN - Preview' : '⏳ Processing'} Google Field Refresh</div>
     <div style="font-size:14px;color:#1f2937;">📊 Total locations: ${adventuresData.length}</div>
-    <div style="margin-top:8px;padding:8px;background:rgba(251,146,60,0.1);border-radius:4px;font-size:12px;color:#1f2937;">⚠️ This will overwrite existing data with fresh data from Google Places API.</div>
+    <div style="margin-top:6px;font-size:12px;color:#334155;">Fields: <strong>${selectedFieldLabels.join(', ')}</strong></div>
+    <div style="margin-top:4px;font-size:12px;color:#334155;">Mode: <strong>${modeLabel}</strong></div>
+    <div style="margin-top:8px;padding:8px;background:rgba(251,146,60,0.1);border-radius:4px;font-size:12px;color:#1f2937;">${updateMode === 'refresh-all' ? '⚠️ Existing values can be overwritten with fresh Google Places data.' : 'ℹ️ Only blank/missing values will be filled.'}</div>
+    ${selectedFields.includes('coordinates') && !hasCoordinateColumns ? '<div style="margin-top:8px;padding:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:4px;font-size:12px;color:#92400e;">⚠️ Latitude/Longitude columns were not found in this table, so coordinate updates are skipped.</div>' : ''}
   </div>`);
 
   try {
@@ -3663,40 +2611,59 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         const details = await getPlaceDetailsFromAPI(placeId);
         recordGoogleDiag(details, placeId);
         const updated = [];
+        const preview = [];
 
-        if (!dryRun) {
-          if (details.website) { values[activeCols.WEBSITE] = details.website; updated.push('Website'); }
-          if (details.phone) { values[activeCols.PHONE] = details.phone; updated.push('Phone'); }
-          if (details.hours) { values[activeCols.HOURS] = details.hours; updated.push('Hours'); }
-          if (details.address) { values[activeCols.ADDRESS] = details.address; updated.push('Address'); }
-          if (details.rating) { values[activeCols.RATING] = details.rating; updated.push('Rating'); }
-          if (details.description) { values[activeCols.DESCRIPTION] = details.description; updated.push('Description'); }
-
-          if (updated.length > 0) {
-            updatedCount++;
-            changedRows.push(buildChangedWorkbookRow(place, i, values));
-            results.push({ name, status: 'updated', message: `Updated: ${updated.join(', ')}` });
-          } else {
-            skippedCount++;
-            markSkipReason('no-new-data-from-api');
-            results.push({ name, status: 'skipped', message: 'No new data from API' });
+        selectedFields.forEach((fieldKey) => {
+          if (fieldKey === 'coordinates') {
+            if (!hasCoordinateColumns) return;
+            const coords = normalizeBulkCoordinates(details);
+            if (!coords) return;
+            const currentLat = String(values[activeCols.LATITUDE] == null ? '' : values[activeCols.LATITUDE]).trim();
+            const currentLng = String(values[activeCols.LONGITUDE] == null ? '' : values[activeCols.LONGITUDE]).trim();
+            const incomingLat = String(coords.lat);
+            const incomingLng = String(coords.lng);
+            const shouldApply = updateMode === 'refresh-all'
+              ? currentLat !== incomingLat || currentLng !== incomingLng
+              : !currentLat || !currentLng;
+            if (!shouldApply) return;
+            if (!dryRun) {
+              values[activeCols.LATITUDE] = coords.lat;
+              values[activeCols.LONGITUDE] = coords.lng;
+              updated.push('Coordinates');
+            } else {
+              preview.push('Coordinates');
+            }
+            return;
           }
+
+          const definition = FORCE_UPDATE_FIELD_DEFS[fieldKey];
+          if (!definition) return;
+          const columnIndex = activeCols[definition.column];
+          if (!Number.isInteger(columnIndex) || columnIndex < 0) return;
+          const incomingValue = String(details && details[definition.detailsKey] != null ? details[definition.detailsKey] : '').trim();
+          if (!incomingValue) return;
+          const currentValue = String(values[columnIndex] == null ? '' : values[columnIndex]).trim();
+          const shouldApply = updateMode === 'refresh-all'
+            ? currentValue !== incomingValue
+            : !currentValue;
+          if (!shouldApply) return;
+          if (!dryRun) {
+            values[columnIndex] = details[definition.detailsKey];
+            updated.push(definition.label);
+          } else {
+            preview.push(definition.label);
+          }
+        });
+
+        const appliedFields = dryRun ? preview : updated;
+        if (appliedFields.length > 0) {
+          updatedCount++;
+          if (!dryRun) changedRows.push(buildChangedWorkbookRow(place, i, values));
+          results.push({ name, status: dryRun ? 'would-update' : 'updated', message: `${dryRun ? 'Would update' : 'Updated'}: ${appliedFields.join(', ')}` });
         } else {
-          const preview = [];
-          if (details.website) preview.push('Website');
-          if (details.phone) preview.push('Phone');
-          if (details.hours) preview.push('Hours');
-          if (details.address) preview.push('Address');
-          if (details.rating) preview.push('Rating');
-          if (details.description) preview.push('Description');
-          if (preview.length > 0) {
-            updatedCount++;
-            results.push({ name, status: 'would-update', message: `Would update: ${preview.join(', ')}` });
-          } else {
-            skippedCount++;
-            markSkipReason('no-new-data-from-api');
-            results.push({ name, status: 'skipped', message: 'No new data from API' });
-          }
+          skippedCount++;
+          markSkipReason(updateMode === 'refresh-all' ? 'google-returned-no-new-values' : 'google-returned-no-missing-values');
+          results.push({ name, status: 'skipped', message: 'No new data from API' });
         }
       } catch (e) {
         errorCount++;
@@ -3708,8 +2675,10 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         updateDisplay(`
           <div style="padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
             <div style="font-weight: 600; color: #1e40af; margin-bottom: 12px;">
-              ${dryRun ? '🧪 DRY RUN' : '⏳ Processing'} Force Update All Fields
+              ${dryRun ? '🧪 DRY RUN' : '⏳ Processing'} Google Field Refresh
             </div>
+            <div style="font-size:12px;color:#334155;margin-bottom:10px;">Fields: <strong>${selectedFieldLabels.join(', ')}</strong></div>
+            <div style="font-size:12px;color:#334155;margin-bottom:10px;">Mode: <strong>${modeLabel}</strong></div>
             <div style="margin-bottom: 12px;">
               <div style="font-size: 14px; color: #1f2937; margin-bottom: 4px;">
                 Progress: ${i + 1}/${adventuresData.length} (${percent}%)
@@ -3742,13 +2711,14 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
     });
 
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
-      <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Force Update All Fields</div>
+      <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} - Google Field Refresh</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+      <div style="font-size:12px;color:#374151;margin-top:6px;">Fields: <strong>${selectedFieldLabels.join(', ')}</strong> • Mode: <strong>${modeLabel}</strong></div>
       <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
     </div>`);
 
     const operationDiagnostics = buildOperationDiagnostics();
-    recordGoogleAutomationRunSummary('force-update-all-fields', 'refresh-all', {
+    recordGoogleAutomationRunSummary('force-update-all-fields', updateMode, {
       dryRun,
       success: errorCount === 0,
       target: String(mainWindow.tableName || '').trim(),
@@ -3767,15 +2737,35 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         status: String(item && item.status || 'unknown').trim(),
         reason: String(item && item.message || '').trim(),
         placeId: ''
-      })) : []
+      })) : [],
+      fields: selectedFields.slice()
     });
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason, updateDescriptionsDiagnostics: operationDiagnostics };
+    return {
+      success: true,
+      updatedCount,
+      skippedCount,
+      errorCount,
+      results,
+      dryRun,
+      persisted: !!persistence.persisted,
+      persistMode: persistence.mode,
+      persistReason: persistence.reason,
+      rowsChanged: changedRows.length,
+      persistedRows: persistence.persistedRows,
+      verifiedRowsChanged: persistence.verifiedRowsChanged,
+      postWriteVerified: persistence.postWriteVerified,
+      verificationMode: persistence.verificationMode,
+      verificationReason: persistence.verificationReason,
+      updateDescriptionsDiagnostics: operationDiagnostics,
+      updateMode,
+      fields: selectedFields.slice()
+    };
   } catch (err) {
     console.error('❌ Error force-updating fields:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
     const operationDiagnostics = buildOperationDiagnostics();
-    recordGoogleAutomationRunSummary('force-update-all-fields', 'refresh-all', {
+    recordGoogleAutomationRunSummary('force-update-all-fields', updateMode, {
       dryRun,
       success: false,
       target: String(mainWindow.tableName || '').trim(),
@@ -3794,15 +2784,26 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         status: String(item && item.status || 'unknown').trim(),
         reason: String(item && item.message || '').trim(),
         placeId: ''
-      })) : []
+      })) : [],
+      fields: selectedFields.slice()
     });
-    return { success: false, error: err.message, updateDescriptionsDiagnostics: operationDiagnostics };
+    return { success: false, error: err.message, updateDescriptionsDiagnostics: operationDiagnostics, updateMode, fields: selectedFields.slice() };
   }
 };
 
-window.handleForceUpdateAllFieldsEnhanced = window.handleForceUpdateAllFields;
+window.handleBulkRefreshCoordinates = async function(displayElement, dryRun = false, overwrite = false) {
+  return window.handleForceUpdateAllFields(displayElement, dryRun, {
+    fields: ['coordinates'],
+    updateMode: overwrite ? 'refresh-all' : 'missing-only'
+  });
+};
 
-console.log('✅ Force Update All Fields ready');
+window.handleBulkRefreshRatings = async function(displayElement, dryRun = false, overwrite = false) {
+  return window.handleForceUpdateAllFields(displayElement, dryRun, {
+    fields: ['rating'],
+    updateMode: overwrite ? 'refresh-all' : 'missing-only'
+  });
+};
 
 // ============================================================
 // INITIALIZATION

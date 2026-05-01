@@ -377,6 +377,22 @@
     .enrich-progress-item.done .status-dot { background: #10b981; }
     .enrich-progress-item.error .status-dot { background: #ef4444; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    /* ── Bulk Refresh field checkboxes ─────────────────────────── */
+    .detail-bulk-refresh-field-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #1f2937;
+      padding: 10px 12px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      background: #f8fbff;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .15s, background .15s;
+    }
+    .detail-bulk-refresh-field-label:hover { border-color: #93c5fd; background: #eff6ff; }
   </style>
 </head>
 <body>
@@ -422,6 +438,10 @@
 
     <button type="button" class="ab-btn ab-extra" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
       🔮 Smart Refresh
+    </button>
+
+    <button type="button" class="ab-btn ab-extra" id="abBulkRefreshBtn" title="Bulk refresh: re-fetch Google data for this location's source table">
+      🔄 Bulk Refresh
     </button>
 
     <button type="button" class="ab-btn ab-extra" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
@@ -634,6 +654,44 @@
     </div>
   </div>
 
+  <!-- ── Bulk Data Refresh Modal ───────────────────────────────── -->
+  <div id="detailBulkRefreshBackdrop" class="enrich-backdrop" aria-hidden="true"></div>
+  <div id="detailBulkRefreshModal" class="enrich-modal" role="dialog" aria-modal="true" aria-labelledby="detailBulkRefreshTitle">
+    <div class="enrich-head">
+      <div id="detailBulkRefreshTitle" class="enrich-title">🔄 Bulk Data Refresh</div>
+      <button id="detailBulkRefreshCloseBtn" type="button" class="auth-btn">Close</button>
+    </div>
+    <div class="smart-enrich-body">
+      <div id="detailBulkRefreshSummary" style="font-size:13px;color:#475569;margin-bottom:14px;line-height:1.5;">
+        Choose which Google-backed fields to refresh for this location's source table.
+      </div>
+
+      <div class="enrich-section-label-sm">Fields to refresh</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:14px;">
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="website" checked /> 🌐 Website</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="phone" checked /> 📞 Phone</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="address" checked /> 📍 Address</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="hours" checked /> 🕐 Hours</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="rating" checked /> ⭐ Rating</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="description" checked /> 📝 Description</label>
+        <label class="detail-bulk-refresh-field-label"><input type="checkbox" data-detail-bulk-field="coordinates" checked /> 🗺️ Coordinates</label>
+      </div>
+
+      <div class="enrich-section-label-sm">Refresh mode</div>
+      <select id="detailBulkRefreshMode" class="tm-input" style="width:100%;margin-bottom:8px;">
+        <option value="missing-only" selected>Only fill empty / missing values</option>
+        <option value="refresh-all">Overwrite all selected fields with fresh Google data</option>
+      </select>
+      <div id="detailBulkRefreshModeHint" style="font-size:12px;color:#64748b;margin-bottom:14px;">Safe mode preserves existing values and only fills blanks.</div>
+
+      <div id="detailBulkRefreshStatus" style="font-size:13px;color:#475569;margin-bottom:12px;">This will open Edit Mode and run the selected refresh against the source table.</div>
+    </div>
+    <div class="enrich-foot">
+      <button id="detailBulkRefreshCancelBtn" type="button" class="auth-btn">Cancel</button>
+      <button id="detailBulkRefreshRunBtn" type="button" class="ab-btn ab-fav">🔄 Open &amp; Run Refresh</button>
+    </div>
+  </div>
+
   <div id="visitedLogPromptBackdrop" class="links-backdrop" aria-hidden="true"></div>
   <div id="visitedLogPromptModal" class="links-modal visited-log-modal" role="dialog" aria-modal="true" aria-labelledby="visitedLogPromptTitle">
     <div class="enrich-head">
@@ -822,6 +880,39 @@
     if (closeButton) buttons.push(closeButton);
     if (!buttons.length) return '';
     return '<div class="head-actions-right">' + buttons.join('') + '</div>';
+  }
+
+  function configureDetailShortcutHelp() {
+    window.PAGE_SHORTCUTS_HELP = {
+      title: 'Adventure Details Shortcuts',
+      buttonLabel: '⌨️ Shortcuts',
+      sections: [
+        {
+          title: 'Location Navigation',
+          items: [
+            {
+              keys: ['['],
+              description: 'Open the previous location in the current filtered list',
+              buttonSelector: '#previousLocationBtn',
+              tooltip: 'Open the previous location in this filtered list'
+            },
+            {
+              keys: [']'],
+              description: 'Open the next location in the current filtered list',
+              buttonSelector: '#nextLocationBtn',
+              tooltip: 'Open the next location in this filtered list'
+            }
+          ]
+        },
+        {
+          title: 'Help & Dialogs',
+          items: [
+            { keys: ['?'], description: 'Open the keyboard shortcuts drawer' },
+            { keys: ['Esc'], description: 'Close the shortcuts drawer or any open detail modal' }
+          ]
+        }
+      ]
+    };
   }
 
   function bindCloseButton() {
@@ -1884,14 +1975,22 @@
     var map = getTagStorageMap();
     map = migrateLegacyNameKeyIfNeeded(placeKey, data, map);
     var val = map[placeKey];
-    return Array.isArray(val) ? uniqueTags(val) : [];
+    var tags = Array.isArray(val) ? uniqueTags(val) : [];
+    if (typeof window.isDisabledTagOption === 'function') {
+      tags = tags.filter(function (tag) { return !window.isDisabledTagOption(tag); });
+    }
+    return tags;
   }
 
   function setStoredTagsForPlace(placeKey, tags, data) {
     if (!placeKey) return false;
     var map = getTagStorageMap();
     map = migrateLegacyNameKeyIfNeeded(placeKey, data, map);
-    map[placeKey] = uniqueTags(tags || []);
+    var cleaned = uniqueTags(tags || []);
+    if (typeof window.isDisabledTagOption === 'function') {
+      cleaned = cleaned.filter(function (tag) { return !window.isDisabledTagOption(tag); });
+    }
+    map[placeKey] = cleaned;
     var ok = saveTagStorageMap(map);
     if (ok) markMigrationDone(placeKey);
     return ok;
@@ -2000,6 +2099,9 @@
     list = list.map(function (tag) { return String(tag || '').trim(); }).filter(Boolean);
     if (typeof normalizeTags === 'function') list = normalizeTags(list);
     list = uniqueTags(list);
+    if (typeof window.isDisabledTagOption === 'function') {
+      list = list.filter(function (tag) { return !window.isDisabledTagOption(tag); });
+    }
     if (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function') {
       list = uniqueTags(window.tagDeduplicator.deduplicate(list));
     }
@@ -2081,6 +2183,9 @@
   function syncTagManagementUi() {
     var state = window.__detailTagState;
     if (!state) return;
+    if (typeof window.isDisabledTagOption === 'function') {
+      state.tags = uniqueTags((state.tags || []).filter(function (tag) { return !window.isDisabledTagOption(tag); }));
+    }
 
     var currentWrap = document.getElementById('tmCurrentTags');
     var suggestWrap = document.getElementById('tmSuggestions');
@@ -2100,7 +2205,10 @@
     Object.keys(map).forEach(function (k) {
       if (Array.isArray(map[k])) allKnown = allKnown.concat(map[k]);
     });
-    allKnown = uniqueTags(allKnown.concat(state.sourceTags || [], ['Outdoor', 'Nature', 'Family-Friendly', 'Scenic', 'Worth Visiting', 'Top Rated', 'Adventure', 'Local Favorite']));
+    allKnown = uniqueTags(allKnown.concat(state.sourceTags || [], ['Outdoor', 'Nature', 'Scenic', 'Adventure', 'Local Favorite']));
+    if (typeof window.isDisabledTagOption === 'function') {
+      allKnown = allKnown.filter(function (tag) { return !window.isDisabledTagOption(tag); });
+    }
 
     datalist.innerHTML = allKnown
       .filter(function (tag) { return !hasTagCaseInsensitive(state.tags, tag); })
@@ -2120,6 +2228,8 @@
     var state = window.__detailTagState;
     if (!state) return;
     var clean = String(raw || '').trim();
+    if (typeof window.resolveTagAlias === 'function') clean = String(window.resolveTagAlias(clean) || clean).trim();
+    if (typeof window.isDisabledTagOption === 'function' && window.isDisabledTagOption(clean)) return;
     if (!clean || hasTagCaseInsensitive(state.tags, clean)) return;
     state.tags.push(clean);
     state.tags = uniqueTags(state.tags);
@@ -2519,6 +2629,9 @@
       return;
     }
 
+    if (typeof window.isDisabledTagOption === 'function') {
+      state.tags = uniqueTags((state.tags || []).filter(function (tag) { return !window.isDisabledTagOption(tag); }));
+    }
     var localOk = setStoredTagsForPlace(state.placeKey, state.tags, state.data);
     pushTagSaveDebug(debug, 'local_storage_save', { ok: !!localOk, storageKey: TAG_STORAGE_KEY, placeKey: state.placeKey });
     if (!localOk) {
@@ -2566,7 +2679,9 @@
     window.__detailTagState = {
       placeKey: getTagPlaceKey(data),
       sourceTags: uniqueTags(sourceTags || []),
-      tags: uniqueTags([].concat(sourceTags || [], storedTags || [])),
+      tags: uniqueTags([].concat(sourceTags || [], storedTags || [])).filter(function (tag) {
+        return !(typeof window.isDisabledTagOption === 'function' && window.isDisabledTagOption(tag));
+      }),
       recommendedTags: [],
       recommendationSource: 'pending',
       data: data || {},
@@ -5551,6 +5666,7 @@
 
   function render(payload) {
     window.__detailCurrentPayload = payload || null;
+    configureDetailShortcutHelp();
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
       document.getElementById('header').innerHTML =
@@ -5559,6 +5675,9 @@
       bindCloseButton();
       bindNavigationButtons(payload);
       bindNavigationKeyboardShortcuts();
+      if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
+        try { window.ButtonReliability.refreshShortcutHelp(); } catch (_shortcutErr) {}
+      }
       return;
     }
 
@@ -5566,8 +5685,13 @@
     data.hoursOfOperation = normalizeEnrichHoursValue(data.hoursOfOperation, getOpenerWindow());
 
     var sourceTagList = parseTagCsv(data.tags);
+    if (typeof window.isDisabledTagOption === 'function') {
+      sourceTagList = sourceTagList.filter(function (tag) { return !window.isDisabledTagOption(tag); });
+    }
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
-    var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
+    var tagList = uniqueTags([].concat(sourceTagList, storedTagList)).filter(function (tag) {
+      return !(typeof window.isDisabledTagOption === 'function' && window.isDisabledTagOption(tag));
+    });
     var detailPlaceKey = getLocationKey(data);
     var storedCostMeta = readPersistedCostInferenceMeta(detailPlaceKey);
     if (storedCostMeta) data.costInferenceMeta = storedCostMeta;
@@ -5609,6 +5733,9 @@
     bindCloseButton();
     bindNavigationButtons(payload);
     bindNavigationKeyboardShortcuts();
+    if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
+      try { window.ButtonReliability.refreshShortcutHelp(); } catch (_shortcutErr2) {}
+    }
     renderDebugMarker(payload);
     initActionBar(data, directionsUrl, payload);
 
@@ -6568,8 +6695,157 @@
     return Boolean(safe.address || safe.city || safe.state || safe.phone || safe.hours || safe.description || safe.website);
   }
 
+  // ── Detail View: Bulk Data Refresh modal ────────────────────────────────────
+
+  function openDetailBulkRefreshModal(state) {
+    window.__detailBulkRefreshState = state || null;
+    var backdrop = document.getElementById('detailBulkRefreshBackdrop');
+    var modal    = document.getElementById('detailBulkRefreshModal');
+    if (!backdrop || !modal) return;
+
+    // Resolve source workbook / table from explorerSource
+    var source = state && state.syncState && state.syncState.explorerSource
+      ? state.syncState.explorerSource
+      : (state && state.payload && state.payload.explorerSource ? state.payload.explorerSource : {});
+    var workbook  = String(source.workbookPath || source.workbook || '').trim();
+    var tableName = String(source.table || '').trim();
+    var locationName = String(state && state.data && state.data.name || '').trim();
+
+    var summary = document.getElementById('detailBulkRefreshSummary');
+    if (summary) {
+      summary.textContent = tableName
+        ? 'Run a Google-backed bulk refresh for ' + tableName + (workbook ? ' (' + workbook.split('/').pop() + ')' : '') + '.'
+          + (locationName ? ' Current location: ' + locationName + '.' : '')
+        : 'Choose which Google-backed fields to refresh for this location\'s source table.';
+    }
+
+    // Reset fields and mode to defaults
+    document.querySelectorAll('[data-detail-bulk-field]').forEach(function (el) {
+      el.checked = true;
+    });
+    var mode = document.getElementById('detailBulkRefreshMode');
+    if (mode) mode.value = 'missing-only';
+    updateDetailBulkRefreshModeHint();
+    setDetailBulkRefreshStatus('This will open Edit Mode and run the selected refresh against the source table.', 'info');
+
+    backdrop.classList.add('open');
+    modal.classList.add('open');
+    var closeBtn = modal.querySelector('#detailBulkRefreshCloseBtn');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeDetailBulkRefreshModal() {
+    var backdrop = document.getElementById('detailBulkRefreshBackdrop');
+    var modal    = document.getElementById('detailBulkRefreshModal');
+    if (backdrop) backdrop.classList.remove('open');
+    if (modal)    modal.classList.remove('open');
+    window.__detailBulkRefreshState = null;
+  }
+
+  function updateDetailBulkRefreshModeHint() {
+    var mode = String((document.getElementById('detailBulkRefreshMode') || {}).value || 'missing-only').trim();
+    var hint = document.getElementById('detailBulkRefreshModeHint');
+    if (!hint) return;
+    hint.textContent = mode === 'refresh-all'
+      ? 'Overwrite mode refreshes every selected field with fresh Google data, even when a value already exists.'
+      : 'Safe mode preserves existing values and only fills blanks / missing fields.';
+  }
+
+  function setDetailBulkRefreshStatus(message, tone) {
+    var status = document.getElementById('detailBulkRefreshStatus');
+    if (!status) return;
+    status.textContent = String(message || '').trim();
+    status.style.color = tone === 'error' ? '#b91c1c'
+      : (tone === 'success' ? '#166534' : '#475569');
+  }
+
+  function getDetailBulkRefreshSelectedFields() {
+    return Array.from(document.querySelectorAll('[data-detail-bulk-field]'))
+      .filter(function (el) { return el && el.checked; })
+      .map(function (el) { return String(el.getAttribute('data-detail-bulk-field') || '').trim(); })
+      .filter(Boolean);
+  }
+
+  function runDetailBulkRefresh() {
+    var fields = getDetailBulkRefreshSelectedFields();
+    if (!fields.length) {
+      setDetailBulkRefreshStatus('Select at least one field to refresh.', 'error');
+      return;
+    }
+    var mode = String((document.getElementById('detailBulkRefreshMode') || {}).value || 'missing-only').trim();
+    var state = window.__detailBulkRefreshState;
+    var source = state && state.syncState && state.syncState.explorerSource
+      ? state.syncState.explorerSource
+      : (state && state.payload && state.payload.explorerSource ? state.payload.explorerSource : {});
+
+    var workbook  = String(source.workbookPath || source.workbook || '').trim();
+    var tableName = String(source.table || '').trim();
+    var locationName = String(state && state.data && state.data.name || '').trim();
+
+    if (!tableName) {
+      setDetailBulkRefreshStatus('⚠️ Source table could not be determined for this location. Try opening from Adventure Explorer.', 'error');
+      return;
+    }
+
+    // Build the Edit Mode URL
+    var baseUrl = '';
+    try {
+      var openerWin = getOpenerWindow();
+      if (openerWin && typeof openerWin.resolvePlannerPageUrl === 'function') {
+        baseUrl = String(openerWin.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html') || '').trim();
+      }
+    } catch (_resolveErr) {}
+    if (!baseUrl) {
+      baseUrl = new URL('edit-mode-enhanced.html', window.location.href).toString();
+    }
+
+    var url = new URL(baseUrl, window.location.href);
+    url.searchParams.set('embedded', '1');
+    url.searchParams.set('targetFilePath', workbook);
+    url.searchParams.set('targetTableName', tableName);
+    url.searchParams.set('bulkRefreshAction', '1');
+    url.searchParams.set('bulkRefreshFields', fields.join(','));
+    url.searchParams.set('bulkRefreshMode', mode);
+    if (locationName) url.searchParams.set('bulkRefreshTitle', locationName);
+    url.searchParams.set('ts', String(Date.now()));
+
+    var editWin = window.open(url.toString(), '_blank', 'noopener');
+    closeDetailBulkRefreshModal();
+    if (typeof showDetailToast === 'function') {
+      showDetailToast(
+        'Opening Edit Mode to run bulk refresh (' + (mode === 'refresh-all' ? 'overwrite' : 'missing only') + ')…',
+        'info', 2800
+      );
+    }
+    if (editWin && typeof editWin.focus === 'function') editWin.focus();
+  }
+
+  function bindDetailBulkRefreshModalControls() {
+    if (window.__detailBulkRefreshModalBound) return;
+    window.__detailBulkRefreshModalBound = true;
+
+    var closeBtn   = document.getElementById('detailBulkRefreshCloseBtn');
+    var cancelBtn  = document.getElementById('detailBulkRefreshCancelBtn');
+    var backdrop   = document.getElementById('detailBulkRefreshBackdrop');
+    var runBtn     = document.getElementById('detailBulkRefreshRunBtn');
+    var modeSelect = document.getElementById('detailBulkRefreshMode');
+
+    if (closeBtn)  closeBtn.addEventListener('click', closeDetailBulkRefreshModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeDetailBulkRefreshModal);
+    if (backdrop)  backdrop.addEventListener('click', closeDetailBulkRefreshModal);
+    if (runBtn)    runBtn.addEventListener('click', runDetailBulkRefresh);
+    if (modeSelect) modeSelect.addEventListener('change', updateDetailBulkRefreshModeHint);
+
+    document.addEventListener('keydown', function (event) {
+      if (!event || event.key !== 'Escape') return;
+      var modal = document.getElementById('detailBulkRefreshModal');
+      if (!modal || !modal.classList.contains('open')) return;
+      event.preventDefault();
+      closeDetailBulkRefreshModal();
+    }, true);
+  }
+
   function bindEnrichModalControls() {
-    if (window.__enrichModalBound) return;
     window.__enrichModalBound = true;
     var closeBtn = document.getElementById('enrichCloseBtn');
     var cancelBtn = document.getElementById('enrichCancelBtn');
@@ -7217,6 +7493,14 @@
       enrichBtn.onclick = function () {
         bindEnrichModalControls();
         openEnrichModal({ data: data, syncState: syncState, payload: payload });
+      };
+    }
+
+    var bulkRefreshBtn = document.getElementById('abBulkRefreshBtn');
+    if (bulkRefreshBtn) {
+      bulkRefreshBtn.onclick = function () {
+        bindDetailBulkRefreshModalControls();
+        openDetailBulkRefreshModal({ data: data, syncState: syncState, payload: payload });
       };
     }
 

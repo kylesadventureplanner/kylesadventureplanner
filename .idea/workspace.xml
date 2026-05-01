@@ -5,16 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/RESULT_INDEXES_COMPLETION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/check-test-helper-naming.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/normalizer-contract.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-automation-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-automation-system-v7-0-141.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/button-reliability-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-reliability-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/clean-tag-manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/clean-tag-manager.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/universal-progress-tracking-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/universal-progress-tracking-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tag-autocomplete-input.js" beforeDir="false" afterPath="$PROJECT_DIR$/tag-autocomplete-input.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -106,7 +108,7 @@
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
-      <workItem from="1777494531732" duration="55357000" />
+      <workItem from="1777494531732" duration="66452000" />
     </task>
     <servers />
   </component>

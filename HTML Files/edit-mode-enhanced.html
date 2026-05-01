@@ -1204,6 +1204,93 @@
       gap: 10px;
     }
 
+    .edit-mode-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      z-index: 4600;
+    }
+
+    .edit-mode-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(680px, calc(100vw - 28px));
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+      z-index: 4601;
+      padding: 14px;
+    }
+
+    .edit-mode-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .edit-mode-modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .edit-mode-modal-body {
+      display: grid;
+      gap: 8px;
+    }
+
+    .edit-mode-modal-lead {
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.45;
+    }
+
+    .edit-mode-modal-impact {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .edit-mode-modal-impact-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .edit-mode-modal-impact-row strong {
+      color: #0f172a;
+    }
+
+    .edit-mode-modal-target-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .edit-mode-modal-foot {
+      margin-top: 12px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .target-summary-collapsible {
       margin-top: 10px;
       border: 1px solid #dbeafe;
@@ -2029,7 +2116,7 @@
       <div class="card">
         <div class="card-title">🔄 Force Update All Fields</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Overwrite <strong>all fields</strong> (website, phone, hours, address, rating, description) for every location with fresh data from Google Places API — regardless of existing values.
+          Overwrite <strong>all fields</strong> (website, phone, hours, address, rating, description, coordinates) for every location with fresh data from Google Places API — regardless of existing values.
         </p>
 
         <div class="dry-run-toggle" id="forceUpdateDryRunToggle">
@@ -2108,8 +2195,96 @@
     </div>
   </div>
 
+  <div id="editModeConfirmBackdrop" class="edit-mode-modal-backdrop" hidden></div>
+  <div id="editModeConfirmModal" class="edit-mode-modal" role="dialog" aria-modal="true" aria-labelledby="editModeConfirmTitle" hidden>
+    <div class="edit-mode-modal-head">
+      <div id="editModeConfirmTitle" class="edit-mode-modal-title">Confirm Action</div>
+      <button type="button" id="editModeConfirmCloseBtn" class="button button-secondary">Close</button>
+    </div>
+    <div class="edit-mode-modal-body">
+      <div id="editModeConfirmLead" class="edit-mode-modal-lead"></div>
+      <div id="editModeConfirmImpact" class="edit-mode-modal-impact" hidden>
+        <div class="edit-mode-modal-impact-row"><span>Target table(s)</span><strong id="editModeConfirmImpactTargets">0</strong></div>
+        <div class="edit-mode-modal-impact-row"><span>Estimated rows affected</span><strong id="editModeConfirmImpactRows">0</strong></div>
+      </div>
+      <ol id="editModeConfirmTargetList" class="edit-mode-modal-target-list" hidden></ol>
+    </div>
+    <div class="edit-mode-modal-foot">
+      <button type="button" id="editModeConfirmCancelBtn" class="button button-secondary">Cancel</button>
+      <button type="button" id="editModeConfirmProceedBtn" class="button button-primary">Continue</button>
+    </div>
+  </div>
+
   <script src="../JS Files/ui-status-message-composer.js"></script>
   <script>
+    /**
+     * Configure page-specific keyboard shortcuts for Edit Mode
+     */
+    window.PAGE_SHORTCUTS_HELP = {
+      title: 'Edit Mode Shortcuts',
+      buttonLabel: '⌨️ Shortcuts',
+      sections: [
+        {
+          title: 'Navigation',
+          items: [
+            {
+              keys: ['Esc'],
+              description: 'Close the Edit Mode window',
+              buttonSelector: '.close-btn',
+              tooltip: 'Close Edit Mode window'
+            },
+            {
+              keys: ['Tab'],
+              description: 'Switch between tabs (Add Places, Automation, Backup, History, Festival Config)',
+              tooltip: 'Switch tabs'
+            }
+          ]
+        },
+        {
+          title: 'Search & Actions',
+          items: [
+            {
+              keys: ['Enter'],
+              description: 'Search or submit in batch tag operations when in search fields',
+              tooltip: 'Execute search or submit action'
+            },
+            {
+              keys: ['Ctrl/Cmd + F'],
+              description: 'Focus the search field within the current tab',
+              tooltip: 'Focus search field'
+            }
+          ]
+        },
+        {
+          title: 'Help & Dialogs',
+          items: [
+            {
+              keys: ['?'],
+              description: 'Open this keyboard shortcuts drawer'
+            }
+          ]
+        }
+      ]
+    };
+
+    /**
+     * Escape key handler to close Edit Mode window
+     */
+    document.addEventListener('keydown', function(event) {
+      if (!event || event.key !== 'Escape') return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Don't close if in an editable field
+      var target = event.target;
+      var isEditable = target && target.closest && target.closest('input, textarea, select, [contenteditable], [role="textbox"]');
+      if (isEditable) {
+        // If in a modal or search field, allow Escape to work normally
+        var isInModal = target && target.closest && target.closest('.edit-mode-modal');
+        if (!isInModal) return;
+      }
+      event.preventDefault();
+      closeEditModeWindow();
+    }, true);
+
     /**
      * Tab switching - SIMPLIFIED VERSION
      */
@@ -2738,6 +2913,43 @@
       syncTargetCardForTab('places');
 
       console.log('✅ Tab listeners initialized successfully');
+    }
+
+    function configureEditModeShortcutHelp() {
+      window.PAGE_SHORTCUTS_HELP = {
+        title: 'Edit Mode Shortcuts',
+        buttonLabel: '⌨️ Shortcuts',
+        sections: [
+          {
+            title: 'Tab Navigation',
+            items: [
+              {
+                keys: ['ArrowLeft / ArrowRight', 'Home / End', 'Enter / Space'],
+                description: 'When the tab bar is focused, move between sections or activate the focused tab',
+                buttonSelector: '#editModeTabList .tab-btn',
+                tooltip: 'Use arrow keys, Home/End, or Enter/Space to switch sections'
+              }
+            ]
+          },
+          {
+            title: 'Batch Tagging Search',
+            items: [
+              {
+                keys: ['Enter'],
+                description: 'Run the Batch Tagging target search from the “Find targets” field',
+                buttonSelector: '#batchTagSearchInput',
+                tooltip: 'Press Enter to search Batch Tagging targets'
+              },
+              {
+                keys: ['Enter'],
+                description: 'Run the existing-tag search from the Batch Tagging tag lookup field',
+                buttonSelector: '#batchTagTagSearchInput',
+                tooltip: 'Press Enter to search existing tags'
+              }
+            ]
+          }
+        ]
+      };
     }
 
     function setEditModeCardCollapsed(card, collapsed) {
@@ -4414,22 +4626,179 @@
       setBatchTagStatus('✅ Batch Tag Actions ready. Adjust targets/tags and run when ready.');
     }
 
-    function buildAddTargetConfirmationMessage(target, itemCount, flowLabel) {
+    function getModalTargetLine(target, count, noun) {
       const safeTarget = target && typeof target === 'object' ? target : null;
-      const count = Math.max(1, Number(itemCount) || 1);
-      const destination = safeTarget ? formatTargetDestination(safeTarget) : 'Unknown target';
-      const label = String(flowLabel || 'add').trim() || 'add';
-      return `Confirm ${label} to:\n${destination}\n\n${count} location${count === 1 ? '' : 's'} will be added to this table. Continue?`;
+      const rowCount = Math.max(0, Number(count) || 0);
+      if (!safeTarget) return `Unknown target - ${rowCount} ${noun}`;
+      return `${formatTargetDestination(safeTarget)} - ${rowCount} ${noun}`;
     }
 
-    function confirmAddTargetSelection(target, itemCount, flowLabel, statusDiv, cancelMessage) {
-      if (!target) return false;
-      let confirmed = true;
-      try {
-        confirmed = window.confirm(buildAddTargetConfirmationMessage(target, itemCount, flowLabel));
-      } catch (_error) {
-        confirmed = true;
+    function showEditModeConfirmModal(options = {}) {
+      const title = String(options.title || 'Confirm Action').trim() || 'Confirm Action';
+      const lead = String(options.lead || '').trim();
+      const targetLines = Array.isArray(options.targetLines) ? options.targetLines.filter(Boolean) : [];
+      const totalRows = Math.max(0, Number(options.totalRows) || 0);
+      const targetCount = Math.max(0, Number(options.targetCount) || targetLines.length || 0);
+      const confirmLabel = String(options.confirmLabel || 'Continue').trim() || 'Continue';
+      const cancelLabel = String(options.cancelLabel || 'Cancel').trim() || 'Cancel';
+
+      const backdrop = document.getElementById('editModeConfirmBackdrop');
+      const modal = document.getElementById('editModeConfirmModal');
+      const titleEl = document.getElementById('editModeConfirmTitle');
+      const leadEl = document.getElementById('editModeConfirmLead');
+      const impact = document.getElementById('editModeConfirmImpact');
+      const impactTargetsEl = document.getElementById('editModeConfirmImpactTargets');
+      const impactRowsEl = document.getElementById('editModeConfirmImpactRows');
+      const targetListEl = document.getElementById('editModeConfirmTargetList');
+      const closeBtn = document.getElementById('editModeConfirmCloseBtn');
+      const cancelBtn = document.getElementById('editModeConfirmCancelBtn');
+      const proceedBtn = document.getElementById('editModeConfirmProceedBtn');
+      if (!backdrop || !modal || !titleEl || !leadEl || !closeBtn || !cancelBtn || !proceedBtn) {
+        try { return Promise.resolve(window.confirm(lead || title)); } catch (_error) { return Promise.resolve(true); }
       }
+
+      titleEl.textContent = title;
+      leadEl.textContent = lead;
+      cancelBtn.textContent = cancelLabel;
+      proceedBtn.textContent = confirmLabel;
+
+      if (impact && impactTargetsEl && impactRowsEl) {
+        const hasImpact = targetCount > 0 || totalRows > 0;
+        impact.hidden = !hasImpact;
+        impactTargetsEl.textContent = String(targetCount);
+        impactRowsEl.textContent = String(totalRows);
+      }
+
+      if (targetListEl) {
+        if (targetLines.length) {
+          targetListEl.hidden = false;
+          targetListEl.innerHTML = targetLines.map((line) => `<li>${String(line || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</li>`).join('');
+        } else {
+          targetListEl.hidden = true;
+          targetListEl.innerHTML = '';
+        }
+      }
+
+      backdrop.hidden = false;
+      modal.hidden = false;
+
+      return new Promise((resolve) => {
+        let finished = false;
+        const cleanup = (confirmed) => {
+          if (finished) return;
+          finished = true;
+          backdrop.hidden = true;
+          modal.hidden = true;
+          backdrop.removeEventListener('click', onCancel);
+          closeBtn.removeEventListener('click', onCancel);
+          cancelBtn.removeEventListener('click', onCancel);
+          proceedBtn.removeEventListener('click', onConfirm);
+          document.removeEventListener('keydown', onKeydown, true);
+          resolve(confirmed);
+        };
+        const onCancel = () => cleanup(false);
+        const onConfirm = () => cleanup(true);
+        const onKeydown = (event) => {
+          if (!event || event.key !== 'Escape') return;
+          event.preventDefault();
+          cleanup(false);
+        };
+
+        backdrop.addEventListener('click', onCancel);
+        closeBtn.addEventListener('click', onCancel);
+        cancelBtn.addEventListener('click', onCancel);
+        proceedBtn.addEventListener('click', onConfirm);
+        document.addEventListener('keydown', onKeydown, true);
+        proceedBtn.focus();
+      });
+    }
+
+    async function estimateAutomationTargetImpacts(targets) {
+      const safeTargets = Array.isArray(targets) ? targets.filter(Boolean) : [];
+      if (!safeTargets.length) return { totalRows: 0, estimates: [] };
+
+      const mainWindow = getMainWindowSafe();
+      const context = {
+        filePath: mainWindow.filePath,
+        tableName: mainWindow.tableName,
+        adventuresData: mainWindow.adventuresData,
+        excelColumnCount: mainWindow.__excelColumnCount,
+        excelSchemaColumns: mainWindow.__excelSchemaColumns,
+        excelLoadedRowCount: mainWindow.__excelLoadedRowCount,
+        editModeTarget: mainWindow.__editModeTarget,
+        resolvedExcelFilePath: mainWindow.__resolvedExcelFilePath
+      };
+      const estimates = [];
+      let totalRows = 0;
+
+      for (const target of safeTargets) {
+        if (!applyTargetToMainWindow(target, null)) {
+          estimates.push({ target, rows: 0, loaded: false });
+          continue;
+        }
+        await probeTargetSchema(target);
+        const loaded = await loadTargetRows(target);
+        const rows = loaded ? Math.max(0, Number(mainWindow.__excelLoadedRowCount) || 0) : 0;
+        estimates.push({ target, rows, loaded });
+        totalRows += rows;
+      }
+
+      mainWindow.filePath = context.filePath;
+      mainWindow.tableName = context.tableName;
+      mainWindow.adventuresData = context.adventuresData;
+      mainWindow.__excelColumnCount = context.excelColumnCount;
+      mainWindow.__excelSchemaColumns = context.excelSchemaColumns;
+      mainWindow.__excelLoadedRowCount = context.excelLoadedRowCount;
+      mainWindow.__editModeTarget = context.editModeTarget;
+      mainWindow.__resolvedExcelFilePath = context.resolvedExcelFilePath;
+      window.filePath = context.filePath;
+      window.tableName = context.tableName;
+      window.adventuresData = context.adventuresData;
+      window.__excelColumnCount = context.excelColumnCount;
+      window.__excelSchemaColumns = context.excelSchemaColumns;
+      window.__excelLoadedRowCount = context.excelLoadedRowCount;
+      window.__editModeTarget = context.editModeTarget;
+      window.__resolvedExcelFilePath = context.resolvedExcelFilePath;
+
+      return { totalRows, estimates };
+    }
+
+    async function confirmAutomationOperation(targets, config = {}) {
+      const safeTargets = Array.isArray(targets) ? targets.filter(Boolean) : [];
+      const actionLabel = String(config.actionLabel || 'Automation').trim() || 'Automation';
+      const rowVerb = String(config.rowVerb || 'rows potentially modified').trim() || 'rows potentially modified';
+      const confirmLabel = String(config.confirmLabel || 'Run').trim() || 'Run';
+      const impact = await estimateAutomationTargetImpacts(safeTargets);
+      const targetLines = (impact.estimates || []).map((entry) => {
+        const rowsText = entry.loaded ? `${entry.rows} rows loaded` : 'row count unavailable';
+        return `${formatTargetDestination(entry.target)} - ${rowsText}`;
+      });
+
+      return showEditModeConfirmModal({
+        title: `${actionLabel} Confirmation`,
+        lead: `${actionLabel} will run against the selected table(s).`,
+        totalRows: impact.totalRows,
+        targetCount: safeTargets.length,
+        targetLines,
+        confirmLabel,
+        cancelLabel: 'Cancel',
+        rowVerb
+      });
+    }
+
+    async function confirmAddTargetSelection(target, itemCount, flowLabel, statusDiv, cancelMessage) {
+      if (!target) return false;
+      const count = Math.max(1, Number(itemCount) || 1);
+      const label = String(flowLabel || 'add').trim() || 'add';
+      const confirmed = await showEditModeConfirmModal({
+        title: `Confirm ${label}`,
+        lead: `${count} location${count === 1 ? '' : 's'} will be added if you continue.`,
+        totalRows: count,
+        targetCount: 1,
+        targetLines: [getModalTargetLine(target, count, `row${count === 1 ? '' : 's'} to add`)],
+        confirmLabel: 'Add Now',
+        cancelLabel: 'Cancel'
+      });
       if (confirmed) return true;
       const message = String(cancelMessage || `ℹ️ Add cancelled. No changes were written to ${formatTargetDestination(target)}.`);
       if (statusDiv) {
@@ -8368,6 +8737,7 @@
       const seen = new Set();
       return [...fromRows, ...fromManager]
         .map((tag) => String(tag || '').trim())
+        .filter((tag) => !(typeof window.isDisabledTagOption === 'function' && window.isDisabledTagOption(tag)))
         .filter((tag) => {
           const key = tag.toLowerCase();
           if (!key || seen.has(key)) return false;
@@ -8384,7 +8754,9 @@
     function setBatchTagSelectedTags(nextTags) {
       const input = document.getElementById('batchTagValues');
       if (!input) return;
-      input.value = parseBatchTagIdentifiers(Array.isArray(nextTags) ? nextTags.join(', ') : String(nextTags || '')).join(', ');
+      input.value = parseBatchTagIdentifiers(Array.isArray(nextTags) ? nextTags.join(', ') : String(nextTags || ''))
+        .filter((tag) => !(typeof window.isDisabledTagOption === 'function' && window.isDisabledTagOption(tag)))
+        .join(', ');
     }
 
     function toggleBatchTagTagByEncodedValue(encodedValue) {
@@ -9010,6 +9382,7 @@
 
     // Initialize
     console.log('✅ Edit Mode UI Loaded');
+    configureEditModeShortcutHelp();
 
     // Initialize tabs
     document.addEventListener('DOMContentLoaded', () => {
@@ -9036,6 +9409,11 @@
       restoreAllDrafts();
       initDraftTracking();
       applyBatchTagLaunchContext();
+
+      // Refresh shortcut help after page initialization
+      if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
+        window.ButtonReliability.refreshShortcutHelp();
+      }
     });
 
     // Also try immediately in case DOM is already ready
@@ -9066,6 +9444,11 @@
       restoreAllDrafts();
       initDraftTracking();
       applyBatchTagLaunchContext();
+
+      // Refresh shortcut help after page initialization
+      if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
+        window.ButtonReliability.refreshShortcutHelp();
+      }
     }
 
     console.log('📋 Available functions:', {

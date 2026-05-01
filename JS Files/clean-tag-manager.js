@@ -11,6 +11,16 @@
     'urban',
     'commercial'
   ]);
+  const DISABLED_RECOMMENDATION_TAGS = new Set([
+    'Farm-to-Table',
+    'Vegetarian-Friendly',
+    'Gluten-Free Options',
+    'Family-Friendly',
+    'Top Rated',
+    'Worth Visiting',
+    'Relaxing',
+    'Dining'
+  ]);
 
   function esc(text) {
     return String(text == null ? '' : text)
@@ -648,6 +658,25 @@
       // Combine all text for analysis
       const fullText = `${name} ${existingTags} ${city} ${address} ${description}`;
 
+      // Pull shared auto-tag recommendations first so modal suggestions stay aligned.
+      if (typeof window.getTagsForLocationText === 'function') {
+        try {
+          const shared = window.getTagsForLocationText({
+            name: values[0] || '',
+            tags: values[3] || '',
+            city: values[10] || '',
+            address: values[11] || '',
+            description: values[16] || '',
+            googleRating: values[13] || ''
+          }) || [];
+          shared.forEach((tag) => {
+            recs.set(tag, Math.max(recs.get(tag) || 0, 0.96));
+          });
+        } catch (_error) {
+          // Fall through to local rule map if helper is unavailable or errors.
+        }
+      }
+
       // ENHANCED CATEGORY RULES with confidence scoring
       const ruleMap = [
         // Outdoor & Nature Categories
@@ -837,9 +866,27 @@
         recs.set('Relaxing', Math.max(recs.get('Relaxing') || 0, 0.8));
       }
 
+      // Reduce broad tags when we already have specific recommendations.
+      const specificTags = new Set([
+        'Book Store', 'Thrift Store', 'Farmers Market', 'Grocery Store', 'Food Market', 'Coffee Shop',
+        'Tea Cafe', 'Antique Store', 'German Food', 'Italian Food', 'Greek Food', 'Mediterranean Food',
+        'Breakfast Joint', 'Diner', 'Noodle House', 'Pho', 'Sushi', 'Chinese Food', 'Japanese Food',
+        'Korean Food', 'Korean BBQ', 'Carolina BBQ', 'Tennessee BBQ', 'Ramen Bar', 'Seafood', 'Pub',
+        'Mexican Food', 'Thai Food', 'Indian Food', 'Cajun Food', 'Sandwich Shop', 'Sub Shop',
+        'State Park', 'National Park', 'Wildlife Sanctuary', 'Wildlife Refuge', 'Wildlife Preserve',
+        'Waterfall Trail', 'Scenic Overlook', 'Hiking Trail', 'Botanical Garden', 'Dog Park',
+        'Science Museum', 'Art Museum', 'History Museum'
+      ]);
+      const genericTags = ['Shopping', 'Dining', 'Outdoor', 'Nature', 'Entertainment'];
+      const hasSpecific = Array.from(recs.keys()).some((tag) => specificTags.has(tag));
+      if (hasSpecific) {
+        genericTags.forEach((tag) => recs.delete(tag));
+      }
+
       // Remove excluded recommendations and current tags
       const filtered = Array.from(recs.entries())
         .filter(([tag]) => !this.currentTags.includes(tag))
+        .filter(([tag]) => !DISABLED_RECOMMENDATION_TAGS.has(String(tag).trim()))
         .filter(([tag]) => !EXCLUDED_RECOMMENDATIONS.has(String(tag).toLowerCase()))
         .sort((a, b) => b[1] - a[1]) // Sort by confidence (highest first)
         .slice(0, 8); // Limit to top 8 recommendations
