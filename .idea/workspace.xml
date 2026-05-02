@@ -6,10 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-bulk-operations-system-v7-0-141.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,7 +99,7 @@
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
-      <workItem from="1777494531732" duration="73330000" />
+      <workItem from="1777494531732" duration="74637000" />
     </task>
     <servers />
   </component>

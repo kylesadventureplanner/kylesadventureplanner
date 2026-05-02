@@ -11167,6 +11167,8 @@
   // Initialize Google services
   let geocoderService = null;
   let placesConfigErrorLogged = false;
+  let googleServicesReady = false;
+  let googleServicesInitPromise = null;
 
   function classifyPlacesError(error) {
     const raw = String(error?.message || error || "");
@@ -11297,6 +11299,7 @@
 
     try {
       currentStep = addStep('importLibrary', 'Load Google Places via importLibrary("places")');
+      await ensureGoogleServicesInitialized();
       if (typeof google === 'undefined' || !google.maps || typeof google.maps.importLibrary !== 'function') {
         throw new Error('Google Maps JS API not loaded');
       }
@@ -11396,22 +11399,35 @@
    * Call this after Google Maps API is loaded
    */
   async function initializeGoogleServices() {
-    try {
-      if (typeof google !== 'undefined' && google.maps) {
-        // Load geocoding library asynchronously
-        const { Geocoder } = await google.maps.importLibrary("geocoding");
-        geocoderService = new Geocoder();
+    if (googleServicesReady && geocoderService) return true;
+    if (googleServicesInitPromise) return googleServicesInitPromise;
 
-        console.log("✅ Google Maps services initialized successfully (NEW Places API)");
-        return true;
-      } else {
-        console.warn("⚠️ Google Maps API not yet loaded. Services will be initialized when API is ready.");
+    googleServicesInitPromise = (async function initGoogleServicesOnce() {
+      try {
+        if (typeof google !== 'undefined' && google.maps && typeof google.maps.importLibrary === 'function') {
+          // Load geocoding only when a Google-dependent feature is first used.
+          const { Geocoder } = await google.maps.importLibrary("geocoding");
+          geocoderService = geocoderService || new Geocoder();
+          googleServicesReady = true;
+          console.log("✅ Google Maps services initialized lazily (NEW Places API)");
+          return true;
+        }
+        console.warn("⚠️ Google Maps API not yet loaded. Services will initialize when the loader is ready.");
         return false;
+      } catch (error) {
+        console.error("❌ Error initializing Google Maps services:", error);
+        return false;
+      } finally {
+        googleServicesInitPromise = null;
       }
-    } catch (error) {
-      console.error("❌ Error initializing Google Maps services:", error);
-      return false;
-    }
+    })();
+
+    return googleServicesInitPromise;
+  }
+
+  async function ensureGoogleServicesInitialized() {
+    if (googleServicesReady && geocoderService) return true;
+    return initializeGoogleServices();
   }
 
   /**
@@ -11425,6 +11441,7 @@
    */
   async function getPlaceDetails(placeId) {
     try {
+      await ensureGoogleServicesInitialized();
       // Validate Place ID before attempting fetch
       const normalizedPlaceId = String(placeId || '').trim();
       const normalizedUpper = normalizedPlaceId.toUpperCase();
@@ -11631,6 +11648,7 @@
    */
   async function searchPlaces(query) {
     try {
+      await ensureGoogleServicesInitialized();
       if (typeof google === 'undefined' || !google.maps || typeof google.maps.importLibrary !== 'function') {
         throw new Error("Google Maps JS API not loaded");
       }
@@ -11741,6 +11759,7 @@
    */
   async function calculateDistance(origin, destination) {
     try {
+      await ensureGoogleServicesInitialized();
       // Load routes library for distance calculations
       const { DistanceMatrixService } = await google.maps.importLibrary("routes");
       const service = new DistanceMatrixService();
@@ -11785,6 +11804,7 @@
    */
   async function geocodeAddress(address) {
     try {
+      await ensureGoogleServicesInitialized();
       // Ensure geocoder is loaded
       if (!geocoderService) {
         const { Geocoder } = await google.maps.importLibrary("geocoding");
@@ -11825,6 +11845,7 @@
    */
   async function reverseGeocodeCoordinates(coordinates) {
     try {
+      await ensureGoogleServicesInitialized();
       // Ensure geocoder is loaded
       if (!geocoderService) {
         const { Geocoder } = await google.maps.importLibrary("geocoding");
@@ -12154,8 +12175,7 @@
   }
 
   window.addEventListener("load", async () => {
-    // Initialize Google Maps services
-    initializeGoogleServices();
+    // Keep startup lean; Google services initialize lazily on first Places/Maps use.
     await bootstrapAuthFromCache();
 
     console.log("✅ Page initialization complete");
