@@ -1,6 +1,8 @@
 <!-- HOUSEHOLD TOOLS TAB CONTENT -->
 <!-- Consolidates recipes, garden planner, and budget utilities into one tab -->
 
+<link rel="stylesheet" href="/CSS/household-tools-concerts.css">
+
 <div id="householdToolsRoot">
   <div class="household-tools-header">
     <h1>Household Tools</h1>
@@ -11,6 +13,7 @@
     <button id="householdToolsTab-recipes" type="button" class="household-tools-subtab active" role="tab" aria-controls="householdToolsPane-recipes" aria-selected="true" data-household-subtab="recipes">👨‍🍳 Recipes</button>
     <button id="householdToolsTab-garden" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-garden" aria-selected="false" data-household-subtab="garden">🌱 Garden Planner</button>
     <button id="householdToolsTab-budget" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-budget" aria-selected="false" data-household-subtab="budget">💰 Budget</button>
+    <button id="householdToolsTab-concerts" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-concerts" aria-selected="false" data-household-subtab="concerts">🎸 Concerts</button>
   </div>
 
   <div id="householdToolsPane-recipes" class="household-tools-pane is-active" data-household-pane="recipes" role="tabpanel" aria-labelledby="householdToolsTab-recipes">
@@ -34,6 +37,81 @@
       <div class="tab-placeholder-icon">💰</div>
       <div class="tab-placeholder-text">Budget Planner</div>
       <div class="tab-placeholder-subtext">Track and manage your household and adventure budget.</div>
+    </div>
+  </div>
+
+  <div id="householdToolsPane-concerts" class="household-tools-pane" data-household-pane="concerts" role="tabpanel" aria-labelledby="householdToolsTab-concerts" hidden>
+    <div id="householdConcertsPane">
+      <section class="household-concerts-hero">
+        <div class="household-concerts-hero-copy">
+          <div class="household-concerts-eyebrow">🎸 Household Tools • Concerts</div>
+          <h2>Track favorite bands, concerts you have seen, and nearby shows you still want to catch.</h2>
+          <p>Search and add bands, log concerts with ratings/notes/photos, and monitor upcoming shows filtered by distance from your location.</p>
+        </div>
+        <div class="household-concerts-hero-actions">
+          <button type="button" class="pill-button pill-button-primary" data-concert-action="open-add-band">＋ Add Favorite Band</button>
+          <button type="button" class="pill-button" data-concert-action="open-log-concert">★ Log Concert</button>
+          <button type="button" class="pill-button" data-concert-action="open-add-upcoming">📅 Add Upcoming</button>
+          <button type="button" class="pill-button" data-concert-action="refresh-data">↻ Refresh</button>
+        </div>
+      </section>
+
+      <div id="householdConcertsStatus" class="household-concerts-status household-concerts-status--info">Concerts loads from your Excel workbook and can also search the web for artists to add.</div>
+      <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
+
+      <section class="household-concerts-search-card-shell">
+        <div class="household-concerts-search-row">
+          <input id="householdConcertsSearchInput" type="search" placeholder="Search artist catalog by band name..." aria-label="Search artist catalog">
+          <button type="button" class="pill-button" data-concert-action="search-web">Search Web</button>
+          <button type="button" class="pill-button" data-concert-action="open-add-band">Manual Add</button>
+        </div>
+      </section>
+
+      <div class="household-concerts-main-grid">
+        <section class="household-concerts-panel">
+          <div class="household-concerts-filter-row">
+            <input id="householdConcertsFilterInput" type="search" placeholder="Filter favorite bands by name, genre, label, songs, or members..." aria-label="Filter favorite bands">
+          </div>
+          <div id="householdConcertsGenreChips" class="household-concerts-tag-row"></div>
+          <div id="householdConcertsFavoritesGrid" class="household-concerts-favorites-grid" data-testid="concerts-favorites-grid"></div>
+        </section>
+
+        <div class="household-concerts-side-column" style="display:flex;flex-direction:column;gap:18px;">
+          <section class="household-concerts-panel">
+            <div id="householdConcertsSearchResults" class="household-concerts-search-results" data-testid="concerts-search-results"></div>
+          </section>
+
+          <section class="household-concerts-panel">
+            <div id="householdConcertsDiscovery" data-testid="concerts-discovery"></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="household-concerts-lower-grid">
+        <section class="household-concerts-panel">
+          <div class="household-concerts-panel-head">
+            <div><h3>Attended Concerts</h3></div>
+            <button type="button" class="pill-button" data-concert-action="open-log-concert">＋ Log Concert</button>
+          </div>
+          <div id="householdConcertsAttendedList" class="household-concerts-entry-list" data-testid="concerts-attended-list"></div>
+        </section>
+
+        <section class="household-concerts-panel">
+          <div class="household-concerts-panel-head">
+            <div><h3>Upcoming Concerts</h3></div>
+            <button type="button" class="pill-button" data-concert-action="open-add-upcoming">＋ Add Upcoming</button>
+          </div>
+          <div class="household-concerts-location-row">
+            <label for="householdConcertsDistanceSlider" class="household-concerts-muted">Distance filter: <strong id="householdConcertsDistanceValue">100 miles</strong></label>
+            <input id="householdConcertsDistanceSlider" class="household-concerts-distance-slider" type="range" min="0" max="5" step="1" value="3" aria-label="Concert distance filter slider">
+            <button type="button" class="pill-button" data-concert-action="use-location">📍 Use My Location</button>
+          </div>
+          <p id="householdConcertsLocationText" class="household-concerts-muted">Save your location to filter upcoming concerts by distance.</p>
+          <div id="householdConcertsUpcomingList" class="household-concerts-entry-list" data-testid="concerts-upcoming-list"></div>
+        </section>
+      </div>
+
+      <div id="householdConcertsModalHost"></div>
     </div>
   </div>
 </div>
@@ -87,8 +165,14 @@
 
 <script>
   (function () {
-    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget'];
+    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget', 'concerts'];
     const state = { activeSubTab: 'recipes' };
+
+    function ensureConcertsInitialized(root) {
+      if (window.HouseholdConcerts && typeof window.HouseholdConcerts.init === 'function') {
+        window.HouseholdConcerts.init(root);
+      }
+    }
 
     function getHouseholdSubTabDockElements() {
       return {
@@ -293,11 +377,13 @@
       });
 
       syncHouseholdSubTabDock(root);
+      if (state.activeSubTab === 'concerts') {
+        ensureConcertsInitialized(root);
+      }
     }
 
     function setActiveHouseholdSubTab(root, tabKey) {
-      const safeTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'recipes';
-      state.activeSubTab = safeTab;
+      state.activeSubTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'recipes';
       syncHouseholdSubTabs(root);
     }
 
@@ -326,8 +412,11 @@
       bindHouseholdPrimaryTabFallbackSync(root);
 
       setActiveHouseholdSubTab(root, 'recipes');
+      ensureConcertsInitialized(root);
       console.log('✅ Household Tools tab initialized');
     };
   })();
 </script>
+
+<script src="/JS%20Files/household-tools-concerts-system.js"></script>
 

@@ -1,4 +1,4 @@
-const SW_VERSION = '2026.04.17.1';
+const SW_VERSION = '2026.05.02.1';
 const CACHE_VERSION = `kaf-shell-${SW_VERSION}`;
 const RUNTIME_CACHE = `kaf-runtime-${SW_VERSION}`;
 const OFFLINE_CACHE = `kaf-offline-pack-${SW_VERSION}`;
@@ -14,8 +14,10 @@ const PRECACHE_ASSETS = [
   '/CSS/edit-page.css',
   '/CSS/bike-details-window.css',
   '/CSS/mobile-standalone-enhancements.css',
+  '/CSS/household-tools-concerts.css',
   '/CSS/visited-locations-tab.css',
   '/JS%20Files/tab-content-loader.js',
+  '/JS%20Files/household-tools-concerts-system.js',
   '/JS%20Files/visited-locations-tab-system.js',
   '/JS%20Files/nature-challenge-tab-system.js',
   '/JS%20Files/pwa-offline-system.js',
