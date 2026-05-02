@@ -30,32 +30,39 @@
     ''
   ];
 
-  var state = {
-    initialized: false,
-    loading: false,
-    workbookPath: '',
-    favoriteBands: [],
-    attendedConcerts: [],
-    upcomingConcerts: [],
-    searchResults: [],
-    activeBandKey: '',
-    bandFilter: '',
-    genreFilter: '',
-    distanceIndex: 3,
-    searchBusy: false,
-    geocodeBusy: false,
-    discoveryBusyKey: '',
-    location: restoreLocation(),
-    localNotes: readJsonStorage(NOTES_STORAGE_KEY, {}),
-    geocodeCache: readJsonStorage(GEOCODE_STORAGE_KEY, {}),
-    discoveryCache: readJsonStorage(DISCOVERY_STORAGE_KEY, {}),
-    pendingSearchQuery: '',
-    attendedUploadFiles: [],
-    attendedUploadedPhotoUrls: [],
-    attendedUploadBusy: false,
-    attendedUploadStatus: { tone: 'info', message: '' },
-    status: { tone: 'info', message: 'Concerts loads from your Excel workbook and can also search the web for artists to add.' }
-  };
+   var state = {
+     initialized: false,
+     loading: false,
+     workbookPath: '',
+     favoriteBands: [],
+     attendedConcerts: [],
+     upcomingConcerts: [],
+     searchResults: [],
+     activeBandKey: '',
+     bandFilter: '',
+     genreFilter: '',
+     distanceIndex: 3,
+     searchBusy: false,
+     geocodeBusy: false,
+     discoveryBusyKey: '',
+     location: restoreLocation(),
+     localNotes: readJsonStorage(NOTES_STORAGE_KEY, {}),
+     geocodeCache: readJsonStorage(GEOCODE_STORAGE_KEY, {}),
+     discoveryCache: readJsonStorage(DISCOVERY_STORAGE_KEY, {}),
+     pendingSearchQuery: '',
+     attendedUploadFiles: [],
+     attendedUploadedPhotoUrls: [],
+     attendedUploadBusy: false,
+     attendedUploadStatus: { tone: 'info', message: '' },
+     status: { tone: 'info', message: 'Concerts loads from your Excel workbook and can also search the web for artists to add.' },
+     // ENHANCEMENT: New feature states
+     bandTags: readJsonStorage('householdConcertsBandTagsV1', {}),
+     venueStats: {},
+     achievements: readJsonStorage('householdConcertsAchievementsV1', {}),
+     tourSyncBusy: false,
+     notificationsEnabled: readJsonStorage('householdConcertsNotifyV1', { enabled: true, frequency: 'weekly' }),
+     currentView: 'default'
+   };
 
   function readJsonStorage(key, fallback) {
     try {
@@ -693,58 +700,61 @@
     el.innerHTML = html.join('');
   }
 
-  function renderFavoriteBands() {
-    var el = $(FAVORITES_GRID_ID);
-    if (!el) return;
-    var bands = getFilteredBands();
-    if (!bands.length) {
-      el.innerHTML = emptyState('No favorite bands match the current filters.', 'Try a different search or add a new band from the web search panel.');
-      return;
-    }
-    var activeBandKey = normalizeKey(resolveActiveBand() && resolveActiveBand().id);
-    el.innerHTML = bands.map(function (band) {
-      var stats = computeBandStats(band.id);
-      var isActive = normalizeKey(band.id) === activeBandKey;
-      var members = (band.members || []).slice(0, 4);
-      var genres = (band.genres || []).slice(0, 4);
-      var songs = (band.songs || []).slice(0, 4);
-      var links = renderBandLinks(band, true);
-      var coverStyle = band.bandCoverPhotoUrl ? ' style="background-image:url(\'' + escapeHtml(safeUrl(band.bandCoverPhotoUrl)) + '\')"' : '';
-      var logo = band.bandLogoUrl
-        ? '<img class="household-concerts-band-logo" src="' + escapeHtml(safeUrl(band.bandLogoUrl)) + '" alt="' + escapeHtml(band.bandName) + ' logo">'
-        : '<div class="household-concerts-band-logo household-concerts-band-logo--placeholder">🎵</div>';
-      return '<article class="household-concerts-band-card' + (isActive ? ' is-active' : '') + '" data-concert-band-key="' + escapeHtml(band.id) + '">'
-        + '<div class="household-concerts-band-cover"' + coverStyle + '></div>'
-        + '<div class="household-concerts-band-card-body">'
-        + '<div class="household-concerts-band-header">'
-        + logo
-        + '<div>'
-        + '<h3>' + escapeHtml(band.bandName) + '</h3>'
-        + '<div class="household-concerts-band-meta">' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + '</div>'
-        + '</div>'
-        + '</div>'
-        + '<div class="household-concerts-band-stats">'
-        + statPill('Seen', String(stats.attendedCount))
-        + statPill('Upcoming', String(stats.upcomingCount))
-        + statPill('Avg', stats.averageRating ? stats.averageRating.toFixed(1) + '★' : '—')
-        + '</div>'
-        + (genres.length ? '<div class="household-concerts-tag-row">' + genres.map(renderTag).join('') + '</div>' : '')
-        + '<div class="household-concerts-band-detail-grid">'
-        + detailLine('Label', band.recordLabel || 'Not set')
-        + detailLine('Top Songs', songs.length ? songs.join(', ') : 'Add favorite songs')
-        + detailLine('Members', members.length ? members.join(' • ') : 'Add members and roles')
-        + '</div>'
-        + links
-        + '<div class="household-concerts-band-actions">'
-        + '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>'
-        + '<button type="button" class="pill-button" data-concert-action="open-band-details" data-band-key="' + escapeHtml(band.id) + '">View Profile</button>'
-        + '<button type="button" class="pill-button" data-concert-action="open-log-concert" data-band-key="' + escapeHtml(band.id) + '">Log Concert</button>'
-        + '<button type="button" class="pill-button" data-concert-action="open-add-upcoming" data-band-key="' + escapeHtml(band.id) + '">Add Upcoming</button>'
-        + '</div>'
-        + '</div>'
-        + '</article>';
-    }).join('');
-  }
+   function renderFavoriteBands() {
+     var el = $(FAVORITES_GRID_ID);
+     if (!el) return;
+     var bands = getFilteredBands();
+     if (!bands.length) {
+       el.innerHTML = emptyState('No favorite bands match the current filters.', 'Try a different search or add a new band from the web search panel.');
+       return;
+     }
+     var activeBandKey = normalizeKey(resolveActiveBand() && resolveActiveBand().id);
+     el.innerHTML = bands.map(function (band) {
+       var stats = computeBandStats(band.id);
+       var isActive = normalizeKey(band.id) === activeBandKey;
+       var members = (band.members || []).slice(0, 4);
+       var genres = (band.genres || []).slice(0, 4);
+       var songs = (band.songs || []).slice(0, 4);
+       var tags = getBandTags(band.bandName);
+       var links = renderBandLinks(band, true);
+       var coverStyle = band.bandCoverPhotoUrl ? ' style="background-image:url(\'' + escapeHtml(safeUrl(band.bandCoverPhotoUrl)) + '\')"' : '';
+       var logo = band.bandLogoUrl
+         ? '<img class="household-concerts-band-logo" src="' + escapeHtml(safeUrl(band.bandLogoUrl)) + '" alt="' + escapeHtml(band.bandName) + ' logo">'
+         : '<div class="household-concerts-band-logo household-concerts-band-logo--placeholder">🎵</div>';
+       return '<article class="household-concerts-band-card' + (isActive ? ' is-active' : '') + '" data-concert-band-key="' + escapeHtml(band.id) + '">'
+         + '<div class="household-concerts-band-cover"' + coverStyle + '></div>'
+         + '<div class="household-concerts-band-card-body">'
+         + '<div class="household-concerts-band-header">'
+         + logo
+         + '<div>'
+         + '<h3>' + escapeHtml(band.bandName) + '</h3>'
+         + '<div class="household-concerts-band-meta">' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + '</div>'
+         + '</div>'
+         + '</div>'
+         + '<div class="household-concerts-band-stats">'
+         + statPill('Seen', String(stats.attendedCount))
+         + statPill('Upcoming', String(stats.upcomingCount))
+         + statPill('Avg', stats.averageRating ? stats.averageRating.toFixed(1) + '★' : '—')
+         + '</div>'
+         + (tags.length ? '<div class="household-concerts-tag-display">' + tags.map(function (tag) { return '<span class="household-concerts-tag-badge">' + escapeHtml(tag) + '</span>'; }).join('') + '</div>' : '')
+         + (genres.length ? '<div class="household-concerts-tag-row">' + genres.map(renderTag).join('') + '</div>' : '')
+         + '<div class="household-concerts-band-detail-grid">'
+         + detailLine('Label', band.recordLabel || 'Not set')
+         + detailLine('Top Songs', songs.length ? songs.join(', ') : 'Add favorite songs')
+         + detailLine('Members', members.length ? members.join(' • ') : 'Add members and roles')
+         + '</div>'
+         + links
+         + '<div class="household-concerts-band-actions">'
+         + '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>'
+         + '<button type="button" class="pill-button" data-concert-action="open-band-details" data-band-key="' + escapeHtml(band.id) + '">View Profile</button>'
+         + '<button type="button" class="pill-button" data-concert-action="open-log-concert" data-band-key="' + escapeHtml(band.id) + '">Log Concert</button>'
+         + '<button type="button" class="pill-button" data-concert-action="open-add-upcoming" data-band-key="' + escapeHtml(band.id) + '">Add Upcoming</button>'
+         + (band.bandsintown ? '<button type="button" class="pill-button" data-concert-action="sync-tour" data-band-key="' + escapeHtml(band.id) + '" title="Fetch tour dates from Bandsintown">🔄 Sync Tour</button>' : '')
+         + '</div>'
+         + '</div>'
+         + '</article>';
+     }).join('');
+   }
 
   function statPill(label, value) {
     return '<div class="household-concerts-stat-pill"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>';
@@ -930,16 +940,22 @@
     }).join('');
   }
 
-  function renderAll() {
-    renderStatus();
-    renderSummary();
-    renderGenreChips();
-    renderFavoriteBands();
-    renderSearchResults();
-    renderDiscovery();
-    renderAttendedConcerts();
-    renderUpcomingConcerts();
-  }
+   function renderAll() {
+     renderStatus();
+     renderSummary();
+     renderGenreChips();
+     renderFavoriteBands();
+     renderSearchResults();
+     renderDiscovery();
+     renderAttendedConcerts();
+     renderUpcomingConcerts();
+     // ENHANCEMENT: New renderers
+     renderPersonalStats();
+     renderVenuePerformance();
+     renderAchievements();
+     renderPhotoGallery();
+     renderAnalyticsDashboard();
+   }
 
   async function readTableSafe(filePath, tableName) {
     try {
@@ -974,17 +990,20 @@
       renderAll();
       maybeHydrateUpcomingDistances();
       if (resolveActiveBand()) loadDiscoveryForBand(resolveActiveBand(), false);
-    } catch (error) {
-      console.error('❌ Concerts feature failed to load:', error);
-      state.favoriteBands = [];
-      state.attendedConcerts = [];
-      state.upcomingConcerts = [];
-      setStatus(error && error.message ? error.message : 'Concerts data could not be loaded.', 'error');
-      renderAll();
-    } finally {
-      state.loading = false;
-    }
-  }
+     } catch (error) {
+       console.error('❌ Concerts feature failed to load:', error);
+       state.favoriteBands = [];
+       state.attendedConcerts = [];
+       state.upcomingConcerts = [];
+       setStatus(error && error.message ? error.message : 'Concerts data could not be loaded.', 'error');
+       renderAll();
+     } finally {
+       state.loading = false;
+       // ENHANCEMENT: Post-load checks
+       detectAchievements();
+       checkAndNotifyUpcomingConcerts();
+     }
+   }
 
   function buildSearchPrefill(bandName, genreText, referenceUrl, sourceLabel) {
     var cleanName = String(bandName || '').trim();
@@ -1208,11 +1227,11 @@
     return list.find(function (item) { return item.id === id; }) || null;
   }
 
-  function openModal(innerHtml) {
-    var host = getModalHost();
-    if (!host) return;
-    host.innerHTML = '<div class="household-concerts-modal-backdrop" data-concert-action="close-modal"><div class="household-concerts-modal" role="dialog" aria-modal="true">' + innerHtml + '</div></div>';
-  }
+   function openModal(innerHtml) {
+     var host = getModalHost();
+     if (!host) return;
+     host.innerHTML = '<div class="household-concerts-modal-backdrop"><div class="household-concerts-modal" role="dialog" aria-modal="true">' + innerHtml + '</div></div>';
+   }
 
   function closeModal() {
     var host = getModalHost();
@@ -1551,27 +1570,347 @@
     }
   }
 
-  function bindEvents(root) {
-    if (!root || root.dataset.householdConcertsBound === '1') return;
-    root.dataset.householdConcertsBound = '1';
+   // ===== ENHANCEMENT: VENUE PERFORMANCE ANALYTICS =====
+   function getVenueStats() {
+     var stats = {};
+     state.attendedConcerts.forEach(function (concert) {
+       var venue = concert.venue || 'Unknown Venue';
+       if (!stats[venue]) {
+         stats[venue] = { count: 0, totalRating: 0, bands: new Set(), distanceSum: 0 };
+       }
+       stats[venue].count += 1;
+       stats[venue].totalRating += Number(concert.rating) || 0;
+       stats[venue].bands.add(concert.bandName);
+     });
+     Object.keys(stats).forEach(function (venue) {
+       stats[venue].averageRating = stats[venue].totalRating / stats[venue].count;
+       stats[venue].bandCount = stats[venue].bands.size;
+       stats[venue].bands = Array.from(stats[venue].bands);
+     });
+     return stats;
+   }
 
-    root.addEventListener('click', function (event) {
-      var target = event.target && event.target.closest ? event.target.closest('[data-concert-action]') : null;
-      if (!target) return;
-      var action = String(target.getAttribute('data-concert-action') || '').trim();
-      if (!action) return;
-      if (action === 'close-modal' && event.target === target) {
-        closeModal();
-        return;
-      }
-      if (action === 'close-modal' || target.classList.contains('household-concerts-icon-btn')) {
-        closeModal();
-        return;
-      }
-      switch (action) {
-        case 'refresh-data':
-          refreshData();
-          break;
+   function renderVenuePerformance() {
+     var container = document.getElementById('householdConcertsVenueReport');
+     if (!container) return;
+     var stats = getVenueStats();
+     var venues = Object.entries(stats).sort(function (a, b) { return b[1].count - a[1].count; }).slice(0, 8);
+     if (!venues.length) {
+       container.innerHTML = '<div class="household-concerts-empty"><strong>No venues yet</strong><p>Log concerts to see venue performance data.</p></div>';
+       return;
+     }
+     container.innerHTML = venues.map(function (entry) {
+       var venueName = entry[0];
+       var data = entry[1];
+       return '<article class="household-concerts-venue-card">'
+         + '<div class="household-concerts-venue-header"><h4>' + escapeHtml(venueName) + '</h4></div>'
+         + '<div class="household-concerts-venue-stats">'
+         + '<div class="stat"><span>Concerts</span><strong>' + data.count + '</strong></div>'
+         + '<div class="stat"><span>Avg Rating</span><strong>' + (data.averageRating ? data.averageRating.toFixed(1) + '★' : '—') + '</strong></div>'
+         + '<div class="stat"><span>Bands</span><strong>' + data.bandCount + '</strong></div>'
+         + '</div>'
+         + '</article>';
+     }).join('');
+   }
+
+   // ===== ENHANCEMENT: SMART TAGGING SYSTEM =====
+   function getBandTags(bandName) {
+     var key = normalizeKey(bandName);
+     return Array.isArray(state.bandTags[key]) ? state.bandTags[key] : [];
+   }
+
+   function saveBandTag(bandName, tag) {
+     var key = normalizeKey(bandName);
+     if (!state.bandTags[key]) state.bandTags[key] = [];
+     if (state.bandTags[key].indexOf(tag) < 0) state.bandTags[key].push(tag);
+     writeJsonStorage('householdConcertsBandTagsV1', state.bandTags);
+   }
+
+   function removeBandTag(bandName, tag) {
+     var key = normalizeKey(bandName);
+     if (Array.isArray(state.bandTags[key])) {
+       var idx = state.bandTags[key].indexOf(tag);
+       if (idx >= 0) state.bandTags[key].splice(idx, 1);
+       writeJsonStorage('householdConcertsBandTagsV1', state.bandTags);
+     }
+   }
+
+   function renderBandTagsUI(band) {
+     var tags = getBandTags(band.bandName);
+     var allTags = ['Live Favorite', 'Festival Only', 'Tribute Band', 'Still Active', 'Retired', 'Local Favorite'];
+     return '<div class="household-concerts-tag-manager">'
+       + '<div class="household-concerts-tag-display">'
+       + tags.map(function (tag) {
+         return '<span class="household-concerts-tag-badge">' + escapeHtml(tag) + ' <button type="button" data-concert-action="remove-tag" data-band-key="' + escapeHtml(band.id) + '" data-tag="' + escapeHtml(tag) + '" aria-label="Remove tag">✕</button></span>';
+       }).join('')
+       + '</div>'
+       + '</div>';
+   }
+
+   // ===== ENHANCEMENT: GAMIFICATION SYSTEM =====
+   function detectAchievements() {
+     var achievements = {
+       'first-concert': state.attendedConcerts.length >= 1,
+       'concert-dozen': state.attendedConcerts.length >= 12,
+       'concert-fifty': state.attendedConcerts.length >= 50,
+       'concert-century': state.attendedConcerts.length >= 100,
+       'band-collector': state.favoriteBands.length >= 10,
+       'band-mega': state.favoriteBands.length >= 50,
+       'five-star': state.attendedConcerts.some(function (c) { return c.rating === 5; }),
+       'completionist': state.attendedConcerts.every(function (c) { return c.rating > 0; }),
+       'multi-state': (function () {
+         var states = new Set();
+         state.upcomingConcerts.forEach(function (c) { if (c.state) states.add(c.state); });
+         return states.size >= 5;
+       })(),
+       'nearby-hunter': state.upcomingConcerts.filter(function (c) { return Number.isFinite(c.distanceMiles) && c.distanceMiles < 50; }).length >= 3
+     };
+     Object.keys(achievements).forEach(function (key) {
+       if (achievements[key] && !state.achievements[key]) {
+         state.achievements[key] = { unlockedAt: Date.now() };
+         setStatus('🏆 Achievement unlocked: ' + key.replace(/-/g, ' ') + '!', 'success');
+       }
+     });
+     writeJsonStorage('householdConcertsAchievementsV1', state.achievements);
+     return achievements;
+   }
+
+   function renderAchievements() {
+     var container = document.getElementById('householdConcertsAchievements');
+     if (!container) return;
+     var achievements = detectAchievements();
+     var iconMap = {
+       'first-concert': '🎵',
+       'concert-dozen': '🎫',
+       'concert-fifty': '⭐',
+       'concert-century': '👑',
+       'band-collector': '📚',
+       'band-mega': '🌟',
+       'five-star': '✨',
+       'completionist': '✓',
+       'multi-state': '🗺️',
+       'nearby-hunter': '🎯'
+     };
+     var items = Object.entries(achievements).map(function (entry) {
+       var key = entry[0];
+       var unlocked = entry[1];
+       var icon = iconMap[key] || '🏆';
+       return '<div class="household-concerts-achievement' + (unlocked ? ' is-unlocked' : '') + '" title="' + key.replace(/-/g, ' ') + '">'
+         + '<div class="achievement-icon">' + icon + '</div>'
+         + '<div class="achievement-name">' + key.replace(/-/g, ' ') + '</div>'
+         + '</div>';
+     }).join('');
+     container.innerHTML = '<div class="household-concerts-achievements-grid">' + items + '</div>';
+   }
+
+   // ===== ENHANCEMENT: PERSONAL STATISTICS CARDS =====
+   function computePersonalStats() {
+     var total = state.attendedConcerts.length;
+     var avgRating = total ? state.attendedConcerts.reduce(function (sum, c) { return sum + (c.rating || 0); }, 0) / total : 0;
+     var favoredBand = state.favoriteBands.length ? state.favoriteBands.reduce(function (best, band) {
+       var count = state.attendedConcerts.filter(function (c) { return normalizeKey(c.bandName) === normalizeKey(band.bandName); }).length;
+       return count > (best.count || 0) ? { name: band.bandName, count: count } : best;
+     }, {}) : null;
+     var rareGenres = (function () {
+       var genreCounts = new Map();
+       state.favoriteBands.forEach(function (band) {
+         (band.genres || []).forEach(function (genre) {
+           genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+         });
+       });
+       return Array.from(genreCounts.entries())
+         .sort(function (a, b) { return a[1] - b[1]; })
+         .slice(0, 1)
+         .map(function (e) { return e[0]; })[0] || '—';
+     })();
+     return {
+       total: total,
+       avgRating: avgRating,
+       favoriteBand: favoredBand ? favoredBand.name : '—',
+       concerts: total > 0 ? 'Seen ' + total + ' shows' : 'No concerts logged',
+       rareGenre: rareGenres
+     };
+   }
+
+   function renderPersonalStats() {
+     var container = document.getElementById('householdConcertsPersonalStats');
+     if (!container) return;
+     var stats = computePersonalStats();
+     container.innerHTML = '<div class="household-concerts-personal-stats">'
+       + '<div class="stat-card"><div class="stat-value">' + stats.total + '</div><div class="stat-label">Concerts</div></div>'
+       + '<div class="stat-card"><div class="stat-value">' + (stats.avgRating ? stats.avgRating.toFixed(1) : '—') + '</div><div class="stat-label">Avg Rating</div></div>'
+       + '<div class="stat-card"><div class="stat-value">' + escapeHtml(stats.favoriteBand.substring(0, 12)) + '</div><div class="stat-label">Most Seen</div></div>'
+       + '<div class="stat-card"><div class="stat-value">' + escapeHtml(stats.rareGenre.substring(0, 15)) + '</div><div class="stat-label">Rarest Genre</div></div>'
+       + '</div>';
+   }
+
+   // ===== ENHANCEMENT: PHOTO GALLERY =====
+   function collectAllPhotos() {
+     var photos = [];
+     state.attendedConcerts.forEach(function (concert) {
+       var urls = Array.isArray(concert.photoUrls) ? concert.photoUrls : (concert.photoUrl ? [concert.photoUrl] : []);
+       urls.forEach(function (url) {
+         photos.push({
+           url: url,
+           band: concert.bandName,
+           date: concert.concertDate,
+           venue: concert.venue,
+           rating: concert.rating
+         });
+       });
+     });
+     return photos.sort(function (a, b) { return (toIsoDate(b.date) || '').localeCompare(toIsoDate(a.date) || ''); });
+   }
+
+   function renderPhotoGallery() {
+     var container = document.getElementById('householdConcertsPhotoGallery');
+     if (!container) return;
+     var photos = collectAllPhotos();
+     if (!photos.length) {
+       container.innerHTML = '<div class="household-concerts-empty"><strong>No photos yet</strong><p>Upload concert photos to see your gallery here.</p></div>';
+       return;
+     }
+     container.innerHTML = '<div class="household-concerts-gallery-grid">'
+       + photos.map(function (photo, idx) {
+         return '<div class="gallery-item" data-photo-index="' + idx + '">'
+           + '<img src="' + escapeHtml(safeUrl(photo.url)) + '" alt="' + escapeHtml(photo.band) + ' concert" class="gallery-img">'
+           + '<div class="gallery-overlay">'
+           + '<div><strong>' + escapeHtml(photo.band) + '</strong></div>'
+           + '<div>' + escapeHtml(formatDate(photo.date)) + '</div>'
+           + '</div>'
+           + '</div>';
+       }).join('')
+       + '</div>';
+   }
+
+   // ===== ENHANCEMENT: CONCERT ATTENDANCE ANALYTICS =====
+   function computeAnalytics() {
+     var byMonth = new Map();
+     var byGenre = new Map();
+     var byYear = new Map();
+     state.attendedConcerts.forEach(function (concert) {
+       var iso = toIsoDate(concert.concertDate);
+       var month = iso ? iso.substring(0, 7) : '';
+       var year = iso ? iso.substring(0, 4) : '';
+       byMonth.set(month, (byMonth.get(month) || 0) + 1);
+       byYear.set(year, (byYear.get(year) || 0) + 1);
+       (state.favoriteBands.find(function (b) { return normalizeKey(b.bandName) === concert.bandKey; }) || {}).genres.forEach(function (genre) {
+         byGenre.set(genre, (byGenre.get(genre) || 0) + 1);
+       });
+     });
+     return {
+       byMonth: Array.from(byMonth.entries()).sort(),
+       byYear: Array.from(byYear.entries()).sort(),
+       byGenre: Array.from(byGenre.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8)
+     };
+   }
+
+   function renderAnalyticsDashboard() {
+     var container = document.getElementById('householdConcertsAnalyticsDash');
+     if (!container) return;
+     var data = computeAnalytics();
+     var peakMonth = data.byMonth.length ? data.byMonth.reduce(function (max, item) { return item[1] > max[1] ? item : max; }) : null;
+     var peakYear = data.byYear.length ? data.byYear.reduce(function (max, item) { return item[1] > max[1] ? item : max; }) : null;
+     container.innerHTML = '<div class="household-concerts-analytics-grid">'
+       + '<div class="analytics-card"><h4>Peak Month</h4><strong>' + (peakMonth ? peakMonth[0] : '—') + '</strong><span>' + (peakMonth ? peakMonth[1] + ' concerts' : 'No data') + '</span></div>'
+       + '<div class="analytics-card"><h4>Peak Year</h4><strong>' + (peakYear ? peakYear[0] : '—') + '</strong><span>' + (peakYear ? peakYear[1] + ' concerts' : 'No data') + '</span></div>'
+       + '<div class="analytics-card"><h4>Top Genres</h4><strong>' + (data.byGenre.length ? data.byGenre.slice(0, 2).map(function (g) { return g[0]; }).join(', ') : '—') + '</strong><span>' + (data.byGenre.length ? data.byGenre.length + ' genres seen' : 'No data') + '</span></div>'
+       + '</div>';
+   }
+
+   // ===== ENHANCEMENT: TOUR SCHEDULE SYNC =====
+   async function syncTourScheduleForBand(bandName) {
+     if (state.tourSyncBusy) return [];
+     state.tourSyncBusy = true;
+     setStatus('Syncing tour schedule for ' + bandName + '...', 'info');
+     try {
+       var encodedBand = encodeURIComponent(bandName);
+       var url = 'https://www.bandsintown.com/api/v2/artists/' + encodedBand + '/events?app_id=kyles_adventure_planner';
+       var response = await fetch(url);
+       if (!response.ok) throw new Error('Tour sync failed');
+       var events = await response.json();
+       var added = 0;
+       events.slice(0, 10).forEach(function (event) {
+         var existsAlready = state.upcomingConcerts.some(function (c) {
+           return normalizeText(c.bandName) === normalizeText(bandName) && toIsoDate(c.concertDate) === toIsoDate(event.datetime);
+         });
+         if (!existsAlready && event.venue) {
+           state.upcomingConcerts.push(parseUpcomingConcert({
+             Band_Name: bandName,
+             Concert_Date: event.datetime,
+             Venue: event.venue.name || '',
+             City: event.venue.city || '',
+             State: event.venue.country === 'United States' ? event.venue.region : ''
+           }));
+           added += 1;
+         }
+       });
+       setStatus('Synced ' + added + ' tour dates for ' + bandName + '.', 'success');
+       renderAll();
+       maybeHydrateUpcomingDistances();
+       return added;
+     } catch (error) {
+       console.error('Tour sync failed:', error);
+       setStatus('Could not sync tour schedule. Using manual entry instead.', 'warning');
+       return 0;
+     } finally {
+       state.tourSyncBusy = false;
+     }
+   }
+
+   // ===== ENHANCEMENT: CONCERT NOTIFICATIONS =====
+   function enableNotifications() {
+     if (!('Notification' in global)) {
+       setStatus('Notifications not supported in this browser.', 'warning');
+       return;
+     }
+     if (global.Notification.permission === 'granted') return;
+     if (global.Notification.permission !== 'denied') {
+       global.Notification.requestPermission().then(function () {
+         state.notificationsEnabled.enabled = true;
+         writeJsonStorage('householdConcertsNotifyV1', state.notificationsEnabled);
+       });
+     }
+   }
+
+   function checkAndNotifyUpcomingConcerts() {
+     if (!state.notificationsEnabled.enabled || global.Notification.permission !== 'granted') return;
+     var inSevenDays = new Date();
+     inSevenDays.setDate(inSevenDays.getDate() + 7);
+     var soon = state.upcomingConcerts.filter(function (c) {
+       var concertDate = new Date(c.concertDate + 'T00:00:00');
+       return concertDate <= inSevenDays && concertDate >= new Date();
+     });
+     soon.slice(0, 3).forEach(function (concert) {
+       new global.Notification('🎵 Upcoming: ' + concert.bandName, {
+         body: formatDate(concert.concertDate) + ' at ' + concert.venue,
+         tag: 'concert-' + concert.id,
+         requireInteraction: false
+       });
+     });
+   }
+
+   function bindEvents(root) {
+     if (!root || root.dataset.householdConcertsBound === '1') return;
+     root.dataset.householdConcertsBound = '1';
+
+     root.addEventListener('click', function (event) {
+       var target = event.target && event.target.closest ? event.target.closest('[data-concert-action]') : null;
+       if (!target) return;
+       var action = String(target.getAttribute('data-concert-action') || '').trim();
+       if (!action) return;
+       if (action === 'close-modal' && event.target === target) {
+         closeModal();
+         return;
+       }
+       if (action === 'close-modal' || target.classList.contains('household-concerts-icon-btn')) {
+         closeModal();
+         return;
+       }
+       switch (action) {
+         case 'refresh-data':
+           refreshData();
+           break;
         case 'search-web':
           searchBands(($('householdConcertsSearchInput') || {}).value || '');
           break;
@@ -1650,24 +1989,76 @@
            }
            break;
          }
-         case 'move-photo-down': {
-           var idx = Number(target.getAttribute('data-photo-index') || -1);
-           if (idx >= 0 && idx < state.attendedUploadedPhotoUrls.length - 1) {
-             var temp = state.attendedUploadedPhotoUrls[idx];
-             state.attendedUploadedPhotoUrls[idx] = state.attendedUploadedPhotoUrls[idx + 1];
-             state.attendedUploadedPhotoUrls[idx + 1] = temp;
-             syncPhotoPreview();
-             var photoInput = target.closest('form') ? target.closest('form').querySelector('input[name="Photo_URL"]') : null;
-             if (photoInput) {
-               photoInput.value = serializePhotoUrlsForStorage(state.attendedUploadedPhotoUrls);
-             }
-           }
-           break;
-         }
-      }
-    });
+          case 'move-photo-down': {
+            var idx = Number(target.getAttribute('data-photo-index') || -1);
+            if (idx >= 0 && idx < state.attendedUploadedPhotoUrls.length - 1) {
+              var temp = state.attendedUploadedPhotoUrls[idx];
+              state.attendedUploadedPhotoUrls[idx] = state.attendedUploadedPhotoUrls[idx + 1];
+              state.attendedUploadedPhotoUrls[idx + 1] = temp;
+              syncPhotoPreview();
+              var photoInput = target.closest('form') ? target.closest('form').querySelector('input[name="Photo_URL"]') : null;
+              if (photoInput) {
+                photoInput.value = serializePhotoUrlsForStorage(state.attendedUploadedPhotoUrls);
+              }
+            }
+            break;
+          }
+          case 'remove-tag': {
+            var bandKey = String(target.getAttribute('data-band-key') || '').trim();
+            var tag = String(target.getAttribute('data-tag') || '').trim();
+            var band = getBandByKey(bandKey);
+            if (band) {
+              removeBandTag(band.bandName, tag);
+              renderAll();
+            }
+            break;
+          }
+          case 'add-tag': {
+            var bandKey = String(target.getAttribute('data-band-key') || '').trim();
+            var band = getBandByKey(bandKey);
+            if (band) {
+              var tagInput = target.closest('.household-concerts-tag-manager') ? target.closest('.household-concerts-tag-manager').querySelector('input[type="text"]') : null;
+              if (tagInput && tagInput.value) {
+                saveBandTag(band.bandName, tagInput.value);
+                tagInput.value = '';
+                renderFavoriteBands();
+              }
+            }
+            break;
+          }
+          case 'sync-tour': {
+            var bandKey = String(target.getAttribute('data-band-key') || '').trim();
+            var band = getBandByKey(bandKey);
+            if (band) syncTourScheduleForBand(band.bandName);
+            break;
+          }
+          case 'enable-notifications':
+            enableNotifications();
+            break;
+          case 'view-gallery':
+            state.currentView = 'gallery';
+            renderAll();
+            break;
+          case 'view-analytics':
+            state.currentView = 'analytics';
+            renderAll();
+            break;
+          case 'view-default':
+            state.currentView = 'default';
+            renderAll();
+            break;
+        }
+     });
 
-     root.addEventListener('input', function (event) {
+     // FIX: Handle modal backdrop clicks properly (only close on backdrop, not content)
+     root.addEventListener('click', function (event) {
+       var backdrop = event.target && event.target.classList && event.target.classList.contains('household-concerts-modal-backdrop') ? event.target : null;
+       if (backdrop && event.target === backdrop) {
+         closeModal();
+       }
+     });
+
+      root.addEventListener('input', function (event) {
        var target = event.target;
        if (!target) return;
        if (target.id === 'householdConcertsFilterInput') {

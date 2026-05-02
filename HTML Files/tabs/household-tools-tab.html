@@ -56,8 +56,22 @@
         </div>
       </section>
 
-      <div id="householdConcertsStatus" class="household-concerts-status household-concerts-status--info">Concerts loads from your Excel workbook and can also search the web for artists to add.</div>
-      <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
+       <div id="householdConcertsStatus" class="household-concerts-status household-concerts-status--info">Concerts loads from your Excel workbook and can also search the web for artists to add.</div>
+       <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
+
+       <!-- ENHANCEMENT: New Feature Panels -->
+       <div class="household-concerts-features-tabs" role="tablist">
+         <button type="button" class="household-concerts-feature-tab active" role="tab" data-view="default">Overview</button>
+         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="stats">My Stats</button>
+         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="analytics">Analytics</button>
+         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="gallery">Gallery</button>
+       </div>
+
+       <div id="householdConcertsPersonalStats" class="household-concerts-panel" style="display:none;"></div>
+       <div id="householdConcertsAchievements" class="household-concerts-panel" style="display:none;"></div>
+       <div id="householdConcertsVenueReport" class="household-concerts-panel" style="display:none;"></div>
+       <div id="householdConcertsAnalyticsDash" class="household-concerts-panel" style="display:none;"></div>
+       <div id="householdConcertsPhotoGallery" class="household-concerts-panel" style="display:none;"></div>
 
       <section class="household-concerts-search-card-shell">
         <div class="household-concerts-search-row">
@@ -368,18 +382,44 @@
         button.setAttribute('tabindex', isActive ? '0' : '-1');
       });
 
-      root.querySelectorAll('[data-household-pane]').forEach((pane) => {
-        const paneKey = pane.getAttribute('data-household-pane');
-        const isActive = paneKey === state.activeSubTab;
-        pane.classList.toggle('is-active', isActive);
-        pane.hidden = !isActive;
-        pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-      });
+       root.querySelectorAll('[data-household-pane]').forEach((pane) => {
+         const paneKey = pane.getAttribute('data-household-pane');
+         const isActive = paneKey === state.activeSubTab;
+         pane.classList.toggle('is-active', isActive);
+         pane.hidden = !isActive;
+         pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+       });
 
-      syncHouseholdSubTabDock(root);
-      if (state.activeSubTab === 'concerts') {
-        ensureConcertsInitialized(root);
-      }
+       syncHouseholdSubTabDock(root);
+       if (state.activeSubTab === 'concerts') {
+         ensureConcertsInitialized(root);
+         // ENHANCEMENT: Handle feature tabs when concerts is active
+         const root_concerts = document.getElementById('householdConcertsPane');
+         if (root_concerts && !root_concerts.dataset.concertsViewBound) {
+           root_concerts.dataset.concertsViewBound = '1';
+           root_concerts.addEventListener('click', (event) => {
+             const tab = event.target.closest('[data-view]');
+             if (!tab) return;
+             const viewName = tab.getAttribute('data-view');
+             const allTabs = root_concerts.querySelectorAll('[data-view]');
+             allTabs.forEach(t => t.classList.remove('active'));
+             tab.classList.add('active');
+             // Show/hide panels
+             const stats = document.getElementById('householdConcertsPersonalStats');
+             const achievements = document.getElementById('householdConcertsAchievements');
+             const analytics = document.getElementById('householdConcertsAnalyticsDash');
+             const gallery = document.getElementById('householdConcertsPhotoGallery');
+             const venue = document.getElementById('householdConcertsVenueReport');
+             const defaultView = document.getElementById('householdConcertsSummaryGrid');
+             if (stats) stats.style.display = viewName === 'stats' ? 'block' : 'none';
+             if (achievements) achievements.style.display = viewName === 'stats' ? 'block' : 'none';
+             if (venue) venue.style.display = viewName === 'stats' ? 'block' : 'none';
+             if (analytics) analytics.style.display = viewName === 'analytics' ? 'block' : 'none';
+             if (gallery) gallery.style.display = viewName === 'gallery' ? 'block' : 'none';
+             if (defaultView) defaultView.style.display = viewName === 'default' ? 'grid' : 'none';
+           });
+         }
+       }
     }
 
     function setActiveHouseholdSubTab(root, tabKey) {

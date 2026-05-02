@@ -781,12 +781,311 @@
 
 #householdConcertsPane .household-concerts-manage-photos-empty {
   padding: 20px;
-  text-align: center;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  color: #64748b;
-  font-size: 13px;
+   text-align: center;
+   border-radius: 12px;
+   background: #f8fafc;
+   border: 1px dashed #cbd5e1;
+   color: #64748b;
+   font-size: 13px;
+   font-weight: 600;
+ }
+
+/* ===== ENHANCEMENT: NEW FEATURES CSS ===== */
+
+/* Feature Tabs */
+.household-concerts-features-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 0 0 12px 0;
+}
+
+.household-concerts-feature-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
   font-weight: 600;
+  color: #64748b;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.household-concerts-feature-tab:hover {
+  color: #1d4ed8;
+}
+
+.household-concerts-feature-tab.active {
+  color: #1d4ed8;
+  border-bottom-color: #1d4ed8;
+}
+
+/* Personal Stats Cards */
+.household-concerts-personal-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.household-concerts-personal-stats .stat-card {
+  padding: 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.household-concerts-personal-stats .stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0369a1;
+  margin-bottom: 4px;
+}
+
+.household-concerts-personal-stats .stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0284c7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Achievements Grid */
+.household-concerts-achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.household-concerts-achievement {
+  padding: 12px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: center;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+}
+
+.household-concerts-achievement.is-unlocked {
+  opacity: 1;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #fbbf24;
+  transform: scale(1.05);
+}
+
+.achievement-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.achievement-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  text-transform: capitalize;
+  line-height: 1.2;
+}
+
+.household-concerts-achievement.is-unlocked .achievement-name {
+  color: #92400e;
+}
+
+/* Venue Performance Cards */
+.household-concerts-venue-card {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.household-concerts-venue-header {
+  margin-bottom: 12px;
+}
+
+.household-concerts-venue-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.household-concerts-venue-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.household-concerts-venue-stats .stat {
+  text-align: center;
+}
+
+.household-concerts-venue-stats .stat span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.household-concerts-venue-stats .stat strong {
+  display: block;
+  font-size: 18px;
+  color: #1d4ed8;
+}
+
+/* Analytics Dashboard */
+.household-concerts-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.analytics-card {
+  padding: 18px;
+  background: linear-gradient(135deg, #ede9fe 0%, #f3e8ff 100%);
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+}
+
+.analytics-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6d28d9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.analytics-card strong {
+  display: block;
+  font-size: 22px;
+  color: #5b21b6;
+  margin-bottom: 4px;
+}
+
+.analytics-card span {
+  display: block;
+  font-size: 12px;
+  color: #7c3aed;
+}
+
+/* Photo Gallery */
+.household-concerts-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.gallery-item {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gallery-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  color: #fff;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.gallery-item:hover .gallery-overlay {
+  opacity: 1;
+}
+
+.gallery-overlay strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+/* Smart Tag System */
+.household-concerts-tag-manager {
+  margin: 12px 0;
+}
+
+.household-concerts-tag-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.household-concerts-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 1px solid #93c5fd;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.household-concerts-tag-badge button {
+  background: none;
+  border: none;
+  color: #1d4ed8;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.household-concerts-tag-badge button:hover {
+  opacity: 1;
+}
+
+/* Calendar View Placeholder */
+.household-concerts-calendar-view {
+  margin: 16px 0;
+  padding: 20px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  text-align: center;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+/* Tour Sync Button */
+[data-concert-action="sync-tour"] {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* Notifications */
+[data-concert-action="enable-notifications"] {
+  font-size: 12px;
 }
 
