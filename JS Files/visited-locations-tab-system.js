@@ -605,12 +605,12 @@
 
   function buildVisitedExplorerStandaloneUrl(subtabKey) {
     const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'visited-locations');
-    url.searchParams.set('visitedSubtab', key);
-    url.searchParams.set('visitedView', 'explorer');
-    url.searchParams.set('ts', String(Date.now()));
-    return url.toString();
+    // Open as a dedicated standalone window (like city-viewer-window.html) instead of
+    // reloading the full app with URL params.
+    const explorerUrl = new URL(resolveInlinePageUrl('HTML Files/adventure-explorer-window.html'));
+    explorerUrl.searchParams.set('subtab', key);
+    explorerUrl.searchParams.set('ts', String(Date.now()));
+    return explorerUrl.toString();
   }
 
   function getVisitedStandaloneLaunchState() {

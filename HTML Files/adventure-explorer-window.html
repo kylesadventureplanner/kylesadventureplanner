@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adventure Explorer - Kyle's Adventure Finder</title>
+  <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
+  <link rel="stylesheet" href="../CSS/design-tokens.css">
+  <link rel="stylesheet" href="../CSS/components.css">
+  <link rel="stylesheet" href="../CSS/visited-locations-tab.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .aew-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .aew-header-copy { flex: 1; }
+
+    .aew-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      line-height: 1.15;
+    }
+
+    .aew-header-subtitle {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+
+    .aew-close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-left: 16px;
+      transition: background 0.15s;
+    }
+    .aew-close-btn:hover { background: rgba(255,255,255,0.35); }
+
+    /* ── Body ────────────────────────────────────────────────────────── */
+    .aew-body {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* ── Auth / loading states ───────────────────────────────────────── */
+    #aewAuthBar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #1e40af;
+    }
+    #aewAuthBar.hidden { display: none; }
+    #aewAuthBar .auth-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #93c5fd;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Controls ────────────────────────────────────────────────────── */
+    .aew-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .aew-search {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+      color: #1f2937;
+    }
+    .aew-search:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+    }
+
+    .aew-select {
+      padding: 10px 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+      color: #1f2937;
+      min-width: 140px;
+    }
+    .aew-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .aew-refresh-btn {
+      padding: 10px 18px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #fff;
+      color: #667eea;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .aew-refresh-btn:hover { background: #667eea; color: #fff; }
+    .aew-refresh-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* ── Tag bar ─────────────────────────────────────────────────────── */
+    #aewTagBar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .aew-tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #f3f4f6;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .aew-tag-chip:hover { border-color: #667eea; color: #667eea; background: #eef2ff; }
+    .aew-tag-chip.active { background: #667eea; color: #fff; border-color: #667eea; }
+    .aew-tag-chip .chip-count {
+      background: rgba(0,0,0,0.12);
+      border-radius: 999px;
+      padding: 1px 6px;
+      font-size: 10px;
+    }
+    .aew-tag-chip.active .chip-count { background: rgba(255,255,255,0.25); }
+
+    /* ── Meta row ────────────────────────────────────────────────────── */
+    .aew-meta {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 14px;
+    }
+
+    /* ── Cards grid ──────────────────────────────────────────────────── */
+    #aewCardsGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Re-scope .visited-explorer-* to work without full app wrap ──── */
+    /* Override the #visitedLocationsRoot scope prefix used in the CSS file */
+    .aew-cards-root .visited-explorer-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .aew-cards-root .visited-explorer-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .aew-cards-root .visited-explorer-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1f2937;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .aew-cards-root .visited-explorer-visit-indicator {
+      font-size: 14px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .aew-cards-root .visited-explorer-field {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.45;
+    }
+    .aew-cards-root .visited-explorer-field strong {
+      color: #111827;
+      font-weight: 700;
+    }
+    .aew-cards-root .visited-explorer-description-box {
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .aew-cards-root .visited-explorer-tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .aew-cards-root .visited-explorer-tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #4b5563;
+    }
+    .aew-cards-root .visited-explorer-detail-btn--primary {
+      padding: 6px 12px;
+      border: 1px solid #667eea;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #fff;
+      color: #667eea;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.1s;
+    }
+    .aew-cards-root .visited-explorer-detail-btn--primary:hover {
+      background: #667eea;
+      color: #fff;
+    }
+    .aew-cards-root .visited-photo-count-badge {
+      font-size: 11px;
+      background: #f3e8ff;
+      color: #7c3aed;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .aew-cards-root .aew-card-address {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .aew-favorite-indicator {
+      font-size: 13px;
+      color: #f59e0b;
+    }
+
+    /* ── Details modal ───────────────────────────────────────────────── */
+    .aew-details-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .aew-details-modal {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 640px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .aew-details-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .aew-details-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #1f2937;
+      line-height: 1.2;
+    }
+    .aew-details-close {
+      background: #f3f4f6;
+      border: none;
+      color: #374151;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .aew-details-row {
+      margin-bottom: 12px;
+    }
+    .aew-details-row strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .aew-details-row p {
+      font-size: 14px;
+      color: #1f2937;
+      line-height: 1.5;
+    }
+    .aew-details-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: #4338ca;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+      margin-right: 8px;
+    }
+    .aew-details-link:hover { background: #e0e7ff; }
+
+    /* ── Empty / error ───────────────────────────────────────────────── */
+    .aew-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      font-size: 15px;
+    }
+    .aew-empty strong { display: block; font-size: 18px; margin-bottom: 8px; color: #374151; }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    #aewToast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1f2937;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 500;
+    }
+    #aewToast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 600px) {
+      .aew-header h1 { font-size: 20px; }
+      #aewCardsGrid { grid-template-columns: 1fr; }
+      .aew-controls { flex-direction: column; }
+      .aew-search, .aew-select { min-width: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="aew-header">
+    <div class="aew-header-copy">
+      <h1 id="aewHeaderTitle">🔎 Adventure Explorer</h1>
+      <div class="aew-header-subtitle" id="aewHeaderSubtitle">Browse and search your adventure locations</div>
+    </div>
+    <button class="aew-close-btn" onclick="window.close()" title="Close this window" aria-label="Close">✕</button>
+  </header>
+
+  <!-- Body -->
+  <div class="aew-body">
+
+    <!-- Auth bar -->
+    <div id="aewAuthBar">
+      <div class="auth-spinner"></div>
+      <span id="aewAuthMsg">Connecting to your adventure data…</span>
+    </div>
+
+    <!-- Controls -->
+    <div class="aew-controls">
+      <input
+        type="search"
+        id="aewSearch"
+        class="aew-search"
+        placeholder="Search locations…"
+        aria-label="Search locations"
+        autocomplete="off"
+      >
+      <select id="aewStateFilter" class="aew-select" aria-label="Filter by state">
+        <option value="">All States</option>
+      </select>
+      <select id="aewCityFilter" class="aew-select" aria-label="Filter by city">
+        <option value="">All Cities</option>
+      </select>
+      <select id="aewSort" class="aew-select" aria-label="Sort by">
+        <option value="name-asc">Name A–Z</option>
+        <option value="name-desc">Name Z–A</option>
+        <option value="drive-asc">Drive: Shortest First</option>
+        <option value="drive-desc">Drive: Longest First</option>
+        <option value="state-asc">State A–Z</option>
+        <option value="city-asc">City A–Z</option>
+      </select>
+      <button class="aew-refresh-btn" id="aewRefreshBtn" onclick="reloadData()" aria-label="Refresh data">↻ Refresh</button>
+    </div>
+
+    <!-- Tag bar -->
+    <div id="aewTagBar" role="group" aria-label="Tag filters"></div>
+
+    <!-- Meta count -->
+    <p class="aew-meta" id="aewMeta" aria-live="polite"></p>
+
+    <!-- Cards -->
+    <div id="aewCardsGrid" class="aew-cards-root" role="list" aria-label="Adventure locations"></div>
+
+  </div>
+
+  <!-- Details modal (injected dynamically) -->
+  <div id="aewDetailsBackdrop" style="display:none;"></div>
+
+  <!-- Toast -->
+  <div id="aewToast" role="status" aria-live="polite"></div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Configuration ──────────────────────────────────────────────── */
+    const SUBTAB_LABELS = {
+      outdoors: 'Outdoors',
+      entertainment: 'Entertainment',
+      'food-drink': 'Food & Drink',
+      retail: 'Retail',
+      'wildlife-animals': 'Wildlife & Animal Locations',
+      'regional-festivals': 'Regional Festivals',
+      'bike-trails': 'Bike Trails'
+    };
+
+    const SUBTAB_ICONS = {
+      outdoors: '🌿',
+      entertainment: '🎭',
+      'food-drink': '🍽️',
+      retail: '🛍️',
+      'wildlife-animals': '🦁',
+      'regional-festivals': '🎉',
+      'bike-trails': '🚴'
+    };
+
+    const SUBTAB_SOURCES = {
+      outdoors: [
+        { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' }
+      ],
+      entertainment: [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' }
+      ],
+      'food-drink': [
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee' }
+      ],
+      retail: [
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' }
+      ],
+      'wildlife-animals': [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' }
+      ],
+      'regional-festivals': [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals' }
+      ]
+    };
+
+    const WORKBOOK_PREFIXES = [
+      'Copilot_Apps/Kyles_Adventure_Finder/',
+      'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/',
+      ''
+    ];
+
+    const COLUMN_CANDIDATES = {
+      title:     ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
+      placeId:   ['google place id', 'googleplaceid', 'place id', 'placeid'],
+      city:      ['city', 'town', 'municipality'],
+      state:     ['state', 'province', 'region'],
+      tags:      ['tags', 'keywords', 'category', 'categories', 'type'],
+      description: ['description', 'notes', 'summary', 'details'],
+      address:   ['address', 'street', 'location address'],
+      hours:     ['hours', 'open hours', 'business hours'],
+      drive:     ['drive time', 'distance', 'travel time'],
+      website:   ['website', 'url', 'site', 'homepage'],
+      phone:     ['phone', 'phone number', 'telephone'],
+      rating:    ['google rating', 'rating'],
+      cost:      ['cost', 'price'],
+      googleUrl: ['google url', 'maps url', 'google maps', 'google maps url'],
+      myRating:  ['my rating', 'my_rating', 'user rating', 'personal rating'],
+      favorite:  ['favorite status', 'favorite_status', 'favorite', 'is favorite'],
+      latitude:  ['latitude', 'lat', 'gps latitude'],
+      longitude: ['longitude', 'lng', 'lon', 'gps longitude']
+    };
+
+    /* ── State ──────────────────────────────────────────────────────── */
+    const params = new URLSearchParams(window.location.search);
+    const subtabKey = params.get('subtab') || 'outdoors';
+    const label     = SUBTAB_LABELS[subtabKey] || 'Adventure Locations';
+    const icon      = SUBTAB_ICONS[subtabKey] || '🔎';
+
+    let allItems     = [];
+    let loading      = false;
+    let activeTagFilters = [];
+    let visitMap     = {};
+
+    /* ── DOM helpers ────────────────────────────────────────────────── */
+    const $  = (id) => document.getElementById(id);
+    const esc = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    };
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    $('aewHeaderTitle').textContent = `${icon} ${label} Explorer`;
+    $('aewHeaderSubtitle').textContent = `Browse and search all ${label.toLowerCase()} locations`;
+    document.title = `${label} Explorer - Kyle's Adventure Finder`;
+
+    /* ── Toast ──────────────────────────────────────────────────────── */
+    let toastTimer = 0;
+    function showToast(msg) {
+      const el = $('aewToast');
+      el.textContent = msg;
+      el.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('visible'), 2800);
+    }
+
+    /* ── Auth helpers ───────────────────────────────────────────────── */
+    function getHostWindow() {
+      if (window.parent && window.parent !== window) return window.parent;
+      if (window.opener && !window.opener.closed) return window.opener;
+      return window;
+    }
+
+    function getAccessToken() {
+      const host = getHostWindow();
+      return String((host && host.accessToken) || window.accessToken || '').trim();
+    }
+
+    /* ── Graph API helpers ──────────────────────────────────────────── */
+    function encodeGraphPath(path) {
+      return path.split('/').map((seg) => encodeURIComponent(seg)).join('/');
+    }
+
+    function workbookPathCandidates(workbook) {
+      const clean = String(workbook || '').trim();
+      if (!clean) return [];
+      if (clean.includes('/')) return [clean];
+      const seen = new Set();
+      const result = [];
+      WORKBOOK_PREFIXES.forEach((prefix) => {
+        const candidate = `${prefix}${clean}`;
+        if (!seen.has(candidate)) { seen.add(candidate); result.push(candidate); }
+      });
+      return result;
+    }
+
+    async function fetchTableRangeValues(filePath, tableName, token) {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/range?$select=values`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status} loading ${tableName}`);
+      const payload = await response.json().catch(() => ({}));
+      return Array.isArray(payload.values) ? payload.values : [];
+    }
+
+    /* ── Column resolution ──────────────────────────────────────────── */
+    function norm(str) {
+      return String(str || '').trim().toLowerCase();
+    }
+
+    function resolveColumnIndex(headers, aliases) {
+      for (const alias of (aliases || [])) {
+        const target = norm(alias);
+        const exact = headers.findIndex((h) => norm(h) === target);
+        if (exact >= 0) return exact;
+        const partial = headers.findIndex((h) => norm(h).includes(target));
+        if (partial >= 0) return partial;
+      }
+      return -1;
+    }
+
+    function buildColumnMap(headers) {
+      const map = {};
+      Object.entries(COLUMN_CANDIDATES).forEach(([key, aliases]) => {
+        map[key] = resolveColumnIndex(headers, aliases);
+      });
+      return map;
+    }
+
+    function colVal(row, idx, fallback) {
+      if (idx >= 0 && idx < row.length) {
+        const v = row[idx];
+        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+      }
+      return fallback || '';
+    }
+
+    /* ── Parse workbook matrix into items ───────────────────────────── */
+    function parseWorkbookMatrix(matrix, sourceMeta) {
+      if (!matrix.length) return [];
+      const headers = matrix[0].map((h) => String(h || '').trim());
+      const colMap = buildColumnMap(headers);
+      const items = [];
+
+      for (let i = 1; i < matrix.length; i++) {
+        const row = matrix[i];
+        if (!Array.isArray(row)) continue;
+        const title = String(colVal(row, colMap.title) || '').trim();
+        if (!title) continue;
+
+        const tagsRaw = String(colVal(row, colMap.tags) || '').trim();
+        const tags = tagsRaw.split(/[;,]/).map((t) => t.trim()).filter(Boolean).slice(0, 8);
+        const favRaw = String(colVal(row, colMap.favorite) || '').trim().toLowerCase();
+        const isFav = favRaw === 'true' || favRaw === '1' || favRaw === 'yes' || favRaw === 'favorite';
+        const myRatingRaw = parseFloat(colVal(row, colMap.myRating) || 0);
+        const myRating = Number.isFinite(myRatingRaw) ? Math.max(0, Math.min(5, myRatingRaw)) : 0;
+
+        items.push({
+          id: `${sourceMeta.table}:${i}:${norm(title) || 'row'}`,
+          title,
+          placeId: String(colVal(row, colMap.placeId) || '').trim(),
+          city:    String(colVal(row, colMap.city) || '').trim(),
+          state:   String(colVal(row, colMap.state) || '').trim(),
+          address: String(colVal(row, colMap.address) || '').trim(),
+          description: String(colVal(row, colMap.description) || '').trim(),
+          driveTime: String(colVal(row, colMap.drive) || '').trim(),
+          hours:   String(colVal(row, colMap.hours) || '').trim(),
+          website: String(colVal(row, colMap.website) || '').trim(),
+          phone:   String(colVal(row, colMap.phone) || '').trim(),
+          rating:  String(colVal(row, colMap.rating) || '').trim(),
+          cost:    String(colVal(row, colMap.cost) || '').trim(),
+          googleUrl: String(colVal(row, colMap.googleUrl) || '').trim(),
+          tags,
+          isFav,
+          myRating,
+          sourceTable: sourceMeta.table,
+          sourceWorkbook: sourceMeta.workbook
+        });
+      }
+      return items;
+    }
+
+    /* ── Load all sources for this subtab ───────────────────────────── */
+    async function loadSubtabData() {
+      const sources = SUBTAB_SOURCES[subtabKey];
+      if (!sources) {
+        throw new Error(`No data source configured for subtab: ${subtabKey}`);
+      }
+      const token = getAccessToken();
+      if (!token) throw new Error('Sign-in required. Please open this page from the main Adventure Planner app.');
+
+      const groups = await Promise.all(sources.map(async (source) => {
+        const candidates = workbookPathCandidates(source.workbook);
+        let lastErr = null;
+        for (const candidate of candidates) {
+          try {
+            const matrix = await fetchTableRangeValues(candidate, source.table, token);
+            return parseWorkbookMatrix(matrix, source);
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+        throw lastErr || new Error(`Could not load ${source.table}`);
+      }));
+
+      return groups.flat();
+    }
+
+    /* ── Filtering / sorting ────────────────────────────────────────── */
+    function filterAndSort(items) {
+      const query  = ($('aewSearch').value || '').trim().toLowerCase();
+      const stateF = ($('aewStateFilter').value || '').trim().toLowerCase();
+      const cityF  = ($('aewCityFilter').value || '').trim().toLowerCase();
+      const sortBy = $('aewSort').value || 'name-asc';
+
+      let filtered = items.filter((item) => {
+        // Tag filters
+        if (activeTagFilters.length) {
+          const itemTagNorms = (item.tags || []).map((t) => norm(t));
+          const hasAllTags = activeTagFilters.every((ft) => itemTagNorms.some((it) => it === norm(ft)));
+          if (!hasAllTags) return false;
+        }
+        // Text search
+        if (query) {
+          const hay = [item.title, item.city, item.state, item.address, item.description, ...(item.tags || [])].join(' ').toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        // State filter
+        if (stateF && norm(item.state) !== stateF) return false;
+        // City filter
+        if (cityF && norm(item.city) !== cityF) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case 'name-desc': return norm(b.title).localeCompare(norm(a.title));
+          case 'drive-asc': {
+            const da = parseDriveMinutes(a.driveTime);
+            const db = parseDriveMinutes(b.driveTime);
+            return da - db;
+          }
+          case 'drive-desc': {
+            const da = parseDriveMinutes(a.driveTime);
+            const db = parseDriveMinutes(b.driveTime);
+            return db - da;
+          }
+          case 'state-asc': {
+            const sc = norm(a.state).localeCompare(norm(b.state));
+            return sc !== 0 ? sc : norm(a.title).localeCompare(norm(b.title));
+          }
+          case 'city-asc': {
+            const cc = norm(a.city).localeCompare(norm(b.city));
+            return cc !== 0 ? cc : norm(a.title).localeCompare(norm(b.title));
+          }
+          default: return norm(a.title).localeCompare(norm(b.title));
+        }
+      });
+
+      return filtered;
+    }
+
+    function parseDriveMinutes(str) {
+      if (!str) return 9999;
+      const hours = String(str).match(/(\d+)\s*h/i);
+      const mins  = String(str).match(/(\d+)\s*m/i);
+      return (hours ? parseInt(hours[1]) * 60 : 0) + (mins ? parseInt(mins[1]) : 0) || 9999;
+    }
+
+    /* ── Dropdown options ───────────────────────────────────────────── */
+    function populateDropdowns(items) {
+      const states = [...new Set(items.map((i) => i.state).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      const cities = [...new Set(items.map((i) => i.city).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+      const stateEl = $('aewStateFilter');
+      const currentState = stateEl.value;
+      stateEl.innerHTML = '<option value="">All States</option>' +
+        states.map((s) => `<option value="${esc(norm(s))}">${esc(s)}</option>`).join('');
+      if (currentState) stateEl.value = currentState;
+
+      const cityEl = $('aewCityFilter');
+      const currentCity = cityEl.value;
+      cityEl.innerHTML = '<option value="">All Cities</option>' +
+        cities.map((c) => `<option value="${esc(norm(c))}">${esc(c)}</option>`).join('');
+      if (currentCity) cityEl.value = currentCity;
+    }
+
+    /* ── Tag bar ─────────────────────────────────────────────────────── */
+    function renderTagBar(items) {
+      const freq = new Map();
+      items.forEach((item) => {
+        (item.tags || []).forEach((tag) => {
+          const t = String(tag || '').trim();
+          if (t) freq.set(t, (freq.get(t) || 0) + 1);
+        });
+      });
+      const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16);
+      const bar = $('aewTagBar');
+      if (!top.length) { bar.innerHTML = ''; return; }
+      bar.innerHTML = top.map(([tag, count]) => {
+        const isActive = activeTagFilters.some((ft) => norm(ft) === norm(tag));
+        return `<button type="button"
+          class="aew-tag-chip${isActive ? ' active' : ''}"
+          data-tag="${esc(tag)}"
+          aria-pressed="${isActive}"
+          title="${isActive ? 'Remove' : 'Add'} tag filter: ${esc(tag)}"
+        >${esc(tag)}<span class="chip-count">${count}</span></button>`;
+      }).join('');
+    }
+
+    $('aewTagBar').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-tag]');
+      if (!chip) return;
+      const tag = chip.dataset.tag;
+      const normTag = norm(tag);
+      const existingIdx = activeTagFilters.findIndex((ft) => norm(ft) === normTag);
+      if (existingIdx >= 0) {
+        activeTagFilters.splice(existingIdx, 1);
+      } else {
+        activeTagFilters.push(tag);
+      }
+      renderTagBar(allItems);
+      renderCards();
+    });
+
+    /* ── Visit map ───────────────────────────────────────────────────── */
+    function loadVisitMap() {
+      try {
+        const raw = localStorage.getItem('visitedLocationsMap') || '{}';
+        visitMap = JSON.parse(raw) || {};
+      } catch (_) {
+        visitMap = {};
+      }
+    }
+
+    /* ── Card rendering ──────────────────────────────────────────────── */
+    function formatAddressLine(item) {
+      const parts = [item.address, item.city, item.state].filter(Boolean);
+      return parts.join(', ');
+    }
+
+    function buildGoogleMapsUrl(item) {
+      if (item.googleUrl) return item.googleUrl;
+      if (item.placeId) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(item.placeId)}`;
+      const q = [item.title, item.address, item.city, item.state].filter(Boolean).join(', ');
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    }
+
+    function renderCards() {
+      const filtered = filterAndSort(allItems);
+      const grid = $('aewCardsGrid');
+
+      const activeF = activeTagFilters.length;
+      const query   = ($('aewSearch').value || '').trim();
+      const stateF  = ($('aewStateFilter').value || '').trim();
+      const cityF   = ($('aewCityFilter').value || '').trim();
+
+      $('aewMeta').textContent = `${filtered.length} of ${allItems.length} ${label.toLowerCase()} shown.${activeF ? ` Tag filters: ${activeTagFilters.join(', ')}.` : ''}`;
+
+      if (!filtered.length) {
+        const hasFilter = activeF || query || stateF || cityF;
+        grid.innerHTML = `<div class="aew-empty">
+          <strong>${hasFilter ? 'No results matched your filters.' : 'No locations loaded yet.'}</strong>
+          <p>${hasFilter ? 'Try removing a filter or clearing the search.' : 'Refresh to load locations.'}</p>
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map((item) => {
+        const isVisited   = Boolean(visitMap[item.id]);
+        const visitIcon   = isVisited ? '✅' : '⭕';
+        const visitLabel  = isVisited ? 'Visited' : 'Not visited';
+        const favMark     = item.isFav ? ' <span class="aew-favorite-indicator" title="Favorite">★</span>' : '';
+        const addressLine = formatAddressLine(item);
+        const chips       = (item.tags || []).slice(0, 6).map((t) =>
+          `<span class="visited-explorer-tag">${esc(t)}</span>`
+        ).join('');
+
+        return `<article class="visited-explorer-card" role="listitem">
+          <div class="visited-explorer-card-head">
+            <div class="visited-explorer-card-title">
+              <span class="visited-explorer-visit-indicator" title="${esc(visitLabel)}">${visitIcon}</span>
+              ${esc(item.title)}${favMark}
+            </div>
+            <button type="button" class="visited-explorer-detail-btn--primary"
+              data-aew-details="${esc(item.id)}"
+              aria-label="Details for ${esc(item.title)}">Details</button>
+          </div>
+          ${item.driveTime ? `<div class="visited-explorer-field visited-explorer-field--drive"><strong>Drive Time:</strong> ${esc(item.driveTime)}</div>` : ''}
+          ${chips ? `<div class="visited-explorer-tag-row">${chips}</div>` : ''}
+          ${addressLine ? `<div class="aew-card-address">📍 ${esc(addressLine)}</div>` : ''}
+          ${item.description ? `<div class="visited-explorer-field visited-explorer-field--description"><div class="visited-explorer-description-box">${esc(item.description)}</div></div>` : ''}
+        </article>`;
+      }).join('');
+    }
+
+    /* ── Details modal ───────────────────────────────────────────────── */
+    function openDetails(itemId) {
+      const item = allItems.find((i) => i.id === itemId);
+      if (!item) return;
+      const isVisited = Boolean(visitMap[item.id]);
+      const mapsUrl   = buildGoogleMapsUrl(item);
+      const backdrop  = $('aewDetailsBackdrop');
+
+      const rows = [
+        item.driveTime   ? { label: 'Estimated Drive Time', value: item.driveTime }  : null,
+        item.address     ? { label: 'Address', value: item.address }                  : null,
+        item.city || item.state ? { label: 'City / State', value: [item.city, item.state].filter(Boolean).join(', ') } : null,
+        item.hours       ? { label: 'Hours', value: item.hours }                      : null,
+        item.phone       ? { label: 'Phone', value: item.phone }                      : null,
+        item.cost        ? { label: 'Cost', value: item.cost }                        : null,
+        item.rating      ? { label: 'Google Rating', value: item.rating }             : null,
+        item.myRating    ? { label: 'My Rating', value: '★'.repeat(Math.round(item.myRating)) + ` (${item.myRating}/5)` } : null,
+        item.description ? { label: 'Description', value: item.description }          : null,
+        item.tags && item.tags.length ? { label: 'Tags', value: item.tags.join(', ') } : null
+      ].filter(Boolean);
+
+      backdrop.style.display = 'flex';
+      backdrop.innerHTML = `
+        <div class="aew-details-modal" role="dialog" aria-modal="true" aria-labelledby="aewDetailsTitle">
+          <div class="aew-details-head">
+            <div>
+              <div class="aew-details-title" id="aewDetailsTitle">
+                ${isVisited ? '✅ ' : '⭕ '}${esc(item.title)}
+                ${item.isFav ? ' ★' : ''}
+              </div>
+            </div>
+            <button class="aew-details-close" onclick="closeDetails()" aria-label="Close details">✕</button>
+          </div>
+          ${rows.map((r) => `
+            <div class="aew-details-row">
+              <strong>${esc(r.label)}</strong>
+              <p>${esc(r.value)}</p>
+            </div>
+          `).join('')}
+          <div>
+            <a href="${esc(mapsUrl)}" target="_blank" rel="noopener noreferrer" class="aew-details-link">🗺️ Open in Google Maps</a>
+            ${item.website ? `<a href="${esc(normalizeUrl(item.website))}" target="_blank" rel="noopener noreferrer" class="aew-details-link">🌐 Website</a>` : ''}
+          </div>
+        </div>`;
+
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeDetails();
+      }, { once: true });
+    }
+
+    window.closeDetails = function () {
+      const backdrop = $('aewDetailsBackdrop');
+      backdrop.style.display = 'none';
+      backdrop.innerHTML = '';
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDetails();
+    });
+
+    $('aewCardsGrid').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-aew-details]');
+      if (btn) openDetails(btn.dataset.aewDetails);
+    });
+
+    function normalizeUrl(url) {
+      if (!url) return '';
+      return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    }
+
+    /* ── Main init ───────────────────────────────────────────────────── */
+    function setAuthMsg(msg, error) {
+      const bar = $('aewAuthBar');
+      const msgEl = $('aewAuthMsg');
+      if (error) {
+        bar.style.background = '#fef2f2';
+        bar.style.borderColor = '#fecaca';
+        bar.style.color = '#991b1b';
+        bar.querySelector('.auth-spinner').style.display = 'none';
+      }
+      if (msgEl) msgEl.textContent = msg;
+    }
+
+    function hideAuthBar() {
+      $('aewAuthBar').classList.add('hidden');
+    }
+
+    async function loadData() {
+      if (loading) return;
+      loading = true;
+      const refreshBtn = $('aewRefreshBtn');
+      if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '↻ Loading…'; }
+
+      try {
+        setAuthMsg('Loading your adventure data…');
+        allItems = await loadSubtabData();
+        loadVisitMap();
+        hideAuthBar();
+        populateDropdowns(allItems);
+        renderTagBar(allItems);
+        renderCards();
+        showToast(`Loaded ${allItems.length} ${label.toLowerCase()}`);
+      } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
+        setAuthMsg(msg, true);
+        $('aewCardsGrid').innerHTML = `<div class="aew-empty"><strong>Could not load data</strong><p>${esc(msg)}</p></div>`;
+        $('aewMeta').textContent = '';
+      } finally {
+        loading = false;
+        if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '↻ Refresh'; }
+      }
+    }
+
+    window.reloadData = function () { loadData(); };
+
+    /* ── Filter event bindings ───────────────────────────────────────── */
+    let searchDebounce = 0;
+    $('aewSearch').addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => renderCards(), 220);
+    });
+    $('aewStateFilter').addEventListener('change', () => renderCards());
+    $('aewCityFilter').addEventListener('change', () => renderCards());
+    $('aewSort').addEventListener('change', () => renderCards());
+
+    /* ── Token polling: wait for opener to have a token ─────────────── */
+    function waitForToken(maxWait, callback) {
+      const token = getAccessToken();
+      if (token) { callback(); return; }
+      const start     = Date.now();
+      const pollTimer = setInterval(() => {
+        if (getAccessToken()) {
+          clearInterval(pollTimer);
+          callback();
+          return;
+        }
+        if (Date.now() - start > maxWait) {
+          clearInterval(pollTimer);
+          callback(); // proceed anyway so loadData can show the auth error
+        }
+      }, 300);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => waitForToken(6000, () => loadData()));
+    } else {
+      waitForToken(6000, () => loadData());
+    }
+
+  })();
+  </script>
+
+</body>
+</html>
+
