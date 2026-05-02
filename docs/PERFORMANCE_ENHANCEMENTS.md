@@ -1,4 +1,4 @@
-# 🚀 Performance Enhancement Guide for Adventure Planner
+# 🚀 Performance enhancement guide (legacy/archived Adventure Planner context)
 
 ## Overview
 
@@ -6,9 +6,9 @@ I've identified several practical, high-impact optimizations you can implement i
 
 ---
 
-## 🎯 Quick Wins (Implement These First)
+## 🎯 Quick wins (implement these first)
 
-### 1. **Enable CSS GPU Acceleration** ⚡
+### 1. **Enable CSS GPU acceleration** ⚡
 Add this to your main CSS (in index.html):
 
 ```css
@@ -33,7 +33,7 @@ Add this to your main CSS (in index.html):
 
 ---
 
-### 2. **Debounce Filter Input Events** ⚡⚡
+### 2. **Debounce filter input events** ⚡⚡
 Apply this pattern to filter input handlers (search, state, city, tags, cost):
 
 ```javascript
@@ -68,7 +68,7 @@ filterInputs.forEach(id => {
 
 ---
 
-### 3. **Optimize Polling in Debug System** 📊
+### 3. **Optimize polling in debug system** 📊
 The comprehensive debug system runs pollers every 2-3 seconds. During debugging, this is fine, but you can make it conditional:
 
 **In `JS Files/comprehensive-debug-system.js`**, wrap the polling monitors:
@@ -99,7 +99,7 @@ window.__debugSystemPollingEnabled = true;   // Re-enables
 
 ---
 
-### 4. **Use Event Delegation for Card Interactions** 🎯
+### 4. **Use event delegation for card interactions** 🎯
 Instead of adding event listeners to every card, delegate from parent:
 
 ```javascript
@@ -127,7 +127,7 @@ if (cardsGrid) {
 
 ---
 
-### 5. **Lazy Load the Debug System** 🔍
+### 5. **Lazy load the debug system** 🔍
 The debug system adds ~500KB to memory. Make it truly optional:
 
 ```html
@@ -158,9 +158,9 @@ location.reload();  // Reload to load debug system
 
 ---
 
-## 📈 Medium-Effort Optimizations
+## 📈 Medium-effort optimizations
 
-### 6. **Request Animation Frame for Animations** ⏱️
+### 6. **Use requestAnimationFrame for animations** ⏱️
 
 ```javascript
 // For any animation loops, use requestAnimationFrame
@@ -190,7 +190,7 @@ function animateProgress(element, targetValue) {
 
 ---
 
-### 7. **Cache Frequently Queried DOM Elements** 💾
+### 7. **Cache frequently queried DOM elements** 💾
 
 ```javascript
 // Create a simple cache at the top of your main JS file
@@ -213,7 +213,7 @@ DOMCache.clear();
 
 ---
 
-### 8. **Optimize classList Operations** 🎨
+### 8. **Optimize classList operations** 🎨
 
 ```javascript
 // SLOWER: Multiple classList calls
@@ -238,9 +238,9 @@ button.dataset.state = 'active';
 
 ---
 
-## 🔧 Setup Instructions
+## 🔧 Setup instructions
 
-### Quick Start: Apply Quick Wins in 30 Minutes
+### Quick start: apply quick wins in 30 minutes
 
 1. **Add GPU acceleration CSS** (5 min)
    - Edit your inline `<style>` in index.html
@@ -260,7 +260,7 @@ button.dataset.state = 'active';
 
 ---
 
-## 📊 Expected Performance Improvements
+## 📊 Expected performance improvements
 
 | Change | Current | After | Gain |
 |--------|---------|-------|------|
@@ -273,7 +273,7 @@ button.dataset.state = 'active';
 
 ---
 
-## 🧪 Testing & Validation
+## 🧪 Testing and validation
 
 After applying each optimization:
 
@@ -302,7 +302,7 @@ After applying each optimization:
 
 ---
 
-## 🎯 Priority Order
+## 🎯 Priority order
 
 **Do First (Biggest Impact):**
 1. ✅ Debounce filter inputs (easiest + biggest impact)
@@ -320,7 +320,7 @@ After applying each optimization:
 
 ---
 
-## ⚠️ Before You Apply Changes
+## ⚠️ Before you apply changes
 
 1. **Backup**: Your code is in git, but good to know
 2. **Test**: Test on different devices after changes
@@ -329,7 +329,7 @@ After applying each optimization:
 
 ---
 
-## 🚨 Things To Avoid
+## 🚨 Things to avoid
 
 ❌ **Don't:**
 - Remove event listeners without good reason
@@ -345,7 +345,7 @@ After applying each optimization:
 
 ---
 
-## 📈 Advanced: Performance Monitoring
+## 📈 Advanced: performance monitoring
 
 Add this to monitor performance in production:
 

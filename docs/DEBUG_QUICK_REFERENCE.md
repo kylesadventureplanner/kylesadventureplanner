@@ -1,6 +1,6 @@
-# Debug System Quick Reference Card
+# Debug system quick reference card
 
-## Quick Start (Copy-Paste into Console)
+## Quick start (Copy-Paste into console)
 
 ```javascript
 // 1. See what just happened (last 20 events)
@@ -17,7 +17,7 @@ const logs = window.__debugSystem.export()
 copy(logs)  // Copies to clipboard
 ```
 
-## Debugging Button Issues
+## Debugging button issues
 
 **Steps:**
 1. Open console (F12)
@@ -31,7 +31,7 @@ copy(logs)  // Copies to clipboard
 [🔍 DEBUG]   └─ Stack: at functionName (filename.js:123)
 ```
 
-## Debugging Tab/Subtab Issues
+## Debugging Tab/Subtab issues
 
 **Steps:**
 1. Open console (F12)
@@ -47,7 +47,7 @@ copy(logs)  // Copies to clipboard
 [🔍 DEBUG]   └─ Stack: at handler (file.js:45)
 ```
 
-## One-Liners for Common Tasks
+## One-Liners for common tasks
 
 ```javascript
 // Count how many times buttons got disabled
@@ -66,7 +66,7 @@ window.__debugSystem.clearHistory()
 window.__debugSystem.replay(5)
 ```
 
-## Key Debug Symbols
+## Key debug symbols
 
 | 🔍 | Main prefix |
 | 🚀 | Starting |
@@ -80,7 +80,7 @@ window.__debugSystem.replay(5)
 | ⚠️ | Warning |
 | ❌ | Error |
 
-## Console Tips
+## Console tips
 
 - **Search** - Ctrl+F in console, search for symbols
 - **Filter** - Look for specific patterns like `🚨` to find issues
@@ -88,13 +88,13 @@ window.__debugSystem.replay(5)
 - **Save logs** - Export to file for later analysis
 - **Real-time** - Keep console open while testing
 
-## Performance Notes
+## Performance notes
 
 - Memory: ~500KB (last 500 logs)
 - CPU: Negligible (~2-3ms every 2-3 seconds)
 - No impact on app functionality
 
-## Where to Find Stack Traces
+## Where to find stack traces
 
 Every critical log includes:
 ```
@@ -105,7 +105,7 @@ Every critical log includes:
 
 **Read from bottom to top to understand call chain.**
 
-## Common Issues to Search For
+## Common issues to search for
 
 ```javascript
 // Button disabling
@@ -124,7 +124,7 @@ Every critical log includes:
 '📊 BULK STATE'
 ```
 
-## Export and Share Logs
+## Export and share logs
 
 ```javascript
 // Get all logs
@@ -139,7 +139,7 @@ copy(logs)
 // Then paste into text editor and save
 ```
 
-## Disable Debug System (If Needed)
+## Disable debug system (if needed)
 
 Edit `JS Files/comprehensive-debug-system.js`:
 ```javascript
@@ -148,7 +148,7 @@ const DEBUG = false;  // Set to false to disable
 
 **But keep it ON during development!**
 
-## Need More Details?
+## Need more details?
 
 See these files for full documentation:
 - **DEBUG_GUIDE.md** - Complete troubleshooting guide

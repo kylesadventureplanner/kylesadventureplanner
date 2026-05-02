@@ -6,9 +6,13 @@ const CTA_ORDER_CASES = [
     label: 'Outdoors',
     expectedActions: [
       'open-explorer-outdoors',
+      'open-explorer-newtab-outdoors',
       'open-city-explorer-outdoors',
+      'open-city-explorer-newtab-outdoors',
       'open-visit-log-outdoors',
+      'open-visit-log-newtab-outdoors',
       'open-edit-mode-outdoors',
+      'open-edit-mode-newtab-outdoors',
       'open-batch-tags-outdoors',
       'refresh-subtab-outdoors',
       'undo-subtab-outdoors'
@@ -19,9 +23,13 @@ const CTA_ORDER_CASES = [
     label: 'Wildlife & Animals',
     expectedActions: [
       'open-explorer-wildlife-animals',
+      'open-explorer-newtab-wildlife-animals',
       'open-city-explorer-wildlife-animals',
+      'open-city-explorer-newtab-wildlife-animals',
       'open-visit-log-wildlife-animals',
+      'open-visit-log-newtab-wildlife-animals',
       'open-edit-mode-wildlife-animals',
+      'open-edit-mode-newtab-wildlife-animals',
       'open-batch-tags-wildlife-animals',
       'refresh-subtab-wildlife-animals',
       'undo-subtab-wildlife-animals'
@@ -33,9 +41,13 @@ const CTA_ORDER_CASES = [
     label: 'Regional Festivals',
     expectedActions: [
       'open-explorer-regional-festivals',
+      'open-explorer-newtab-regional-festivals',
       'open-city-explorer-regional-festivals',
+      'open-city-explorer-newtab-regional-festivals',
       'open-visit-log-regional-festivals',
+      'open-visit-log-newtab-regional-festivals',
       'open-edit-mode-regional-festivals',
+      'open-edit-mode-newtab-regional-festivals',
       'open-batch-tags-regional-festivals',
       'refresh-subtab-regional-festivals',
       'undo-subtab-regional-festivals'
@@ -47,9 +59,13 @@ const CTA_ORDER_CASES = [
     label: 'Retail',
     expectedActions: [
       'open-explorer-retail',
+      'open-explorer-newtab-retail',
       'open-city-explorer-retail',
+      'open-city-explorer-newtab-retail',
       'open-visit-log-retail',
+      'open-visit-log-newtab-retail',
       'open-edit-mode-retail',
+      'open-edit-mode-newtab-retail',
       'open-batch-tags-retail',
       'refresh-subtab-retail',
       'undo-subtab-retail'
@@ -61,8 +77,11 @@ const CTA_ORDER_CASES = [
     label: 'Bike Trails',
     expectedActions: [
       'explore-bike-trails',
+      'open-explorer-newtab-bike-trails',
       'open-city-explorer-bike-trails',
+      'open-city-explorer-newtab-bike-trails',
       'open-edit-mode-bike-trails',
+      'open-edit-mode-newtab-bike-trails',
       'open-batch-tags-bike-trails',
       'refresh-subtab-bike-trails',
       'undo-subtab-bike-trails'
@@ -147,6 +166,58 @@ test.describe('Adventure CTA canonical order', () => {
         return snapshot.visual;
       }, { timeout: 15000 }).toEqual(expectedActions);
     });
+  });
+
+  test('newtab CTA actions route to standalone targets', async ({ page }) => {
+    await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
+    await expect(page.locator('#visitedProgressPane-outdoors')).toBeVisible();
+    await waitForCtaNormalized(page, 'outdoors');
+
+    await page.evaluate(() => {
+      const opened = [];
+      window.__openedNewtabUrls = opened;
+      window.open = (url, target, features) => {
+        opened.push({
+          url: String(url || ''),
+          target: String(target || ''),
+          features: String(features || '')
+        });
+        return { focus() {} };
+      };
+    });
+
+    const clickAndRead = async (action) => {
+      await page.locator(`#visitedProgressPane-outdoors [data-visited-subtab-action="${action}"]`).first().click();
+      return page.evaluate(() => {
+        const list = Array.isArray(window.__openedNewtabUrls) ? window.__openedNewtabUrls : [];
+        return list[list.length - 1] || null;
+      });
+    };
+
+    const explorer = await clickAndRead('open-explorer-newtab-outdoors');
+    expect(explorer).toBeTruthy();
+    expect(explorer.target).toBe('_blank');
+    expect(explorer.url).toContain('visitedView=explorer');
+
+    const cityExplorer = await clickAndRead('open-city-explorer-newtab-outdoors');
+    expect(cityExplorer).toBeTruthy();
+    expect(cityExplorer.target).toBe('_blank');
+    expect(
+      cityExplorer.url.includes('city-viewer-window.html') ||
+      cityExplorer.url.includes('visitedView=explorer')
+    ).toBeTruthy();
+
+    const visitLog = await clickAndRead('open-visit-log-newtab-outdoors');
+    expect(visitLog).toBeTruthy();
+    expect(visitLog.target).toBe('_blank');
+    expect(visitLog.url).toContain('visit-log-window.html');
+    expect(visitLog.url).not.toContain('embedded=1');
+
+    const editMode = await clickAndRead('open-edit-mode-newtab-outdoors');
+    expect(editMode).toBeTruthy();
+    expect(editMode.target).toBe('_blank');
+    expect(editMode.url).toContain('edit-mode-enhanced.html');
+    expect(editMode.url).not.toContain('embedded=1');
   });
 });
 

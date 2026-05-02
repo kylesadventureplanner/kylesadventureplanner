@@ -25,6 +25,7 @@
     "offline:qa:gate": "playwright test tests/offline-airplane-mode.spec.js",
     "tv:smoke": "playwright test tests/tv-mode-smoke.spec.js",
     "reliability:ownership": "node scripts/check-control-ownership.js",
+    "lint:tab-inline-onclick": "node scripts/check-tab-inline-onclick.js",
     "nearby:tuning-report": "node scripts/nearby-tuning-report.js",
     "reliability:source-routing": "node scripts/validate-adventure-source-routing.js",
     "lint:test-helper-names": "node scripts/check-test-helper-naming.js",

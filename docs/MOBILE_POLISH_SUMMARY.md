@@ -1,4 +1,4 @@
-# Mobile Polish Summary
+# Mobile polish summary
 
 **Date:** April 7, 2026  
 **Status:** Current reference

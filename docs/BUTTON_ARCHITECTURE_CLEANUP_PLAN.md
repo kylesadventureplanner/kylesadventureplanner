@@ -1,4 +1,4 @@
-# Button Architecture Cleanup Plan
+# Button architecture cleanup plan
 
 **Date:** April 8, 2026  
 **Status:** Active migration playbook
@@ -18,7 +18,7 @@ Execution tracker: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md
 
 ---
 
-## Why Reliability Broke Down
+## Why reliability broke down
 
 - Multiple systems touched the same controls (delegated handlers + direct listeners + runtime fixups).
 - Stale loading overlays and startup locks occasionally intercepted pointer events.
@@ -27,7 +27,7 @@ Execution tracker: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md
 
 ---
 
-## Canonical Button Architecture
+## Canonical button architecture
 
 1. **One owner per control**
    - Primary pattern: delegated handler on tab root (`event.target.closest(...)`).
@@ -51,7 +51,7 @@ Execution tracker: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md
 
 ---
 
-## Do / Don't Rules
+## Do / Don't rules
 
 ### Do
 
@@ -70,7 +70,7 @@ Execution tracker: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md
 
 ---
 
-## Migration Checklist by Tab
+## Migration checklist by tab
 
 Use this checklist per tab. Mark each item done before moving to the next tab.
 
@@ -127,7 +127,7 @@ Use this checklist per tab. Mark each item done before moving to the next tab.
 
 ---
 
-## Rollout Sequence
+## Rollout sequence
 
 1. Freeze new button-related ad hoc hotfixes.
 2. Migrate one tab at a time using the checklist above.
@@ -136,7 +136,7 @@ Use this checklist per tab. Mark each item done before moving to the next tab.
 
 ---
 
-## PR Gate Checklist (Required)
+## PR gate checklist (required)
 
 Copy this into PR descriptions for button-related changes:
 
@@ -148,7 +148,7 @@ Copy this into PR descriptions for button-related changes:
 
 ---
 
-## Reliability SLOs (Initial Targets)
+## Reliability SLOs (initial targets)
 
 - **Startup Interactivity (`app:interactive-ready`)**
   - Target median: <= 1500 ms
@@ -162,7 +162,7 @@ Measure these via startup timing telemetry and button diagnostics evidence links
 
 ---
 
-## New Reliability Operations Layer
+## New reliability operations layer
 
 - Global error boundary pipeline is centralized via `window.onerror` + `unhandledrejection`.
 - Each error report is tagged with:
@@ -185,7 +185,7 @@ Each recovery action is logged for postmortem in reliability events.
 
 ---
 
-## Retry Policy by Operation Type
+## Retry policy by operation type
 
 - **Read operations**: retry 2-3 attempts with exponential backoff.
 - **Write operations**: retry only idempotent-safe writes.
@@ -198,7 +198,7 @@ Shared runtime helper: `window.ReliabilityAsync`
 
 ---
 
-## Disaster Diagnostics Bundle
+## Disaster diagnostics bundle
 
 One-command export for support/debug triage:
 
@@ -215,7 +215,7 @@ Bundle includes:
 
 ---
 
-## Validation Checklist (Per PR)
+## Validation checklist (per PR)
 
 - [ ] No duplicate owners for the same control.
 - [ ] No hidden overlay intercepts clicks.
@@ -225,7 +225,7 @@ Bundle includes:
 
 ---
 
-## Definition of Done
+## Definition of done
 
 - Buttons across all tabs have single-path ownership.
 - First-click success is reliable after startup overlay dismissal.

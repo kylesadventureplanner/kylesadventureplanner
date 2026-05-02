@@ -11,13 +11,13 @@
     <button id="bikeIphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
       📱 iPhone View
     </button>
-    <button id="bikeRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel" onclick="window.refreshBikeTrailData()">
+    <button id="bikeRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel" data-bike-action="refresh-data">
       🔄 Refresh Data
     </button>
-    <button id="bikeTrailExplorerBtn" class="planner-top-btn planner-top-btn--accent" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer" onclick="window.openTrailExplorerWindow?.()">
+    <button id="bikeTrailExplorerBtn" class="planner-top-btn planner-top-btn--accent" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer" data-bike-action="open-trail-explorer">
       🗺️ Trail Explorer
     </button>
-    <button id="bikeFindNearMeBtn" class="planner-top-btn" title="Find trails near your current location" data-tooltip="Find trails near your current location" onclick="(window.startFindNearMe || window.openFindNearMeWindow || function(){})()">
+    <button id="bikeFindNearMeBtn" class="planner-top-btn" title="Find trails near your current location" data-tooltip="Find trails near your current location" data-bike-action="find-near-me">
       📍 Find Near Me
     </button>
   </div>
@@ -250,13 +250,13 @@
 
   <!-- Pagination Controls (Top) -->
   <div id="bikePaginationControlsTop" class="pagination-controls" style="display: none;">
-    <button id="bikePrevPageBtnTop" class="pagination-btn" onclick="changeBikePage(-1)">← Previous</button>
+    <button id="bikePrevPageBtnTop" class="pagination-btn" data-bike-action="change-page" data-page-delta="-1">← Previous</button>
     <div class="pagination-info">
       Page <span id="bikeCurrentPageNumTop">1</span> of <span id="bikeTotalPagesNumTop">1</span>
       <span class="pagination-separator">•</span>
       Showing <span id="bikeShowingRangeStartTop">1</span>-<span id="bikeShowingRangeEndTop">20</span> of <span id="bikeTotalResultsNumTop">0</span>
     </div>
-    <button id="bikeNextPageBtnTop" class="pagination-btn" onclick="changeBikePage(1)">Next →</button>
+    <button id="bikeNextPageBtnTop" class="pagination-btn" data-bike-action="change-page" data-page-delta="1">Next →</button>
   </div>
 
   <!-- Bike Trail Cards Grid -->
@@ -266,13 +266,13 @@
 
   <!-- Pagination Controls (Bottom) -->
   <div id="bikePaginationControls" class="pagination-controls" style="display: none;">
-    <button id="bikePrevPageBtn" class="pagination-btn" onclick="changeBikePage(-1)">← Previous</button>
+    <button id="bikePrevPageBtn" class="pagination-btn" data-bike-action="change-page" data-page-delta="-1">← Previous</button>
     <div class="pagination-info">
       Page <span id="bikeCurrentPageNum">1</span> of <span id="bikeTotalPagesNum">1</span>
       <span class="pagination-separator">•</span>
       Showing <span id="bikeShowingRangeStart">1</span>-<span id="bikeShowingRangeEnd">20</span> of <span id="bikeTotalResultsNum">0</span>
     </div>
-    <button id="bikeNextPageBtn" class="pagination-btn" onclick="changeBikePage(1)">Next →</button>
+    <button id="bikeNextPageBtn" class="pagination-btn" data-bike-action="change-page" data-page-delta="1">Next →</button>
   </div>
 </div>
 

@@ -1,10 +1,10 @@
-# iPhone View Button Fix - Complete Analysis & Solution
+# iPhone view button fix - complete analysis & solution
 
-## 🔍 Root Cause Analysis
+## 🔍 Root cause analysis
 
-The "📱 iPhone View" buttons on the Adventure Planner and Bike Trails tabs were non-functional due to **duplicate and conflicting initialization code** in index.html.
+The "📱 iPhone View" buttons on the legacy/archived Adventure Planner flow and Bike Trails tab were non-functional due to **duplicate and conflicting initialization code** in index.html.
 
-### The Problem (Before Fix)
+### The problem (before fix)
 
 There were **TWO competing initialization blocks** at the end of index.html:
 
@@ -19,7 +19,7 @@ There were **TWO competing initialization blocks** at the end of index.html:
    - **Re-ran initialization** with the flag reset
    - This caused the buttons to lose their event listeners before the canonical system could fully attach
 
-### Why It Broke Dynamically Loaded Buttons
+### Why it broke dynamically loaded buttons
 
 When tabs are loaded dynamically by `tab-content-loader.js`:
 1. New button elements (`#iphoneToggleBtn`, `#bikeIphoneToggleBtn`) are inserted into the DOM
@@ -28,7 +28,7 @@ When tabs are loaded dynamically by `tab-content-loader.js`:
 4. This happened AFTER the page loaded, causing timing issues
 5. The buttons never got proper click handlers attached
 
-### CSS Context
+### CSS context
 
 The CSS was already correct - `body.mobile-view` is properly styled in `CSS/utilities.css`:
 
@@ -42,11 +42,11 @@ The buttons would toggle the class correctly **IF** the JavaScript click handler
 
 ---
 
-## ✅ The Solution
+## ✅ The solution
 
 Replaced both conflicting blocks with a **single, clean canonical implementation** that:
 
-### 1. Uses Proper Event Delegation
+### 1. Uses proper event delegation
 ```javascript
 document.addEventListener('click', (event) => {
   const btn = event.target.closest(BTN_SELECTOR);
@@ -60,7 +60,7 @@ document.addEventListener('click', (event) => {
 
 **Why capture phase?** This ensures our listener runs FIRST, before any other click handlers, so even dynamically added buttons are caught.
 
-### 2. Single Initialization Guard
+### 2. Single initialization guard
 ```javascript
 let initDone = false;
 
@@ -74,13 +74,13 @@ window.initIphoneToggle = function() {
 
 Much cleaner than `window.__iphoneToggleCanonicalInitDone`.
 
-### 3. No Button Cloning
+### 3. No button cloning
 Removed the problematic `hardenIphoneToggleBinding()` function that was:
 - Creating clones of buttons
 - Destroying event listeners in the process
 - Causing timing conflicts
 
-### 4. Explicit, Self-Documenting Code
+### 4. Explicit, Self-Documenting code
 ```javascript
 function syncButtonStates(isMobileView) {
   // Clear naming makes the purpose obvious
@@ -97,7 +97,7 @@ window.initIphoneToggle = function() {
 
 ---
 
-## 🎯 Key Improvements
+## 🎯 Key improvements
 
 | Aspect | Before | After |
 |--------|--------|-------|
@@ -111,11 +111,11 @@ window.initIphoneToggle = function() {
 
 ---
 
-## 🧪 Testing the Fix
+## 🧪 Testing the fix
 
-### How to Test
+### How to test
 
-1. **Load the application** with the Adventure Planner tab active
+1. **Load the application** with the Adventure Challenge tab active (`visited-locations`, legacy/archived Adventure Planner replacement)
 2. **Click the "📱 iPhone View" button** in the header
    - ✅ Button text should change to "💻 Desktop View"
    - ✅ Button should get `.active` class (blue highlight)
@@ -123,10 +123,10 @@ window.initIphoneToggle = function() {
 
 3. **Switch to the Bike Trails tab**
 4. **Click the "📱 iPhone View" button** there
-   - ✅ Same behavior as Adventure Planner
+   - ✅ Same behavior as Adventure Challenge
    - ✅ Both buttons should stay synchronized
 
-5. **Switch back to Adventure Planner**
+5. **Switch back to Adventure Challenge**
    - ✅ iPhone View should still be active (state persisted in localStorage)
 
 6. **Press ESC key**
@@ -135,7 +135,7 @@ window.initIphoneToggle = function() {
 7. **Refresh the page**
    - ✅ Should remember the last view mode setting
 
-### Expected Console Output
+### Expected console output
 
 When you click the button, you should see:
 ```
@@ -146,21 +146,21 @@ When you click the button, you should see:
 
 ---
 
-## 📋 Files Modified
+## 📋 Files modified
 
 - **`/index.html`** - Lines ~21470-21549
   - Removed: Both conflicting initialization blocks
   - Added: Single canonical iPhone View toggle system
 
 - **No changes needed to:**
-  - `HTML Files/tabs/adventure-planner-tab.html` (buttons are there)
+  - `HTML Files/tabs/adventure-planner-tab-archive.html` (legacy reference only; tab retired in runtime shell)
   - `HTML Files/tabs/bike-trails-tab.html` (buttons are there)
   - `CSS/utilities.css` (mobile-view CSS already correct)
   - Any JS files (existing functions unchanged)
 
 ---
 
-## 🚀 Why This Works
+## 🚀 Why this works
 
 1. **Event Delegation**: The single `click` listener on `document` catches clicks on ANY button matching the selector, whether it was there at page load or added dynamically later
 
@@ -174,7 +174,7 @@ When you click the button, you should see:
 
 ---
 
-## ✨ Benefits of This Fix
+## ✨ Benefits of this fix
 
 ✅ **Simple**: One, clear, canonical implementation  
 ✅ **Reliable**: Event delegation works with dynamic content  
@@ -185,9 +185,9 @@ When you click the button, you should see:
 
 ---
 
-## 📝 Technical Details
+## 📝 Technical details
 
-### The iPhone View Toggle Mechanism
+### The iPhone view toggle mechanism
 
 ```
 User clicks button
@@ -209,7 +209,7 @@ localStorage saves preference
 All buttons update their text/style
 ```
 
-### Why Dynamic Buttons Work Now
+### Why dynamic buttons work now
 
 Before: Buttons were cloned and re-initialized → listeners got removed during the clone process
 
@@ -217,7 +217,7 @@ After: Listeners are on the **document**, not on individual buttons → they wor
 
 ---
 
-## 🔄 Future Maintenance
+## 🔄 Future maintenance
 
 If you need to make changes to the iPhone View toggle:
 

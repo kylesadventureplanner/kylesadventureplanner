@@ -292,11 +292,6 @@
 
   // ─── Tab cycling ───────────────────────────────────────────────────────
 
-  const MAIN_TABS = [
-    'visited-locations', 'nature-challenge', 'adventure-planner',
-    'household-tools', 'birding', 'bike-trails'
-  ];
-
   function cycleMainTab(delta) {
     const buttons = Array.from(
       document.querySelectorAll('.app-tab-btn:not(.tab-utility-hidden):not([aria-hidden="true"])')
@@ -496,9 +491,11 @@
 
   function ensureQuickFilterRail() {
     if (document.getElementById(QUICK_RAIL_ID)) return;
-    const plannerTab        = document.getElementById('adventurePlannerTab') || document.querySelector('#adventure-planner.app-tab-pane');
-    const plannerTopActions = plannerTab
-      ? plannerTab.querySelector('.planner-top-actions')
+    const challengeTabButton = document.querySelector('.app-tab-btn[data-tab="visited-locations"]');
+    if (!challengeTabButton) return;
+    const challengeTab = document.getElementById('visitedLocationsTab') || document.querySelector('[data-tab="visited-locations"].app-tab-pane');
+    const plannerTopActions = challengeTab
+      ? challengeTab.querySelector('.planner-top-actions')
       : document.querySelector('.planner-top-actions');
     if (!plannerTopActions || !plannerTopActions.parentElement) return;
 

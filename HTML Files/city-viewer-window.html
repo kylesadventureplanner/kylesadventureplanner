@@ -202,6 +202,22 @@
       color: white;
       border-color: #667eea;
     }
+    .sort-btn.sort-btn--map {
+      background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+      color: #ffffff;
+      border-color: #1d4ed8;
+    }
+    .sort-btn.sort-btn--map:hover {
+      border-color: #1e40af;
+      color: #ffffff;
+      box-shadow: 0 6px 18px rgba(30,64,175,0.22);
+    }
+    .sort-btn.sort-btn--map:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      box-shadow: none;
+      filter: grayscale(0.08);
+    }
 
     .city-grid {
       display: grid;
@@ -2533,6 +2549,22 @@
       background: linear-gradient(135deg, #5568d3 0%, #6a3e94 100%);
       box-shadow: 0 6px 18px rgba(102,126,234,0.38);
     }
+    .city-btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .city-btn-row .city-btn {
+      margin-top: 0;
+      flex: 1;
+    }
+    .city-btn.city-btn--map {
+      background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+    }
+    .city-btn.city-btn--map:hover {
+      background: linear-gradient(135deg, #1e40af 0%, #0284c7 100%);
+      box-shadow: 0 6px 18px rgba(30,64,175,0.35);
+    }
 
     /* Skeleton loading cards */
     @keyframes shimmer {
@@ -2931,6 +2963,7 @@
       <button class="sort-btn active" id="sortByCountBtn" onclick="sortBy('count')">Most Locations</button>
       <button class="sort-btn" id="sortByDistanceBtn" onclick="sortBy('distance')" title="Sort by drive time (requires location permission)">🚗 Drive Time</button>
       <button class="sort-btn" id="getLocationBtn" onclick="enableDriveTimes()" title="Get your location to show drive times">📍 My Location</button>
+      <button class="sort-btn sort-btn--map" id="openOverviewMapBtn" onclick="openOverviewMapView()" title="Open the top visible city directly in map view">🗺️ Map View</button>
       <div class="active-sources-row" id="activeSourcesRow" aria-live="polite"></div>
       <div id="cityPrefilterNotice" class="city-prefilter-notice" aria-live="polite"></div>
     </div>
@@ -3581,11 +3614,60 @@
      }
 
 
+    function getVisibleCitiesArray() {
+      let citiesArray = Object.values(citiesData || {});
+
+      if (prefilterTag) {
+        citiesArray = citiesArray.filter((city) => Array.isArray(city.locations) && city.locations.some((loc) => locationMatchesPrefilter(loc)));
+      }
+
+      if (currentSort === 'name') {
+        citiesArray.sort((a, b) => a.city.localeCompare(b.city));
+      } else if (currentSort === 'count') {
+        citiesArray.sort((a, b) => b.count - a.count);
+      } else if (currentSort === 'distance') {
+        citiesArray.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+      }
+
+      const searchTerm = document.getElementById('searchBox')?.value?.toLowerCase() || '';
+      if (searchTerm) {
+        citiesArray = citiesArray.filter(c =>
+          c.city.toLowerCase().includes(searchTerm) ||
+          c.state.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      return citiesArray;
+    }
+
+    function updateOverviewMapButton() {
+      const btn = document.getElementById('openOverviewMapBtn');
+      if (!btn) return;
+      const visibleCities = getVisibleCitiesArray();
+      const firstCity = visibleCities[0];
+      btn.disabled = !firstCity;
+      btn.textContent = firstCity
+        ? `🗺️ Map: ${firstCity.city}`
+        : '🗺️ Map View';
+      btn.title = firstCity
+        ? `Open ${firstCity.city}, ${firstCity.state} directly in map view`
+        : 'No visible city matches the current search/filter state';
+    }
+
+    function openOverviewMapView() {
+      const visibleCities = getVisibleCitiesArray();
+      const firstCity = visibleCities[0];
+      if (!firstCity) {
+        updateOverviewMapButton();
+        return;
+      }
+      viewCityMap(firstCity.city, firstCity.state);
+    }
+
     function renderCities() {
       const grid = document.getElementById('cityGrid');
       renderPrefilterNotice();
 
-      // Update header stats pills
       const headerStats = document.getElementById('headerStats');
       if (headerStats) {
         const totalCities = Object.keys(citiesData).length;
@@ -3599,6 +3681,7 @@
       }
 
       if (Object.keys(citiesData).length === 0) {
+        updateOverviewMapButton();
         grid.innerHTML = `
           <div class="empty-state u-grid-full-span">
             <div class="empty-state-icon">🏙️</div>
@@ -3609,29 +3692,8 @@
         return;
       }
 
-      let citiesArray = Object.values(citiesData);
-
-      if (prefilterTag) {
-        citiesArray = citiesArray.filter((city) => Array.isArray(city.locations) && city.locations.some((loc) => locationMatchesPrefilter(loc)));
-      }
-
-      // Sort
-      if (currentSort === 'name') {
-        citiesArray.sort((a, b) => a.city.localeCompare(b.city));
-      } else if (currentSort === 'count') {
-        citiesArray.sort((a, b) => b.count - a.count);
-      } else if (currentSort === 'distance') {
-        citiesArray.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-      }
-
-      // Filter
-      const searchTerm = document.getElementById('searchBox')?.value?.toLowerCase() || '';
-      if (searchTerm) {
-        citiesArray = citiesArray.filter(c =>
-          c.city.toLowerCase().includes(searchTerm) ||
-          c.state.toLowerCase().includes(searchTerm)
-        );
-      }
+      const citiesArray = getVisibleCitiesArray();
+      updateOverviewMapButton();
 
       grid.innerHTML = citiesArray.map((city, idx) => {
         const driveTimeText = city.distance !== undefined
@@ -3688,11 +3750,21 @@
                 </div>
               </div>
               <div class="city-drive-time${driveTimeText ? '' : ' is-empty'}">${driveTimeText || '&nbsp;'}</div>
-              <button class="city-btn">Explore → </button>
+              <div class="city-btn-row">
+                <button class="city-btn">Explore → </button>
+                <button class="city-btn city-btn--map" type="button" onclick="event.stopPropagation();viewCityMap('${escAttr(city.city)}', '${escAttr(city.state)}')">🗺️ Map View</button>
+              </div>
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    function viewCityMap(city, state) {
+      viewCity(city, state);
+      if (!locSplitView) {
+        toggleSplitView();
+      }
     }
 
     function filterCities() {

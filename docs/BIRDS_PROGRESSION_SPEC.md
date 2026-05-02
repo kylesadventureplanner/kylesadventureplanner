@@ -1,4 +1,4 @@
-# Birds Progression Spec
+# Birds progression spec
 
 This is the source of truth for Birds progression economy tuning.
 
@@ -124,7 +124,7 @@ Path mode is currently a **presentation-only** game layer:
 | `daily-evidence` | Field Proof | `todayEvidenceLogCount` | 1 | 45 |
 | `daily-family-mix` | Family Mix | `todayFamilyMixCount` | 2 | 45 |
 
-## Seasonal Questline
+## Seasonal questline
 
 | Tier | ID | Title | Metric | Goal | XP |
 |---|---|---|---|---:|---:|
@@ -155,7 +155,7 @@ Path mode is currently a **presentation-only** game layer:
 | Seasonal / Mastery | `badge-year-round-birder` | Year-Round Birder | legendary | `loggedSeasonCount` | 4 | 360 |
 | Seasonal / Mastery | `badge-legendary-lister` | Legendary Lister | legendary | `totalSighted` | 100 | 400 |
 
-## Bingo Objectives
+## Bingo objectives
 
 | ID | Label | Metric | Goal | XP |
 |---|---|---|---:|---:|

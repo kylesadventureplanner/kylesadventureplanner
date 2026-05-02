@@ -1,8 +1,8 @@
-# City Explorer Enhancement Plan
+# City explorer enhancement plan
 
 This plan rolls out City Explorer upgrades in four phases with small, testable slices.
 
-## Phase 1 (Now): Polish + Usability
+## Phase 1 (now): polish + usability
 
 ### Goal
 Make City Explorer feel more polished and easier to operate during fast browsing.
@@ -13,13 +13,13 @@ Make City Explorer feel more polished and easier to operate during fast browsing
 - Improved empty states with clear next actions.
 - Keep current filter/sort behavior stable.
 
-### Acceptance Criteria
+### Acceptance criteria
 - Controls remain visible while scrolling location results.
 - Active filters are visible as chips and removable individually.
 - Empty state explains why no rows are shown and offers reset/open-now actions.
 - Existing inline-tool roundtrip tests continue to pass.
 
-## Phase 2: Saved Views + Compare + Presets
+## Phase 2: saved views + compare + presets
 
 ### Goal
 Improve planning speed by reducing repeated filter work.
@@ -29,11 +29,11 @@ Improve planning speed by reducing repeated filter work.
 - Add shortlist compare surface (2-5 cards side-by-side).
 - Add quick intent presets (Closest now, Best value, Most unique).
 
-### Acceptance Criteria
+### Acceptance criteria
 - User can apply preset in one click and see immediate result changes.
 - Compare panel highlights key differences (cost/rating/difficulty/tags).
 
-## Phase 3: Scoring + Itinerary + Confidence
+## Phase 3: scoring + itinerary + confidence
 
 ### Goal
 Turn City Explorer into a recommendation and planning engine.
@@ -43,11 +43,11 @@ Turn City Explorer into a recommendation and planning engine.
 - Itinerary quality summary with feasibility confidence score.
 - Better route summary diagnostics before opening map routes.
 
-### Acceptance Criteria
+### Acceptance criteria
 - Score value and confidence are visible and understandable per result.
 - Day plan includes feasibility guidance with clear warnings.
 
-## Phase 4: Deep App Integrations
+## Phase 4: deep app integrations
 
 ### Goal
 Connect City Explorer to the rest of the app workflow.
@@ -58,11 +58,11 @@ Connect City Explorer to the rest of the app workflow.
 - One-click "edit this listing" handoff into Edit Mode.
 - Offline-friendly fallback for last city + shortlist.
 
-### Acceptance Criteria
+### Acceptance criteria
 - Deep links preserve `sourceSubtab` and current city/filter context.
 - Cross-tool actions update origin tab state without manual refresh.
 
-## Current Progress
+## Current progress
 
 - [x] Phase 1 initial slice implemented in `HTML Files/city-viewer-window.html`:
   - Sticky location controls

@@ -13,6 +13,8 @@
     cloneSourceName:     null
   };
 
+  const TAB_SELECTOR = '[data-tab="visited-locations"]';
+
   // ─── Card tag extraction ───────────────────────────────────────────────
 
   function getCardTags(el) {
@@ -41,11 +43,11 @@
     modal.id = 'cloneTagsModal';
     modal.className = 'tag-bulk-modal';
     modal.innerHTML = `
-      <div class="tag-bulk-modal-backdrop" onclick="closeCloneTagsModal()"></div>
+      <div class="tag-bulk-modal-backdrop" data-tag-bulk-action="close-clone-modal"></div>
       <div class="tag-bulk-modal-content">
         <div class="tag-bulk-modal-header">
           <h3>Clone Tags</h3>
-          <button class="tag-bulk-close" onclick="closeCloneTagsModal()">✕</button>
+          <button type="button" class="tag-bulk-close" data-tag-bulk-action="close-clone-modal">✕</button>
         </div>
         <div class="tag-bulk-modal-body">
           <div class="tag-bulk-section">
@@ -67,12 +69,27 @@
           </div>
         </div>
         <div class="tag-bulk-modal-footer">
-          <button class="tag-bulk-btn" onclick="closeCloneTagsModal()">Cancel</button>
-          <button class="tag-bulk-btn tag-bulk-btn-primary" id="cloneTagsApplyBtn" onclick="applyClonedTags()" disabled>Apply to Selected</button>
+          <button type="button" class="tag-bulk-btn" data-tag-bulk-action="close-clone-modal">Cancel</button>
+          <button type="button" class="tag-bulk-btn tag-bulk-btn-primary" id="cloneTagsApplyBtn" data-tag-bulk-action="apply-cloned-tags" disabled>Apply to Selected</button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+
+    modal.addEventListener('click', (event) => {
+      const actionBtn = event && event.target && event.target.closest
+        ? event.target.closest('[data-tag-bulk-action]')
+        : null;
+      if (!actionBtn) return;
+      const action = String(actionBtn.getAttribute('data-tag-bulk-action') || '').trim();
+      if (action === 'close-clone-modal') {
+        closeCloneTagsModal();
+        return;
+      }
+      if (action === 'apply-cloned-tags') {
+        applyClonedTags();
+      }
+    }, true);
   }
 
   function openCloneTagsModal(sourceCard) {
@@ -100,12 +117,14 @@
     document.getElementById('cloneTagsSearch').addEventListener('input', performCloneTagsSearch);
   }
 
-  window.openCloneTagsModal = openCloneTagsModal;
-  window.closeCloneTagsModal = function() {
+  function closeCloneTagsModal() {
     const modal = document.getElementById('cloneTagsModal');
     if (modal) modal.classList.remove('visible');
     state.selectedCards.clear();
-  };
+  }
+
+  window.openCloneTagsModal = openCloneTagsModal;
+  window.closeCloneTagsModal = closeCloneTagsModal;
 
   function performCloneTagsSearch(event) {
     const query = (event.target.value || '').toLowerCase();
@@ -156,7 +175,7 @@
     if (btn) btn.disabled = state.selectedCards.size === 0;
   }
 
-  window.applyClonedTags = function() {
+  function applyClonedTags() {
     const mode = document.querySelector('input[name="cloneTagsMode"]:checked')?.value || 'replace';
     if (!state.cloneSourceTags || state.selectedCards.size === 0) return;
 
@@ -168,16 +187,18 @@
       window.showToast(`Tags ${mode}d to ${state.selectedCards.size} location(s)`, 'success', 1500);
     }
 
-    window.closeCloneTagsModal();
-  };
+    closeCloneTagsModal();
+  }
+
+  window.applyClonedTags = applyClonedTags;
 
   // ─── Multi-select mode ────────────────────────────────────────────────
 
   function initMultiSelectToggle() {
-    const plannerTab = document.querySelector('[data-tab="adventure-planner"]');
-    if (!plannerTab) return;
-
-    const topActions = plannerTab.querySelector('.planner-top-actions');
+    const challengeTabButton = document.querySelector('.app-tab-btn[data-tab="visited-locations"]');
+    if (!challengeTabButton) return;
+    const challengeTab = document.querySelector(TAB_SELECTOR);
+    const topActions = (challengeTab && challengeTab.querySelector('.planner-top-actions')) || document.querySelector('.planner-top-actions');
     if (!topActions) return;
 
     if (document.getElementById('multiSelectToggleBtn')) return;
@@ -259,10 +280,16 @@
       <label style="display: flex; gap: 8px; align-items: center;">
         <input type="radio" name="bulkTagsMode" value="append"> Append
       </label>
-      <button onclick="applyBulkTags()" class="planner-top-btn">Apply</button>
+      <button type="button" id="bulkTagsApplyBtn" class="planner-top-btn">Apply</button>
     `;
     bar.style.cssText = 'display: flex; gap: 12px; align-items: center; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; margin-top: 12px;';
-    document.querySelector('.planner-top-actions').parentElement.appendChild(bar);
+    const topActions = document.querySelector('.planner-top-actions');
+    if (!topActions || !topActions.parentElement) return;
+    topActions.parentElement.appendChild(bar);
+    const applyBtn = document.getElementById('bulkTagsApplyBtn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', applyBulkTags);
+    }
   }
 
   function updateBulkActionBar() {
@@ -270,7 +297,7 @@
     if (info) info.textContent = `${state.selectedCards.size} location(s) selected`;
   }
 
-  window.applyBulkTags = function() {
+  function applyBulkTags() {
     const tagsText = document.getElementById('bulkTagsInput')?.value || '';
     const tags = tagsText.split(',').map(t => t.trim()).filter(Boolean);
     const mode = document.querySelector('input[name="bulkTagsMode"]:checked')?.value || 'replace';
@@ -286,7 +313,9 @@
     }
 
     document.getElementById('bulkTagsInput').value = '';
-  };
+  }
+
+  window.applyBulkTags = applyBulkTags;
 
   // ─── Tag application ──────────────────────────────────────────────────
 

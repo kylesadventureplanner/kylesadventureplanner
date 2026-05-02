@@ -1,4 +1,4 @@
-# Mobile Polish Documentation Index
+# Mobile polish documentation INDEX
 
 **Date:** April 7, 2026  
 **Status:** Current reference

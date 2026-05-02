@@ -126,6 +126,14 @@ const TAG_CONFIG = {
     color: '#5b21b6',
     border: '#e9d5ff'
   },
+  'Caverns': {
+    icon: '🕳️',
+    bg: '#e0f2fe',
+    color: '#0c4a6e',
+    border: '#7dd3fc',
+    category: 'Locations',
+    subcategory: 'Nature Spots'
+  },
 
   // ========== FOOD & DINING TAGS ==========
   'Coffee Shop': {
@@ -532,7 +540,7 @@ const TAG_HIERARCHY = {
       color: '#10b981',
       subcategories: {
         'Nature Spots': {
-          tags: ['Park', 'Greenway', 'Birding Location'],
+          tags: ['Park', 'Greenway', 'Birding Location', 'Caverns'],
           icon: '🌳'
         },
         'Practical Locations': {
@@ -1344,7 +1352,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
    */
   function detectLocationType(text) {
     const patterns = {
-      outdoor: /\b(hike|trail|hiking|trekking|mountain|alpine|peak|summit|waterfall|cascade|falls|lake|river|stream|creek|pond|beach|shore|coast|seaside|camping|campground|forest|woods|woodland|grove|nature preserve|national park|viewpoint|overlook|vista|lookout|rock climbing|skiing|snowshoe)\b/gi,
+      outdoor: /\b(hike|trail|hiking|trekking|mountain|alpine|peak|summit|waterfall|cascade|falls|lake|river|stream|creek|pond|beach|shore|coast|seaside|camping|campground|forest|woods|woodland|grove|nature preserve|national park|viewpoint|overlook|vista|lookout|rock climbing|skiing|snowshoe|cave|caves|cavern|caverns|grotto)\b/gi,
       dining: /\b(restaurant|bistro|steakhouse|grill|eatery|cafe|coffee|espresso|tea house|diner|fast food|bakery|pastry|pub|bar|brewery|winery|distillery|pizzeria|taqueria|ramen|sushi)\b/gi,
       shopping: /\b(shop|store|retail|boutique|market|farmers market|outlet|mall|shopping)\b/gi,
       cultural: /\b(museum|gallery|exhibition|exhibit|theater|theatre|concert|music|art|artist|sculpture|craft|historic|history|monument|landmark|heritage|library|cultural center)\b/gi,
@@ -1472,6 +1480,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
       { pattern: /\b(scenic\s*drive|parkway\s*drive)\b/gi, tags: ['Scenic Drive'] },
       { pattern: /\b(state\s*park)\b/gi, tags: ['State Park'] },
       { pattern: /\b(national\s*park)\b/gi, tags: ['National Park'] },
+      { pattern: /\b(cave|caves|cavern|caverns|grotto)\b/gi, tags: ['Caverns'] },
       { pattern: /\b(wildlife\s*sanctuary)\b/gi, tags: ['Wildlife Sanctuary'] },
       { pattern: /\b(wildlife\s*refuge)\b/gi, tags: ['Wildlife Refuge'] },
       { pattern: /\b(wildlife\s*preserve)\b/gi, tags: ['Wildlife Preserve'] },
@@ -1573,7 +1582,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     const specificOutdoor = [
       'Hiking Trail', 'Waterfall Trail', 'Waterfall Drive Up', 'Scenic Overlook', 'Scenic Drive',
       'State Park', 'National Park', 'Wildlife Sanctuary', 'Wildlife Refuge', 'Wildlife Preserve',
-      'Swimming Access', 'Kayak Access', 'Camping Access', 'Lake', 'Pond', 'Farm', 'Dog Park',
+      'Swimming Access', 'Kayak Access', 'Camping Access', 'Lake', 'Pond', 'Farm', 'Dog Park', 'Caverns',
       'Beach', 'Boardwalk', 'Sand Dunes', 'Botanical Garden', 'Public Gardens'
     ];
     const specificEntertainment = [
@@ -1622,7 +1631,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
 
     // Experience type
     if (/\b(photography|photo|scenic|views|photo.?op|instagrammable)\b/gi.test(text))
-      attributes.add('Photography-Worthy');
+      attributes.add('Scenic');
     if (/\b(hidden gem|secret|off.?the.?beaten|lesser.?known|undiscovered)\b/gi.test(text))
       attributes.add('Hidden Gem');
     if (/\b(must.?see|must.?visit|iconic|famous|popular|well.?known)\b/gi.test(text))
@@ -1848,7 +1857,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     }
 
     // Photography + Scenic + Sunset → Photography Paradise
-    if ((tags.has('Photography-Worthy') || /photography/gi.test(text)) &&
+    if ((tags.has('Scenic') || /photography/gi.test(text)) &&
         tags.has('Scenic') &&
         tags.has('Best at Sunrise/Sunset')) {
       tags.add('Photography Paradise');
@@ -2177,8 +2186,7 @@ const TAG_ALIASES = {
   'Romantic': ['Romance', 'Date-Friendly', 'Couples', 'Intimate'],
 
   // Photography
-  'Photography-Worthy': ['Instagrammable', 'Photo Op', 'Scenic Views', 'Picture Perfect', 'Photo Spot'],
-  'Instagrammable': ['Photography-Worthy', 'Photo Op', 'Picture Perfect', 'Photo Location'],
+  'Scenic': ['Beautiful', 'Picturesque', 'Stunning Views', 'Scenic Views', 'Breathtaking', 'Instagrammable', 'Photo Op', 'Picture Perfect', 'Photo Spot', 'Photo Location'],
 
   // Local
   'Local Favorite': ['Local Hotspot', 'Local Preferred', 'Favorite Locally', 'Popular Locally'],
@@ -2193,13 +2201,11 @@ const TAG_ALIASES = {
   // Wildlife
   'Wildlife': ['Animals', 'Animals Spotting', 'Wild Life', 'Nature Wildlife', 'Animal Viewing', 'Wilfelife'],
   'Birding': ['Bird Watching', 'Bird Spotting', 'Ornithology'],
+  'Caverns': ['Cavern', 'Cave', 'Caves', 'Grotto', 'Underground Cave'],
 
   // Easy/Hard
   'Easy': ['Beginner-Friendly', 'Simple', 'Gentle', 'Accessible to All', 'Not Difficult'],
   'Challenging': ['Difficult', 'Advanced', 'Tough', 'Strenuous', 'Not for Beginners'],
-
-  // Scenic
-  'Scenic': ['Beautiful', 'Picturesque', 'Stunning Views', 'Scenic Views', 'Breathtaking'],
 
   // Shopping
   'Shopping': ['Retail', 'Shopping Area', 'Boutique', 'Shopping District'],
@@ -2838,7 +2844,7 @@ class TagConflictDetector {
     this.warnings = {
       'Upscale': ['Casual', 'Budget Hack', 'Deal Hunting'],
       'Family-Friendly': ['Late Night', 'Bar Scene', 'Adult Entertainment'],
-      'Photography-Worthy': ['Hidden Gem'], // Hidden gems are hard to photograph if truly hidden
+      'Scenic': ['Hidden Gem'], // Hidden gems are hard to photograph if truly hidden
       'Romantic': ['Family-Friendly'], // Can be both but might be confusing
       'Wheelchair-Accessible': ['Steep Climb', 'Long Hike'],
     };

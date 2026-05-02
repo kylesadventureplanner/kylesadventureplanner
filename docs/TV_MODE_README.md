@@ -1,8 +1,8 @@
-# TV Mode (Samsung TV / 10-foot UI) — v5.1
+# TV mode (samsung TV / 10-foot UI) - v5.1
 
 ## What was added / improved
 
-### v5.1 refinements (Tier 3: Polish + bulk tag management)
+### v5.1 Refinements (tier 3: polish + bulk tag management)
 | # | Feature | Detail |
 |---|---------|--------|
 | 1 | **Enhanced HUD keyboard display** | Unicode arrows (`⬅️ ⬆️ ➡️ ⬇️`) + larger kbd font + emoji indicators (🎮 D-pad) — clearer at 10 ft |
@@ -26,16 +26,16 @@ Typing guard, D-pad focusable cards, cone filter, focus beacon, aria-live announ
 - `JS Files/tag-bulk-manager.js` (NEW - 240 lines)
 - `tests/tv-mode-smoke.spec.js`
 
-## New Key Mappings (v5.1)
+## New key mappings (v5.1)
 | Key | Action | Context |
 |-----|--------|---------|
 | 🏷️ Clone Tags button | Open modal to clone tags from source card to multiple targets | On each adventure card footer |
-| 📋 Multi-Select button | Toggle multi-select mode with checkboxes + bulk action bar | Adventure Planner tab |
+| 📋 Multi-Select button | Toggle multi-select mode with checkboxes + bulk action bar | Adventure Challenge (`visited-locations`, legacy/archived Adventure Planner replacement) |
 | 🔊 Audio Feedback checkbox | Toggle navigation beeps (D-pad, select, modal close) | HUD (🎮 D-pad row) |
 
-## Implementation Highlights
+## Implementation highlights
 
-### Audio Feedback
+### Audio feedback
 - Uses **Web Audio API** (OscillatorNode) to generate sine wave tones
 - **Navigation beep**: 150 Hz, 40 ms, -14 dB
 - **Select beep**: 200 Hz, 60 ms, -12 dB  
@@ -43,7 +43,7 @@ Typing guard, D-pad focusable cards, cone filter, focus beacon, aria-live announ
 - Gracefully falls back if AudioContext blocked
 - Preference saved to `localStorage.kap_tv_audio_feedback`
 
-### Clone Tags Modal
+### Clone tags modal
 ```javascript
 // User flow:
 1. Click 🏷️ button on a card (source)
@@ -53,7 +53,7 @@ Typing guard, D-pad focusable cards, cone filter, focus beacon, aria-live announ
 5. Click "Apply to Selected"
 ```
 
-### Bulk Tag Apply
+### Bulk tag apply
 ```javascript
 // User flow:
 1. Click 📋 button to enable multi-select
@@ -64,7 +64,7 @@ Typing guard, D-pad focusable cards, cone filter, focus beacon, aria-live announ
 6. Click "Apply"
 ```
 
-## Storage & Persistence
+## Storage and persistence
 - TV mode state: `localStorage.kap_tv_mode_enabled`
 - First-use HUD: `localStorage.kap_tv_mode_first_use_done`
 - Audio feedback preference: `localStorage.kap_tv_audio_feedback`

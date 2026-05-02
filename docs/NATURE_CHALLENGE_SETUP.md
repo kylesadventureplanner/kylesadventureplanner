@@ -1,26 +1,26 @@
-# Nature Challenge Tab - Implementation Summary
+# Nature challenge tab - implementation summary
 
-## ✅ Completed Setup
+## ✅ Completed setup
 
-### 1. **Tab Navigation Button Added** ✓
+### 1. **Tab navigation button added** ✓
 - Location: `/index.html` (Line 7163)
 - Position: **Left of "Adventure Progress" tab** as requested
 - Icon: 🌿
 - Label: "Nature Challenge"
 - Tooltip: "Track nature species sightings and challenges"
 
-### 2. **Tab Content Container Added** ✓
+### 2. **Tab content container added** ✓
 - Location: `/index.html` (Lines 7691-7698)
 - Element ID: `natureChallengeTab`
 - Placeholder content with icon and description
 - Will be replaced with actual tab content when loaded
 
-### 3. **Tab HTML File Created** ✓
+### 3. **Tab HTML file created** ✓
 - Location: `/HTML Files/tabs/nature-challenge-tab.html`
 - Size: 839 lines
 - Fully functional structure with all required components
 
-### 4. **Tab Loader Configuration Updated** ✓
+### 4. **Tab loader configuration updated** ✓
 - Location: `/JS Files/tab-content-loader.js`
 - Added nature-challenge tab to the tabs configuration object
 - Priority: 7 (before visited-locations at 8)
@@ -29,9 +29,9 @@
 
 ---
 
-## 📋 Tab Structure Details
+## 📋 Tab structure details
 
-### Sub-Tabs (8 Total)
+### Sub-Tabs (8 total)
 All sub-tabs follow the same structure with proper ARIA labels and role attributes:
 
 1. **🐦 Birds**
@@ -45,15 +45,15 @@ All sub-tabs follow the same structure with proper ARIA labels and role attribut
 
 > Update: the previous standalone **Shrubs** sub-tab was removed and consolidated into **Trees & Shrubs**.
 
-### Content Sections Per Sub-Tab
+### Content sections per Sub-Tab
 Each sub-tab includes three main sections:
 
-#### 1. **Category Progression**
+#### 1. **Category progression**
    - Total Species Sighted counter (displays count)
    - Total species available in category
    - Stat card styling matching existing design
 
-#### 2. **Sightings by Family**
+#### 2. **Sightings by family**
    - Grid layout for family cards
    - Each family shows:
      - Family name with icon
@@ -61,7 +61,7 @@ Each sub-tab includes three main sections:
      - Visual indicator of sighting status (sighted vs. unsighted)
    - Cards are responsive and hover-enabled
 
-#### 3. **Challenges Section**
+#### 3. **Challenges section**
    - Grid layout for challenge cards
    - Each challenge includes:
      - Challenge name/title
@@ -70,7 +70,7 @@ Each sub-tab includes three main sections:
      - Metadata (current/target count)
    - Supports weekly, monthly, quarterly, and all-time challenges
 
-#### 4. **Badges Section**
+#### 4. **Badges section**
    - Grid layout for badge cards
    - Each badge shows:
      - Large badge icon (emoji or similar)
@@ -80,9 +80,9 @@ Each sub-tab includes three main sections:
 
 ---
 
-## 🎨 Design & Styling
+## 🎨 Design & styling
 
-### Design Consistency
+### Design consistency
 - All styles match your existing "Adventure Progress" tab
 - Uses the same:
   - Color palette (blue primary, mint success, etc.)
@@ -90,13 +90,13 @@ Each sub-tab includes three main sections:
   - Button styles (subtabs, action buttons)
   - Grid layouts and responsive design
 
-### CSS Structure
+### CSS structure
 - All styles are scoped to `#natureChallengeRoot` to avoid conflicts
 - Includes hover states and responsive behavior
 - Proper focus states for accessibility
 - Mobile-friendly touch targets
 
-### Accessibility Features
+### Accessibility features
 - ARIA labels on all interactive elements
 - Screen reader support with announcer divs
 - Proper role attributes (tablist, tab, tabpanel)
@@ -105,16 +105,16 @@ Each sub-tab includes three main sections:
 
 ---
 
-## 🔧 Functionality Already Implemented
+## 🔧 Functionality already implemented
 
-### Sub-Tab Navigation
+### Sub-Tab navigation
 - Click any sub-tab button to switch views
 - Active state styling
 - Smooth transitions between content panes
 - Screen reader announcements for tab changes
 - Trees/Shrubs now share one normalized config-driven sub-tab (`trees`), including species/sightings/user-state wiring.
 
-### Log a Sighting UX (Current)
+### Log a sighting UX (current)
 - **Species typeahead**: `#birdsLogSpeciesSearchInput` with `#birdsLogSpeciesSearchList` lets you type to narrow species quickly.
 - **Hidden canonical species selector**: `#birdsLogSpeciesSelect` is still used for canonical IDs and save logic.
 - **Location chooser with manual fallback**:
@@ -122,18 +122,18 @@ Each sub-tab includes three main sections:
   - Selecting `Other (type manually)` reveals `#birdsLogLocationOtherInput`.
 - **Contextual fast-log examples**: the placeholder in `#birdsLogCommandInput` updates by active sub-tab (for example, insects shows a dragonfly example instead of bird-specific text).
 
-### Trees & Shrubs Workbook Mapping
+### Trees & shrubs workbook mapping
 - Species table: `Nature_records.xlsx` / `Trees_Shrubs`
 - Sightings table: `Nature_Sightings.xlsx` / `Trees_Shrubs_sightings`
 - User-state table: `Nature_Sightings.xlsx` / `Trees_Shrubs_user_data`
 
-### Layout Systems
+### Layout systems
 - Category Progression stats grid
 - Family cards grid with species listing
 - Challenge cards grid with progress tracking
 - Badge cards grid with unlock status
 
-### Data Containers
+### Data containers
 All data containers are ready for population:
 - `#birdsTotalSighted`, `#birdsTotalSpecies`, etc.
 - `#birdsFamilyGrid`, `#mammalsFamilyGrid`, etc.
@@ -142,7 +142,7 @@ All data containers are ready for population:
 
 ---
 
-## 📝 Next Steps (When Provided)
+## 📝 Next steps (when provided)
 
 When you provide the species/family data and badge details, we can:
 
@@ -156,7 +156,7 @@ When you provide the species/family data and badge details, we can:
 
 ---
 
-## 🎯 File Locations Summary
+## 🎯 File locations summary
 
 - **Tab HTML**: `/HTML Files/tabs/nature-challenge-tab.html`
 - **Index Entry**: `/index.html` (lines 7163, 7691-7698)

@@ -1,4 +1,4 @@
-# Button Reliability Hardening Completion Summary
+# Button reliability hardening completion summary
 
 **Date:** April 7, 2026  
 **Status:** Current reference

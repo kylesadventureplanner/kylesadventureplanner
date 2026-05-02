@@ -1,4 +1,4 @@
-# Nearby Tuning Quick Guide
+# Nearby tuning quick guide
 
 This project now includes a lightweight tuning pass for nearby ranking weights and category chips.
 

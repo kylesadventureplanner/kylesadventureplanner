@@ -8,16 +8,16 @@
     <p class="tab-shell-subtitle">Browse, filter, and organize adventures with the same visual rhythm used across feature tabs.</p>
   </div>
   <div class="planner-top-actions ui-action-rail">
-    <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="(window.startFindNearMe || function(){})()">
+    <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" data-adventure-action="find-near-me">
       📍 Find Near Me
     </button>
-    <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="(window.openCityViewerWindow || function(){})()">
+    <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" data-adventure-action="open-city-viewer">
       🌆 City Explorer
     </button>
-    <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" onclick="(window.refreshAdventureData || function(){})()">
+    <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" data-adventure-action="refresh-adventure-data">
       🔄 Refresh Data
     </button>
-    <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" onclick="(window.downloadSessionJson || function(){})()">
+    <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" data-adventure-action="download-session-json">
       📥 Download JSON
     </button>
   </div>
@@ -250,7 +250,7 @@
 
   <!-- Pagination Controls (Top) -->
   <div id="paginationControlsTop" class="pagination-controls" style="display: none;">
-    <button id="prevPageBtnTop" class="pagination-btn" onclick="changePage(-1)">
+    <button id="prevPageBtnTop" class="pagination-btn" data-adventure-action="change-page" data-page-delta="-1">
       ← Previous
     </button>
     <div class="pagination-info">
@@ -258,7 +258,7 @@
       <span class="pagination-separator">•</span>
       Showing <span id="showingRangeStartTop">1</span>-<span id="showingRangeEndTop">20</span> of <span id="totalResultsNumTop">0</span>
     </div>
-    <button id="nextPageBtnTop" class="pagination-btn" onclick="changePage(1)">
+    <button id="nextPageBtnTop" class="pagination-btn" data-adventure-action="change-page" data-page-delta="1">
       Next →
     </button>
   </div>
@@ -270,7 +270,7 @@
 
   <!-- Pagination Controls (Bottom) -->
   <div id="paginationControls" class="pagination-controls" style="display: none;">
-    <button id="prevPageBtn" class="pagination-btn" onclick="changePage(-1)">
+    <button id="prevPageBtn" class="pagination-btn" data-adventure-action="change-page" data-page-delta="-1">
       ← Previous
     </button>
     <div class="pagination-info">
@@ -278,7 +278,7 @@
       <span class="pagination-separator">•</span>
       Showing <span id="showingRangeStart">1</span>-<span id="showingRangeEnd">20</span> of <span id="totalResultsNum">0</span>
     </div>
-    <button id="nextPageBtn" class="pagination-btn" onclick="changePage(1)">
+    <button id="nextPageBtn" class="pagination-btn" data-adventure-action="change-page" data-page-delta="1">
       Next →
     </button>
   </div>
@@ -340,6 +340,35 @@
         const clickTarget = event && event.target && event.target.nodeType === Node.ELEMENT_NODE
           ? event.target
           : (event && event.target && event.target.parentElement ? event.target.parentElement : null);
+        const actionBtn = clickTarget && clickTarget.closest ? clickTarget.closest('[data-adventure-action]') : null;
+        if (actionBtn) {
+          event.preventDefault();
+          const action = String(actionBtn.getAttribute('data-adventure-action') || '').trim();
+          if (action === 'find-near-me') {
+            if (typeof window.startFindNearMe === 'function') window.startFindNearMe();
+            return;
+          }
+          if (action === 'open-city-viewer') {
+            if (typeof window.openCityViewerWindow === 'function') window.openCityViewerWindow();
+            return;
+          }
+          if (action === 'refresh-adventure-data') {
+            if (typeof window.refreshAdventureData === 'function') window.refreshAdventureData();
+            return;
+          }
+          if (action === 'download-session-json') {
+            if (typeof window.downloadSessionJson === 'function') window.downloadSessionJson();
+            return;
+          }
+          if (action === 'change-page') {
+            const delta = Number(actionBtn.getAttribute('data-page-delta') || '0');
+            if (Number.isFinite(delta) && delta !== 0 && typeof window.changePage === 'function') {
+              window.changePage(delta);
+            }
+            return;
+          }
+        }
+
         const btn = clickTarget && clickTarget.closest ? clickTarget.closest('[data-adventure-section-action]') : null;
         if (!btn) return;
         event.preventDefault();

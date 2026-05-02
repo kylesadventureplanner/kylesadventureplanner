@@ -1,14 +1,14 @@
-# Hotfix Registry
+# Hotfix registry
 
 Last updated: 2026-04-03
 
-## Active Hotfixes
+## Active hotfixes
 
 | File | Owner | Added | Purpose | Removal Criteria |
 |---|---|---|---|---|
-| `JS Files/runtime-hotfixes.js` | Kyle + Copilot | 2026-04-03 | Consolidated runtime patch layer for Adventure Planner filters/autocomplete/context-menu interactivity and overlay click-block protection. | Remove after root-cause fixes are merged into canonical app modules and verified in at least 2 release cycles with no regression. |
+| `JS Files/runtime-hotfixes.js` | Kyle + Copilot | 2026-04-03 | Consolidated runtime patch layer for legacy/archived Adventure Planner filter/autocomplete/context-menu interactivity and overlay click-block protection. | Remove after root-cause fixes are merged into canonical app modules and verified in at least 2 release cycles with no regression. |
 
-## Archived Hotfixes
+## Archived hotfixes
 
 | File | Archived On | Replaced By | Reason |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Last updated: 2026-04-03
 | `JS Files/dry-run-refresh-fix-v7-0-133.js` | 2026-04-03 | N/A (inactive) | Unreferenced legacy patch; no active script include. |
 | `JS Files/adventure-filter-hotfix.js` | 2026-04-03 | `JS Files/runtime-hotfixes.js` | Superseded by consolidated runtime entrypoint to reduce patch sprawl/load-order risk. |
 
-## Operating Rules
+## Operating rules
 
 1. Add new hotfixes only when production impact exists and root-cause fix is not immediately shippable.
 2. Every hotfix must include a clear owner, purpose, and explicit removal criteria.

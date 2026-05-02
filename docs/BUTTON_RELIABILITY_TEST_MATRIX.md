@@ -1,4 +1,4 @@
-# Button Reliability Final Verification Matrix
+# Button reliability final verification matrix
 
 **Date**: April 5, 2026  
 **Scope**: All standalone popup windows + main index  
@@ -6,7 +6,7 @@
 
 ---
 
-## Test Windows
+## Test windows
 
 | Window | File | Buttons | Reliability Loader | Status |
 |--------|------|---------|-------------------|--------|
@@ -24,45 +24,45 @@
 
 ---
 
-## Test Checklist for Each Window
+## Test checklist for each window
 
-### Pre-flight: Script Loading Verification
+### Pre-flight: script loading verification
 - [ ] Open window in browser
 - [ ] Check DevTools Console → Verify NO "Failed to load" or 404 errors for script tags
 - [ ] Check DevTools Console → Look for initialization message: `✅ Button Reliability System Initialized`
 - [ ] Verify `window.ButtonReliability` object exists (Console: `typeof window.ButtonReliability === 'object'`)
 
-### Functional Test: Button Detection
+### Functional test: button detection
 - [ ] Run in Console: `window.ButtonReliability.scanAllButtons()`
 - [ ] Expect output: `[SCAN] Found X buttons on page`
 - [ ] Verify no `[ERROR]` messages in scan output
 
-### Functional Test: Blocking Overlays
+### Functional test: blocking overlays
 - [ ] Run in Console: `window.ButtonReliability.detectBlockingOverlays()`
 - [ ] Expect output: Either no overlays detected, or identified overlays with fixes applied
 - [ ] Verify no blocking overlays remain unfixed
 
-### Functional Test: Button Click
+### Functional test: button click
 - [ ] Click a primary action button (not close/cancel)
 - [ ] Observe: Button responds visually (hover effect, disabled state if async)
 - [ ] Observe: Handler executes (status message, navigation, or state change)
 - [ ] Verify: No `onclick` or event listener errors in Console
 
-### Functional Test: Hover/Focus
+### Functional test: Hover/Focus
 - [ ] Hover over buttons → Verify hover CSS state visible
 - [ ] Tab to button → Verify focus outline visible
 - [ ] Tab away → Verify focus outline removed
 
-### Risk Areas to Watch
+### Risk areas to watch
 - [ ] Modal backdrops (check `pointer-events` is not blocking)
 - [ ] Nested button containers (check `stopPropagation` guards are scoped)
 - [ ] Disabled buttons (verify `aria-disabled` or `disabled` is respected)
 
 ---
 
-## Test Results Template
+## Test results template
 
-### Window: [Name]
+### Window: [name]
 **File**: [File]  
 **Script Status**: [✅ Loaded / ❌ Failed]  
 
@@ -88,9 +88,9 @@
 
 ---
 
-## Consolidated Button Behavior Categories
+## Consolidated button behavior categories
 
-### By Window Type
+### By window type
 
 **Main App (index.html)**
 - Category: Core browse/filter UI
@@ -122,7 +122,7 @@
 
 ---
 
-## Summary Report (to be filled after testing)
+## Summary report (to be filled after testing)
 
 ```
 WINDOW PASS RATE: X / 11 (XX%)
@@ -136,7 +136,7 @@ FINAL RECOMMENDATION: [Summary of overall state]
 
 ---
 
-## Instructions for Testing
+## Instructions for testing
 
 1. **Open each window** using its respective launcher button in the main app
 2. **For each window**, run the pre-flight checks above

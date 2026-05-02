@@ -1,4 +1,4 @@
-# Persistence Backend Schema (Excel)
+# Persistence backend schema (excel)
 
 This document defines the Excel-backed event table used for cross-device persistence of:
 

@@ -853,7 +853,7 @@
 
   function closeOfflineModePage() {
     var previousTab = String(window.__offlineModePreviousTab || '').trim();
-    if (!previousTab || previousTab === 'offline-mode') previousTab = 'adventure-planner';
+    if (!previousTab || previousTab === 'offline-mode') previousTab = 'visited-locations';
 
     if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
       window.tabLoader.switchTab(previousTab, { syncUrl: true, historyMode: 'push', source: 'offline-mode-close' });

@@ -1,13 +1,13 @@
-# Performance & Debugging Documentation
+# Performance & debugging documentation
 
 **Date:** April 7, 2026  
 **Status:** Current reference
 
-Use this page as the main landing point for performance, debugging, and reliability-related documentation in the Adventure Planner workspace.
+Use this page as the main landing point for performance, debugging, and reliability-related documentation in the app workspace (legacy/archived Adventure Planner naming retained in older docs only).
 
 ---
 
-## Quick Navigation
+## Quick navigation
 
 ### Start here
 - [`README.md`](./README.md) — docs folder home
@@ -15,12 +15,12 @@ Use this page as the main landing point for performance, debugging, and reliabil
 
 ### Debug / performance focus
 
-### New This Session: Performance Enhancements
+### New this session: performance enhancements
 - 📖 **Start Here**: [`PERFORMANCE_ENHANCEMENTS.md`](./PERFORMANCE_ENHANCEMENTS.md) - Overview of all optimizations
 - 🔧 **Implement**: [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md) - Step-by-step instructions
 - 📊 **Verify**: Check browser console for "PERFORMANCE OPTIMIZATIONS ACTIVE" message
 
-### Reliability Merge Guidance
+### Reliability merge guidance
 - 🛡️ **Merge Decision**: [`RELIABILITY_MERGE_DECISION.md`](./RELIABILITY_MERGE_DECISION.md) - Safe consolidation status and phased plan
 - 🧭 **Button Architecture Cleanup Plan**: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEANUP_PLAN.md) - Do/Don't rules and per-tab migration checklist
 - 📅 **Button Migration Tracker**: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md) - Weekly owner/status/date execution board
@@ -29,16 +29,16 @@ Use this page as the main landing point for performance, debugging, and reliabil
 - ✅ **Release Gate Scripts**: `scripts/check-control-ownership.js`, `scripts/reliability-gate.js`
 - 📘 **Reliability Harness Runbook**: [`RELIABILITY_HARNESS_README.md`](./RELIABILITY_HARNESS_README.md)
 
-### Debug System (Already Implemented)
+### Debug system (already implemented)
 - ⚡ **Quick Start**: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - Copy-paste commands
 - 📋 **Full Guide**: [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md) - Complete troubleshooting
 - 📄 **Details**: [`DEBUG_SYSTEM_README.md`](./DEBUG_SYSTEM_README.md) - Implementation details
 
 ---
 
-## 📦 What You Have
+## 📦 What you have
 
-### App Quality System ✅
+### App quality system ✅
 - **File**: `JS Files/app-quality-system.js`
 - **Status**: ACTIVE and working (consolidated reliability + performance + debug)
 - **Features**:
@@ -48,7 +48,7 @@ Use this page as the main landing point for performance, debugging, and reliabil
   - Performance monitoring tools
   - Throttle utility for rapid events
 
-### Button Reliability System ✅
+### Button reliability system ✅
 - **File**: `JS Files/button-reliability-system.js`
 - **Status**: ACTIVE and monitoring
 - **Features**:
@@ -60,7 +60,7 @@ Use this page as the main landing point for performance, debugging, and reliabil
 
 ---
 
-## 🎯 Common Tasks
+## 🎯 Common tasks
 
 ### "I want the smoothest possible experience"
 → Performance optimizations are already active! Type in a filter to see the smooth debouncing in action.
@@ -87,9 +87,9 @@ const myOptimizedFunc = window.debounce(myFunc, 300);
 
 ---
 
-## 📁 Documentation Files
+## 📁 Documentation files
 
-### In `/docs/` Folder
+### In `/docs/` folder
 
 | File | Purpose | When to Read |
 |------|---------|-------------|
@@ -100,7 +100,7 @@ const myOptimizedFunc = window.debounce(myFunc, 300);
 | [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md) | How to implement changes | Building on it |
 | [`README.md`](./README.md) | Navigation guide | Getting started |
 
-### Recently Consolidated from Project Root
+### Recently consolidated from project root
 
 The project root markdown notes have been moved into `/docs/` so the root stays focused on app/runtime files.
 
@@ -113,7 +113,7 @@ The project root markdown notes have been moved into `/docs/` so the root stays 
 | Summary / fix writeups | `COMPLETE_SOLUTION.md`, `IMPLEMENTATION_COMPLETE.md`, `FIX_COMPLETE_GUIDE.md`, `FINAL_FIX_ENHANCED_UX.md` |
 | Documentation hubs | `DOCUMENTATION_INDEX.md`, `MOBILE_POLISH_DOCUMENTATION_INDEX.md` |
 
-### Documentation Location
+### Documentation location
 
 All documentation is stored in `/docs/`.
 
@@ -126,7 +126,7 @@ All documentation is stored in `/docs/`.
 
 ---
 
-## 🚀 Performance Improvements Summary
+## 🚀 Performance improvements summary
 
 | Area | Improvement | Result |
 |------|-------------|--------|
@@ -138,7 +138,7 @@ All documentation is stored in `/docs/`.
 
 ---
 
-## 🔍 Debugging Capabilities
+## 🔍 Debugging capabilities
 
 | Issue | How to Debug |
 |-------|-------------|
@@ -150,7 +150,7 @@ All documentation is stored in `/docs/`.
 
 ---
 
-## 💡 Browser Console Quick Commands
+## 💡 Browser console quick commands
 
 ### Performance
 ```javascript
@@ -171,21 +171,21 @@ window.__debugSystem.clearHistory()  // Clear stored logs
 
 ---
 
-## ✅ Everything is Ready
+## ✅ Everything is ready
 
-### What Works Now
+### What works now
 - ✅ Smooth filter inputs (debounced)
 - ✅ Smooth card animations (GPU accelerated)
 - ✅ Fast element access (cached)
 - ✅ Complete debugging capability
 - ✅ Performance monitoring tools
 
-### No Setup Needed
+### No setup needed
 - ✅ All optimizations are automatic
 - ✅ Debug system is always ready
 - ✅ Just use the app and enjoy smoother experience
 
-### Files to Know About
+### Files to know about
 1. **Your App**: `index.html`
 2. **Quality Core**: `JS Files/app-quality-system.js`
 3. **Button Reliability**: `JS Files/button-reliability-system.js`
@@ -194,7 +194,7 @@ window.__debugSystem.clearHistory()  // Clear stored logs
 
 ---
 
-## 🎯 Recommended Reading Order
+## 🎯 Recommended reading order
 
 **For General Users:**
 1. This file (you're reading it!)
@@ -216,7 +216,7 @@ window.__debugSystem.clearHistory()  // Clear stored logs
 
 ---
 
-## 🚀 You're All Set!
+## 🚀 You're All set!
 
 Everything is configured and working:
 - ✅ Performance optimizations active

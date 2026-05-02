@@ -1234,6 +1234,38 @@
     box-shadow: 0 12px 26px rgba(37, 99, 235, 0.34);
   }
 
+  /* Compact companion launcher while preserving a11y target/focus requirements. */
+  #visitedLocationsRoot .visited-subtab-action-btn--newtab {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 12px;
+    margin-left: -4px;
+    border: 2px solid currentColor;
+    border-radius: 10px;
+    background: transparent;
+    color: #0f172a;
+    box-shadow: none;
+    opacity: 0.76;
+    font-size: 15px;
+    line-height: 1;
+    font-weight: 800;
+    transition: opacity 150ms ease, background-color 150ms ease, transform 150ms ease;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--newtab:hover {
+    opacity: 1;
+    background: rgba(15, 23, 42, 0.08);
+    box-shadow: none;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--newtab:focus-visible {
+    opacity: 1;
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+    background: rgba(37, 99, 235, 0.12);
+  }
+
   #visitedLocationsRoot .visited-visit-log-file-input {
     padding: 10px 12px;
     min-height: 46px;

@@ -8,7 +8,7 @@
  * - Performance metrics
  * - Error handling
  * - Cache management
- * - Priority loading (load adventure-planner first)
+ * - URL/deep-link compatibility aliases for retired tabs
  *
  * Version: 2.0 (with Lazy Loading)
  * Date: March 14, 2026
@@ -25,8 +25,10 @@ class TabContentLoader {
     this.executedExternalScripts = new Set();
     this.executedInlineScriptHashes = new Set();
     this.initializedTabs = new Set();
-    this.isInitialized = false;
     this.statusHideTimer = null;
+    this.legacyTabAliases = {
+      'adventure-planner': 'visited-locations'
+    };
     this.handlePopState = this.handlePopState.bind(this);
     this.handleHashChange = this.handleHashChange.bind(this);
     this.ensureLoaderStyles();
@@ -142,7 +144,14 @@ class TabContentLoader {
     }
   }
 
+  canonicalizeTabId(tabId) {
+    const raw = String(tabId || '').trim();
+    if (!raw) return '';
+    return this.legacyTabAliases[raw] || raw;
+  }
+
   getTabLabel(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
     const button = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
     if (!button) return String(tabId || 'Tab');
     return button.textContent.replace(/\s+/g, ' ').trim();
@@ -156,87 +165,80 @@ class TabContentLoader {
 
     // Tab definitions with priority
     this.tabs = {
-      'adventure-planner': {
-        file: null,  // ← No file needed - already in index!
-        element: 'adventurePlannerTab',
-        priority: 1,
-        preload: true,
-        isInlineContent: true  // ← Mark as inline
-      },
       'bike-trails': {
         file: 'bike-trails-tab.html',
         element: 'bikeTrailsTab',
-        priority: 2,
+        priority: 1,
         preload: false,
         isInlineContent: false
       },
       'birding': {
         file: 'birding-locations-tab.html',
         element: 'birdingTab',
-        priority: 3,
+        priority: 2,
         preload: false,
         isInlineContent: false
       },
       'household-tools': {
         file: 'household-tools-tab.html',
         element: 'householdToolsTab',
-        priority: 4,
+        priority: 3,
         preload: false,
         isInlineContent: false
       },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
-        priority: 5,
+        priority: 4,
         preload: false,
         isInlineContent: false
       },
       'garden': {
         file: 'garden-planner-tab.html',
         element: 'gardenTab',
-        priority: 6,
+        priority: 5,
         preload: false,
         isInlineContent: false
       },
        'budget': {
          file: 'budget-planner-tab.html',
          element: 'budgetTab',
-         priority: 7,
+         priority: 6,
          preload: false,
          isInlineContent: false
        },
        'nature-challenge': {
          file: 'nature-challenge-tab.html',
          element: 'natureChallengeTab',
-         priority: 8,
+         priority: 7,
          preload: false,
          isInlineContent: false
        },
        'visited-locations': {
          file: 'visited-locations-tab.html',
          element: 'visitedLocationsTab',
-         priority: 9,
+         priority: 8,
          preload: false,
          isInlineContent: false
        },
        'offline-mode': {
          file: null,
          element: 'offlineModeTab',
-         priority: 10,
+         priority: 9,
          preload: false,
          isInlineContent: true
        },
        'app-backup': {
          file: null,
          element: 'appBackupTab',
-         priority: 11,
+         priority: 10,
          preload: false,
          isInlineContent: true
        },
        'diagnostics-hub': {
          file: null,
          element: 'diagnosticsHubTab',
-         priority: 12,
+         priority: 11,
          preload: false,
          isInlineContent: true
        }
@@ -260,7 +262,6 @@ class TabContentLoader {
     // Support deep-linking directly to a tab (used by popup/new-tab flows).
     this.openRequestedTabFromUrl();
 
-    this.isInitialized = true;
     console.log('✅ Tab Content Loader Ready (Lazy Loading Enabled)');
   }
 
@@ -277,23 +278,24 @@ class TabContentLoader {
     if (!requestedTab || !this.tabs[requestedTab]) return;
 
     // Let other startup scripts attach first, then switch.
-    setTimeout(() => this.switchTab(requestedTab, { syncUrl: false, source: 'url-open' }), 0);
+    setTimeout(() => this.switchTab(requestedTab, { syncUrl: true, historyMode: 'replace', source: 'url-open' }), 0);
   }
 
   getTabIdFromUrl() {
     const params = new URLSearchParams(window.location.search || '');
-    const queryTab = String(params.get('tab') || '').trim();
+    const queryTab = this.canonicalizeTabId(params.get('tab') || '');
     if (queryTab && this.tabs[queryTab]) return queryTab;
 
     const hash = String(window.location.hash || '').replace(/^#/, '').trim();
     if (!hash) return '';
 
     if (hash.startsWith('tab=')) {
-      const hashTab = String(hash.slice(4)).trim();
+      const hashTab = this.canonicalizeTabId(hash.slice(4));
       if (this.tabs[hashTab]) return hashTab;
     }
 
-    if (this.tabs[hash]) return hash;
+    const canonicalHash = this.canonicalizeTabId(hash);
+    if (this.tabs[canonicalHash]) return canonicalHash;
     return '';
   }
 
@@ -305,17 +307,18 @@ class TabContentLoader {
   handlePopState() {
     const requestedTab = this.getTabIdFromUrl();
     if (!requestedTab || !this.tabs[requestedTab]) return;
-    this.switchTab(requestedTab, { syncUrl: false, source: 'popstate' });
+    this.switchTab(requestedTab, { syncUrl: true, historyMode: 'replace', source: 'popstate' });
   }
 
   handleHashChange() {
     const requestedTab = this.getTabIdFromUrl();
     if (!requestedTab || !this.tabs[requestedTab]) return;
-    this.switchTab(requestedTab, { syncUrl: false, source: 'hashchange' });
+    this.switchTab(requestedTab, { syncUrl: true, historyMode: 'replace', source: 'hashchange' });
   }
 
   syncUrlToTab(tabId, options = {}) {
     const { historyMode = 'replace' } = options;
+    tabId = this.canonicalizeTabId(tabId);
     if (!tabId || !this.tabs[tabId]) return;
 
     const url = new URL(window.location.href);
@@ -326,7 +329,10 @@ class TabContentLoader {
 
     // Canonicalize to query-based deep links while still accepting hash input.
     const hash = String(url.hash || '').replace(/^#/, '').trim();
-    if (hash === tabId || hash === `tab=${tabId}`) {
+    const canonicalHash = hash.startsWith('tab=')
+      ? `tab=${this.canonicalizeTabId(hash.slice(4))}`
+      : this.canonicalizeTabId(hash);
+    if (canonicalHash === tabId || canonicalHash === `tab=${tabId}`) {
       url.hash = '';
     }
 
@@ -344,7 +350,6 @@ class TabContentLoader {
   preloadTabs() {
     Object.entries(this.tabs).forEach(([tabId, tabInfo]) => {
       if (tabInfo.preload) {
-        // Preload adventure-planner immediately
         console.log(`🔄 Preloading high-priority tab: ${tabId}`);
         this.loadTab(tabId, true); // true = preload mode (no UI changes)
       }
@@ -404,6 +409,7 @@ class TabContentLoader {
    */
   switchTab(tabId, options = {}) {
     const { syncUrl = true, historyMode = 'replace', source = 'programmatic' } = options;
+    tabId = this.canonicalizeTabId(tabId);
     console.log(`📑 Switching to tab: ${tabId}`);
 
     if (typeof window.clearStaleModalBackdrops === 'function') {
@@ -516,6 +522,7 @@ class TabContentLoader {
    * Load tab content from HTML file (lazy loading)
    */
   async loadTab(tabId, isPreload = false) {
+    tabId = this.canonicalizeTabId(tabId);
     if (this.loadedTabs.has(tabId)) {
       console.log(`✅ Tab already loaded: ${tabId}`);
       return;
@@ -719,15 +726,10 @@ class TabContentLoader {
    * Insert tab content into DOM
    */
   insertTabContent(tabId, htmlContent) {
+    tabId = this.canonicalizeTabId(tabId);
     const container = document.getElementById(this.tabs[tabId].element);
     if (!container) {
       console.error(`❌ Container not found: ${this.tabs[tabId].element}`);
-      return;
-    }
-
-    // For adventure planner, preserve existing content if first load
-    if (tabId === 'adventure-planner' && this.isInitialized && container.children.length > 0) {
-      console.log('ℹ️ Adventure Planner already has content, skipping');
       return;
     }
 
@@ -738,6 +740,7 @@ class TabContentLoader {
    * Execute scripts within loaded content
    */
   executeScripts(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
     const container = document.getElementById(this.tabs[tabId].element);
     if (!container) return;
     const scripts = container.querySelectorAll('script');
@@ -779,20 +782,17 @@ class TabContentLoader {
    * Initialize tab-specific functionality
    */
   initializeTabIfNeeded(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
     if (this.initializedTabs.has(tabId)) return;
     this.initializedTabs.add(tabId);
     this.initializeTab(tabId);
   }
 
   initializeTab(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
     console.log(`🔧 Initializing tab: ${tabId}`);
 
     switch (tabId) {
-      case 'adventure-planner':
-        if (typeof window.initAdventurePlanner === 'function') {
-          window.initAdventurePlanner();
-        }
-        break;
       case 'bike-trails':
         if (typeof window.initBikeTrailsTab === 'function') {
           window.initBikeTrailsTab();

@@ -2224,6 +2224,42 @@
     const grid = document.getElementById('bikeTrailsCardsGrid');
     if (!grid) return false;
     if (grid.dataset.bikeControlsBound === '1') return true;
+    const bikeRoot = document.querySelector('[data-tab="bike-trails"]') || document.body || document.documentElement;
+
+    if (bikeRoot && bikeRoot.dataset.bikeActionDelegatesBound !== '1') {
+      bikeRoot.addEventListener('click', (event) => {
+        const btn = event && event.target && event.target.closest
+          ? event.target.closest('[data-bike-action]')
+          : null;
+        if (!btn || !bikeRoot || !bikeRoot.contains(btn)) return;
+        event.preventDefault();
+        const action = String(btn.getAttribute('data-bike-action') || '').trim();
+
+        if (action === 'refresh-data') {
+          if (typeof window.refreshBikeTrailData === 'function') window.refreshBikeTrailData();
+          return;
+        }
+
+        if (action === 'open-trail-explorer') {
+          if (typeof window.openTrailExplorerWindow === 'function') window.openTrailExplorerWindow();
+          return;
+        }
+
+        if (action === 'find-near-me') {
+          if (typeof window.startFindNearMe === 'function') window.startFindNearMe();
+          else if (typeof window.openFindNearMeWindow === 'function') window.openFindNearMeWindow();
+          return;
+        }
+
+        if (action === 'change-page') {
+          const delta = Number(btn.getAttribute('data-page-delta') || '0');
+          if (Number.isFinite(delta) && delta !== 0 && typeof window.changeBikePage === 'function') {
+            window.changeBikePage(delta);
+          }
+        }
+      }, true);
+      bikeRoot.dataset.bikeActionDelegatesBound = '1';
+    }
 
     Object.keys(state.filters).forEach((filterKey) => {
       const inputId = getBikeFilterInputId(filterKey);

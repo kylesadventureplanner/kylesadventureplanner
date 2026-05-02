@@ -18,14 +18,11 @@ test.describe('Central diagnostics hub smoke', () => {
     await expect(page.locator('#diagnosticsHubMount .diagnostics-hub-shell')).toBeVisible();
   });
 
-  test('Adventure Planner nearby diagnostics button opens nearby diagnostics section', async ({ page }) => {
-    await page.goto('/');
+  test('legacy adventure-planner deep links redirect to Adventure Challenge', async ({ page }) => {
+    await page.goto('/?tab=adventure-planner');
 
-    await page.locator('#nearbyDiagnosticsBtn').evaluate((node) => node.click());
-
-    await expect(page.locator('#diagnosticsHubTab')).toHaveClass(/active/);
-    await expect(page.locator('#diagnosticsHubMount .diagnostics-hub-shell')).toBeVisible();
-    await expect(page.locator('#diagnosticsHubMount .diagnostics-hub-tab.active')).toContainText('Nearby & City Explorer');
+    await expect(page.locator('.app-tab-btn.active')).toHaveAttribute('data-tab', 'visited-locations');
+    await expect(page).toHaveURL(/tab=visited-locations/);
   });
 });
 

@@ -1,13 +1,13 @@
-# PHASE 2: SPECIES EXPLORER ENHANCEMENTS - IMPLEMENTATION GUIDE
+# PHASE 2: species explorer enhancements - implementation GUIDE
 
 ## Overview
-This document provides complete implementation details for Phase 2 enhancements to Kyle's Adventure Planner. We've created three major features to improve the species explorer experience.
+This document provides complete implementation details for Phase 2 enhancements to Kyle's Adventure Challenge app (legacy/archived Adventure Planner naming). We've created three major features to improve the species explorer experience.
 
 ---
 
-## FILES CREATED
+## FILES created
 
-### 1. **CSS File: `species-explorer-enhancements.css`**
+### 1. **CSS file: `species-explorer-enhancements.css`**
    - Location: `/CSS/species-explorer-enhancements.css`
    - Size: ~600 lines
    - Contains all styling for:
@@ -17,7 +17,7 @@ This document provides complete implementation details for Phase 2 enhancements 
      - Card enhancements
      - Mobile responsiveness
 
-### 2. **JavaScript File: `species-explorer-phase2.js`**
+### 2. **JavaScript file: `species-explorer-phase2.js`**
    - Location: `/species-explorer-phase2.js`
    - Contains four core classes:
      - `SpeciesWishlist` - Manages favorites persistence
@@ -27,15 +27,15 @@ This document provides complete implementation details for Phase 2 enhancements 
 
 ---
 
-## FEATURE 1: FAVORITES/WISHLIST SYSTEM ⭐⭐⭐⭐⭐
+## Feature 1: FAVORITES/WISHLIST system ⭐⭐⭐⭐⭐
 
-### What It Does
+### What it does
 - Users can favorite/unfavorite species with one click
 - Favorites persist to localStorage
 - Filter view to show only favorited species
 - Visual indicators on favorited cards
 
-### HTML Integration
+### HTML integration
 ```html
 <!-- Add this where you want the species grid -->
 <div class="favorites-filter-group">
@@ -53,7 +53,7 @@ This document provides complete implementation details for Phase 2 enhancements 
 <div class="species-comparison-modal" hidden></div>
 ```
 
-### JavaScript Integration
+### JavaScript integration
 ```javascript
 // Initialize the explorer
 const explorer = new SpeciesExplorer();
@@ -83,7 +83,7 @@ explorer.init();
 3. Click the "Favorites" filter button to view only favorited species
 4. All favorites automatically save to localStorage
 
-### CSS Classes
+### CSS classes
 - `.species-card` - Individual species card
 - `.species-card.is-favorite` - When favorited
 - `.species-favorite-btn` - Heart icon button
@@ -92,15 +92,15 @@ explorer.init();
 
 ---
 
-## FEATURE 2: SPECIES COMPARISON MODAL ⭐⭐⭐⭐
+## Feature 2: species comparison MODAL ⭐⭐⭐⭐
 
-### What It Does
+### What it does
 - Compare up to 2 species side-by-side
 - Shows key identification features, size, habitat
 - Modal view with responsive design
 - Click "Compare" button on any species card
 
-### HTML Structure
+### HTML structure
 ```html
 <!-- The modal is auto-created, but you can provide your own: -->
 <div class="species-comparison-modal" hidden>
@@ -116,7 +116,7 @@ explorer.init();
 </div>
 ```
 
-### JavaScript Usage
+### JavaScript usage
 ```javascript
 // Access via explorer instance
 const comparison = explorer.comparison;
@@ -140,7 +140,7 @@ if (comparison.isOpen()) {
 }
 ```
 
-### Display Format
+### Display format
 ```
 ┌────────────────── VS ───────────────────┐
 │  [Image 1]              [Image 2]        │
@@ -157,7 +157,7 @@ if (comparison.isOpen()) {
 └─────────────────────────────────────────┘
 ```
 
-### CSS Classes
+### CSS classes
 - `.species-comparison-modal` - Outer container
 - `.comparison-modal-content` - Modal box
 - `.comparison-grid` - Two-column layout
@@ -166,22 +166,22 @@ if (comparison.isOpen()) {
 - `.comparison-section` - Information section
 - `.comparison-detail-badge` - Rarity badge
 
-### Keyboard Support
+### Keyboard support
 - `ESC` key closes modal
 - Click outside modal to close
 
 ---
 
-## FEATURE 3: QUICK ID GUIDE ⭐⭐⭐⭐⭐
+## Feature 3: QUICK ID GUIDE ⭐⭐⭐⭐⭐
 
-### What It Does
+### What it does
 - Interactive identification guide for each species
 - Tabbed interface: Field Marks, Size & Shape, Behavior
 - Visual field marks highlighting
 - Similar species reference
 - Critical for accurate sighting logging
 
-### HTML Integration
+### HTML integration
 ```html
 <!-- Create a container for the guide -->
 <div id="speciesDetailBody"></div>
@@ -200,7 +200,7 @@ if (comparison.isOpen()) {
 </dialog>
 ```
 
-### JavaScript Usage
+### JavaScript usage
 ```javascript
 // Create guide for a species
 const species = {
@@ -229,7 +229,7 @@ const guide = new QuickIDGuide(species);
 guide.render('#speciesDetailBody');
 ```
 
-### Tab Content
+### Tab content
 1. **Field Marks** (🎯)
    - Key identifying features
    - Checklist format with checkmarks
@@ -246,7 +246,7 @@ guide.render('#speciesDetailBody');
    - Habitat usage
    - Activity patterns
 
-### CSS Classes
+### CSS classes
 - `.id-guide-container` - Main container
 - `.id-guide-tabs` - Tab buttons
 - `.id-guide-tab` - Individual tab
@@ -259,21 +259,21 @@ guide.render('#speciesDetailBody');
 
 ---
 
-## INTEGRATION CHECKLIST
+## Integration checklist
 
-### Step 1: Add CSS to index.html
+### Step 1: add CSS to index.html
 ```html
 <!-- In the <head> section, add: -->
 <link rel="stylesheet" href="CSS/species-explorer-enhancements.css">
 ```
 
-### Step 2: Add JavaScript to index.html
+### Step 2: add JavaScript to index.html
 ```html
 <!-- Before </body>, add: -->
 <script src="species-explorer-phase2.js"></script>
 ```
 
-### Step 3: Create Species Data
+### Step 3: create species data
 ```javascript
 // Add to your nature challenge tab or global scope
 window.speciesData = [
@@ -305,7 +305,7 @@ window.speciesData = [
 ];
 ```
 
-### Step 4: Initialize in Your Tab
+### Step 4: initialize in your tab
 ```javascript
 // When your nature challenge tab loads:
 document.addEventListener('DOMContentLoaded', () => {
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 ```
 
-### Step 5: Connect to Your UI
+### Step 5: connect to your UI
 ```html
 <!-- In your species explorer section: -->
 <div id="speciesExplorerContainer">
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ---
 
-## API REFERENCE
+## API reference
 
 ### SpeciesWishlist
 ```javascript
@@ -399,14 +399,14 @@ explorer.filterMode → string ('all' | 'favorites')
 
 ---
 
-## MOBILE RESPONSIVENESS
+## Mobile responsiveness
 
 ### Breakpoints
 - **Desktop (>1024px)**: Full 3-column comparison view
 - **Tablet (768px-1024px)**: 2-column comparison
 - **Mobile (<768px)**: Single column, full-width comparison modal
 
-### Mobile Features
+### Mobile features
 - Touch-friendly buttons (44x44px minimum)
 - Swipe to close modals
 - Bottom sheet style modals on mobile
@@ -415,7 +415,7 @@ explorer.filterMode → string ('all' | 'favorites')
 
 ---
 
-## PERFORMANCE TIPS
+## Performance TIPS
 
 1. **Lazy Load Species Data**
    ```javascript
@@ -442,27 +442,27 @@ explorer.filterMode → string ('all' | 'favorites')
 
 ---
 
-## ACCESSIBILITY
+## Accessibility
 
-### ARIA Labels
+### ARIA labels
 ```html
 <button aria-label="Add to favorites" class="species-favorite-btn"></button>
 <div role="tablist" aria-label="Species details tabs"></div>
 <button role="tab" aria-selected="true">Field Marks</button>
 ```
 
-### Keyboard Navigation
+### Keyboard navigation
 - `TAB` - Navigate between buttons
 - `ENTER/SPACE` - Activate button
 - `ESC` - Close modals
 - `Arrow keys` - Tab switching (optional enhancement)
 
-### Focus Management
+### Focus management
 - Visible focus indicators (2px blue outline)
 - Focus trap in modals (optional)
 - Return focus to trigger element on close
 
-### Screen Reader Support
+### Screen reader support
 - Semantic HTML (`<button>`, `<h2>`, etc.)
 - Descriptive aria-labels
 - Live regions for dynamic updates
@@ -470,9 +470,9 @@ explorer.filterMode → string ('all' | 'favorites')
 
 ---
 
-## CUSTOMIZATION
+## Customization
 
-### Change Colors
+### Change colors
 ```css
 /* In species-explorer-enhancements.css */
 :root {
@@ -482,7 +482,7 @@ explorer.filterMode → string ('all' | 'favorites')
 }
 ```
 
-### Add More Comparison Slots
+### Add more comparison slots
 ```javascript
 // In SpeciesComparison class
 constructor() {
@@ -490,7 +490,7 @@ constructor() {
 }
 ```
 
-### Customize ID Guide Tabs
+### Customize ID guide tabs
 ```javascript
 // Add more tabs in renderTabContent()
 renderTabContent(tab) {
@@ -507,23 +507,23 @@ renderTabContent(tab) {
 
 ---
 
-## TROUBLESHOOTING
+## Troubleshooting
 
-### Issue: Favorites not persisting
+### Issue: favorites not persisting
 **Solution**: Check localStorage is enabled, not in private browsing
 
-### Issue: Images not loading
+### Issue: images not loading
 **Solution**: Verify image URLs in speciesData, check CORS headers
 
-### Issue: Modal not opening
+### Issue: modal not opening
 **Solution**: Ensure species object has required fields (id, name, image)
 
-### Issue: Tab switching not working
+### Issue: tab switching not working
 **Solution**: Check console for JavaScript errors, verify event listeners
 
 ---
 
-## NEXT STEPS (Phase 3)
+## NEXT STEPS (phase 3)
 
 1. **Draft Auto-Save** - Save incomplete sightings
 2. **Location Suggestions** - Smart location entry with map preview
@@ -534,7 +534,7 @@ renderTabContent(tab) {
 
 ---
 
-## FILE STRUCTURE
+## FILE structure
 ```
 kylesadventureplanner/
 ├── CSS/
@@ -549,7 +549,7 @@ kylesadventureplanner/
 
 ---
 
-## TESTING CHECKLIST
+## Testing checklist
 
 - [ ] Favorites persist after page reload
 - [ ] Comparison modal displays both species

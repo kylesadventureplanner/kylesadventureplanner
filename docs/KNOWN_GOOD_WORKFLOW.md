@@ -1,4 +1,4 @@
-# Known-Good Workflow
+# Known-Good workflow
 
 Use this workflow to mark a reliable baseline (for example, after fixing the Nature CTA issue) and quickly compare your current state against that baseline later.
 

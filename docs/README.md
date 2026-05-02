@@ -1,4 +1,4 @@
-# Documentation Home
+# Documentation home
 
 **Date:** April 7, 2026  
 **Status:** Current reference
@@ -16,6 +16,8 @@ Project documentation and implementation notes live in this folder.
 - [`DOCUMENTATION_INDEX.md`](./DOCUMENTATION_INDEX.md) — quick navigation for recently consolidated markdown files
 - [`MOBILE_POLISH_DOCUMENTATION_INDEX.md`](./MOBILE_POLISH_DOCUMENTATION_INDEX.md) — mobile polish document map
 - [`BIRDS_PROGRESSION_SPEC.md`](./BIRDS_PROGRESSION_SPEC.md) — Birds progression reference
+- [`TAB_ACTION_CONVENTIONS.md`](./TAB_ACTION_CONVENTIONS.md) — naming and placement rules for `data-*-action` + delegated tab handlers
+- [`ADVENTURE_PLANNER_RETIREMENT.md`](./ADVENTURE_PLANNER_RETIREMENT.md) — retirement status, archive location, and compatibility rules
 
 ## Page roles
 

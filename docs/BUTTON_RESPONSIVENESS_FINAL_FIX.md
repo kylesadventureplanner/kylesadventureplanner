@@ -1,11 +1,11 @@
 
 **Status:** ✅ APPLIED & RESOLVED
 
-## Problem Diagnosed
+## Problem diagnosed
 
 The "Focus" buttons in the visited progress tracker were **sticking/unresponsive** due to a **race condition in rapid click handling**.
 
-### Root Cause
+### Root cause
 
 The `syncProgressSubTabs()` function was **aggressively toggling `pointer-events: none`** on progress panes during tab switches:
 
@@ -27,9 +27,9 @@ When users clicked the category "Focus" buttons rapidly (or clicked before the t
 
 This created a **click queuing/buffering problem** where clicks weren't being handled in real-time but were deferred.
 
-## Solution Applied
+## Solution applied
 
-### 1. **Removed Aggressive Pointer-Events Toggling** 
+### 1. **Removed aggressive Pointer-Events toggling** 
    - **File:** `/Users/kylechavez/WebstormProjects/kylesadventureplanner/JS Files/visited-locations-tab-system.js`
    - **Lines:** 125-153 (syncProgressSubTabs function)
    - **Change:** Removed `pane.style.pointerEvents = isActive ? 'auto' : 'none'`
@@ -47,7 +47,7 @@ pane.style.position = 'relative';
 pane.style.zIndex = isActive ? '1' : '0';
 ```
 
-### 2. **Added CSS Rule for [hidden] Attribute**
+### 2. **Added CSS rule for [hidden] attribute**
    - **File:** `/Users/kylechavez/WebstormProjects/kylesadventureplanner/CSS/components.css`
    - **Lines:** 1108-1116
    - **Change:** Added explicit CSS rule to ensure `[hidden]` attribute properly hides elements
@@ -64,7 +64,7 @@ pane.style.zIndex = isActive ? '1' : '0';
 }
 ```
 
-## How It Works Now
+## How it works now
 
 1. **HTML Hidden Attribute**: The pane is hidden using the native `hidden` attribute on the DOM element
 2. **CSS Display Rule**: The `[hidden]` selector uses `display: none` to remove the element from the layout
@@ -89,12 +89,12 @@ To verify the fix works:
 3. All buttons should respond **immediately** on first click - no sticking!
 4. Tab content should switch cleanly without any hidden panes intercepting clicks
 
-## Files Modified
+## Files modified
 
 1. `/Users/kylechavez/WebstormProjects/kylesadventureplanner/JS Files/visited-locations-tab-system.js` (1 function updated)
 2. `/Users/kylechavez/WebstormProjects/kylesadventureplanner/CSS/components.css` (1 rule added)
 
-## Technical Notes
+## Technical notes
 
 - The fix preserves all defensive pointer-events enforcement on **buttons themselves** (the inline styles `style="pointer-events: auto !important"`)
 - The `ensureButtonsResponsive()` function continues to work as a safety net for any dynamically-added buttons

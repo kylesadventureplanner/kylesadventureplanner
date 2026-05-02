@@ -1,4 +1,4 @@
-# Comprehensive Debug System Guide
+# Comprehensive debug system guide
 
 ## Overview
 
@@ -11,7 +11,7 @@ The Comprehensive Debug System is a powerful real-time debugging tool that track
 - **Focus Events**: Focus and blur tracking for interactive elements
 - **Stack Traces**: Full stack traces for all state changes (helps identify WHO is changing state)
 
-## Accessing the Debug System
+## Accessing the debug system
 
 The debug system is automatically loaded on page startup. Access it in the browser console:
 
@@ -32,7 +32,7 @@ window.__debugSystem.replay(20)
 window.__debugSystem.clearHistory()
 ```
 
-## Real-Time Monitoring
+## Real-Time monitoring
 
 Open the browser console and watch for debug messages as you interact with the app:
 
@@ -42,9 +42,9 @@ Open the browser console and watch for debug messages as you interact with the a
 [🔍 DEBUG] [14:32:15.345] 📊 BULK STATE: scope=visible, selectBtn.disabled=false, applyTagsBtn.disabled=true, count=0
 ```
 
-## Debug Sections
+## Debug sections
 
-### Section 1: Global Button Click Logger
+### Section 1: global button click logger
 Tracks every button click, especially useful for:
 - Adventure bulk action buttons
 - Period/progress buttons
@@ -55,7 +55,7 @@ Example output:
 [🔍 DEBUG] 🖱️ BUTTON: Clicked bulk action button | id=adventureBulkSelectVisibleBtn | class=automation-btn | disabled=false
 ```
 
-### Section 2: Adventure Bulk State Monitor
+### Section 2: adventure bulk state monitor
 Polls the bulk action card state every 2 seconds and logs:
 - Selection scope (visible/all/filtered)
 - Button disabled states
@@ -66,7 +66,7 @@ Example output:
 [🔍 DEBUG] 📊 BULK STATE: scope=visible, selectBtn.disabled=false, applyTagsBtn.disabled=false, count=3
 ```
 
-### Section 3: DOM Mutation Observer
+### Section 3: DOM mutation observer
 Watches for DOM changes on bulk elements and logs:
 - Attribute changes (especially `disabled`)
 - Text content changes
@@ -78,10 +78,10 @@ Example output:
 [🔍 DEBUG]   └─ Stack: at HTMLButtonElement.set disabled [as disabled]
 ```
 
-### Section 4: Focus Tracker
+### Section 4: focus tracker
 Tracks focus/blur events on interactive elements.
 
-### Section 5: Event Listener Debugger & Disabled Property Interceptor
+### Section 5: event listener debugger & disabled property interceptor
 **Most Important for Debugging Button Issues**
 
 This section:
@@ -98,24 +98,24 @@ Example output:
 
 **This stack trace tells you EXACTLY what code is disabling the button!**
 
-### Section 6: Tab Click Detector
+### Section 6: tab click detector
 Tracks all tab and subtab clicks with:
 - Element ID and class
 - ARIA attributes
 - Whether default behavior was prevented
 - Stack trace of who called it
 
-### Section 7: Filter Change Tracker
+### Section 7: filter change tracker
 Monitors filter control changes (input/select elements in control panel).
 
-### Section 8: Selection State Logger
+### Section 8: selection state logger
 Logs every 3 seconds:
 - How many checkboxes are checked
 - Status of `window.adventureState`
 
-## Troubleshooting Workflow
+## Troubleshooting workflow
 
-### Problem: "Buttons disable immediately after click"
+### Problem: "buttons disable immediately after click"
 
 **Steps:**
 1. Open browser console
@@ -142,7 +142,7 @@ window.__debugSystem.replay(30)  // See last 30 logs
 // 3. In a function called disableButton
 ```
 
-### Problem: "Subtab clicks don't work"
+### Problem: "subtab clicks don't work"
 
 **Steps:**
 1. Open browser console  
@@ -162,7 +162,7 @@ Example:
 // You need to review that handler function
 ```
 
-### Problem: "Checkboxes aren't tracking selections"
+### Problem: "checkboxes aren't tracking selections"
 
 **Steps:**
 1. Watch the Selection State Logger output
@@ -170,7 +170,7 @@ Example:
 3. Compare the "Checked boxes" count before and after
 4. Check `window.adventureState.selectedSourceIndexes.size`
 
-## Key Log Symbols
+## Key log symbols
 
 | Symbol | Meaning |
 |--------|---------|
@@ -190,7 +190,7 @@ Example:
 | ⚠️ | Warning condition |
 | ❌ | Error condition |
 
-## Exporting Logs for Analysis
+## Exporting logs for analysis
 
 To export all debug logs for sharing/analysis:
 
@@ -210,14 +210,14 @@ a.download = 'debug-logs.json'
 a.click()
 ```
 
-## Performance Considerations
+## Performance considerations
 
 - The debug system uses ~500KB of memory for logs
 - Polling (bulk state monitor, selection state logger) runs every 2-3 seconds
 - Mutation observer might be resource-intensive if there are frequent DOM changes
 - Turn off sections you don't need by setting their flags to `false` at the top of the file
 
-## Advanced: Custom Debugging
+## Advanced: custom debugging
 
 Add custom tracking to the debug history:
 
@@ -229,7 +229,7 @@ console.log('[🔍 DEBUG]', 'Your custom message')
 window.__debugSystem.getHistory()
 ```
 
-## Debugging Stack Traces
+## Debugging stack traces
 
 The stack traces in the debug output show call chains. Read them from top to bottom:
 

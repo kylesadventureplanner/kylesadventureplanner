@@ -1,15 +1,15 @@
-# Documentation Organization
+# Documentation organization
 
 **Date:** April 7, 2026  
 **Status:** Current reference
 
-## ✅ Current Documentation Layout
+## ✅ Current documentation layout
 
 Project documentation is organized under the `docs/` directory so implementation notes, testing guides, and troubleshooting references live together in one place.
 
 ---
 
-## Current Structure
+## Current structure
 
 ```
 kylesadventureplanner/
@@ -33,7 +33,7 @@ kylesadventureplanner/
 
 ---
 
-## Documentation Focus
+## Documentation focus
 
 The `docs/` folder is the right home for:
 
@@ -47,7 +47,7 @@ The `docs/` folder is the right home for:
 
 ---
 
-## Documentation Location
+## Documentation location
 
 All project documentation now lives under `docs/`.
 
@@ -70,9 +70,9 @@ Useful starting points:
 
 ---
 
-## How to Access Documentation
+## How to access documentation
 
-### Option 1: Browse in File Explorer
+### Option 1: browse in file explorer
 ```
 docs/
 ├── README.md                (folder home)
@@ -82,12 +82,12 @@ docs/
 └── DEBUG_SYSTEM_README.md   (implementation details)
 ```
 
-### Option 2: Direct File Links (in your IDE)
+### Option 2: direct file links (in your IDE)
 - Quick reference: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md)
 - Full guide: [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md)
 - Implementation: [`DEBUG_SYSTEM_README.md`](./DEBUG_SYSTEM_README.md)
 
-### Option 3: Console Commands (unchanged)
+### Option 3: console commands (unchanged)
 ```javascript
 // These still work the same way:
 window.__debugSystem.getHistory()
@@ -97,7 +97,7 @@ window.__debugSystem.export()
 
 ---
 
-## What Didn't Change
+## What Didn't change
 
 ✅ **Quality System Code** - `JS Files/app-quality-system.js` (consolidated and auto-loaded)
 ✅ **Button Reliability Code** - `JS Files/button-reliability-system.js` (auto-loaded)
@@ -107,7 +107,7 @@ window.__debugSystem.export()
 
 ---
 
-## Safe to Move? ✅
+## Safe to move? ✅
 
 **Yes, completely safe!** Here's why:
 - These are **documentation files only** (human-readable guides)
@@ -119,7 +119,7 @@ window.__debugSystem.export()
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
 - ✅ `/docs` directory created
 - ✅ documentation is centralized in `docs/`
@@ -134,7 +134,7 @@ window.__debugSystem.export()
 
 ---
 
-## Quick Start (Unchanged)
+## Quick start (unchanged)
 
 Debug system still works exactly the same:
 
@@ -147,7 +147,7 @@ window.__debugSystem.export()        // Export as JSON
 
 ---
 
-## Root Directory Guidance
+## Root directory guidance
 
 Keep the project root focused on runtime and project-level files such as:
 - `index.html`
@@ -160,7 +160,7 @@ Put human-readable notes and reference material in `docs/` whenever they are not
 
 ---
 
-## Future Documentation
+## Future documentation
 
 If you add more documentation, prefer placing it in `docs/`:
 - Feature guides

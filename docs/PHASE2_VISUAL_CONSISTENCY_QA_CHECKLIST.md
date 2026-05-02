@@ -1,4 +1,4 @@
-# Phase 2 Visual Consistency QA Checklist
+# Phase 2 visual consistency QA checklist
 
 Use this quick pass to confirm shared UI anatomy and message cadence stay consistent across Edit Mode, City Viewer, and Visited tab surfaces.
 

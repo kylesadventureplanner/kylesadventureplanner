@@ -10466,6 +10466,7 @@
   // ─────────────────────────────────────────────────────────────────────────────
 
   const NATURE_DELEGATED_ACTION_SELECTOR = [
+    '[data-birds-action]',
     '[data-nature-subtab]',
     '#natureChallengeRefreshBtn',
     '#birdsUndoActionBtn',
@@ -10660,6 +10661,17 @@
           }
         });
         return;
+      }
+
+      const birdsActionBtn = event.target.closest('[data-birds-action]');
+      if (birdsActionBtn) {
+        const birdsAction = String(birdsActionBtn.getAttribute('data-birds-action') || '').trim();
+        if (birdsAction === 'open-central-hub') {
+          if (typeof window.openDiagnosticsHubPage === 'function') {
+            window.openDiagnosticsHubPage({ section: 'sync', source: 'nature-challenge' });
+          }
+          return;
+        }
       }
 
       const toggleButton = event.target.closest('[data-bird-toggle]');

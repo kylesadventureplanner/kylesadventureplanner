@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-test('TV mode toggles and quick rail appears on Adventure Planner', async ({ page }) => {
+test('TV mode toggles and retired Adventure Planner affordances stay gone', async ({ page }) => {
   await page.goto('/index.html');
 
   const toggle = page.locator('#tvModeGlobalToggle');
@@ -31,32 +31,17 @@ test('TV mode toggles and quick rail appears on Adventure Planner', async ({ pag
   await page.keyboard.press('h');
   await expect(hud).not.toHaveClass(/visible/);
 
-  // ── Navigate to Adventure Planner (makes filter inputs visible) ───────
   const plannerTab = page.locator('.app-tab-btn[data-tab="adventure-planner"]');
-  if (await plannerTab.count()) await plannerTab.first().click();
+  await expect(plannerTab).toHaveCount(0);
 
-  // Quick rail visible in TV mode.
+  // Legacy planner quick rail should not be injected once the tab is retired.
   const quickRail = page.locator('#tvQuickFilterRail');
-  await expect(quickRail).toBeVisible();
+  await expect(quickRail).toHaveCount(0);
 
   // Focus beacon + aria-live announcer injected into DOM.
   await expect(page.locator('#tvFocusBeacon')).toBeAttached();
   await expect(page.locator('#tvFocusAnnouncer')).toBeAttached();
 
-  // ── Typing-context guard (input is NOW visible / focusable) ───────────
-  const searchInput = page.locator('#searchName');
-  await searchInput.click(); // ensures focus lands in the input
-  await page.keyboard.press('2');
-  // Typing guard must have blocked the shortcut — food preset stays inactive.
-  await expect(page.locator('.tv-quick-filter-btn[data-preset="food"]')).not.toHaveAttribute('data-active', 'true');
-  // Character '2' must have been typed normally.
-  await expect(searchInput).toHaveValue('2');
-  await searchInput.fill(''); // clean up
-
-  // ── Preset applied via keyboard when NOT in an input ─────────────────
-  await page.locator('body').click();
-  await page.keyboard.press('2');
-  await expect(page.locator('.tv-quick-filter-btn[data-preset="food"]')).toHaveAttribute('data-active', 'true');
 
   // Tab cycling: ] moves to the next tab.
   const activeTabBefore = await page.locator('.app-tab-btn.active').first().getAttribute('data-tab');

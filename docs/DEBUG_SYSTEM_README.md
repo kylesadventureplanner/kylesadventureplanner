@@ -1,17 +1,17 @@
-# Comprehensive Debug System v2.0.0 - Implementation Summary
+# Comprehensive debug system v2.0.0 - implementation summary
 
-## What Was Added
+## What was added
 
-A powerful, real-time debugging system has been integrated into your Adventure Planner application. This system automatically tracks and logs all critical interactions, state changes, and button behaviors.
+A powerful, real-time debugging system has been integrated into your app (legacy/archived Adventure Planner naming). This system automatically tracks and logs all critical interactions, state changes, and button behaviors.
 
-### Key Enhancements Made
+### Key enhancements made
 
-#### 1. **Comprehensive Logging with Timestamps**
+#### 1. **Comprehensive logging with timestamps**
 - Every log message includes precise millisecond-accurate timestamps
 - Example: `[🔍 DEBUG] [14:32:15.234] ✅ Global button click logger initialized`
 - Helps identify timing sequences and race conditions
 
-#### 2. **Debug History System**
+#### 2. **Debug history system**
 - Last 500 debug log entries are automatically stored in memory
 - Accessible from browser console: `window.__debugSystem`
 - No need to screenshot - replay and export logs programmatically
@@ -22,7 +22,7 @@ A powerful, real-time debugging system has been integrated into your Adventure P
   - `export()` - Get all logs as JSON for external analysis
   - `clearHistory()` - Clear the stored history
 
-#### 3. **Stack Trace Capturing**
+#### 3. **Stack trace capturing**
 - Every state change includes the calling stack trace
 - Shows EXACTLY which function is making changes
 - Helps identify root causes of bugs without guessing
@@ -34,29 +34,29 @@ Example trace:
             at applyBulkOperation (button-handlers.js:789)
 ```
 
-#### 4. **Button State Change Interception**
+#### 4. **Button state change interception**
 - Every assignment to a button's `disabled` property is logged
 - Includes the old value and new value
 - Includes full stack trace showing who changed it
 - Critical for debugging "buttons disable immediately" issues
 
-#### 5. **DOM Mutation Watching**
+#### 5. **DOM mutation watching**
 - Observes all mutations on bulk action elements
 - Tracks attribute changes, text changes, class changes
 - Specifically monitors the `disabled` attribute with stack traces
 
-#### 6. **Event Listener Tracking**
+#### 6. **Event listener tracking**
 - Logs when event listeners are registered on bulk buttons
 - Logs when events fire
 - Logs whether event propagation is being stopped
 
-#### 7. **Enhanced Tab/Subtab Click Detection**
+#### 7. **Enhanced Tab/Subtab click detection**
 - Logs all tab and subtab clicks with full details
 - Tracks ARIA attributes and element IDs
 - Identifies if default behavior is being prevented
 - Includes stack traces for tab click handlers
 
-#### 8. **Polling Monitors**
+#### 8. **Polling monitors**
 - **Bulk State Monitor** (every 2 seconds):
   - Selection scope
   - Button disabled states
@@ -66,12 +66,12 @@ Example trace:
   - Number of checked checkboxes
   - Window.adventureState status
 
-#### 9. **Error Logging**
+#### 9. **Error logging**
 - Enhanced `logError()` function for error conditions
 - Errors are stored in history with `level: 'error'`
 - Can be filtered when exporting
 
-### Files Modified
+### Files modified
 
 1. **JS Files/comprehensive-debug-system.js**
    - Enhanced from 332 lines to 450 lines
@@ -79,7 +79,7 @@ Example trace:
    - Added all features listed above
    - Already loaded in index.html at line 37
 
-### Documentation Created
+### Documentation created
 
 1. **DEBUG_GUIDE.md** - Complete user guide for:
    - How to access the debug system
@@ -88,18 +88,18 @@ Example trace:
    - Example scenarios and solutions
    - How to export and analyze logs
 
-## How to Use
+## How to use
 
-### Real-Time Debugging in Browser Console
+### Real-time debugging in browser console
 
-1. Open your Adventure Planner app
+1. Open your app (Adventure Challenge / `visited-locations`; legacy/archived Adventure Planner naming)
 2. Press F12 or right-click → "Inspect" to open DevTools
 3. Click the "Console" tab
 4. Watch the debug messages appear as you interact with the app
 5. Click a button that's misbehaving
 6. Look for `🚨 DISABLED PROPERTY SET` messages with stack traces
 
-### Accessing Debug Data from Console
+### Accessing debug data from console
 
 ```javascript
 // See last 20 logs
@@ -116,7 +116,7 @@ const logs = window.__debugSystem.export()
 console.log(logs)
 ```
 
-### Troubleshooting the Button Disable Issue
+### Troubleshooting the button disable issue
 
 **If buttons are disabling immediately:**
 
@@ -141,7 +141,7 @@ This tells you:
 - It was called from `applyFilters`
 - Which was called from `onFilterChange` in button-handlers.js
 
-### Troubleshooting the Subtab Click Issue
+### Troubleshooting the subtab click issue
 
 **If subtab clicks don't register:**
 
@@ -160,7 +160,7 @@ Example:
 
 This tells you that `handleTabClick` in tab-content-loader.js at line 45 is calling `event.preventDefault()` and preventing the tab from working.
 
-## Performance Impact
+## Performance impact
 
 - **Memory**: ~500KB for debug history (last 500 entries)
 - **CPU**: Minimal - pollers run every 2-3 seconds, mutation observer is passive
@@ -172,7 +172,7 @@ You can reduce memory usage by:
 2. Disabling features you don't need by setting flags at the top of comprehensive-debug-system.js
 3. Setting `HISTORY_MAX` to a smaller number
 
-## Disabling Debug System (Not Recommended for Development)
+## Disabling debug system (not recommended for development)
 
 To disable the debug system, set `DEBUG = false` at the top of `comprehensive-debug-system.js`:
 
@@ -182,7 +182,7 @@ const DEBUG = false;
 
 However, while debugging issues, keep it enabled for maximum visibility.
 
-## Key Symbols Guide
+## Key symbols guide
 
 | Symbol | Meaning | Use Case |
 |--------|---------|----------|
@@ -202,7 +202,7 @@ However, while debugging issues, keep it enabled for maximum visibility.
 | ⚠️ | Warning | Unusual condition |
 | ❌ | Error | Error occurred |
 
-## Next Steps
+## Next steps
 
 1. **Test the system**: Interact with your app and watch the console
 2. **Look for issues**: Click problematic buttons, check for disable traces
@@ -211,7 +211,7 @@ However, while debugging issues, keep it enabled for maximum visibility.
 5. **Fix**: Apply fixes to the identified problem code
 6. **Verify**: Re-test to confirm the issue is resolved
 
-## Integration Notes
+## Integration notes
 
 - Debug system is **automatically loaded** in index.html (line 37)
 - It initializes **immediately** on page load
@@ -219,7 +219,7 @@ However, while debugging issues, keep it enabled for maximum visibility.
 - It's **non-invasive** - doesn't modify app behavior
 - It's **safe to leave on** during development and testing
 
-## Future Enhancements
+## Future enhancements
 
 Potential additions to the debug system:
 - Performance profiling (measure function execution time)
@@ -238,7 +238,7 @@ For now, the system provides comprehensive debugging for:
 - ✅ Filter changes
 - ✅ Selection tracking
 
-## Support & Troubleshooting
+## Support and troubleshooting
 
 If you need to understand what's happening in your app:
 

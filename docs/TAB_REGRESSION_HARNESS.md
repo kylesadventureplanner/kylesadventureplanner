@@ -1,4 +1,4 @@
-# Tab Regression Harness
+# Tab regression harness
 
 A minimal in-browser regression harness validates tab ownership and URL restore behavior.
 

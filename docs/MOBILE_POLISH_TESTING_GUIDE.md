@@ -1,12 +1,12 @@
-# Mobile Polish - Testing Guide
+# Mobile polish - testing guide
 **Focus:** Trail Explorer Preview Chip Mobile Optimization
 **Date:** April 7, 2026
 
 ---
 
-## Quick Test Checklist
+## Quick test checklist
 
-### 🔍 Visual Inspection
+### 🔍 Visual inspection
 
 #### Desktop (1200px+)
 - [ ] Preview cards show 3 chips per row max
@@ -32,14 +32,14 @@
 
 ---
 
-## Browser DevTools Testing
+## Browser DevTools testing
 
 ### Chrome DevTools
 1. Open DevTools (F12)
 2. Click **Device Toolbar** (Ctrl+Shift+M)
 3. Select device or set custom viewport
 
-### Test Viewports
+### Test viewports
 ```
 iPhone SE:        375px × 667px
 iPhone 12/13:     390px × 844px  
@@ -50,16 +50,16 @@ iPad Pro:         1024px × 1366px
 Desktop (1200px): 1200px × 800px
 ```
 
-### CSS Inspection
+### CSS inspection
 1. Right-click preview card → **Inspect**
 2. Check `.bike-explorer-preview-why-chip` styles
 3. Verify media query applies at breakpoints
 
 ---
 
-## Manual Testing Scenarios
+## Manual testing scenarios
 
-### Scenario 1: Trail Explorer Filter Selection
+### Scenario 1: trail explorer filter selection
 **Steps:**
 1. Navigate to Bike Trails tab
 2. Open Trail Explorer modal
@@ -74,7 +74,7 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-### Scenario 2: Fallback Chips (No Matching Filters)
+### Scenario 2: fallback chips (no matching filters)
 **Steps:**
 1. Select difficult filter combo with no matches
 2. Preview shows closest matches with fallback chips
@@ -86,7 +86,7 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-### Scenario 3: Long Trail Names
+### Scenario 3: long trail names
 **Steps:**
 1. Filter for trails with long names
 2. View in mobile preview
@@ -98,7 +98,7 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-### Scenario 4: Many Matching Trails
+### Scenario 4: many matching trails
 **Steps:**
 1. Select broad filters (e.g., "Any difficulty")
 2. Observe multiple preview cards
@@ -111,9 +111,9 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Performance Testing
+## Performance testing
 
-### Page Load
+### Page load
 - [ ] No layout shift when chips load
 - [ ] Images load within 1 second
 - [ ] Smooth scroll performance (60 fps)
@@ -130,33 +130,33 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Accessibility Testing
+## Accessibility testing
 
-### Screen Reader (NVDA / JAWS)
+### Screen reader (NVDA / JAWS)
 - [ ] Chips announced with full text
 - [ ] Short labels understood in context
 - [ ] Navigate with Tab key works
 
-### Keyboard Navigation
+### Keyboard navigation
 - [ ] Tab through all interactive chips
 - [ ] Focus visible on all buttons
 - [ ] Enter key triggers actions
 
-### Color Contrast
+### Color contrast
 - [ ] Chip text contrast ≥ 4.5:1 (WCAG AA)
 - [ ] Title text meets contrast requirements
 - [ ] Preview card borders visible
 
-### High Contrast Mode
+### High contrast mode
 - [ ] Chips remain readable
 - [ ] Borders visible
 - [ ] No text disappears
 
 ---
 
-## Label Verification
+## Label verification
 
-### Before (Verbose)
+### Before (verbose)
 ```
 "Drive Time: Under 30 min"
 "Length: Short"
@@ -164,7 +164,7 @@ Desktop (1200px): 1200px × 800px
 "Elevation: Lots of Climbing"
 ```
 
-### After (Optimized)
+### After (optimized)
 ```
 "Drive: <30m"
 "Length: Short"
@@ -179,9 +179,9 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## CSS Classes to Test
+## CSS classes to test
 
-### Primary Classes
+### Primary classes
 ```
 .bike-explorer-preview-why-chip       ← Chip text styling
 .bike-explorer-preview-card           ← Card container
@@ -191,7 +191,7 @@ Desktop (1200px): 1200px × 800px
 .bike-explorer-preview-cards          ← Grid container
 ```
 
-### Media Queries to Verify
+### Media queries to verify
 ```
 @media (max-width: 768px)  {  }  ← Tablet
 @media (max-width: 480px)  {  }  ← Mobile
@@ -204,7 +204,7 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Example Test Output
+## Example test output
 
 ### ✅ iPhone SE (375px) - PASS
 ```
@@ -218,7 +218,7 @@ Desktop (1200px): 1200px × 800px
 └─ fits on 375px width      ✓
 ```
 
-### ✅ iPad (768px) - PASS
+### ✅ Ipad (768px) - PASS
 ```
 .bike-explorer-preview-chip-row
 ├─ gap: 4px                ✓
@@ -236,14 +236,14 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Known Limitations & Edge Cases
+## Known limitations & edge cases
 
 ### Limitations
 - [ ] Very long trail names (>50 chars) may still wrap
 - [ ] Extremely narrow devices (<360px) not tested
 - [ ] RTL languages not optimized (future phase)
 
-### Edge Cases to Test
+### Edge cases to test
 - [ ] Empty chip arrays
 - [ ] Null/undefined trail data
 - [ ] Very fast viewport resizing
@@ -252,24 +252,24 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Success Metrics
+## Success metrics
 
-### Mobile Experience
+### Mobile experience
 - ✅ 30-40% text reduction achieved
 - ✅ Zero horizontal scroll needed
 - ✅ All chips fit on single line (<480px)
 - ✅ Font sizes readable at all breakpoints
 
-### User Feedback Targets
+### User feedback targets
 - 90%+ can read labels clearly
 - 85%+ prefer compact design
 - 80%+ no frustration with mobile view
 
 ---
 
-## Regression Testing
+## Regression testing
 
-### Areas to Monitor
+### Areas to monitor
 1. **Trail Explorer Modal**
    - Preset save/load still works
    - Chip removal still works
@@ -285,7 +285,7 @@ Desktop (1200px): 1200px × 800px
    - No style bleed to other pages
    - Shared CSS classes unaffected
 
-### Regression Test Steps
+### Regression test steps
 1. Load app in fresh browser
 2. Go through each tab
 3. Verify no broken layouts
@@ -293,7 +293,7 @@ Desktop (1200px): 1200px × 800px
 
 ---
 
-## Device-Specific Notes
+## Device-Specific notes
 
 ### iOS Safari
 - [ ] Viewport meta tag respected

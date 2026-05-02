@@ -968,6 +968,7 @@
         'Cafe': '☕ Coffee/beverage venue',
         'Shopping': '🛍️ Shopping opportunity',
         'Museum': '🏛️ Museum or gallery',
+        'Caverns': '🕳️ Cave or cavern destination',
         'Historical': '📜 Historical significance',
         'Entertainment': '🎭 Entertainment venue',
         'Beach': '🏖️ Beach location',

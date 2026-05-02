@@ -33,7 +33,7 @@ test.describe('Session recovery banner regression', () => {
   test('shows the banner only when draft is meaningful and dirty=1', async ({ page }) => {
     const meaningfulDraft = {
       updatedAt: new Date().toISOString(),
-      activeTab: 'adventure-planner',
+      activeTab: 'visited-locations',
       fields: {
         searchName: 'Blue Ridge',
         filterDifficulty: '',
@@ -56,7 +56,7 @@ test.describe('Session recovery banner regression', () => {
   test('does not show banner for empty/whitespace-only draft and auto-clears stale autosave state', async ({ page }) => {
     const emptyDraft = {
       updatedAt: new Date().toISOString(),
-      activeTab: 'adventure-planner',
+      activeTab: 'visited-locations',
       fields: {
         searchName: '',
         filterDifficulty: '',
@@ -85,7 +85,7 @@ test.describe('Session recovery banner regression', () => {
   test('keeps banner hidden when dirty flag is not set even if draft has data', async ({ page }) => {
     const meaningfulDraft = {
       updatedAt: new Date().toISOString(),
-      activeTab: 'adventure-planner',
+      activeTab: 'visited-locations',
       fields: {
         searchName: 'Waterfall Trail',
         filterDifficulty: '',

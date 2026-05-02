@@ -1,4 +1,4 @@
-# UI Consistency Checklist
+# UI consistency checklist
 
 This checklist is tailored to the current workspace structure in `kylesadventureplanner`.
 
@@ -43,7 +43,7 @@ Current check:
 - [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/find-near-me-window.html`, `HTML Files/city-viewer-window.html`, `HTML Files/adventure-details-window.html`, and `HTML Files/bike-details-window.html`).
 - [ ] Leave truly dynamic values inline only when they cannot be represented with classes.
 
-## 6) Pilot migration recipe (completed on Trail Explorer)
+## 6) Pilot migration recipe (completed on trail explorer)
 
 Reference file: `HTML Files/trail-explorer-window.html`
 

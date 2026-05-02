@@ -1,6 +1,6 @@
-# 🔧 Quick Performance Implementations
+# 🔧 Quick performance implementations
 
-## 1️⃣ GPU Acceleration (5 minutes)
+## 1️⃣ GPU acceleration (5 minutes)
 
 ### Location: `index.html` CSS section
 
@@ -43,15 +43,15 @@ Find the global styles section (around line 120) and add:
 
 ---
 
-## 2️⃣ Debounce Filter Inputs (10 minutes)
+## 2️⃣ Debounce filter inputs (10 minutes)
 
-### Location: Create new file `JS Files/performance-optimizations.js`
+### Location: create new file `JS Files/performance-optimizations.js`
 
 Create this file:
 
 ```javascript
 /**
- * Performance Optimizations for Adventure Planner
+ * Performance Optimizations for Adventure Challenge (legacy/archived Adventure Planner)
  * Version 1.0
  * Debouncing, caching, and other performance improvements
  */
@@ -245,7 +245,7 @@ Add this line BEFORE other JS files (around line 37):
 
 ---
 
-## 3️⃣ Optional: Disable Debug Polling When Not Needed (5 minutes)
+## 3️⃣ Optional: disable debug polling when not needed (5 minutes)
 
 ### Edit: `JS Files/comprehensive-debug-system.js`
 
@@ -278,7 +278,7 @@ window.__debugSystemActive = false;  // Disable polling (saves ~10ms every 3s)
 
 ---
 
-## 4️⃣ Optional: Lazy Load Debug System (5 minutes)
+## 4️⃣ Optional: lazy load debug system (5 minutes)
 
 ### Edit: `index.html`
 
@@ -338,7 +338,7 @@ window.disableDebugSystem();  // Unload it (reloads page)
 
 ---
 
-## ✅ Implementation Checklist
+## ✅ Implementation checklist
 
 - [ ] Step 1: Add GPU acceleration CSS to index.html (5 min)
   - [ ] Find the body style section
@@ -385,7 +385,7 @@ window.DOMCache  // Should exist
 
 ---
 
-## 📊 Performance Impact
+## 📊 Performance impact
 
 After these changes:
 
@@ -398,7 +398,7 @@ After these changes:
 
 ---
 
-## 🚀 Quick Start Summary
+## 🚀 Quick start summary
 
 1. **Add GPU CSS** (5 min) → Smoother animations
 2. **Create performance-optimizations.js** (10 min) → Debounce filters

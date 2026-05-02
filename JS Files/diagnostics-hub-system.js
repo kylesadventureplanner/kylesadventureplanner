@@ -757,7 +757,7 @@
       '</ul>',
       '<div class="diagnostics-hub-action-row">',
       '<button type="button" class="planner-top-btn" data-diagnostics-action="open-city-viewer-nearby">Open City Explorer</button>',
-      '<button type="button" class="planner-top-btn" data-diagnostics-action="open-adventure-planner">Open Adventure Planner</button>',
+      '<button type="button" class="planner-top-btn" data-diagnostics-action="open-adventure-challenge">Open Adventure Challenge</button>',
       '</div>',
       '</section>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
@@ -989,6 +989,7 @@
   }
 
   function openTab(tabId, source) {
+    if (tabId === 'adventure-planner') tabId = 'visited-locations';
     if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
       window.tabLoader.switchTab(tabId, { syncUrl: false, source: source || 'diagnostics-hub' });
       return true;
@@ -1064,8 +1065,8 @@
       }
       return Promise.resolve(true);
     }
-    if (action === 'open-adventure-planner') {
-      openTab('adventure-planner', 'diagnostics-hub');
+    if (action === 'open-adventure-challenge') {
+      openTab('visited-locations', 'diagnostics-hub');
       return Promise.resolve(true);
     }
     return Promise.resolve(false);
@@ -1105,8 +1106,9 @@
     if (backBtn) {
       backBtn.addEventListener('click', function () {
         var state = getState();
-        if (!openTab(state.previousTab || 'adventure-planner', 'diagnostics-hub-back')) {
-          window.location.href = '?tab=' + encodeURIComponent(state.previousTab || 'adventure-planner');
+        var fallbackTab = state.previousTab || 'visited-locations';
+        if (!openTab(fallbackTab, 'diagnostics-hub-back')) {
+          window.location.href = '?tab=' + encodeURIComponent(fallbackTab);
         }
       });
     }

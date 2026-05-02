@@ -1,4 +1,4 @@
-# Reliability Harness README
+# Reliability harness README
 
 Use this runbook for reliability enforcement checks and diagnostics bundle export.
 
@@ -11,7 +11,7 @@ npm run reliability:smoke
 npm run reliability:gate
 ```
 
-## Git Pre-Push Hook
+## Git Pre-Push hook
 
 Install or refresh local hooks:
 
@@ -26,11 +26,11 @@ The repo pre-push hook runs:
 npm run reliability:prepush
 ```
 
-## Smoke Output Artifact
+## Smoke output artifact
 
 - `artifacts/reliability-smoke-summary.json`
 
-## Release Gate Requirements
+## Release gate requirements
 
 - No `blocked` rows in `docs/BUTTON_MIGRATION_TRACKER.md`
 - Evidence links present for active/review/done rows
@@ -38,7 +38,7 @@ npm run reliability:prepush
 - Startup p95 <= 3500 ms
 - First-click success rate >= 0.99
 
-## Runtime Diagnostics
+## Runtime diagnostics
 
 One-command diagnostics bundle download:
 

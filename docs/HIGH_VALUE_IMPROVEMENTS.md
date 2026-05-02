@@ -1,4 +1,4 @@
-# High-Value Improvements for Nature Challenge & Mobile UX
+# High-Value improvements for nature challenge & mobile UX
 
 **Date:** April 9, 2026  
 **Status:** Analysis & Roadmap  
@@ -6,9 +6,9 @@
 
 ---
 
-## PART I: SPECIES EXPLORER & SIGHTING LOG HIGH-VALUE IMPROVEMENTS
+## PART I: species explorer & sighting LOG high-value improvements
 
-### 1. Quick Add Sighting Modal (Species Explorer Inline)
+### 1. Quick add sighting modal (species explorer inline)
 **Value:** Eliminates context switching; enables rapid field logging from explorer.
 
 **Current State:**
@@ -78,7 +78,7 @@
 
 ---
 
-### 2. Smart Recommendation Engine for Sighting Log
+### 2. Smart recommendation engine for sighting log
 **Value:** Context-aware suggestions increase completion rate and engagement.
 
 **Proposal:**
@@ -112,7 +112,7 @@ class SightingRecommender {
 
 ---
 
-### 3. Habitat Filtering & Predictive Presence
+### 3. Habitat filtering & predictive presence
 **Value:** Field lookup utility reduces search time during birding.
 
 **Proposal:**
@@ -132,7 +132,7 @@ class SightingRecommender {
 
 ---
 
-### 4. Sighting History & Patterns Dashboard
+### 4. Sighting history & patterns dashboard
 **Value:** Gamification + insights motivate continued engagement.
 
 **Proposal:**
@@ -149,7 +149,7 @@ class SightingRecommender {
 
 ---
 
-### 5. Family & Rarity Progress Unlocks
+### 5. Family & rarity progress unlocks
 **Value:** Milestone rewards drive target-focused gameplay.
 
 **Proposal:**
@@ -167,9 +167,9 @@ Complete rarity tiers:
 
 ---
 
-## PART II: MOBILE-FRIENDLY ENHANCEMENTS THROUGHOUT APP
+## PART II: mobile-friendly enhancements throughout APP
 
-### 1. Mobile Bottom Action Sheet (Instead of Sticky Top Bar)
+### 1. Mobile bottom action sheet (instead of sticky top bar)
 **Current Problem:** Sticky header takes 15% of mobile viewport; buttons overflow.
 
 **Proposal:**
@@ -218,7 +218,7 @@ Complete rarity tiers:
 
 ---
 
-### 2. Touch-Friendly Card Interactions
+### 2. Touch-Friendly card interactions
 **Current Problem:** Small buttons on cards are hard to tap on mobile.
 
 **Proposal:**
@@ -248,7 +248,7 @@ Complete rarity tiers:
 
 ---
 
-### 3. Responsive Grid Adjustments for Mobile
+### 3. Responsive grid adjustments for mobile
 **Current Problem:** 3-column grids render illegibly on small screens.
 
 **Proposal:**
@@ -283,7 +283,7 @@ Complete rarity tiers:
 
 ---
 
-### 4. Optimized Modal Behavior on Mobile
+### 4. Optimized modal behavior on mobile
 **Current Problem:** Modals full-width, soft keyboards hide inputs.
 
 **Proposal:**
@@ -329,7 +329,7 @@ Complete rarity tiers:
 
 ---
 
-### 5. Swipe Gestures & Touch Navigation
+### 5. Swipe gestures & touch navigation
 **Current Problem:** Tab/navigation requires scrolling on mobile.
 
 **Proposal:**
@@ -367,7 +367,7 @@ class MobileSwipeNavigation {
 
 ---
 
-### 6. Collapsible Sections for Mobile Real Estate
+### 6. Collapsible sections for mobile real estate
 **Proposal:**
 ```css
 /* Collapse non-essential sections on mobile */
@@ -399,7 +399,7 @@ class MobileSwipeNavigation {
 
 ---
 
-### 7. Optimized Form Inputs for Mobile
+### 7. Optimized form inputs for mobile
 **Proposal:**
 ```html
 <!-- Mobile-optimized form -->
@@ -447,7 +447,7 @@ class MobileSwipeNavigation {
 
 ---
 
-### 8. Progressive Loading for Mobile (Lazy Loading Images)
+### 8. Progressive loading for mobile (lazy loading images)
 **Proposal:**
 ```html
 <!-- Use native lazy loading on bird/species images -->
@@ -478,7 +478,7 @@ class MobileSwipeNavigation {
 
 ---
 
-### 9. Mobile Search & Filter Optimization
+### 9. Mobile search & filter optimization
 **Proposal:**
 ```html
 <!-- Collapsible filters on mobile -->
@@ -525,7 +525,7 @@ class MobileSwipeNavigation {
 
 ---
 
-### 10. Responsive Data Tables for Mobile
+### 10. Responsive data tables for mobile
 **Proposal:**
 ```css
 /* Convert wide tables to card layout on mobile */
@@ -566,31 +566,31 @@ class MobileSwipeNavigation {
 
 ---
 
-## IMPLEMENTATION PRIORITY ROADMAP
+## Implementation priority roadmap
 
-### Phase 1 (Quick Wins - 2 hours)
+### Phase 1 (quick wins - 2 hours)
 1. ✅ Mobile bottom action sheet (replaces sticky header)
 2. ✅ Touch-friendly card buttons (min 44px)
 3. ✅ Responsive grid adjustments for mobile
 
-### Phase 2 (High Impact - 4 hours)
+### Phase 2 (high impact - 4 hours)
 1. ✅ Quick add sighting modal in species explorer
 2. ✅ Habitat filtering for predictive presence
 3. ✅ Mobile bottom modals (drawer-style)
 
-### Phase 3 (Engagement - 6 hours)
+### Phase 3 (engagement - 6 hours)
 1. ✅ Sighting history & patterns dashboard
 2. ✅ Smart recommendation engine
 3. ✅ Family/rarity unlock achievements
 
-### Phase 4 (Polish - 3 hours)
+### Phase 4 (polish - 3 hours)
 1. ✅ Swipe navigation gestures
 2. ✅ Progressive image loading
 3. ✅ Collapsible mobile sections
 
 ---
 
-## ESTIMATED IMPACT
+## Estimated impact
 
 | Feature | Mobile Users | Desktop Users | Engagement | Effort |
 |---------|-------------|---------------|-----------|--------|
@@ -604,7 +604,7 @@ class MobileSwipeNavigation {
 
 ---
 
-## FILES TO MODIFY
+## FILES TO modify
 
 1. `HTML Files/tabs/nature-challenge-tab.html` - Add quick add modal, recommendations UI
 2. `CSS/mobile-standalone-enhancements.css` - Expand mobile breakpoints

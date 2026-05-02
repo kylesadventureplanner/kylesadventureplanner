@@ -1,20 +1,20 @@
-# Focus Button Responsiveness - Diagnostic Guide
+# Focus button responsiveness - diagnostic guide
 
-## What Was Changed
+## What was changed
 
 Added **diagnostic console logging** to trace button click events and understand why Focus buttons require multiple clicks.
 
-### Files Modified
+### Files modified
 - `JS Files/visited-locations-tab-system.js`
   - Added logging to the category filter click handler (line ~2350)
   - Added logging to `ensureButtonsResponsive()` function
   - Added logging to `renderCategories()` function
 
-## How to Use These Diagnostics
+## How to use these diagnostics
 
-### 1. **Open the Browser Console** (F12 → Console tab)
+### 1. **Open the browser console** (F12 → console tab)
 
-### 2. **Look for These Log Messages**
+### 2. **Look for these log messages**
 
 First, enable diagnostics logging (otherwise these verbose logs stay quiet by default):
 ```javascript
@@ -23,13 +23,13 @@ window.enableVisitedDiagnostics()
 window.enableVisitedClickTrace()
 ```
 
-#### When Categories are Rendered:
+#### When categories are rendered:
 ```
 🎨 renderCategories() rendered 9 category cards with Focus buttons
 ```
 ✅ Confirms the Focus buttons are being rendered
 
-#### When a Focus Button is Clicked:
+#### When a focus button is clicked:
 ```
 🔘 Focus button clicked: hiking (was: all), starting refresh...
 ```
@@ -44,13 +44,13 @@ You may also see these guardrail logs during rapid clicks:
 ⏱️ Category filter click debounced (XXms since last click)
 ```
 
-#### After the Refresh Completes:
+#### After the refresh completes:
 ```
 ✅ ensureButtonsResponsive() fixed 245 buttons (9 category filters)
 ```
 ✅ Confirms all buttons, including the 9 Focus buttons, were re-enabled
 
-### 3. **Check the Debug Object** (in Console)
+### 3. **Check the debug object** (in console)
 
 Run this in the console to see all Focus button clicks:
 ```javascript
@@ -77,18 +77,18 @@ You'll see:
 }
 ```
 
-## What the Logs Tell Us
+## What the logs tell us
 
-### Good Signs (✅ Button should work):
+### Good signs (✅ button should work):
 - `🔘 Focus button clicked: ... starting refresh...` appears after click
 - `btnPointerEvents: "auto"` - Button can receive clicks
 
-### Problem Signs (⚠️ Button might not work):
+### Problem signs (⚠️ button might not work):
 - `isRefreshing=true` - A refresh is already in progress
 - `disabled=true` - Button is disabled (shouldn't happen!)
 - `btnPointerEvents: "none"` - Button is blocked (shouldn't happen!)
 
-## Steps to Test
+## Steps to test
 
 1. **Open the app** and navigate to the "Visited Progress" tab
 2. **Open the browser console** (F12 → Console)
@@ -100,7 +100,7 @@ You'll see:
 5. **Try clicking another Focus button immediately** - see if second click works
 6. **Take a screenshot** of the console output
 
-## What to Report
+## What to report
 
 If buttons still require multiple clicks:
 
@@ -114,9 +114,9 @@ If buttons still require multiple clicks:
    - Can you click successfully on the second attempt?
    - Does it fail on first click but work on second?
 
-## Technical Details
+## Technical details
 
-### The Fix Applied Earlier
+### The fix applied earlier
 
 Removed aggressive `pointer-events: none` toggling on progress panes during tab switches. This prevents race conditions where:
 1. User clicks Focus button
@@ -125,16 +125,16 @@ Removed aggressive `pointer-events: none` toggling on progress panes during tab 
 
 Now using native `[hidden]` attribute + CSS `display: none` instead.
 
-### Defensive Mechanisms Still Active
+### Defensive mechanisms still active
 
 1. **Inline button styles** - All Focus buttons have `style="pointer-events: auto !important"`
 2. **ensureButtonsResponsive()** - Runs after every render to re-enable buttons
 3. **MutationObserver** - Monitors for new buttons and applies defensive styles
 4. **Refresh lock** - Prevents simultaneous refreshes (only one at a time)
 
-## If Problem Persists
+## If problem persists
 
-### Check These:
+### Check these:
 
 1. **Is diagnostics enabled (if you expect verbose logs)?**
    ```javascript
@@ -167,7 +167,7 @@ Now using native `[hidden]` attribute + CSS `display: none` instead.
    });
    ```
 
-## Performance Notes
+## Performance notes
 
 - Category refresh typically takes **200-500ms**
 - During this time, the source button shows "Refreshing..." status

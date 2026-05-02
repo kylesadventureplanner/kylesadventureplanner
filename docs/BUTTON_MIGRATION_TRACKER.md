@@ -1,4 +1,4 @@
-# Button Migration Tracker
+# Button migration tracker
 
 **Date:** April 8, 2026  
 **Status:** Active execution tracker
@@ -9,7 +9,7 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 
 ---
 
-## How to Use
+## How to use
 
 - Update this table at least once per week.
 - Keep one DRI owner per tab.
@@ -17,7 +17,7 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 
 ---
 
-## Status Values (Use Exactly These)
+## Status values (use exactly these)
 
 - `not-started` - No inventory done yet.
 - `inventorying` - Handler ownership and overlap audit in progress.
@@ -28,7 +28,7 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 
 ---
 
-## Weekly Tracker
+## Weekly tracker
 
 | Tab | Owner | Status | Last Updated | Target Week | Notes / Blockers | Evidence |
 |---|---|---|---|---|---|---|
@@ -43,14 +43,14 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 
 ---
 
-## Weekly Cadence
+## Weekly cadence
 
 - **Update day:** Friday (or final workday of week).
 - **Stale rule:** Any row not updated in 7+ days must be reviewed.
 - **Blocked rule:** If `blocked` for > 3 business days, escalate and record decision.
 - **Carry-over rule:** If week target slips, move target week forward and add reason in Notes.
 
-### Friday Triage Ritual (10-15 min)
+### Friday triage ritual (10-15 min)
 
 1. Update each touched row `Status`, `Last Updated`, and `Notes / Blockers`.
 2. Add at least one `Evidence` link for every row with status changes.
@@ -59,7 +59,7 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 
 ---
 
-## Definition of Done (Per Tab)
+## Definition of done (per tab)
 
 A tab can be set to `done` only when all are true:
 
@@ -71,7 +71,7 @@ A tab can be set to `done` only when all are true:
 
 ---
 
-## Current Execution Focus
+## Current execution focus
 
 - **Current template slices:** `nature-challenge` and `bike-trails`
 - **Next recommended slice:** `adventure-planner` (or promote `bike-trails` after matrix evidence)
@@ -79,12 +79,12 @@ A tab can be set to `done` only when all are true:
 
 ---
 
-## Quick Weekly Summary Template
+## Quick weekly summary template
 
 Copy/paste this each week:
 
 ```md
-### Week of YYYY-MM-DD
+### Week of yyyy-mm-dd
 - Completed:
 - In progress:
 - Blocked:

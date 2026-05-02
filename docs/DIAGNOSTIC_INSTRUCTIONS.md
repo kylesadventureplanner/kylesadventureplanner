@@ -1,10 +1,10 @@
-# REAL DIAGNOSTIC PLAN - Let's Find the Actual Problem
+# REAL diagnostic PLAN - Let's find the actual problem
 
 I apologize for applying fixes blindly. Let's actually figure out what's going wrong.
 
-## Your Next Steps (IMPORTANT!)
+## Your next steps (important!)
 
-### Step 1: Run the Diagnostic Script
+### Step 1: run the diagnostic script
 
 1. **Open your browser** and go to the app
 2. **Open Console** - F12 → Console tab
@@ -19,7 +19,7 @@ The script will tell us:
 - ✅ Can clicks be detected?
 - ✅ Are event listeners attached?
 
-### Step 2: Describe What Actually Happens
+### Step 2: describe what actually happens
 
 After running the diagnostic, **please tell me EXACTLY:**
 
@@ -33,18 +33,18 @@ Example 5: "Sometimes works, sometimes doesn't"
 
 **Copy the diagnostic output and share it with me**
 
-### Step 3: Take a Screenshot
+### Step 3: take a screenshot
 
 Show me:
 1. The Focus button area
 2. The browser console output when you click a button
 3. Any error messages that appear
 
-## What This Will Tell Us
+## What this will tell us
 
 Running the diagnostic will reveal the **actual root cause**:
 
-### Possible Issues We'll Find:
+### Possible issues We'll find:
 
 **Issue #1: Buttons not in DOM**
 - Solution: Check if tab is loaded
@@ -66,7 +66,7 @@ Running the diagnostic will reveal the **actual root cause**:
 - Solution: Your output will show it
 - Fix: We'll know exactly what to fix
 
-## Why This Matters
+## Why this matters
 
 I've applied 4+ fixes based on ASSUMPTIONS. But I haven't actually verified:
 - Are the buttons even in the DOM?
@@ -76,7 +76,7 @@ I've applied 4+ fixes based on ASSUMPTIONS. But I haven't actually verified:
 
 **The diagnostic will give us FACTS, not assumptions.**
 
-## After You Run It
+## After you run it
 
 Please reply with:
 

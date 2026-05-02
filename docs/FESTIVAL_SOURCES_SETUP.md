@@ -1,4 +1,4 @@
-# Festival Sources Setup
+# Festival sources setup
 
 This project now supports festival-event providers in Edit Mode.
 
@@ -16,7 +16,7 @@ This project now supports festival-event providers in Edit Mode.
 - Official Tourism/County feeds (RSS/Atom/iCal/JSON/HTML JSON-LD)
 - FestivalNet / Chamber feeds (RSS/Atom/iCal/JSON/HTML JSON-LD)
 
-## New controls in Festival Sources panel
+## New controls in festival sources panel
 
 - Per-source test buttons:
   - `Test Ticketmaster Only`

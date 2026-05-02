@@ -1,4 +1,4 @@
-# Reliability JS Merge Decision (Safe Path)
+# Reliability JS merge decision (safe path)
 
 Date: April 5, 2026
 
@@ -35,5 +35,5 @@ Use a phased approach:
 - Verify row-detail modal open/edit/save/cancel flows.
 - Verify dynamically loaded tab buttons still respond.
 - Verify no duplicate delegated listeners are left behind.
-- Run targeted smoke tests for Adventure Planner + Bike Trails tabs.
+- Run targeted smoke tests for legacy/archived Adventure Planner flows (redirect compatibility) + Bike Trails tab.
 
