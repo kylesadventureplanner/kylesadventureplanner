@@ -181,6 +181,22 @@
         font-weight: 700;
         font-size: 13px;
       }
+      .ctm-pill-category {
+        font-size: 11px;
+        font-weight: 700;
+        opacity: 0.9;
+        margin-left: 2px;
+      }
+      .ctm-pill-category-select {
+        border: 1px solid #93c5fd;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #1e3a8a;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 6px;
+        margin-left: 4px;
+      }
       .ctm-row {
         display: flex;
         gap: 8px;
@@ -191,6 +207,15 @@
         border: 1px solid #d1d5db;
         border-radius: 10px;
         font-size: 14px;
+      }
+      .ctm-row select {
+        min-width: 170px;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        font-size: 13px;
+        background: #fff;
+        color: #1f2937;
       }
       .ctm-btn {
         border: 0;
@@ -293,16 +318,101 @@
         font-size: 13px;
         font-style: italic;
       }
+      /* Conflict / warning banner below current tags */
+      .ctm-conflict-banner {
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .ctm-conflict-banner:empty { display: none; }
+      .ctm-conflict-banner--has-conflicts {
+        background: #fff7ed;
+        border: 1px solid #fdba74;
+        color: #92400e;
+      }
+      .ctm-conflict-banner--has-warnings {
+        background: #fefce8;
+        border: 1px solid #fde047;
+        color: #713f12;
+      }
+      .ctm-conflict-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        line-height: 1.4;
+      }
+
+      /* ── Mobile compactness ─────────────────────────────────────── */
+      @media (max-width: 540px) {
+        #cleanTagManagerModal {
+          border-radius: 12px;
+          max-height: 92vh;
+        }
+        .ctm-header {
+          padding: 12px 14px;
+        }
+        .ctm-title { font-size: 18px; }
+        .ctm-body {
+          padding: 12px 14px;
+          gap: 10px;
+        }
+        .ctm-footer {
+          padding: 10px 14px;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        /* Add-tag row: wrap so category + button move to line 2 */
+        .ctm-row {
+          flex-wrap: wrap;
+        }
+        .ctm-row input {
+          width: 100%;
+          min-width: 0;
+        }
+        .ctm-row select {
+          flex: 1 1 auto;
+          min-width: 0;
+          font-size: 12px;
+          padding: 8px 8px;
+        }
+        .ctm-row .ctm-btn {
+          flex-shrink: 0;
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+        /* Per-pill inline category selector: compact chip */
+        .ctm-pill-category-select {
+          font-size: 10px;
+          padding: 1px 3px;
+          max-width: 88px;
+          margin-left: 2px;
+        }
+        /* Pill label text slightly smaller */
+        .ctm-pill {
+          font-size: 12px;
+          padding: 5px 8px;
+          gap: 4px;
+        }
+      }
     `;
 
     document.head.appendChild(style);
   }
 
   function parseExcelTags(rawTags) {
-    return String(rawTags || '')
+    const parsed = String(rawTags || '')
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
+    // Resolve typo aliases (e.g. "Shushi" → "Sushi") using the consolidated system
+    if (typeof window.normalizeTags === 'function') {
+      return window.normalizeTags(parsed);
+    }
+    return parsed;
   }
 
   function normalizeHookTags(value) {
@@ -381,6 +491,34 @@
     return merged.sort((a, b) => a.localeCompare(b));
   }
 
+  function getAvailableTagCategories() {
+    if (typeof window.getAllTagCategories === 'function') {
+      const categories = window.getAllTagCategories();
+      if (Array.isArray(categories) && categories.length) return categories;
+    }
+    return ['Activities', 'Locations', 'Food & Dining', 'Shopping', 'Beverages', 'Social & Discovery', 'Custom'];
+  }
+
+  function getCategoryStyleDefaults(categoryName) {
+    if (typeof window.getTagCategoryPalette === 'function') {
+      return window.getTagCategoryPalette(categoryName);
+    }
+    return {
+      icon: '🏷️',
+      bg: '#ede9fe',
+      color: '#5b21b6',
+      border: '#c4b5fd'
+    };
+  }
+
+  function buildCategoryOptionsMarkup(selected) {
+    const value = String(selected || '').trim();
+    return getAvailableTagCategories().map((category) => {
+      const isSelected = category === value ? ' selected' : '';
+      return `<option value="${esc(category)}"${isSelected}>${esc(category)}</option>`;
+    }).join('');
+  }
+
   function patchLegacyOpenersToClean() {
     // If legacy UI manager is used anywhere, route it to clean manager.
     if (!window.tagUIManager || window.tagUIManager.__cleanPatched) return;
@@ -419,12 +557,14 @@
           <div>
             <div class="ctm-section-title">Current Tags</div>
             <div id="ctmCurrentTags" class="ctm-tag-box"></div>
+            <div id="ctmConflictBanner" class="ctm-conflict-banner" role="status" aria-live="polite"></div>
           </div>
 
           <div>
             <div class="ctm-section-title">Add Tag</div>
             <div class="ctm-row">
               <input id="ctmInput" type="text" list="ctmTagOptions" placeholder="Type a tag and press Enter" autocomplete="off" />
+              <select id="ctmTagCategory" aria-label="Tag category for custom tags"></select>
               <datalist id="ctmTagOptions"></datalist>
               <button id="ctmAdd" class="ctm-btn ctm-btn-primary">Add Tag</button>
             </div>
@@ -497,6 +637,17 @@
         attributes: true,
         attributeFilter: ['style', 'class']
       });
+
+      // Disconnect after 30 s — the legacy modal is very unlikely to reappear
+      // once the page has settled, so there's no need to fire on every DOM mutation.
+      setTimeout(() => {
+        try {
+          if (this._legacyGuardObserver) {
+            this._legacyGuardObserver.disconnect();
+            this._legacyGuardObserver = null;
+          }
+        } catch (_disconnectErr) {}
+      }, 30000);
     },
 
     openModal(placeId, placeName, contextOptions = null) {
@@ -516,6 +667,7 @@
       }
 
       this.loadCurrentTags();
+      this.populateCategoryOptions();
       this.renderCurrentTags();
       this.renderSuggestions();
       this.renderAutocomplete();
@@ -548,6 +700,76 @@
       this.currentTags = mergeUniqueTags(excelTags, contextualTags, managedTags);
     },
 
+    populateCategoryOptions(defaultCategory) {
+      const select = document.getElementById('ctmTagCategory');
+      if (!select) return;
+      const selected = String(defaultCategory || select.value || 'Custom').trim() || 'Custom';
+      select.innerHTML = buildCategoryOptionsMarkup(selected);
+    },
+
+    getSelectedCategory() {
+      const select = document.getElementById('ctmTagCategory');
+      return String((select && select.value) || 'Custom').trim() || 'Custom';
+    },
+
+    ensureCustomTagCategory(tagName, categoryName) {
+      const cleanTag = String(tagName || '').trim();
+      if (!cleanTag || !window.customTagRegistry) return;
+      const selectedCategory = String(categoryName || 'Custom').trim() || 'Custom';
+      const existingCustom = typeof window.customTagRegistry.getCustomTag === 'function'
+        ? window.customTagRegistry.getCustomTag(cleanTag)
+        : null;
+
+      const defaults = getCategoryStyleDefaults(selectedCategory);
+      if (existingCustom && typeof window.customTagRegistry.updateCustomTag === 'function') {
+        window.customTagRegistry.updateCustomTag(cleanTag, {
+          category: selectedCategory,
+          icon: defaults.icon || existingCustom.icon || '🏷️',
+          bg: defaults.bg || existingCustom.bg,
+          color: defaults.color || existingCustom.color,
+          border: defaults.border || existingCustom.border
+        });
+        return;
+      }
+
+      const allKnown = (window.tagManager && typeof window.tagManager.getAllTags === 'function')
+        ? window.tagManager.getAllTags()
+        : [];
+      const existsAsBuiltIn = allKnown.some((tag) => String(tag || '').trim().toLowerCase() === cleanTag.toLowerCase());
+      if (existsAsBuiltIn) return;
+
+      if (typeof window.customTagRegistry.createCustomTag === 'function') {
+        window.customTagRegistry.createCustomTag(cleanTag, {
+          category: selectedCategory,
+          icon: defaults.icon || '🏷️',
+          bg: defaults.bg,
+          color: defaults.color,
+          border: defaults.border
+        });
+      }
+    },
+
+    updateCustomTagCategory(tagName, categoryName) {
+      const cleanTag = String(tagName || '').trim();
+      const nextCategory = String(categoryName || 'Custom').trim() || 'Custom';
+      if (!cleanTag || !window.customTagRegistry || typeof window.customTagRegistry.updateCustomTag !== 'function') return;
+      const current = typeof window.customTagRegistry.getCustomTag === 'function'
+        ? window.customTagRegistry.getCustomTag(cleanTag)
+        : null;
+      if (!current) return;
+      const defaults = getCategoryStyleDefaults(nextCategory);
+      window.customTagRegistry.updateCustomTag(cleanTag, {
+        category: nextCategory,
+        icon: defaults.icon || current.icon || '🏷️',
+        bg: defaults.bg || current.bg,
+        color: defaults.color || current.color,
+        border: defaults.border || current.border
+      });
+      this.renderCurrentTags();
+      this.renderAutocomplete();
+      this.renderLiveMatches();
+    },
+
     renderCurrentTags() {
       const wrap = document.getElementById('ctmCurrentTags');
       if (!wrap) return;
@@ -559,7 +781,13 @@
 
       wrap.innerHTML = this.currentTags.map((tag) => `
         <span class="ctm-pill">
-          ${esc(tag)}
+          <span>${esc(tag)}</span>
+          ${window.customTagRegistry && typeof window.customTagRegistry.getCustomTag === 'function' && window.customTagRegistry.getCustomTag(tag)
+            ? `<span class="ctm-pill-category">${esc(window.customTagRegistry.getCustomTag(tag).category || 'Custom')}</span>`
+            : ''}
+          ${window.customTagRegistry && typeof window.customTagRegistry.getCustomTag === 'function' && window.customTagRegistry.getCustomTag(tag)
+            ? `<select class="ctm-pill-category-select" data-custom-category-tag="${esc(tag)}">${buildCategoryOptionsMarkup(window.customTagRegistry.getCustomTag(tag).category || 'Custom')}</select>`
+            : ''}
           <button type="button" data-remove-tag="${esc(tag)}">&times;</button>
         </span>
       `).join('');
@@ -570,6 +798,36 @@
           this.removeTag(tag);
         });
       });
+      wrap.querySelectorAll('[data-custom-category-tag]').forEach((select) => {
+        select.addEventListener('change', () => {
+          const tag = select.getAttribute('data-custom-category-tag');
+          this.updateCustomTagCategory(tag, select.value);
+        });
+      });
+    },
+
+    renderConflictBanner() {
+      const banner = document.getElementById('ctmConflictBanner');
+      if (!banner) return;
+
+      if (!window.tagConflictDetector || typeof window.tagConflictDetector.validate !== 'function') {
+        banner.innerHTML = '';
+        return;
+      }
+
+      const result = window.tagConflictDetector.validate(this.currentTags);
+      if (!result.issues || !result.issues.length) {
+        banner.innerHTML = '';
+        banner.className = 'ctm-conflict-banner';
+        return;
+      }
+
+      const hasConflict = result.conflictCount > 0;
+      banner.className = `ctm-conflict-banner ctm-conflict-banner--has-${hasConflict ? 'conflicts' : 'warnings'}`;
+      banner.innerHTML = result.issues.slice(0, 4).map((issue) => {
+        const icon = issue.severity === 'conflict' ? '⚠️' : 'ℹ️';
+        return `<div class="ctm-conflict-item">${icon} ${esc(issue.message)}</div>`;
+      }).join('');
     },
 
     renderAutocomplete() {
@@ -594,11 +852,23 @@
       const all = (window.tagManager && typeof window.tagManager.getAllTags === 'function')
         ? (window.tagManager.getAllTags() || [])
         : [];
-      const matches = all
-        .map((tag) => String(tag || '').trim())
-        .filter(Boolean)
-        .filter((tag) => tag.toLowerCase().includes(query))
-        .slice(0, 8);
+
+      // Prefer fuzzy search (handles typos like "Coffe" → Coffee) with substring fallback
+      let matches;
+      if (window.tagSearchEngine && typeof window.tagSearchEngine.fuzzySearch === 'function') {
+        const results = window.tagSearchEngine.fuzzySearch(query, all, 2);
+        // fuzzySearch returns [{tag, score, ...}]; also mix in substring results for short queries
+        const fuzzyTags = new Set(results.map((r) => String(r.tag || r)).filter(Boolean));
+        all.filter((t) => String(t).toLowerCase().includes(query) && !fuzzyTags.has(t))
+          .forEach((t) => fuzzyTags.add(t));
+        matches = Array.from(fuzzyTags).slice(0, 8);
+      } else {
+        matches = all
+          .map((tag) => String(tag || '').trim())
+          .filter(Boolean)
+          .filter((tag) => tag.toLowerCase().includes(query))
+          .slice(0, 8);
+      }
       if (!matches.length) {
         wrap.innerHTML = '<span class="ctm-empty">No existing tag matches</span>';
         return;
@@ -643,23 +913,12 @@
     },
 
     buildRecommendations() {
-      const recs = new Map(); // Use Map to track confidence scores
-      const row = this.getRowForCurrentPlace();
-      const values = row?.values?.[0] || [];
+      const recs = new Map();
 
-      // Extract all relevant text fields (Name, Tags, City, Address, Description)
-      const name = String(values[0] || '').toLowerCase();
-      const existingTags = String(values[3] || '').toLowerCase();
-      const city = String(values[10] || '').toLowerCase();
-      const address = String(values[11] || '').toLowerCase();
-      const description = String(values[16] || '').toLowerCase();
-      const googleRating = parseFloat(values[13]) || 0;
-
-      // Combine all text for analysis
-      const fullText = `${name} ${existingTags} ${city} ${address} ${description}`;
-
-      // Pull shared auto-tag recommendations first so modal suggestions stay aligned.
+      // Use the shared auto-tag engine from consolidated-tag-system as the sole source.
       if (typeof window.getTagsForLocationText === 'function') {
+        const row = this.getRowForCurrentPlace();
+        const values = (row && row.values && row.values[0]) ? row.values[0] : [];
         try {
           const shared = window.getTagsForLocationText({
             name: values[0] || '',
@@ -673,227 +932,25 @@
             recs.set(tag, Math.max(recs.get(tag) || 0, 0.96));
           });
         } catch (_error) {
-          // Fall through to local rule map if helper is unavailable or errors.
+          // Engine unavailable — surface no suggestions rather than crashing
         }
       }
 
-      // ENHANCED CATEGORY RULES with confidence scoring
-      const ruleMap = [
-        // Outdoor & Nature Categories
-        {
-          keys: ['hike', 'trail', 'hiking', 'trekking', 'mountain', 'alpine'],
-          tags: ['Hiking', 'Outdoor', 'Nature', 'Scenic', 'Adventure'],
-          confidence: 0.95
-        },
-        {
-          keys: ['waterfall', 'cascade', 'falls'],
-          tags: ['Waterfall', 'Nature', 'Scenic', 'Photography', 'Outdoor'],
-          confidence: 0.9
-        },
-        {
-          keys: ['park', 'garden', 'botanical', 'arboretum'],
-          tags: ['Park', 'Nature', 'Family-Friendly', 'Relaxing', 'Scenic'],
-          confidence: 0.85
-        },
-        {
-          keys: ['lake', 'river', 'stream', 'pond', 'creek', 'water'],
-          tags: ['Water Activity', 'Nature', 'Scenic', 'Family-Friendly'],
-          confidence: 0.8
-        },
-        {
-          keys: ['forest', 'woods', 'woodland', 'grove'],
-          tags: ['Nature', 'Hiking', 'Outdoor', 'Relaxing', 'Scenic'],
-          confidence: 0.85
-        },
-        {
-          keys: ['beach', 'shore', 'coast', 'seaside'],
-          tags: ['Beach', 'Outdoor', 'Family-Friendly', 'Scenic', 'Relaxing'],
-          confidence: 0.9
-        },
-        {
-          keys: ['camping', 'camp site'],
-          tags: ['Camping', 'Outdoor', 'Adventure', 'Family-Friendly'],
-          confidence: 0.9
-        },
+      // Use consolidated system's disabled-tag check, fall back to local set
+      const isTagDisabled = typeof window.isDisabledTagOption === 'function'
+        ? window.isDisabledTagOption
+        : (t) => DISABLED_RECOMMENDATION_TAGS.has(String(t).trim());
 
-        // Dining & Food Categories
-        {
-          keys: ['restaurant', 'bistro', 'steakhouse', 'grill'],
-          tags: ['Restaurant', 'Dining', 'Local Favorite', 'Worth Visiting'],
-          confidence: 0.95
-        },
-        {
-          keys: ['cafe', 'coffee', 'espresso', 'tea house'],
-          tags: ['Cafe', 'Coffee', 'Local Favorite', 'Relaxing'],
-          confidence: 0.9
-        },
-        {
-          keys: ['diner', 'fast food', 'quick bite'],
-          tags: ['Casual Dining', 'Quick Service'],
-          confidence: 0.8
-        },
-        {
-          keys: ['bakery', 'pastry'],
-          tags: ['Bakery', 'Local Favorite', 'Worth Visiting'],
-          confidence: 0.85
-        },
-        {
-          keys: ['brewery', 'winery', 'distillery', 'bar', 'pub'],
-          tags: ['Beverage', 'Adult Experience', 'Local Favorite'],
-          confidence: 0.85
-        },
-        {
-          keys: ['food truck', 'street food'],
-          tags: ['Quick Service', 'Casual Dining', 'Local Favorite'],
-          confidence: 0.8
-        },
-
-        // Shopping & Market Categories
-        {
-          keys: ['shop', 'store', 'retail', 'boutique'],
-          tags: ['Shopping', 'Local Business', 'Worth Visiting'],
-          confidence: 0.8
-        },
-        {
-          keys: ['market', 'farmer market', 'farmers market'],
-          tags: ['Market', 'Local Business', 'Family-Friendly', 'Worth Visiting'],
-          confidence: 0.9
-        },
-        {
-          keys: ['mall', 'shopping center'],
-          tags: ['Shopping', 'Family-Friendly'],
-          confidence: 0.75
-        },
-
-        // Cultural & Historical Categories
-        {
-          keys: ['museum', 'gallery', 'exhibition', 'exhibit'],
-          tags: ['Museum', 'Cultural', 'Historical', 'Educational', 'Indoor Activity'],
-          confidence: 0.9
-        },
-        {
-          keys: ['historic', 'history', 'monument', 'landmark', 'heritage'],
-          tags: ['Historical', 'Cultural', 'Worth Visiting', 'Educational'],
-          confidence: 0.85
-        },
-        {
-          keys: ['art', 'artist', 'sculpture', 'craft'],
-          tags: ['Cultural', 'Artistic', 'Local Business'],
-          confidence: 0.8
-        },
-
-        // Sports & Recreation Categories
-        {
-          keys: ['gym', 'fitness', 'yoga', 'pilates'],
-          tags: ['Fitness', 'Health & Wellness'],
-          confidence: 0.85
-        },
-        {
-          keys: ['sport', 'athletic', 'court', 'field', 'stadium'],
-          tags: ['Sports', 'Active', 'Family-Friendly'],
-          confidence: 0.8
-        },
-        {
-          keys: ['bowling', 'arcade', 'recreation'],
-          tags: ['Entertainment', 'Family-Friendly', 'Fun'],
-          confidence: 0.8
-        },
-
-        // Entertainment Categories
-        {
-          keys: ['movie', 'cinema', 'theater', 'theatre'],
-          tags: ['Entertainment', 'Family-Friendly', 'Indoor Activity'],
-          confidence: 0.9
-        },
-        {
-          keys: ['music', 'concert', 'live performance'],
-          tags: ['Entertainment', 'Local Favorite', 'Worth Visiting'],
-          confidence: 0.85
-        },
-        {
-          keys: ['amusement', 'theme park', 'carnival'],
-          tags: ['Entertainment', 'Family-Friendly', 'Fun', 'Adventure'],
-          confidence: 0.9
-        },
-
-        // Accommodation Categories
-        {
-          keys: ['hotel', 'motel', 'inn', 'resort'],
-          tags: ['Accommodation', 'Travel-Friendly'],
-          confidence: 0.85
-        },
-        {
-          keys: ['bed & breakfast', 'bed and breakfast', 'airbnb'],
-          tags: ['Accommodation', 'Local Experience'],
-          confidence: 0.8
-        }
-      ];
-
-      // Apply rule-based recommendations
-      ruleMap.forEach((rule) => {
-        const matchCount = rule.keys.filter((k) => {
-          // Check for word boundaries to avoid partial matches
-          const regex = new RegExp(`\\b${k}\\b`, 'i');
-          return regex.test(fullText);
-        }).length;
-
-        if (matchCount > 0) {
-          const scoreBoost = matchCount > 1 ? 1.1 : 1.0; // Boost if multiple matches
-          rule.tags.forEach((tag) => {
-            const existingScore = recs.get(tag) || 0;
-            recs.set(tag, Math.max(existingScore, rule.confidence * scoreBoost));
-          });
-        }
-      });
-
-      // Rating-based recommendations
-      if (googleRating >= 4.7) {
-        recs.set('Top Rated', Math.max(recs.get('Top Rated') || 0, 0.95));
-        recs.set('Worth Visiting', Math.max(recs.get('Worth Visiting') || 0, 0.9));
-      } else if (googleRating >= 4.3) {
-        recs.set('Highly Recommended', Math.max(recs.get('Highly Recommended') || 0, 0.85));
-      }
-
-      // Family-friendly inference based on keywords
-      const familyKeywords = ['family', 'kids', 'child', 'playground', 'park', 'children', 'school', 'educational'];
-      if (familyKeywords.some((k) => fullText.includes(k))) {
-        recs.set('Family-Friendly', Math.max(recs.get('Family-Friendly') || 0, 0.8));
-      }
-
-      // Relaxing/peaceful inference
-      const relaxingKeywords = ['relax', 'peaceful', 'quiet', 'serene', 'tranquil', 'spa', 'wellness'];
-      if (relaxingKeywords.some((k) => fullText.includes(k))) {
-        recs.set('Relaxing', Math.max(recs.get('Relaxing') || 0, 0.8));
-      }
-
-      // Reduce broad tags when we already have specific recommendations.
-      const specificTags = new Set([
-        'Book Store', 'Thrift Store', 'Farmers Market', 'Grocery Store', 'Food Market', 'Coffee Shop',
-        'Tea Cafe', 'Antique Store', 'German Food', 'Italian Food', 'Greek Food', 'Mediterranean Food',
-        'Breakfast Joint', 'Diner', 'Noodle House', 'Pho', 'Sushi', 'Chinese Food', 'Japanese Food',
-        'Korean Food', 'Korean BBQ', 'Carolina BBQ', 'Tennessee BBQ', 'Ramen Bar', 'Seafood', 'Pub',
-        'Mexican Food', 'Thai Food', 'Indian Food', 'Cajun Food', 'Sandwich Shop', 'Sub Shop',
-        'State Park', 'National Park', 'Wildlife Sanctuary', 'Wildlife Refuge', 'Wildlife Preserve',
-        'Waterfall Trail', 'Scenic Overlook', 'Hiking Trail', 'Botanical Garden', 'Dog Park',
-        'Science Museum', 'Art Museum', 'History Museum'
-      ]);
-      const genericTags = ['Shopping', 'Dining', 'Outdoor', 'Nature', 'Entertainment'];
-      const hasSpecific = Array.from(recs.keys()).some((tag) => specificTags.has(tag));
-      if (hasSpecific) {
-        genericTags.forEach((tag) => recs.delete(tag));
-      }
-
-      // Remove excluded recommendations and current tags
       const filtered = Array.from(recs.entries())
         .filter(([tag]) => !this.currentTags.includes(tag))
-        .filter(([tag]) => !DISABLED_RECOMMENDATION_TAGS.has(String(tag).trim()))
+        .filter(([tag]) => !isTagDisabled(String(tag).trim()))
         .filter(([tag]) => !EXCLUDED_RECOMMENDATIONS.has(String(tag).toLowerCase()))
-        .sort((a, b) => b[1] - a[1]) // Sort by confidence (highest first)
-        .slice(0, 8); // Limit to top 8 recommendations
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
 
       return filtered.map(([tag, confidence]) => ({
         tag,
-        confidence: confidence,
+        confidence,
         description: this.getTagDescription(tag)
       }));
     },
@@ -959,13 +1016,26 @@
       });
     },
 
-    addTag(tag) {
+    addTag(tag, options = {}) {
       const clean = String(tag || '').trim();
       if (!clean) return;
       if (this.currentTags.includes(clean)) return;
+      if (options && options.enableCustomCategory) {
+        this.ensureCustomTagCategory(clean, options.category || this.getSelectedCategory());
+      }
+
+      // Track usage so customTagRegistry.getStats().mostUsed stays accurate
+      if (window.customTagRegistry && typeof window.customTagRegistry.getCustomTag === 'function') {
+        const customTag = window.customTagRegistry.getCustomTag(clean);
+        if (customTag && typeof window.customTagRegistry.updateCustomTag === 'function') {
+          window.customTagRegistry.updateCustomTag(clean, { usageCount: (customTag.usageCount || 0) + 1 });
+        }
+      }
+
       this.currentTags.push(clean);
       this.currentTags.sort((a, b) => a.localeCompare(b));
       this.renderCurrentTags();
+      this.renderConflictBanner();
       this.renderSuggestions();
       this.renderAutocomplete();
       this.renderLiveMatches();
@@ -979,12 +1049,16 @@
     addTagFromInput() {
       const input = document.getElementById('ctmInput');
       if (!input) return;
-      this.addTag(input.value);
+      this.addTag(input.value, {
+        enableCustomCategory: true,
+        category: this.getSelectedCategory()
+      });
     },
 
     removeTag(tag) {
       this.currentTags = this.currentTags.filter((t) => t !== tag);
       this.renderCurrentTags();
+      this.renderConflictBanner();
       this.renderSuggestions();
       this.renderAutocomplete();
       this.renderLiveMatches();
@@ -993,6 +1067,7 @@
     clearAllTags() {
       this.currentTags = [];
       this.renderCurrentTags();
+      this.renderConflictBanner();
       this.renderSuggestions();
       this.renderAutocomplete();
       this.renderLiveMatches();
@@ -1003,7 +1078,14 @@
         this.closeModal();
         return;
       }
-      window.tagManager.setTagsForPlace(this.currentPlaceId, this.currentTags);
+
+      // Run deduplication (fixes casing variants, spacing, resolves aliases) before persisting
+      const tagsToSave = (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function')
+        ? window.tagDeduplicator.deduplicate(this.currentTags)
+        : this.currentTags;
+      this.currentTags = tagsToSave;
+
+      window.tagManager.setTagsForPlace(this.currentPlaceId, tagsToSave);
       window.tagManager.saveTags();
       if (typeof window.showToast === 'function') {
         window.showToast('Tags saved', 'success', 1500);
@@ -1017,7 +1099,7 @@
         try {
           onSaveHook({
             placeId: this.currentPlaceId,
-            tags: [...this.currentTags],
+            tags: [...tagsToSave],
             domain: this.contextOptions?.domain || 'default'
           });
         } catch (error) {

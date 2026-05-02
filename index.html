@@ -1670,18 +1670,49 @@
 
     /* Tag pills (example base styles) */
     .tag-pill {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 6px 12px;
       border-radius: var(--radius-full);
       font-size: 12px;
       font-weight: 600;
       margin: var(--space-xs) var(--space-sm) var(--space-xs) 0;
-      color: white;
+      color: #1f2937;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #f3f4f6;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+      border: 1px solid #d1d5db;
+    }
+
+    .tag-pill__icon {
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .tag-pill__label {
+      line-height: 1.1;
+    }
+
+    .tag-category-legend {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag-category-legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
     }
 
     .tag-pill:hover {
@@ -7967,10 +7998,7 @@
 
              ${tagList.length > 0 ? `
                <div class="adventure-card-tags">
-                 ${tagList.map(tag => {
-           const tagClass = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-           return `<span class="tag-pill tag-${tagClass}" data-tag="${tag}">${tag}</span>`;
-         }).join('')}
+                  ${tagList.map(tag => typeof window.renderTagPillHtml === 'function' ? window.renderTagPillHtml(tag, { baseClass: 'tag-pill' }) : `<span class="tag-pill" data-tag="${tag}">${tag}</span>`).join('')}
                </div>
              ` : ''}
 
@@ -8246,6 +8274,23 @@
 
      norm: (str) => String(str || '').toLowerCase().trim(),
 
+     buildSearchText: function(rowData) {
+       if (!rowData || typeof rowData !== 'object') return '';
+       return this.norm([
+         rowData.name,
+         rowData.tags,
+         rowData.city,
+         rowData.state,
+         rowData.address
+       ].filter(Boolean).join(' | '));
+     },
+
+     matchesSearchTerm: function(rowData, query) {
+       const needle = this.norm(query);
+       if (!needle) return true;
+       return this.buildSearchText(rowData).includes(needle);
+     },
+
      cacheQuickFilterBaseLabels: function() {
        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
          if (btn.dataset.baseLabel) return;
@@ -8320,16 +8365,16 @@
              difficulty: values[7] || '',
              state: values[9] || values[6] || '',
              city: values[10] || values[7] || '',
+              address: values[11] || values[8] || '',
              cost: values[14] || ''
            };
-       const name = this.norm(rowData.name);
        const tags = this.norm(rowData.tags);
        const difficulty = this.norm(rowData.difficulty);
        const state = this.norm(rowData.state);
        const city = this.norm(rowData.city);
        const cost = this.norm(rowData.cost);
 
-       if (this.state.searchName && !name.includes(this.norm(this.state.searchName))) return false;
+       if (!this.matchesSearchTerm(rowData, this.state.searchName)) return false;
        if (this.state.filterDifficulty && difficulty !== this.norm(this.state.filterDifficulty)) return false;
        if (this.state.filterState && state !== this.norm(this.state.filterState)) return false;
        if (this.state.filterCity && city !== this.norm(this.state.filterCity)) return false;
@@ -8415,18 +8460,18 @@
                difficulty: values[7] || '',
                state: values[9] || values[6] || '',
                city: values[10] || values[7] || '',
+               address: values[11] || values[8] || '',
                cost: values[14] || ''
              };
 
          const placeId = String(rowData.googlePlaceId || '').trim();
-         const name = self.norm(rowData.name);
          const tags = self.norm(rowData.tags);
          const difficulty = self.norm(rowData.difficulty);
          const state = self.norm(rowData.state);
          const city = self.norm(rowData.city);
          const cost = self.norm(rowData.cost);
 
-         if (self.state.searchName && !name.includes(self.norm(self.state.searchName))) return false;
+          if (!self.matchesSearchTerm(rowData, self.state.searchName)) return false;
          if (self.state.filterDifficulty && difficulty !== self.norm(self.state.filterDifficulty)) return false;
          if (self.state.filterState && state !== self.norm(self.state.filterState)) return false;
          if (self.state.filterCity && city !== self.norm(self.state.filterCity)) return false;
@@ -8948,8 +8993,8 @@
         </div>
         <div class="control-panel-grid">
           <div class="filter-item">
-            <label for="searchName">Search by Name</label>
-            <input id="searchName" class="filter-input" type="text" placeholder="Search adventures..." list="nameList" />
+            <label for="searchName">Search Adventures</label>
+            <input id="searchName" class="filter-input" type="text" placeholder="Search by name, city, state, address, or tags..." list="nameList" />
           </div>
           <div class="filter-item">
             <label for="filterDifficulty">Filter by Difficulty</label>
@@ -8997,6 +9042,7 @@
             </select>
           </div>
         </div>
+        <div id="tagCategoryLegend" class="tag-category-legend" aria-live="polite"></div>
       </div>
 
       <!-- Common Filters -->
@@ -15208,10 +15254,7 @@
 
         ${tagList.length > 0 ? `
           <div class="adventure-card-tags">
-            ${tagList.map(tag => {
-        const tagClass = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        return `<span class="tag-pill tag-${tagClass}" data-tag="${tag}">${tag}</span>`;
-      }).join('')}
+            ${tagList.map(tag => typeof window.renderTagPillHtml === 'function' ? window.renderTagPillHtml(tag, { baseClass: 'tag-pill' }) : `<span class="tag-pill" data-tag="${tag}">${tag}</span>`).join('')}
           </div>
         ` : ''}
 
@@ -16130,7 +16173,7 @@
           ${tags ? `
             <div class="modal-detail-section">
               <h3>🏷️ Tags</h3>
-              <div>${tags.split(',').map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}</div>
+              <div>${tags.split(',').map(tag => typeof window.renderTagPillHtml === 'function' ? window.renderTagPillHtml(tag.trim(), { baseClass: 'tag-pill' }) : `<span class="tag-pill">${tag.trim()}</span>`).join('')}</div>
             </div>
           ` : ''}
         `
@@ -19056,6 +19099,23 @@
    * subset currently rendered on screen (which changes with pagination/filters
    * and may omit tag-pills depending on which card renderer was used).
    */
+  function renderPlannerTagCategoryLegend(tagValues) {
+    const legend = document.getElementById('tagCategoryLegend');
+    if (!legend) return;
+    const tags = Array.from(new Set((Array.isArray(tagValues) ? tagValues : []).map((tag) => String(tag || '').trim()).filter(Boolean)));
+    if (!tags.length || typeof window.getTagLegendTokens !== 'function') {
+      legend.innerHTML = '';
+      return;
+    }
+    const tokens = window.getTagLegendTokens(tags);
+    legend.innerHTML = tokens.map((token) => (
+      `<span class="tag-category-legend-chip" style="background:${token.bg};color:${token.color};border-color:${token.border};">` +
+      `<span>${token.icon}</span>` +
+      `<span>${token.category} (${token.count})</span>` +
+      `</span>`
+    )).join('');
+  }
+
   function populateAutocomplete() {
     console.log('📋 populateAutocomplete: Starting to populate autocomplete suggestions...');
 
@@ -19079,6 +19139,7 @@
     const cities = new Set();
     const tags = new Set();
     const costs = new Set();
+    const searchSuggestions = new Set();
 
     // Read from window.adventuresData so all rows are covered regardless of
     // pagination or which card renderer was used.
@@ -19096,6 +19157,7 @@
             tags: values[3] || '',
             state: values[9] || values[6] || '',
             city: values[10] || values[7] || '',
+            address: values[11] || values[8] || '',
             cost: values[14] || ''
           };
 
@@ -19103,18 +19165,30 @@
       const rawTags = String(rowData.tags || '').trim();
       const state = String(rowData.state || '').trim();
       const city = String(rowData.city || '').trim();
+      const address = String(rowData.address || '').trim();
       const cost = String(rowData.cost || '').trim();
 
-      if (name)  names.add(name);
+      if (name) {
+        names.add(name);
+        searchSuggestions.add(name);
+      }
       if (state) states.add(state.toUpperCase());
-      if (city)  cities.add(city);
+      if (state) searchSuggestions.add(state.toUpperCase());
+      if (city) {
+        cities.add(city);
+        searchSuggestions.add(city);
+      }
+      if (address) searchSuggestions.add(address);
       if (cost)  costs.add(cost);
 
       // Tags are stored as a comma-separated string — split into individual values
       if (rawTags) {
         rawTags.split(',').forEach(t => {
           const tag = t.trim();
-          if (tag) tags.add(tag);
+          if (tag) {
+            tags.add(tag);
+            searchSuggestions.add(tag);
+          }
         });
       }
     });
@@ -19123,16 +19197,19 @@
     if (states.size === 0) {
       console.log('📌 populateAutocomplete: Adding default states (no data found)');
       states.add("SC").add("NC").add("GA").add("FL").add("VA").add("TN");
+      searchSuggestions.add("SC").add("NC").add("GA").add("FL").add("VA").add("TN");
     }
 
     if (cities.size === 0) {
       console.log('📌 populateAutocomplete: Adding default cities (no data found)');
       cities.add("Columbia").add("Greenville").add("Charleston").add("Asheville");
+      searchSuggestions.add("Columbia").add("Greenville").add("Charleston").add("Asheville");
     }
 
     if (tags.size === 0) {
       console.log('📌 populateAutocomplete: Adding default tags (no data found)');
       tags.add("Hiking").add("Waterfalls").add("Restaurant").add("Family Friendly");
+      searchSuggestions.add("Hiking").add("Waterfalls").add("Restaurant").add("Family Friendly");
     }
 
     if (costs.size === 0) {
@@ -19142,8 +19219,8 @@
 
     // Populate datalists with logging
     if (nameList) {
-      nameList.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
-      console.log(`✅ populateAutocomplete: Populated names (${names.size} items)`);
+      nameList.innerHTML = Array.from(searchSuggestions).sort((a, b) => a.localeCompare(b)).map(v => `<option value="${v}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated search suggestions (${searchSuggestions.size} items)`);
     }
 
     if (stateList) {
@@ -19160,6 +19237,8 @@
       tagsList.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
       console.log(`✅ populateAutocomplete: Populated tags (${tags.size} items)`);
     }
+
+    renderPlannerTagCategoryLegend(Array.from(tags));
 
     if (costList) {
       costList.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");

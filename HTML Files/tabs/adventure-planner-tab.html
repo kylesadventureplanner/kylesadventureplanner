@@ -109,8 +109,8 @@
   </div>
   <div class="control-panel-grid">
     <div class="filter-item">
-      <label for="searchName">Search by Name</label>
-      <input id="searchName" class="filter-input" type="text" placeholder="Search adventures..." list="nameList" />
+      <label for="searchName">Search Adventures</label>
+      <input id="searchName" class="filter-input" type="text" placeholder="Search by name, city, state, address, or tags..." list="nameList" />
     </div>
     <div class="filter-item">
       <label for="filterDifficulty">Filter by Difficulty</label>
@@ -158,6 +158,7 @@
       </select>
     </div>
   </div>
+  <div id="apTagCategoryLegend" class="tag-category-legend" aria-live="polite"></div>
 </div>
 
 <!-- Common Filters -->
@@ -355,6 +356,26 @@
           next.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
+    }
+
+    const legend = document.getElementById('apTagCategoryLegend');
+    if (legend && typeof window.getTagLegendTokens === 'function') {
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const tags = [];
+      rows.forEach((row) => {
+        const values = row && row.values && row.values[0] ? row.values[0] : [];
+        String(values[3] || '').split(',').forEach((raw) => {
+          const tag = String(raw || '').trim();
+          if (tag) tags.push(tag);
+        });
+      });
+      const tokens = window.getTagLegendTokens(tags);
+      legend.innerHTML = tokens.map((token) => (
+        `<span class="tag-category-legend-chip" style="background:${token.bg};color:${token.color};border-color:${token.border};">` +
+        `<span>${token.icon}</span>` +
+        `<span>${token.category} (${token.count})</span>` +
+        `</span>`
+      )).join('');
     }
 
     console.log('✅ Adventure Planner tab initialized');

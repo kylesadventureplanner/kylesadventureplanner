@@ -896,12 +896,20 @@
       margin-bottom: 10px;
     }
     .loc-tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       background: #dbeafe;
       color: #1e40af;
       padding: 3px 9px;
       border-radius: 5px;
       font-size: 11px;
       font-weight: 600;
+      border: 1px solid #bfdbfe;
+    }
+    .loc-tag-pill__icon {
+      line-height: 1;
+      font-size: 11px;
     }
     .loc-tag-pill.is-user-large {
       background: #dcfce7;
@@ -910,6 +918,24 @@
       font-size: 12px;
       font-weight: 800;
       padding: 4px 11px;
+    }
+    .loc-tag-category-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 10px;
+    }
+    .loc-tag-category-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #f8fafc;
+      color: #334155;
     }
     .loc-visited-chip {
       display: inline-flex;
@@ -1780,6 +1806,47 @@
       color: #6b7280;
       font-weight: 600;
     }
+    .loc-map-legend {
+      display: none;
+      width: 100%;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .loc-map-legend.visible {
+      display: flex;
+    }
+    .loc-map-legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 7px;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    }
+    .loc-map-legend-chip:hover {
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .loc-map-legend-chip.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #1d4ed8;
+    }
+    .loc-map-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      flex-shrink: 0;
+    }
     .loc-map-status-row {
       display: none;
       flex-basis: 100%;
@@ -1858,6 +1925,13 @@
       background: #ef4444;
       transform: translate(-50%, -50%) scale(1.12);
       z-index: 3;
+    }
+    .map-cluster-pin {
+      border-width: 3px;
+      font-size: 12px;
+      min-width: 30px;
+      min-height: 30px;
+      padding: 2px;
     }
 
     .loc-bulk-actions {
@@ -2903,8 +2977,8 @@
         <div class="loc-primary-toolbar">
           <div class="loc-primary-main">
             <div class="loc-filter-item">
-              <label for="locSearchName">Search by Name</label>
-              <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search locations..." oninput="applyLocFilters()">
+              <label for="locSearchName">Search Locations</label>
+              <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search by name, city, state, address, or tags..." oninput="applyLocFilters()">
             </div>
             <div class="loc-filter-item">
               <label for="locFilterTag">Tag</label>
@@ -2934,6 +3008,7 @@
                 <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
               </div>
               <button class="loc-mini-btn ui-btn ui-btn--mini" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+              <button class="loc-mini-btn ui-btn ui-btn--mini" id="locMapScopeBtn" onclick="toggleLocMapScope()" hidden>Map: This City</button>
               <button id="copyShareBtn" class="loc-mini-btn ui-btn ui-btn--mini" onclick="copyShareLink()">Copy Share Link</button>
               <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
               <div class="loc-results-count" id="locResultsCount">0 locations</div>
@@ -2951,6 +3026,7 @@
         </div>
 
         <div id="locActiveFilters" class="loc-active-filters" aria-live="polite"></div>
+        <div id="locTagCategoryLegend" class="loc-tag-category-legend" aria-live="polite"></div>
 
         <div class="loc-filter-collapsible" id="locFilterCollapsible">
           <div class="loc-advanced-sections">
@@ -3039,8 +3115,9 @@
         <div id="locationsGrid" class="locations-grid"></div>
         <aside class="loc-map-panel" id="locMapPanel">
           <div class="loc-map-header">
-            <span>Map Pins (synced with list)</span>
+            <span id="locMapTitle">Map Pins (synced with list)</span>
             <span id="locMapCount">0 pins</span>
+            <div id="locMapLegend" class="loc-map-legend" aria-live="polite"></div>
             <div id="locMapStatusRow" class="loc-map-status-row" hidden>
               <span id="locMapStatus" class="loc-map-status"></span>
               <button id="locRetryBasemapBtn" class="loc-map-retry-btn" type="button" onclick="retryLocBasemap()">Retry basemap</button>
@@ -3723,15 +3800,18 @@
     let locationResultsScrollY = 0;
     let locGoogleMap = null;
     let locGoogleMarkers = [];
+    let locGoogleClusterer = null;
     let locMapboxMap = null;
     let locMapboxMarkers = [];
     let locBasemapErrorMessage = '';
     let locRetryBasemapFlashTimer = null;
+    let locMapScope = 'city'; // 'city' | 'all'
     let prefilterTag = '';
     let prefilterLabel = '';
     let prefilterSourceSubtab = '';
     let bypassAdventurePrefilterForLocations = false;
     let activeLocSourceFilter = '';
+    let activeLocSourceTypeFilter = '';
     let familyPreferences = null;
     let activeFamilyPreset = '';
     const locCoreRefreshInFlight = new Set();
@@ -3749,6 +3829,30 @@
     let cityViewerNearbyDedupeNameGeoMiles = CITY_VIEWER_NEARBY_DEDUPE_NAME_GEO_MILES_DEFAULT;
     const cityViewerSmartNearbyState = Object.create(null);
     const cityViewerSmartWeatherState = Object.create(null);
+    const LOC_SOURCE_COLORS = {
+      nature: '#22c55e',
+      coffee: '#b45309',
+      restaurants: '#ef4444',
+      retail: '#8b5cf6',
+      festivals: '#f59e0b',
+      wildlife: '#0ea5e9',
+      entertainment: '#ec4899',
+      web: '#64748b',
+      saved: '#2563eb',
+      default: '#667eea'
+    };
+    const LOC_SOURCE_LABELS = {
+      nature: 'Nature',
+      coffee: 'Coffee',
+      restaurants: 'Dining',
+      retail: 'Retail',
+      festivals: 'Festivals',
+      wildlife: 'Wildlife',
+      entertainment: 'Entertainment',
+      web: 'Web',
+      saved: 'Saved',
+      default: 'Other'
+    };
 
     function runDeferredCityViewerWork(task) {
       if (typeof task !== 'function') return;
@@ -4024,6 +4128,42 @@
         if (!map.has(token)) map.set(token, { text: token, isAdded: true });
       });
       return Array.from(map.values());
+    }
+
+    function renderLocationTagPill(entry) {
+      const text = String((entry && entry.text) || '').trim();
+      if (!text) return '';
+      if (typeof window.renderTagPillHtml === 'function') {
+        const html = window.renderTagPillHtml(text, { baseClass: 'loc-tag-pill' });
+        if (entry && entry.isAdded) {
+          return html.replace('class="loc-tag-pill"', 'class="loc-tag-pill is-user-large"');
+        }
+        return html;
+      }
+      return `<span class="loc-tag-pill${entry && entry.isAdded ? ' is-user-large' : ''}">${escHtml(text)}</span>`;
+    }
+
+    function renderLocTagCategoryLegend(locations) {
+      const legend = document.getElementById('locTagCategoryLegend');
+      if (!legend) return;
+      const tags = [];
+      (Array.isArray(locations) ? locations : []).forEach((loc) => {
+        getLocationDerivedTags(loc).forEach((entry) => {
+          const text = String((entry && entry.text) || '').trim();
+          if (text) tags.push(text);
+        });
+      });
+      if (!tags.length || typeof window.getTagLegendTokens !== 'function') {
+        legend.innerHTML = '';
+        return;
+      }
+      const tokens = window.getTagLegendTokens(tags);
+      legend.innerHTML = tokens.map((token) => (
+        `<span class="loc-tag-category-chip" style="background:${token.bg};color:${token.color};border-color:${token.border};">` +
+        `<span>${token.icon}</span>` +
+        `<span>${escHtml(token.category)} (${token.count})</span>` +
+        `</span>`
+      )).join('');
     }
 
     function getLocationGeoText(loc) {
@@ -4658,6 +4798,31 @@
         source === 'google' || source === 'web' || source === 'places' || source === 'merged' ||
         sourceLabel.indexOf('web recommendation') >= 0;
       return isWebRecommendation ? 'web' : 'saved';
+    }
+
+    function getLocSourceType(loc) {
+      const srcLabel = String((loc && loc.sourceLabel) || '').toLowerCase();
+      if (srcLabel.includes('nature')) return 'nature';
+      if (srcLabel.includes('coffee')) return 'coffee';
+      if (srcLabel.includes('restaurant')) return 'restaurants';
+      if (srcLabel.includes('retail')) return 'retail';
+      if (srcLabel.includes('festival')) return 'festivals';
+      if (srcLabel.includes('wildlife')) return 'wildlife';
+      if (srcLabel.includes('entertainment')) return 'entertainment';
+      return getLocSourceKey(loc);
+    }
+
+    function getLocSourceColor(sourceType) {
+      const key = String(sourceType || '').trim().toLowerCase();
+      return LOC_SOURCE_COLORS[key] || LOC_SOURCE_COLORS.default;
+    }
+
+    function getPointSourceType(pointLike) {
+      if (!pointLike) return 'default';
+      if (pointLike.sourceType) return pointLike.sourceType;
+      if (pointLike.__sourceType) return pointLike.__sourceType;
+      if (pointLike.__loc) return getLocSourceType(pointLike.__loc);
+      return 'default';
     }
 
     function getLocationSourcePriority(loc) {
@@ -5414,6 +5579,15 @@
       applyLocFilters();
     }
 
+    function toggleLocSourceTypeFilter(sourceType) {
+      const next = String(sourceType || '').trim().toLowerCase();
+      if (!locSplitView) {
+        toggleSplitView();
+      }
+      activeLocSourceTypeFilter = activeLocSourceTypeFilter === next ? '' : next;
+      applyLocFilters();
+    }
+
     function getLocFilterCriteria() {
       return {
         searchTerm: String((document.getElementById('locSearchName') && document.getElementById('locSearchName').value) || '').trim().toLowerCase(),
@@ -5423,6 +5597,7 @@
         openNowOnly: !!(document.getElementById('locFilterOpenNow') && document.getElementById('locFilterOpenNow').checked),
         closingSoonOnly: !!(document.getElementById('locFilterClosingSoon') && document.getElementById('locFilterClosingSoon').checked),
         sourceFilter: String(activeLocSourceFilter || '').trim().toLowerCase(),
+        sourceTypeFilter: String(activeLocSourceTypeFilter || '').trim().toLowerCase(),
         bypassAdventurePrefilter: shouldBypassAdventurePrefilterForLocations(),
         familyPreferences: normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences())
       };
@@ -5431,19 +5606,25 @@
     function locationMatchesLocCriteria(loc, criteria, options) {
       const settings = options || {};
       const filters = criteria || getLocFilterCriteria();
-      if (!filters.bypassAdventurePrefilter && !locationMatchesPrefilter(loc)) return false;
+      if (!settings.ignoreAdventurePrefilter && !filters.bypassAdventurePrefilter && !locationMatchesPrefilter(loc)) return false;
       const name = String(locVal(loc, 0, 'name')).toLowerCase();
+      const city = String(locVal(loc, 10, 'city') || loc.city || '').toLowerCase();
+      const state = String(locVal(loc, 9, 'state') || loc.state || '').toLowerCase();
+      const address = String(locVal(loc, 11, 'address') || loc.address || '').toLowerCase();
       const tags = getLocationTags(loc).join(',').toLowerCase();
+      const sourceLabel = String((loc && loc.sourceLabel) || '').toLowerCase();
       const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
       const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
       const openInfo = getOpenInfoForToday(formatLocationHoursForDisplay(locVal(loc, 5, 'hours')));
-      if (filters.searchTerm && !name.includes(filters.searchTerm)) return false;
+      const searchText = [name, city, state, address, tags, sourceLabel].join(' | ');
+      if (filters.searchTerm && !searchText.includes(filters.searchTerm)) return false;
       if (filters.diffFilter && !difficulty.includes(filters.diffFilter)) return false;
       if (filters.costFilter && !cost.includes(filters.costFilter)) return false;
       if (filters.tagFilter && !tags.includes(filters.tagFilter)) return false;
       if (filters.openNowOnly && !openInfo.isOpen) return false;
       if (filters.closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= 120)) return false;
       if (!settings.ignoreSourceFilter && filters.sourceFilter && getLocSourceKey(loc) !== filters.sourceFilter) return false;
+      if (filters.sourceTypeFilter && getLocSourceType(loc) !== filters.sourceTypeFilter) return false;
 
       const prefs = normalizeFamilyPreferences(filters.familyPreferences || familyPreferences || loadFamilyPreferences());
       const driveMinutes = getLocationDriveMinutesForFamily(loc);
@@ -5510,11 +5691,13 @@
         openNow: document.getElementById('locFilterOpenNow').checked,
         closingSoon: document.getElementById('locFilterClosingSoon').checked,
         sourceFilter: activeLocSourceFilter,
+        sourceTypeFilter: activeLocSourceTypeFilter,
         prefilterBypass: shouldBypassAdventurePrefilterForLocations(),
         sortBy: document.getElementById('locSortBy').value,
         sortOrder: locSortOrder,
         quickTag: activeLocQuickTag,
         splitView: locSplitView,
+        mapScope: locMapScope,
         familyPreferences: normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences()),
         familyPresetKey: activeFamilyPreset || ''
       };
@@ -5529,11 +5712,13 @@
       document.getElementById('locFilterOpenNow').checked = Boolean(state.openNow);
       document.getElementById('locFilterClosingSoon').checked = Boolean(state.closingSoon);
       activeLocSourceFilter = state.sourceFilter === 'web' ? 'web' : (state.sourceFilter === 'saved' ? 'saved' : '');
+      activeLocSourceTypeFilter = String(state.sourceTypeFilter || '').trim().toLowerCase();
       bypassAdventurePrefilterForLocations = Boolean(state.prefilterBypass) && Boolean(prefilterTag);
       document.getElementById('locSortBy').value = state.sortBy || 'name';
       locSortOrder = state.sortOrder === 'desc' ? 'desc' : 'asc';
       document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
       activeLocQuickTag = state.quickTag || null;
+      locMapScope = state.mapScope === 'all' ? 'all' : 'city';
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
       });
@@ -6282,14 +6467,15 @@
       const searchName = String(state.searchName || '').trim();
       const quickTag = String(state.quickTag || '').trim();
       const sourceFilter = String(state.sourceFilter || '').trim();
+      const sourceTypeFilter = String(state.sourceTypeFilter || '').trim();
 
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && state.openNow && !state.closingSoon && state.sortBy === 'driveTime' && state.sortOrder === 'asc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !sourceTypeFilter && state.openNow && !state.closingSoon && state.sortBy === 'driveTime' && state.sortOrder === 'asc') {
         return 'closest-now';
       }
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !state.openNow && !state.closingSoon && state.sortBy === 'bestValue' && state.sortOrder === 'desc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !sourceTypeFilter && !state.openNow && !state.closingSoon && state.sortBy === 'bestValue' && state.sortOrder === 'desc') {
         return 'best-value';
       }
-      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !state.openNow && !state.closingSoon && state.sortBy === 'mostUnique' && state.sortOrder === 'desc') {
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !sourceFilter && !sourceTypeFilter && !state.openNow && !state.closingSoon && state.sortBy === 'mostUnique' && state.sortOrder === 'desc') {
         return 'most-unique';
       }
       return '';
@@ -6311,6 +6497,7 @@
       document.getElementById('locFilterOpenNow').checked = false;
       activeLocQuickTag = null;
       activeLocSourceFilter = '';
+      activeLocSourceTypeFilter = '';
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
 
       if (kind === 'closest-now') {
@@ -6918,7 +7105,7 @@
               ${renderRatingBadgeHtml(rating, ratingCount)}
             </div>
           </div>
-          ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
+          ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => renderLocationTagPill(entry)).join('')}</div>` : ''}
           ${refreshBadgeText ? `<div class="loc-refresh-badge">⟳ ${escHtml(refreshBadgeText)}</div>` : ''}
           ${editState.visited ? `<div class="loc-visited-chip">✅ Visited${visitCount > 0 ? ` · Visits: ${visitCount}` : ''}</div>` : ''}
           ${noteText ? `<div class="loc-note-block">📝 ${escHtml(noteText)}</div>` : ''}
@@ -7030,6 +7217,102 @@
       const btn = document.getElementById('locSplitToggleBtn');
       layout.classList.toggle('split', locSplitView);
       btn.textContent = locSplitView ? 'Hide Map' : 'Show Map';
+      updateLocMapScopeButton();
+    }
+
+    function toggleLocMapScope() {
+      locMapScope = locMapScope === 'all' ? 'city' : 'all';
+      updateLocMapScopeButton();
+      if (locSplitView) renderLocMap(lastFilteredLocations);
+      updateUrlFromState();
+    }
+
+    function updateLocMapScopeButton() {
+      const btn = document.getElementById('locMapScopeBtn');
+      const title = document.getElementById('locMapTitle');
+      if (btn) {
+        const show = locSplitView && !!currentCityKey;
+        btn.hidden = !show;
+        btn.textContent = locMapScope === 'all' ? 'Map: All Tables' : 'Map: This City';
+        btn.title = locMapScope === 'all'
+          ? 'Map is showing all tables across all cities. Click to switch back to this city.'
+          : 'Map is showing this city only. Click to switch to all tables across all cities.';
+      }
+      if (title) {
+        title.textContent = locMapScope === 'all'
+          ? 'Map Pins (all tables across all cities)'
+          : 'Map Pins (synced with list)';
+      }
+    }
+
+    function getMapLocationsForScope(filteredLocations) {
+      if (locMapScope !== 'all') {
+        return Array.isArray(filteredLocations) ? filteredLocations : [];
+      }
+      const allLocations = Array.isArray(adventuresData) ? adventuresData : [];
+      const criteria = getLocFilterCriteria();
+      return allLocations.filter((loc) => locationMatchesLocCriteria(loc, criteria, {
+        ignoreAdventurePrefilter: true
+      }));
+    }
+
+    function renderLocMapLegend(locations) {
+      const legend = document.getElementById('locMapLegend');
+      if (!legend) return;
+      const list = Array.isArray(locations) ? locations : [];
+      if (!list.length) {
+        legend.classList.remove('visible');
+        legend.innerHTML = '';
+        return;
+      }
+
+      const counts = {};
+      list.forEach((loc) => {
+        const sourceType = getLocSourceType(loc) || 'default';
+        counts[sourceType] = (counts[sourceType] || 0) + 1;
+      });
+
+      const preferredOrder = ['nature', 'coffee', 'restaurants', 'retail', 'festivals', 'wildlife', 'entertainment', 'saved', 'web', 'default'];
+      const sourceKeys = Object.keys(counts).sort((a, b) => {
+        const ai = preferredOrder.indexOf(a);
+        const bi = preferredOrder.indexOf(b);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return String(a).localeCompare(String(b));
+      });
+
+      legend.innerHTML = sourceKeys.map((key) => {
+        const label = LOC_SOURCE_LABELS[key] || key;
+        const color = getLocSourceColor(key);
+        const total = counts[key] || 0;
+        const isActive = activeLocSourceTypeFilter === key;
+        const title = isActive
+          ? `Clear ${label} filter (${total})`
+          : `Filter to ${label} (${total})`;
+        return '<button type="button" class="loc-map-legend-chip' + (isActive ? ' active' : '') + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" onclick="toggleLocSourceTypeFilter(\'' + escAttr(key) + '\')" title="' + escAttr(title) + '">' +
+          '<span class="loc-map-legend-dot" style="background:' + escAttr(color) + '"></span>' +
+          '<span>' + escHtml(label) + ' (' + total + ')</span>' +
+          '</button>';
+      }).join('');
+      legend.classList.add('visible');
+    }
+
+    function ensureCityMarkerClustererLoaded() {
+      if (window.markerClusterer && window.markerClusterer.MarkerClusterer) return Promise.resolve(true);
+      if (window.__cvMarkerClustererPromise) return window.__cvMarkerClustererPromise;
+      window.__cvMarkerClustererPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => reject(new Error('Marker clusterer failed to load.'));
+        document.head.appendChild(script);
+      }).catch((error) => {
+        window.__cvMarkerClustererPromise = null;
+        throw error;
+      });
+      return window.__cvMarkerClustererPromise;
     }
 
     function ensureCityMapsApiLoaded() {
@@ -7149,7 +7432,10 @@
       const canvas = document.getElementById('locMapCanvas');
       const count = document.getElementById('locMapCount');
       if (!canvas || !count) return;
-      count.textContent = `${locations.length} pins`;
+      const mapLocations = getMapLocationsForScope(locations);
+      count.textContent = `${mapLocations.length} pins`;
+      renderLocMapLegend(mapLocations);
+      updateLocMapScopeButton();
       if (!locSplitView) {
         setLocMapStatus('');
       }
@@ -7163,11 +7449,28 @@
         locGoogleMarkers = [];
         canvas.innerHTML = '';
       }
-       if (!locSplitView || locations.length === 0) return;
+       if (!locSplitView) return;
+       if (mapLocations.length === 0) {
+         locGoogleMarkers.forEach(m => m.setMap(null));
+         locGoogleMarkers = [];
+         if (locGoogleClusterer) {
+           locGoogleClusterer.setMap(null);
+           locGoogleClusterer = null;
+         }
+         locMapboxMarkers.forEach(m => m.remove());
+         locMapboxMarkers = [];
+         return;
+       }
 
-       const points = locations.map(loc => {
+       const points = mapLocations.map(loc => {
          const locId = getLocId(loc);
-         return { locId, loc, point: getLocPoint(loc, locId), name: String(locVal(loc, 0, 'name') || 'Location') };
+         return {
+           locId,
+           loc,
+           point: getLocPoint(loc, locId),
+           name: String(locVal(loc, 0, 'name') || 'Location'),
+           sourceType: getLocSourceType(loc)
+         };
        });
 
         if (renderGoogleMap(points)) {
@@ -7275,17 +7578,71 @@
 
       locGoogleMarkers.forEach(m => m.setMap(null));
       locGoogleMarkers = [];
+      if (locGoogleClusterer) {
+        locGoogleClusterer.setMap(null);
+        locGoogleClusterer = null;
+      }
 
       geoPoints.forEach(item => {
         const marker = new window.google.maps.Marker({
           map: locGoogleMap,
           position: { lat: item.point.y, lng: item.point.x },
-          title: item.name
+          title: item.name,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: getLocSourceColor(item.sourceType),
+            fillOpacity: 0.9,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+            scale: 7
+          }
         });
         marker.__locId = item.locId;
+        marker.__sourceType = item.sourceType;
+        marker.__loc = item.loc;
         marker.addListener('click', () => setActiveLocation(item.locId, true));
         locGoogleMarkers.push(marker);
       });
+
+      if (locGoogleMarkers.length > 2) {
+        ensureCityMarkerClustererLoaded().then(() => {
+          if (!window.markerClusterer || !window.markerClusterer.MarkerClusterer) return;
+          const MarkerClusterer = window.markerClusterer.MarkerClusterer;
+          locGoogleClusterer = new MarkerClusterer({
+            map: locGoogleMap,
+            markers: locGoogleMarkers,
+            renderer: {
+              render: ({ count, position, markers }) => {
+                const sourceCounts = {};
+                (markers || []).forEach((m) => {
+                  const sourceType = getPointSourceType(m);
+                  sourceCounts[sourceType] = (sourceCounts[sourceType] || 0) + 1;
+                });
+                const dominant = Object.keys(sourceCounts).sort((a, b) => (sourceCounts[b] || 0) - (sourceCounts[a] || 0))[0] || 'default';
+                return new window.google.maps.Marker({
+                  position,
+                  label: {
+                    text: String(count),
+                    color: '#ffffff',
+                    fontWeight: '700'
+                  },
+                  icon: {
+                    path: window.google.maps.SymbolPath.CIRCLE,
+                    fillColor: getLocSourceColor(dominant),
+                    fillOpacity: 0.94,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 3,
+                    scale: Math.max(14, Math.min(28, 12 + Math.log2(Math.max(2, count)) * 3.2))
+                  },
+                  zIndex: Number(window.google.maps.Marker.MAX_ZINDEX || 1000) + count
+                });
+              }
+            }
+          });
+        }).catch((error) => {
+          console.warn('⚠️ Marker clusterer unavailable; showing individual markers only.', error && error.message ? error.message : error);
+        });
+      }
 
       const bounds = new window.google.maps.LatLngBounds();
       geoPoints.forEach(item => bounds.extend({ lat: item.point.y, lng: item.point.x }));
@@ -7325,6 +7682,7 @@
         el.type = 'button';
         el.title = item.name;
         el.textContent = '•';
+        el.style.background = getLocSourceColor(item.sourceType);
         el.onclick = () => setActiveLocation(item.locId, true);
 
         const marker = new window.mapboxgl.Marker(el)
@@ -7363,6 +7721,7 @@
          pin.dataset.locId = item.locId;
          pin.title = item.name;
          pin.textContent = String((idx % 9) + 1);
+         pin.style.background = getLocSourceColor(item.sourceType);
          const left = item.point.geo ? (5 + ((item.point.x - minX) / xRange) * 90) : item.point.x;
          const top = item.point.geo ? (95 - ((item.point.y - minY) / yRange) * 90) : item.point.y;
          pin.style.left = `${left}%`;
@@ -7396,6 +7755,14 @@
     function updateMapHighlights() {
       locGoogleMarkers.forEach(marker => {
         marker.setOpacity(marker.__locId === activeLocId ? 1 : 0.65);
+        marker.setIcon({
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: marker.__locId === activeLocId ? '#ef4444' : getLocSourceColor(getPointSourceType(marker)),
+          fillOpacity: marker.__locId === activeLocId ? 1 : 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: marker.__locId === activeLocId ? 3 : 2,
+          scale: marker.__locId === activeLocId ? 9 : 7
+        });
       });
       locMapboxMarkers.forEach(marker => {
         const el = marker.getElement && marker.getElement();
@@ -7874,6 +8241,7 @@
       if (sortBtn) sortBtn.textContent = '↑';
       activeLocQuickTag = null;
       activeLocSourceFilter = '';
+      activeLocSourceTypeFilter = '';
       bypassAdventurePrefilterForLocations = false;
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
       setSplitView(false);
@@ -7890,6 +8258,7 @@
       const openNow = Boolean(document.getElementById('locFilterOpenNow')?.checked);
       const closingSoon = Boolean(document.getElementById('locFilterClosingSoon')?.checked);
       const sourceFilter = String(activeLocSourceFilter || '').trim();
+      const sourceTypeFilter = String(activeLocSourceTypeFilter || '').trim();
       const sortBy = String(document.getElementById('locSortBy')?.value || 'name').trim();
       const prefs = normalizeFamilyPreferences(familyPreferences || loadFamilyPreferences());
 
@@ -7906,6 +8275,7 @@
       if (activeLocQuickTag) chips.push({ key: 'quickTag', label: `Quick tag: ${activeLocQuickTag}` });
       else if (tagText) chips.push({ key: 'tagText', label: `Tag: ${tagText}` });
       if (sourceFilter) chips.push({ key: 'sourceFilter', label: `Source: ${sourceFilter}` });
+      if (sourceTypeFilter) chips.push({ key: 'sourceTypeFilter', label: `Category: ${sourceTypeFilter}` });
       if (openNow) chips.push({ key: 'openNow', label: 'Open now' });
       if (closingSoon) chips.push({ key: 'closingSoon', label: 'Closing within 2h' });
       if (sortBy !== 'name' || locSortOrder !== 'asc') chips.push({ key: 'sort', label: `Sort: ${sortBy} (${locSortOrder})` });
@@ -7938,6 +8308,7 @@
         document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
       }
       if (key === 'sourceFilter') activeLocSourceFilter = '';
+      if (key === 'sourceTypeFilter') activeLocSourceTypeFilter = '';
       if (key === 'openNow') document.getElementById('locFilterOpenNow').checked = false;
       if (key === 'closingSoon') document.getElementById('locFilterClosingSoon').checked = false;
       if (key === 'sort') {
@@ -8137,6 +8508,7 @@
       renderLocPrefilterScopeToggle();
       saveLastLocState();
       renderActiveFilterChips();
+      renderLocTagCategoryLegend(results);
       renderSmartPresetState();
       renderDataFreshnessBadge();
       renderMixedSourceDiagnosticsPanel(cityEntry, baseResults, results);
@@ -8209,15 +8581,7 @@
         const refreshBadgeText = getLocationRefreshBadgeText(locId);
 
         // Derive source type for the left-stripe accent
-        const srcLabel = String((loc && loc.sourceLabel) || '').toLowerCase();
-        const locSourceType = srcLabel.includes('nature') ? 'nature'
-          : srcLabel.includes('coffee') ? 'coffee'
-          : srcLabel.includes('restaurant') ? 'restaurants'
-          : srcLabel.includes('retail') ? 'retail'
-          : srcLabel.includes('festival') ? 'festivals'
-          : srcLabel.includes('wildlife') ? 'wildlife'
-          : srcLabel.includes('entertainment') ? 'entertainment'
-          : '';
+        const locSourceType = getLocSourceType(loc);
 
         return `
           <div class="loc-card" data-loc-id="${escAttr(locId)}" data-source-type="${locSourceType}" data-location-origin="${escAttr(originKey)}" role="button" tabindex="0" title="Opens detail view" aria-description="Opens detail view" style="animation-delay:${locAnimDelay}" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
@@ -8233,7 +8597,7 @@
                 ${renderRatingBadgeHtml(rating, ratingCount)}
               </div>
             </div>
-            ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
+            ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => renderLocationTagPill(entry)).join('')}</div>` : ''}
             ${refreshBadgeText ? `<div class="loc-refresh-badge">⟳ ${escHtml(refreshBadgeText)}</div>` : ''}
             ${editState.visited ? `<div class="loc-visited-chip">✅ Visited${visitCount > 0 ? ` · Visits: ${visitCount}` : ''}</div>` : ''}
             ${noteText ? `<div class="loc-note-block">📝 ${escHtml(noteText)}</div>` : ''}
@@ -8274,6 +8638,7 @@
       activeLocId = null;
       activeLocQuickTag = null;
       activeLocSourceFilter = '';
+      activeLocSourceTypeFilter = '';
       bypassAdventurePrefilterForLocations = false;
       activeLocationDetailId = null;
       lastRankBadgeIndex = {};
@@ -8296,6 +8661,7 @@
       document.getElementById('locFilterClosingSoon').checked = false;
       document.getElementById('locSortBy').value = 'name';
       locSortOrder = 'asc';
+      locMapScope = 'city';
       document.getElementById('locSortOrderBtn').textContent = '↑';
       setSplitView(false);
       renderLocPrefilterScopeToggle();
@@ -8328,6 +8694,8 @@
       currentCityKey = null;
       activeLocId = null;
       activeLocationDetailId = null;
+      locMapScope = 'city';
+      updateLocMapScopeButton();
       const catBar = document.getElementById('locCategoryBar');
       if (catBar) { catBar.classList.remove('visible'); catBar.innerHTML = ''; }
       document.getElementById('locationsPage').style.display = 'none';

@@ -327,6 +327,113 @@ const DISABLED_TAG_OPTIONS = new Set([
   'Dining'
 ]);
 
+const TAG_CATEGORY_STYLES = {
+  'Activities': { bg: '#dbeafe', color: '#1e3a8a', border: '#93c5fd', icon: '🥾' },
+  'Locations': { bg: '#dcfce7', color: '#166534', border: '#86efac', icon: '📍' },
+  'Food & Dining': { bg: '#ffedd5', color: '#9a3412', border: '#fdba74', icon: '🍽️' },
+  'Shopping': { bg: '#f3e8ff', color: '#6b21a8', border: '#d8b4fe', icon: '🛍️' },
+  'Beverages': { bg: '#e0f2fe', color: '#0c4a6e', border: '#7dd3fc', icon: '🥤' },
+  'Social & Discovery': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', icon: '✨' },
+  'Custom': { bg: '#ede9fe', color: '#5b21b6', border: '#c4b5fd', icon: '🏷️' },
+  'Other': { bg: '#f3f4f6', color: '#374151', border: '#d1d5db', icon: '🏷️' }
+};
+
+function escapeTagHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function findTagConfigCaseInsensitive(tagName) {
+  const raw = String(tagName || '').trim();
+  if (!raw) return null;
+  if (TAG_CONFIG[raw]) return TAG_CONFIG[raw];
+  const lower = raw.toLowerCase();
+  for (const [name, config] of Object.entries(TAG_CONFIG)) {
+    if (String(name || '').toLowerCase() === lower) {
+      return config;
+    }
+  }
+  return null;
+}
+
+function resolveTagCategory(tagName, config) {
+  const explicit = String((config && config.category) || '').trim();
+  if (explicit) return explicit;
+  const fromHierarchy = TAG_HIERARCHY && typeof TAG_HIERARCHY.getTagCategory === 'function'
+    ? TAG_HIERARCHY.getTagCategory(tagName)
+    : null;
+  return String((fromHierarchy && fromHierarchy.category) || '').trim() || 'Other';
+}
+
+function getCategoryStyle(categoryName) {
+  const key = String(categoryName || '').trim();
+  if (TAG_CATEGORY_STYLES[key]) return TAG_CATEGORY_STYLES[key];
+  const lower = key.toLowerCase();
+  for (const [name, style] of Object.entries(TAG_CATEGORY_STYLES)) {
+    if (String(name || '').toLowerCase() === lower) return style;
+  }
+  return TAG_CATEGORY_STYLES.Other;
+}
+
+function getTagVisualMetadata(tagName) {
+  const rawName = String(tagName || '').trim();
+  const config = findTagConfigCaseInsensitive(rawName);
+  const custom = !config && window.customTagRegistry && typeof window.customTagRegistry.getCustomTag === 'function'
+    ? window.customTagRegistry.getCustomTag(rawName)
+    : null;
+  const source = custom || config || {};
+  const category = resolveTagCategory(rawName, source);
+  const categoryStyle = getCategoryStyle(category);
+
+  return {
+    tag: rawName,
+    icon: source.icon || categoryStyle.icon || '🏷️',
+    bg: source.bg || categoryStyle.bg,
+    color: source.color || categoryStyle.color,
+    border: source.border || categoryStyle.border,
+    category,
+    isCustom: !!custom,
+    isKnownTag: !!(config || custom || (category && category !== 'Other'))
+  };
+}
+
+function renderTagPillHtml(tagName, options = {}) {
+  const config = getTagVisualMetadata(tagName);
+  const baseClass = String(options.baseClass || 'tag-pill').trim();
+  const includeIcon = options.includeIcon !== false;
+  const iconHtml = includeIcon ? `<span class="${baseClass}__icon">${escapeTagHtml(config.icon)}</span>` : '';
+  const labelHtml = `<span class="${baseClass}__label">${escapeTagHtml(tagName)}</span>`;
+  return `<span class="${escapeTagHtml(baseClass)}" data-tag="${escapeTagHtml(tagName)}" data-tag-category="${escapeTagHtml(config.category)}" style="background:${escapeTagHtml(config.bg)};color:${escapeTagHtml(config.color)};border:1px solid ${escapeTagHtml(config.border)};">${iconHtml}${labelHtml}</span>`;
+}
+
+function getTagLegendTokens(tags = []) {
+  const grouped = new Map();
+  (Array.isArray(tags) ? tags : []).forEach((tag) => {
+    const meta = getTagVisualMetadata(tag);
+    const key = String(meta.category || 'Other').trim() || 'Other';
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        category: key,
+        icon: meta.icon,
+        bg: meta.bg,
+        color: meta.color,
+        border: meta.border,
+        count: 0
+      });
+    }
+    grouped.get(key).count += 1;
+  });
+  return Array.from(grouped.values()).sort((a, b) => a.category.localeCompare(b.category));
+}
+
+function getAllTagCategories() {
+  return Object.keys(TAG_CATEGORY_STYLES).filter((name) => name !== 'Other');
+}
+
 function isDisabledTagOption(tagName) {
   const raw = String(tagName || '').trim();
   if (!raw) return false;
@@ -349,11 +456,13 @@ function cleanupDisabledTagList(tags) {
  * Get tag styling information
  */
 function getTagStyle(tagName) {
-  return TAG_CONFIG[tagName] || {
-    icon: '🏷️',
-    bg: '#e0e7ff',
-    color: '#312e81',
-    border: '#c7d2fe'
+  const meta = getTagVisualMetadata(tagName);
+  return {
+    icon: meta.icon,
+    bg: meta.bg,
+    color: meta.color,
+    border: meta.border,
+    category: meta.category
   };
 }
 
@@ -3063,6 +3172,14 @@ class TagDeduplicator {
 
 // Create global instance
 window.tagDeduplicator = window.tagDeduplicator || new TagDeduplicator();
+window.getTagVisualMetadata = window.getTagVisualMetadata || getTagVisualMetadata;
+window.renderTagPillHtml = window.renderTagPillHtml || renderTagPillHtml;
+window.getTagLegendTokens = window.getTagLegendTokens || getTagLegendTokens;
+window.getTagCategoryPalette = window.getTagCategoryPalette || getCategoryStyle;
+window.getAllTagCategories = window.getAllTagCategories || getAllTagCategories;
+// Expose alias / normalization helpers for cross-module use
+window.resolveTagAlias = window.resolveTagAlias || resolveTagAlias;
+window.normalizeTags = window.normalizeTags || normalizeTags;
 
 // ============================================================
 // INITIALIZATION
@@ -3098,6 +3215,11 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // Utilities
     getTagStyle,
+    getTagVisualMetadata,
+    renderTagPillHtml,
+    getTagLegendTokens,
+    getTagCategoryPalette: getCategoryStyle,
+    getAllTagCategories,
     renderTagBadge,
     getAllAvailableTags,
     getFromContext,
