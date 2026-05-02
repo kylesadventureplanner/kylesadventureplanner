@@ -7514,7 +7514,9 @@
 
          try {
             const msalConfig = {
-              auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: POPUP_REDIRECT_URI }
+              auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: POPUP_REDIRECT_URI },
+              // Persist auth across tabs so standalone/new-tab tools stay signed in.
+              cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true }
             };
            const instance = new msal.PublicClientApplication(msalConfig);
            window.msalInstance = instance;
@@ -11721,9 +11723,16 @@
 
   window.rehydrateAuthState = async function () {
     try {
-      if (activeAccount && accessToken) return true;
+      await msalInitPromise;
+      if (activeAccount && accessToken) {
+        syncAuthGlobals();
+        return true;
+      }
       const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
-      if (!cached) return false;
+      if (!cached) {
+        syncAuthGlobals();
+        return false;
+      }
 
       activeAccount = cached;
       msalInstance.setActiveAccount(activeAccount);
@@ -11734,8 +11743,10 @@
       });
 
       accessToken = tokenResponse?.accessToken || null;
+      syncAuthGlobals();
       return !!accessToken;
     } catch (_err) {
+      syncAuthGlobals();
       return false;
     }
   };

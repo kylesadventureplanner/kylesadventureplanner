@@ -129,6 +129,29 @@ test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ p
   expect(ok).toBeTruthy();
 });
 
+test('outdoors explorer URL opens Adventure Challenge explorer view', async ({ page }) => {
+  await page.goto('/?tab=visited-locations&visitedSubtab=outdoors&visitedView=explorer');
+  await waitForInteractive(page);
+
+  const routed = await page.evaluate(() => {
+    const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
+    const outdoorsSubtab = document.getElementById('visitedProgressTab-outdoors');
+    const explorerView = document.querySelector('#visitedProgressPane-outdoors [data-visited-subtab-view="explorer"]');
+    return {
+      activePrimaryTab: activePrimary ? activePrimary.getAttribute('data-tab') : '',
+      outdoorsSelected: Boolean(outdoorsSubtab && outdoorsSubtab.getAttribute('aria-selected') === 'true'),
+      explorerViewVisible: Boolean(explorerView && explorerView.hidden === false && explorerView.getAttribute('aria-hidden') === 'false')
+    };
+  });
+
+  const ok = routed.activePrimaryTab === 'visited-locations'
+    && routed.outdoorsSelected
+    && routed.explorerViewVisible;
+
+  recordCheck('outdoors-explorer-url:routes-to-explorer-view', ok, routed);
+  expect(ok).toBeTruthy();
+});
+
 test('hidden overlay probe catches interception', async ({ page }) => {
   await openNatureOverviewView(page);
 
