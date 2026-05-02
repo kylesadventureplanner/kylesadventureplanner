@@ -341,8 +341,9 @@
       subtabExplorer: {},
        visitRecords: [],
        explorerCardState: {},
-       visitLogWindowRef: null,
-        urlLaunchApplied: false,
+        visitLogWindowRef: null,
+         urlLaunchApplied: false,
+         urlLaunchRetryCount: 0,
         routePersistenceTimers: {},
         parserSession: {
          baseline: {},
@@ -626,18 +627,42 @@
 
   async function applyVisitedStandaloneLaunchState(root) {
     if (state.urlLaunchApplied) return;
-    state.urlLaunchApplied = true;
-    if (!root) return;
 
     const launch = getVisitedStandaloneLaunchState();
-    if (launch.requestedTab && launch.requestedTab !== 'visited-locations') return;
-    if (!launch.subtabKey || launch.view !== 'explorer') return;
-    if (launch.subtabKey === 'bike-trails') return;
-
-    if (state.activeProgressSubTab !== launch.subtabKey) {
-      setActiveProgressSubTab(root, launch.subtabKey);
+    if (launch.requestedTab && launch.requestedTab !== 'visited-locations') {
+      state.urlLaunchApplied = true;
+      return;
     }
-    await openSubtabExplorer(root, launch.subtabKey);
+    if (!launch.subtabKey || launch.view !== 'explorer') {
+      state.urlLaunchApplied = true;
+      return;
+    }
+    if (launch.subtabKey === 'bike-trails') {
+      state.urlLaunchApplied = true;
+      return;
+    }
+
+    if (!root) {
+      state.urlLaunchRetryCount += 1;
+      if (state.urlLaunchRetryCount <= 20) {
+        window.setTimeout(() => {
+          applyVisitedStandaloneLaunchState(document.getElementById('visitedLocationsRoot'));
+        }, 120);
+      }
+      return;
+    }
+
+    try {
+      if (state.activeProgressSubTab !== launch.subtabKey) {
+        setActiveProgressSubTab(root, launch.subtabKey);
+      }
+      await openSubtabExplorer(root, launch.subtabKey);
+    } catch (_error) {
+      // Fall back to view activation even if explorer data loading hits a startup race.
+      setExplorerView(root, launch.subtabKey, 'explorer');
+    } finally {
+      state.urlLaunchApplied = true;
+    }
   }
 
   function ensureInlineSubtabToolView(root, subtabKey, type) {
