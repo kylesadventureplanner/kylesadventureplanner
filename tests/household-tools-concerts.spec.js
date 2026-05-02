@@ -61,11 +61,6 @@ test.describe('Household Tools Concerts', () => {
 
     await page.addInitScript(() => {
       window.accessToken = 'test-access-token';
-      localStorage.setItem('kap_user_gps', JSON.stringify({
-        latitude: 37.7749,
-        longitude: -122.4194,
-        timestamp: Date.now()
-      }));
     });
 
     await page.route('https://graph.microsoft.com/**', async (route) => {
@@ -165,7 +160,7 @@ test.describe('Household Tools Concerts', () => {
       }
       if (url.includes('/tables/Upcoming_Concerts/rows')) {
         return respondJson(makeRows([
-          ['Nine Inch Nails', '2026-08-13', 'Thursday', 'Fox Theater', 'Oakland', 'CA']
+          ['Nine Inch Nails', '2026-08-13', 'Thursday', 'The Orange Peel', 'Asheville', 'NC']
         ]));
       }
 
@@ -175,20 +170,35 @@ test.describe('Household Tools Concerts', () => {
     await page.route('https://itunes.apple.com/search**', async (route) => {
       const url = new URL(route.request().url());
       const term = String(url.searchParams.get('term') || '').toLowerCase();
+      const entity = String(url.searchParams.get('entity') || '').toLowerCase();
       let results = [];
       if (term.includes('queens')) {
-        results = [
-          {
-            artistName: 'Queens of the Stone Age',
-            primaryGenreName: 'Alternative Rock',
-            artistLinkUrl: 'https://music.apple.com/us/artist/queens-of-the-stone-age/62820413'
-          },
-          {
-            artistName: 'Queen',
-            primaryGenreName: 'Rock',
-            artistLinkUrl: 'https://music.apple.com/us/artist/queen/3296287'
-          }
-        ];
+        if (entity === 'song') {
+          results = [
+            { artistName: 'Queens of the Stone Age', trackName: 'No One Knows' },
+            { artistName: 'Queens of the Stone Age', trackName: 'Go With the Flow' },
+            { artistName: 'Queens of the Stone Age', trackName: 'Little Sister' }
+          ];
+        } else if (entity === 'album') {
+          results = [
+            { artistName: 'Queens of the Stone Age', collectionName: 'Songs for the Deaf' },
+            { artistName: 'Queens of the Stone Age', collectionName: '...Like Clockwork' },
+            { artistName: 'Queens of the Stone Age', collectionName: 'Era Vulgaris' }
+          ];
+        } else {
+          results = [
+            {
+              artistName: 'Queens of the Stone Age',
+              primaryGenreName: 'Alternative Rock',
+              artistLinkUrl: 'https://music.apple.com/us/artist/queens-of-the-stone-age/62820413'
+            },
+            {
+              artistName: 'Queen',
+              primaryGenreName: 'Rock',
+              artistLinkUrl: 'https://music.apple.com/us/artist/queen/3296287'
+            }
+          ];
+        }
       } else if (term.includes('synthpop')) {
         results = [
           {
@@ -221,19 +231,89 @@ test.describe('Household Tools Concerts', () => {
       });
     });
 
-    await page.route('https://nominatim.openstreetmap.org/search**', async (route) => {
+    await page.route('https://musicbrainz.org/ws/2/artist/**', async (route) => {
       const url = route.request().url();
-      if (url.includes('Oakland')) {
+      if (url.includes('/artist/?') && url.toLowerCase().includes('queens%20of%20the%20stone%20age')) {
         return route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify([{ lat: '37.8044', lon: '-122.2712' }])
+          body: JSON.stringify({
+            artists: [
+              {
+                id: 'qotsa-artist-id',
+                name: 'Queens of the Stone Age',
+                area: { name: 'Palm Desert, California' },
+                'life-span': { begin: '1996-01-01' }
+              }
+            ]
+          })
+        });
+      }
+      if (url.includes('/artist/qotsa-artist-id')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'qotsa-artist-id',
+            area: { name: 'Palm Desert, California' },
+            'life-span': { begin: '1996-01-01' },
+            tags: [{ name: 'stoner rock' }, { name: 'alternative rock' }],
+            relations: [
+              { type: 'official homepage', url: { resource: 'https://www.qotsa.com' } },
+              { type: 'wikipedia', url: { resource: 'https://en.wikipedia.org/wiki/Queens_of_the_Stone_Age' } }
+            ]
+          })
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ artists: [] })
+      });
+    });
+
+    await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+      const url = route.request().url().toLowerCase();
+      if (url.includes('queens%20of%20the%20stone%20age')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            'Queens of the Stone Age',
+            ['Queens of the Stone Age'],
+            ['American rock band'],
+            ['https://en.wikipedia.org/wiki/Queens_of_the_Stone_Age']
+          ])
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(['', [], [], []])
+      });
+    });
+
+    await page.route('https://nominatim.openstreetmap.org/search**', async (route) => {
+      const url = route.request().url();
+      if (url.includes('Asheville')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([{ lat: '35.5951', lon: '-82.5515' }])
         });
       }
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([])
+      });
+    });
+
+    await page.route('https://onedrive.example/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/jpeg',
+        body: Buffer.from('fake-image-data')
       });
     });
 
@@ -250,8 +330,31 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Nine Inch Nails');
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Chase Center');
     await expect(page.locator('[data-testid="concerts-discovery"]')).toContainText('A Flock of Seagulls');
-    await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('Fox Theater');
+    await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('The Orange Peel');
     await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText(/mi away/);
+    await expect(page.locator('#householdConcertsLocationText')).toContainText('Hendersonville, NC USA');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] [data-concert-action="refresh-band-profile"]').first()).toBeVisible();
+  });
+
+  test('does not crash personal stats when a newly added favorite band has no attended concerts yet', async ({ page }) => {
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(String(error && error.message ? error.message : error)));
+
+    await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
+    await page.locator('[data-concert-action="search-web"]').first().click();
+    await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsBandForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect.poll(() => pageErrors.length).toBe(0);
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Queens of the Stone Age');
+
+    await page.locator('[data-view="stats"]').click();
+    await expect(page.locator('#householdConcertsPersonalStats')).toBeVisible();
+    await expect(page.locator('#householdConcertsPersonalStats')).toContainText('Most Seen');
   });
 
   test('can add a favorite band from search results and log an attended concert', async ({ page }) => {
@@ -261,7 +364,13 @@ test.describe('Household Tools Concerts', () => {
 
     await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
     await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
-    await page.locator('#householdConcertsBandForm input[name="Band_Name"]').fill('Queens of the Stone Age');
+    await expect(page.locator('#householdConcertsBandForm input[name="Band_Name"]')).toHaveValue('Queens of the Stone Age');
+    await expect(page.locator('#householdConcertsBandForm input[name="Origin"]')).toHaveValue('Palm Desert, California');
+    await expect(page.locator('#householdConcertsBandForm input[name="Founded"]')).toHaveValue('1996');
+    await expect(page.locator('#householdConcertsBandForm textarea[name="Top_Songs"]')).toHaveValue(/No One Knows/);
+    await expect(page.locator('#householdConcertsBandForm textarea[name="Discography"]')).toHaveValue(/Songs for the Deaf/);
+    await expect(page.locator('#householdConcertsBandForm input[name="Website_URL"]')).toHaveValue('https://www.qotsa.com');
+    await expect(page.locator('#householdConcertsBandForm input[name="Wikipedia_URL"]')).toHaveValue('https://en.wikipedia.org/wiki/Queens_of_the_Stone_Age');
     await page.evaluate(() => {
       const form = document.getElementById('householdConcertsBandForm');
       if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
@@ -270,6 +379,11 @@ test.describe('Household Tools Concerts', () => {
     await expect.poll(() => writes.some((entry) => entry.url.includes('/tables/Favorite_Bands/rows/add'))).toBeTruthy();
 
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Queens of the Stone Age');
+    await expect(page.locator('#householdConcertsStatus')).toContainText(/Added Queens of the Stone Age|auto-filled/i);
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
+
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="refresh-band-profile"]').click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Band profile refreshed for Queens of the Stone Age');
 
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="open-log-concert"]').click();
     await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();

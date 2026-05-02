@@ -172,6 +172,21 @@
   gap: 10px;
 }
 
+#householdConcertsPane .household-concerts-enrichment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  max-width: 100%;
+}
+
 #householdConcertsPane .household-concerts-search-row input,
 #householdConcertsPane .household-concerts-filter-row input,
 #householdConcertsPane .household-concerts-form-row input,
