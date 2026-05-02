@@ -176,6 +176,10 @@ test.describe('Adventure CTA canonical order', () => {
     await page.evaluate(() => {
       const opened = [];
       window.__openedNewtabUrls = opened;
+      // Force standalone fallback URLs so assertions are deterministic in smoke mode.
+      window.openCityViewerInNewTab = undefined;
+      window.openCityViewerWindow = undefined;
+      window.prepareCityViewerInlineUrl = undefined;
       window.open = (url, target, features) => {
         opened.push({
           url: String(url || ''),
@@ -197,15 +201,14 @@ test.describe('Adventure CTA canonical order', () => {
     const explorer = await clickAndRead('open-explorer-newtab-outdoors');
     expect(explorer).toBeTruthy();
     expect(explorer.target).toBe('_blank');
-    expect(explorer.url).toContain('visitedView=explorer');
+    expect(explorer.url).toContain('adventure-explorer-window.html');
+    expect(explorer.url).toContain('subtab=outdoors');
+    expect(explorer.features.includes('noopener')).toBeFalsy();
 
     const cityExplorer = await clickAndRead('open-city-explorer-newtab-outdoors');
     expect(cityExplorer).toBeTruthy();
     expect(cityExplorer.target).toBe('_blank');
-    expect(
-      cityExplorer.url.includes('city-viewer-window.html') ||
-      cityExplorer.url.includes('visitedView=explorer')
-    ).toBeTruthy();
+    expect(cityExplorer.url).toContain('city-viewer-window.html');
 
     const visitLog = await clickAndRead('open-visit-log-newtab-outdoors');
     expect(visitLog).toBeTruthy();

@@ -589,10 +589,13 @@
     return new URL(relativePath.replace(/ /g, '%20'), window.location.href).toString();
   }
 
-  function openUrlInNewTab(url, failureMessage) {
+  function openUrlInNewTab(url, failureMessage, options = {}) {
     const targetUrl = String(url || '').trim();
     if (!targetUrl) return null;
-    const opened = window.open(targetUrl, '_blank', 'noopener');
+    const opts = options && typeof options === 'object' ? options : {};
+    const keepOpener = opts.keepOpener === true;
+    const features = keepOpener ? '' : 'noopener';
+    const opened = window.open(targetUrl, '_blank', features);
     if (opened && typeof opened.focus === 'function') {
       opened.focus();
       return opened;
@@ -923,7 +926,11 @@
       return window.openTrailExplorerWindow();
     }
     const url = buildVisitedExplorerStandaloneUrl(key);
-    return Boolean(openUrlInNewTab(url, `Please allow a new tab for ${PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Explorer'}.`));
+    return Boolean(openUrlInNewTab(
+      url,
+      `Please allow a new tab for ${PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Explorer'}.`,
+      { keepOpener: true }
+    ));
   }
 
   function openBatchTagActionsForSubtab(subtabKey, options = {}) {
