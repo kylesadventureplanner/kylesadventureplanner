@@ -372,11 +372,11 @@
       outline-offset: 2px;
     }
 
-    /* App container - limits max width and centers content */
+    /* App container - fluid width that grows with the window, caps at 1600px */
     .app-container {
-      max-width: 1200px; /* Desktop layout width */
-      margin: 0 auto;    /* Center on page */
-      padding: 16px;     /* Padding around edges */
+      max-width: min(95vw, 1600px); /* Grows with window up to 1600px, never overflows */
+      margin: 0 auto;               /* Center on page */
+      padding: 16px;                /* Padding around edges */
     }
 
     /* ============================================================
@@ -6581,11 +6581,12 @@
     }
 
     .app-tab-btn {
-      padding: 10px 16px;
+      /* Fluid padding & font-size: grows smoothly with window width */
+      padding: clamp(8px, 0.75vw, 12px) clamp(12px, 1.4vw, 22px);
       border: none;
       background: transparent;
       color: var(--gray-text);
-      font-size: 14px;
+      font-size: clamp(13px, 1.1vw, 16px);
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
@@ -6637,7 +6638,7 @@
       display: inline-flex;
       justify-content: center;
       width: max-content;
-      max-width: min(calc(100% - 8px), 760px);
+      max-width: min(calc(100% - 8px), clamp(640px, 68vw, 1100px));
       padding: 14px 16px 12px;
       border: 1.5px solid var(--app-subtabs-border-color, #bfdbfe);
       border-radius: 18px;
@@ -6695,7 +6696,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 8px;
+      gap: clamp(6px, 0.9vw, 16px); /* fluid gap – tighter on small screens, spacious on wide */
       margin: 0;
       position: relative;
       z-index: 1;
@@ -6706,22 +6707,23 @@
     .app-subtabs-row .nature-challenge-subtab,
     .app-subtabs-row .visited-progress-subtab,
     .app-subtabs-row .household-tools-subtab {
-      font-size: 12px;
+      /* Fluid sizing: all three dimensions scale smoothly with viewport width */
+      font-size: clamp(11px, 1.1vw, 15px);   /* 11px mobile → 15px ultrawide */
       font-weight: 700;
       border-radius: 999px;
-      padding: 7px 12px;
+      padding: clamp(6px, 0.65vw, 11px) clamp(10px, 1.25vw, 20px); /* height × width grow together */
       cursor: pointer;
       transition: all 0.18s ease;
       position: relative;
       z-index: 1;
       pointer-events: auto;
-      min-height: 40px;
-      min-width: 100px;
+      min-height: clamp(36px, 3.8vw, 52px);  /* pill height grows with screen */
+      min-width: clamp(88px, 9.5vw, 140px);  /* pill width grows with screen */
       line-height: 1.2;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: clamp(5px, 0.6vw, 10px);
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
@@ -6876,7 +6878,7 @@
       .app-subtabs-row .nature-challenge-subtabs,
       .app-subtabs-row .visited-progress-subtabs,
       .app-subtabs-row .household-tools-subtabs {
-        gap: 12px;
+        gap: 12px; /* clamp() already handles fluid progression; this is the 1024px floor */
       }
 
       .app-subtabs-row .nature-challenge-subtab,
@@ -6884,6 +6886,54 @@
       .app-subtabs-row .household-tools-subtab {
         font-size: 13px;
         padding: 9px 14px;
+        min-height: 42px;
+        min-width: 108px;
+      }
+    }
+
+    /* Extra breathing room on large desktops (1400px+) */
+    @media (min-width: 1400px) {
+      .app-subtabs-row .nature-challenge-subtabs,
+      .app-subtabs-row .visited-progress-subtabs,
+      .app-subtabs-row .household-tools-subtabs {
+        gap: 14px;
+      }
+
+      .app-subtabs-row .nature-challenge-subtab,
+      .app-subtabs-row .visited-progress-subtab,
+      .app-subtabs-row .household-tools-subtab {
+        font-size: 14px;
+        padding: 10px 18px;
+        min-height: 46px;
+        min-width: 118px;
+      }
+
+      .app-tab-btn {
+        font-size: 15px;
+        padding: 11px 20px;
+      }
+    }
+
+    /* Ultrawide / 4K (1800px+) – maximum pill size */
+    @media (min-width: 1800px) {
+      .app-subtabs-row .nature-challenge-subtabs,
+      .app-subtabs-row .visited-progress-subtabs,
+      .app-subtabs-row .household-tools-subtabs {
+        gap: 16px;
+      }
+
+      .app-subtabs-row .nature-challenge-subtab,
+      .app-subtabs-row .visited-progress-subtab,
+      .app-subtabs-row .household-tools-subtab {
+        font-size: 15px;
+        padding: 11px 22px;
+        min-height: 50px;
+        min-width: 128px;
+      }
+
+      .app-tab-btn {
+        font-size: 16px;
+        padding: 12px 22px;
       }
     }
 
@@ -8930,7 +8980,6 @@
     <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
     <button class="app-tab-btn" data-tab="household-tools" title="Open household tools" data-tooltip="Open household tools">🧰 Household Tools</button>
     <button class="app-tab-btn" data-tab="birding" title="View birding locations" data-tooltip="View birding locations">🐦 Birding Locations</button>
-    <button class="app-tab-btn" data-tab="bike-trails" title="View bike trails" data-tooltip="View bike trails">🚴 Bike Trails</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="recipes" aria-hidden="true" tabindex="-1">Recipes</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="garden" aria-hidden="true" tabindex="-1">Garden Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="budget" aria-hidden="true" tabindex="-1">Budget Planner</button>
@@ -8957,15 +9006,6 @@
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
           <a class="planner-top-btn" href="?tab=visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Open Adventure Challenge</a>
         </div>
-      </div>
-    </div>
-
-    <!-- Bike Trails Tab -->
-    <div class="app-tab-pane" data-tab="bike-trails" id="bikeTrailsTab">
-      <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">🚴</div>
-        <div class="tab-placeholder-text">Bike Trails</div>
-        <div class="tab-placeholder-subtext">Explore paved and dirt/gravel bike trails near you</div>
       </div>
     </div>
 

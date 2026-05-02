@@ -27,7 +27,8 @@ class TabContentLoader {
     this.initializedTabs = new Set();
     this.statusHideTimer = null;
     this.legacyTabAliases = {
-      'adventure-planner': 'visited-locations'
+      'adventure-planner': 'visited-locations',
+      'bike-trails': 'visited-locations'
     };
     this.handlePopState = this.handlePopState.bind(this);
     this.handleHashChange = this.handleHashChange.bind(this);
@@ -150,6 +151,30 @@ class TabContentLoader {
     return this.legacyTabAliases[raw] || raw;
   }
 
+  normalizeLegacyBikeTabUrl() {
+    const url = new URL(window.location.href);
+    let changed = false;
+
+    if (url.searchParams.get('tab') === 'bike-trails') {
+      url.searchParams.set('tab', 'visited-locations');
+      changed = true;
+    }
+    if (!url.searchParams.get('visitedSubtab')) {
+      url.searchParams.set('visitedSubtab', 'bike-trails');
+      changed = true;
+    }
+
+    const hash = String(url.hash || '').replace(/^#/, '').trim();
+    if (hash === 'bike-trails' || hash === 'tab=bike-trails') {
+      url.hash = '';
+      changed = true;
+    }
+
+    if (changed) {
+      window.history.replaceState(window.history.state, '', url.toString());
+    }
+  }
+
   getTabLabel(tabId) {
     tabId = this.canonicalizeTabId(tabId);
     const button = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
@@ -165,80 +190,73 @@ class TabContentLoader {
 
     // Tab definitions with priority
     this.tabs = {
-      'bike-trails': {
-        file: 'bike-trails-tab.html',
-        element: 'bikeTrailsTab',
-        priority: 1,
-        preload: false,
-        isInlineContent: false
-      },
       'birding': {
         file: 'birding-locations-tab.html',
         element: 'birdingTab',
-        priority: 2,
+        priority: 1,
         preload: false,
         isInlineContent: false
       },
       'household-tools': {
         file: 'household-tools-tab.html',
         element: 'householdToolsTab',
-        priority: 3,
+        priority: 2,
         preload: false,
         isInlineContent: false
       },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
-        priority: 4,
+        priority: 3,
         preload: false,
         isInlineContent: false
       },
       'garden': {
         file: 'garden-planner-tab.html',
         element: 'gardenTab',
-        priority: 5,
+        priority: 4,
         preload: false,
         isInlineContent: false
       },
        'budget': {
          file: 'budget-planner-tab.html',
          element: 'budgetTab',
-         priority: 6,
+         priority: 5,
          preload: false,
          isInlineContent: false
        },
        'nature-challenge': {
          file: 'nature-challenge-tab.html',
          element: 'natureChallengeTab',
-         priority: 7,
+         priority: 6,
          preload: false,
          isInlineContent: false
        },
        'visited-locations': {
          file: 'visited-locations-tab.html',
          element: 'visitedLocationsTab',
-         priority: 8,
+         priority: 7,
          preload: false,
          isInlineContent: false
        },
        'offline-mode': {
          file: null,
          element: 'offlineModeTab',
-         priority: 9,
+         priority: 8,
          preload: false,
          isInlineContent: true
        },
        'app-backup': {
          file: null,
          element: 'appBackupTab',
-         priority: 10,
+         priority: 9,
          preload: false,
          isInlineContent: true
        },
        'diagnostics-hub': {
          file: null,
          element: 'diagnosticsHubTab',
-         priority: 11,
+         priority: 10,
          preload: false,
          isInlineContent: true
        }
@@ -283,15 +301,31 @@ class TabContentLoader {
 
   getTabIdFromUrl() {
     const params = new URLSearchParams(window.location.search || '');
-    const queryTab = this.canonicalizeTabId(params.get('tab') || '');
+    const rawQueryTab = String(params.get('tab') || '').trim();
+    if (rawQueryTab === 'bike-trails') {
+      this.normalizeLegacyBikeTabUrl();
+      return 'visited-locations';
+    }
+
+    const queryTab = this.canonicalizeTabId(rawQueryTab);
     if (queryTab && this.tabs[queryTab]) return queryTab;
 
     const hash = String(window.location.hash || '').replace(/^#/, '').trim();
     if (!hash) return '';
 
     if (hash.startsWith('tab=')) {
-      const hashTab = this.canonicalizeTabId(hash.slice(4));
+      const rawHashTab = String(hash.slice(4) || '').trim();
+      if (rawHashTab === 'bike-trails') {
+        this.normalizeLegacyBikeTabUrl();
+        return 'visited-locations';
+      }
+      const hashTab = this.canonicalizeTabId(rawHashTab);
       if (this.tabs[hashTab]) return hashTab;
+    }
+
+    if (hash === 'bike-trails') {
+      this.normalizeLegacyBikeTabUrl();
+      return 'visited-locations';
     }
 
     const canonicalHash = this.canonicalizeTabId(hash);
@@ -793,16 +827,6 @@ class TabContentLoader {
     console.log(`🔧 Initializing tab: ${tabId}`);
 
     switch (tabId) {
-      case 'bike-trails':
-        if (typeof window.initBikeTrailsTab === 'function') {
-          window.initBikeTrailsTab();
-        }
-        // If user is already signed in and data hasn't loaded yet, kick off the load.
-        if (window.accessToken && typeof window.loadBikeTable === 'function' &&
-            !(window.bikeTrailsData && window.bikeTrailsData.length > 0)) {
-          window.loadBikeTable();
-        }
-        break;
       case 'birding':
         if (typeof window.initBirdingTab === 'function') {
           window.initBirdingTab();

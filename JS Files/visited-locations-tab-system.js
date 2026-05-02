@@ -625,6 +625,31 @@
     };
   }
 
+  function getRequestedProgressSubtabFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const requestedTab = String(params.get('tab') || '').trim();
+    const requestedSubtab = String(params.get('visitedSubtab') || '').trim();
+
+    if (PROGRESS_SUBTAB_KEYS.includes(requestedSubtab)) {
+      return requestedSubtab;
+    }
+
+    // Legacy compatibility: old bike deep links now resolve to Adventure Challenge bike subtab.
+    if (requestedTab === 'bike-trails') {
+      return 'bike-trails';
+    }
+
+    return '';
+  }
+
+  function applyRequestedProgressSubtabFromUrl(root) {
+    if (!root) return;
+    const requestedSubtab = getRequestedProgressSubtabFromUrl();
+    if (!requestedSubtab) return;
+    if (state.activeProgressSubTab === requestedSubtab) return;
+    setActiveProgressSubTab(root, requestedSubtab);
+  }
+
   async function applyVisitedStandaloneLaunchState(root) {
     if (state.urlLaunchApplied) return;
 
@@ -8943,8 +8968,8 @@
             if (action === 'explore-bike-trails') {
               if (typeof window.openTrailExplorerWindow === 'function') {
                 window.openTrailExplorerWindow();
-              } else if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-                window.tabLoader.switchTab('bike-trails', { syncUrl: true, historyMode: 'push', source: 'visited-subtab-cta' });
+              } else {
+                openSubtabExplorer(root, 'bike-trails');
               }
               return;
             }
@@ -9733,6 +9758,7 @@
     loadVisitRecords();
     loadExplorerCardState();
     bindControls();
+    applyRequestedProgressSubtabFromUrl(document.getElementById('visitedLocationsRoot'));
     Promise.resolve().then(() => applyVisitedStandaloneLaunchState(document.getElementById('visitedLocationsRoot'))).catch(() => {});
     renderVisitedPersistenceBootstrapStatus();
     ensureVisitedPersistenceBootstrapReady().catch((error) => {

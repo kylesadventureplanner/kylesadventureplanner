@@ -78,62 +78,54 @@ test('first-click success: nature run command', async ({ page }) => {
   expect(runActive).toBeTruthy();
 });
 
-test('first-click success: bike refresh', async ({ page }) => {
-  await page.locator('.app-tab-btn[data-tab="bike-trails"]').click();
-  const refresh = page.locator('#bikeTrailsTab #bikeRefreshBtn').first();
-  await expect(refresh).toBeVisible();
-  await expect(refresh).toBeEnabled();
+test('first-click success: bike edit mode', async ({ page }) => {
+  await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+  await page.locator('#visitedProgressTab-bike-trails').click();
+  const editModeBtn = page.locator('[data-visited-subtab-action="open-edit-mode-bike-trails"]').first();
+  await expect(editModeBtn).toBeVisible();
+  await expect(editModeBtn).toBeEnabled();
 
-  // Bike tab content can become visible before delegated actions/guard wiring is fully ready.
-  await page.waitForFunction(() => {
-    const grid = document.getElementById('bikeTrailsCardsGrid');
-    const bikeRoot = document.getElementById('bikeTrailsTab');
-    const controlsReady = Boolean(grid && grid.dataset && grid.dataset.bikeControlsBound === '1');
-    const delegatesReady = Boolean(bikeRoot && bikeRoot.dataset && bikeRoot.dataset.bikeActionDelegatesBound === '1');
-    const guardReady = Boolean(window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function');
-    return controlsReady && delegatesReady && guardReady;
-  }, null, { timeout: 4000 });
+  await editModeBtn.click();
 
-  await refresh.click();
+  const ok = await page.waitForFunction(() => {
+    const pane = document.querySelector('#visitedProgressPane-bike-trails');
+    const editModeView = pane ? pane.querySelector('[data-visited-subtab-view="edit-mode"]') : null;
+    return Boolean(editModeView && editModeView.hidden === false && editModeView.getAttribute('aria-hidden') === 'false');
+  }, null, { timeout: 3500 }).then(() => true).catch(() => false);
 
-  let ok = await page.waitForFunction(() => {
-    const scopeState = window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function'
-      ? window.ButtonActionGuard.getScopeState('bike-trails')
-      : null;
-    const tracked = Number(scopeState && scopeState.trackedActionCount) > 0;
-    const lastAction = String(window.__lastActionKey || '').trim();
-    return tracked || lastAction === 'refresh:bike-data';
-  }, null, { timeout: 3000 }).then(() => true).catch(() => false);
-
-  if (!ok) {
-    await page.evaluate(() => {
-      const bikeRoot = document.getElementById('bikeTrailsTab');
-      const btn = bikeRoot && bikeRoot.querySelector ? bikeRoot.querySelector('#bikeRefreshBtn') : null;
-      if (!btn) return;
-      btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    });
-    ok = await page.waitForFunction(() => {
-      const scopeState = window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function'
-        ? window.ButtonActionGuard.getScopeState('bike-trails')
-        : null;
-      const tracked = Number(scopeState && scopeState.trackedActionCount) > 0;
-      const lastAction = String(window.__lastActionKey || '').trim();
-      return tracked || lastAction === 'refresh:bike-data';
-    }, null, { timeout: 2000 }).then(() => true).catch(() => false);
-  }
-  recordCheck('first-click:bike-refresh', ok, {
+  recordCheck('first-click:bike-edit-mode', ok, {
     lastActionKey: await page.evaluate(() => String(window.__lastActionKey || '').trim()),
-    refreshBtnState: await page.evaluate(() => {
-      const bikeRoot = document.getElementById('bikeTrailsTab');
-      const btn = bikeRoot && bikeRoot.querySelector ? bikeRoot.querySelector('#bikeRefreshBtn') : null;
-      return btn
-        ? { disabled: !!btn.disabled, busy: btn.dataset && btn.dataset.busy === '1' }
-        : null;
+    editModeViewActive: await page.evaluate(() => {
+      const pane = document.querySelector('#visitedProgressPane-bike-trails');
+      const editModeView = pane ? pane.querySelector('[data-visited-subtab-view="edit-mode"]') : null;
+      return Boolean(editModeView && editModeView.hidden === false && editModeView.getAttribute('aria-hidden') === 'false');
     }),
-    scopeState: await page.evaluate(() => (window.ButtonActionGuard && window.ButtonActionGuard.getScopeState)
-      ? window.ButtonActionGuard.getScopeState('bike-trails')
-      : null)
+    activeProgressSubTab: await page.evaluate(() => (window.__visitedState ? window.__visitedState.activeProgressSubTab : null))
   });
+  expect(ok).toBeTruthy();
+});
+
+test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ page }) => {
+  await page.goto('/?tab=bike-trails');
+  await waitForInteractive(page);
+
+  const routed = await page.evaluate(() => {
+    const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
+    const bikeSubtab = document.getElementById('visitedProgressTab-bike-trails');
+    const currentUrl = new URL(window.location.href);
+    return {
+      activePrimaryTab: activePrimary ? activePrimary.getAttribute('data-tab') : '',
+      bikeSubtabSelected: Boolean(bikeSubtab && bikeSubtab.getAttribute('aria-selected') === 'true'),
+      tabParam: currentUrl.searchParams.get('tab') || '',
+      subtabParam: currentUrl.searchParams.get('visitedSubtab') || ''
+    };
+  });
+
+  const ok = routed.activePrimaryTab === 'visited-locations'
+    && routed.bikeSubtabSelected
+    && routed.tabParam === 'visited-locations';
+
+  recordCheck('legacy-bike-tab-url:routes-to-adventure-bike-subtab', ok, routed);
   expect(ok).toBeTruthy();
 });
 
@@ -220,8 +212,9 @@ test('nature explore remains responsive across repeated tab switches', async ({ 
   const iterations = [];
 
   for (let i = 0; i < 5; i += 1) {
-    await page.locator('.app-tab-btn[data-tab="bike-trails"]').click();
-    await expect(page.locator('#bikeRefreshBtn')).toBeVisible();
+    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+    await page.locator('#visitedProgressTab-bike-trails').click();
+    await expect(page.locator('[data-visited-subtab-action="refresh-subtab-bike-trails"]').first()).toBeVisible();
 
     await openNatureOverviewView(page);
     // Normalize viewport targeting before click to avoid stale off-screen CTA coordinates.
