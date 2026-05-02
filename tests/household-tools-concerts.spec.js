@@ -61,6 +61,14 @@ test.describe('Household Tools Concerts', () => {
 
     await page.addInitScript(() => {
       window.accessToken = 'test-access-token';
+      navigator.geolocation.getCurrentPosition = function (success) {
+        success({
+          coords: {
+            latitude: 36.0726,
+            longitude: -79.7920
+          }
+        });
+      };
     });
 
     await page.route('https://graph.microsoft.com/**', async (route) => {
@@ -259,6 +267,16 @@ test.describe('Household Tools Concerts', () => {
             'life-span': { begin: '1996-01-01' },
             tags: [{ name: 'stoner rock' }, { name: 'alternative rock' }],
             relations: [
+              {
+                type: 'member of band',
+                artist: { name: 'Josh Homme' },
+                attributes: ['vocals', 'guitar']
+              },
+              {
+                type: 'member of band',
+                artist: { name: 'Michael Shuman' },
+                attributes: ['bass']
+              },
               { type: 'official homepage', url: { resource: 'https://www.qotsa.com' } },
               { type: 'wikipedia', url: { resource: 'https://en.wikipedia.org/wiki/Queens_of_the_Stone_Age' } }
             ]
@@ -290,6 +308,54 @@ test.describe('Household Tools Concerts', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify(['', [], [], []])
+      });
+    });
+
+    await page.route('https://www.bandsintown.com/api/v2/artists/**', async (route) => {
+      const url = route.request().url().toLowerCase();
+      if (url.includes('queens%20of%20the%20stone%20age') && url.includes('/events?')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              datetime: '2026-10-02T20:00:00',
+              venue: { name: 'Harrah\'s Cherokee Center', city: 'Asheville', region: 'NC', country: 'United States' }
+            }
+          ])
+        });
+      }
+      if (url.includes('queens%20of%20the%20stone%20age')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            name: 'Queens of the Stone Age',
+            url: 'https://www.bandsintown.com/a/12345-queens-of-the-stone-age'
+          })
+        });
+      }
+      if (url.includes('nine%20inch%20nails') && url.includes('/events?')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([])
+        });
+      }
+      if (url.includes('nine%20inch%20nails')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            name: 'Nine Inch Nails',
+            url: 'https://www.bandsintown.com/a/1003-nine-inch-nails'
+          })
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ name: '', url: '' })
       });
     });
 
@@ -333,7 +399,53 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('The Orange Peel');
     await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText(/mi away/);
     await expect(page.locator('#householdConcertsLocationText')).toContainText('Hendersonville, NC USA');
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
+    await expect(page.locator('#householdConcertsResetLocationBtn')).toBeHidden();
     await expect(page.locator('[data-testid="concerts-favorites-grid"] [data-concert-action="refresh-band-profile"]').first()).toBeVisible();
+  });
+
+  test('can switch to live location and reset back to Hendersonville', async ({ page }) => {
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
+    await page.locator('[data-concert-action="use-location"]').click();
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Your current location');
+    await expect(page.locator('#householdConcertsResetLocationBtn')).toBeVisible();
+    await page.locator('#householdConcertsResetLocationBtn').click();
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
+    await expect(page.locator('#householdConcertsResetLocationBtn')).toBeHidden();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Hendersonville, NC USA');
+  });
+
+  test('can configure home base from the concert settings modal', async ({ page }) => {
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await expect(page.locator('#householdConcertsSettingsForm')).toBeVisible();
+    await page.locator('#householdConcertsSettingsForm input[name="homeBaseMode"][value="follow-user"]').check();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+    await expect(page.locator('#householdConcertsStatus')).toContainText(/Concert settings saved|Location saved/);
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Your current location');
+
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await page.locator('#householdConcertsSettingsForm input[name="homeBaseMode"][value="hendersonville"]').check();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+    await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
+  });
+
+  test('can add recommended artists directly from band profile modal', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Recommended bands to add');
+    const recommendedName = String((await page.locator('.household-concerts-recommended-item strong').first().textContent()) || '').trim();
+    await page.locator('.household-concerts-modal [data-concert-action="quick-add-recommended-band"]').first().click();
+    await expect(page.locator('#householdConcertsToastHost')).toContainText('Added from recommendations');
+    await page.locator('#householdConcertsToastHost [data-concert-action="undo-recommended-add"]').click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Undid add from recommendations');
+    if (recommendedName) {
+      await expect(page.locator('[data-testid="concerts-favorites-grid"]')).not.toContainText(recommendedName);
+    }
   });
 
   test('does not crash personal stats when a newly added favorite band has no attended concerts yet', async ({ page }) => {
@@ -369,8 +481,11 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsBandForm input[name="Founded"]')).toHaveValue('1996');
     await expect(page.locator('#householdConcertsBandForm textarea[name="Top_Songs"]')).toHaveValue(/No One Knows/);
     await expect(page.locator('#householdConcertsBandForm textarea[name="Discography"]')).toHaveValue(/Songs for the Deaf/);
+    await expect(page.locator('#householdConcertsBandForm textarea[name="Band_Members"]')).toHaveValue(/Josh Homme/);
+    await expect(page.locator('#householdConcertsBandForm textarea[name="Band_Members"]')).toHaveValue(/vocals, guitar/);
     await expect(page.locator('#householdConcertsBandForm input[name="Website_URL"]')).toHaveValue('https://www.qotsa.com');
     await expect(page.locator('#householdConcertsBandForm input[name="Wikipedia_URL"]')).toHaveValue('https://en.wikipedia.org/wiki/Queens_of_the_Stone_Age');
+    await expect(page.locator('#householdConcertsBandForm input[name="Bandsintown_URL"]')).toHaveValue('https://www.bandsintown.com/a/12345-queens-of-the-stone-age');
     await page.evaluate(() => {
       const form = document.getElementById('householdConcertsBandForm');
       if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
@@ -382,8 +497,30 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsStatus')).toContainText(/Added Queens of the Stone Age|auto-filled/i);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
 
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") .household-concerts-enrichment-badge').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Profile Refresh History');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Apple Music metadata');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Field confidence by profile field');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Band Members + Roles');
+    await expect(page.locator('.household-concerts-refresh-confidence--high').first()).toBeVisible();
+    await expect.poll(async () => page.locator('.household-concerts-source-icons-row .household-concerts-source-icon').count()).toBeGreaterThanOrEqual(4);
+    await page.locator('.household-concerts-modal [data-concert-action="clear-band-refresh-history"]').click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Cleared profile refresh history for Queens of the Stone Age');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).not.toContainText('Last enriched from');
+
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="refresh-band-profile"]').click();
     await expect(page.locator('#householdConcertsStatus')).toContainText('Band profile refreshed for Queens of the Stone Age');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
+
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await expect(page.locator('#householdConcertsSettingsForm')).toBeVisible();
+    await page.locator('#householdConcertsSettingsForm input[name="source_members"]').uncheck();
+    await page.locator('#householdConcertsSettingsForm input[name="autoFillOnOpen"]').uncheck();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+    await expect(page.locator('#householdConcertsStatus')).toContainText(/Hendersonville|home base/);
 
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="open-log-concert"]').click();
     await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();

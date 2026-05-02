@@ -52,6 +52,7 @@
           <button type="button" class="pill-button pill-button-primary" data-concert-action="open-add-band">＋ Add Favorite Band</button>
           <button type="button" class="pill-button" data-concert-action="open-log-concert">★ Log Concert</button>
           <button type="button" class="pill-button" data-concert-action="open-add-upcoming">📅 Add Upcoming</button>
+          <button type="button" class="pill-button" data-concert-action="open-concert-settings">⚙ Concert Settings</button>
           <button type="button" class="pill-button" data-concert-action="refresh-data">↻ Refresh</button>
         </div>
       </section>
@@ -117,8 +118,10 @@
           </div>
           <div class="household-concerts-location-row">
             <label for="householdConcertsDistanceSlider" class="household-concerts-muted">Distance filter: <strong id="householdConcertsDistanceValue">100 miles</strong></label>
+            <span id="householdConcertsLocationChip" class="household-concerts-location-chip" aria-live="polite">Using Hendersonville, NC USA</span>
             <input id="householdConcertsDistanceSlider" class="household-concerts-distance-slider" type="range" min="0" max="5" step="1" value="3" aria-label="Concert distance filter slider">
             <button type="button" class="pill-button" data-concert-action="use-location">📍 Use My Location</button>
+            <button type="button" id="householdConcertsResetLocationBtn" class="pill-button" data-concert-action="reset-location" hidden>↺ Reset to Hendersonville</button>
           </div>
           <p id="householdConcertsLocationText" class="household-concerts-muted">Save your location to filter upcoming concerts by distance.</p>
           <div id="householdConcertsUpcomingList" class="household-concerts-entry-list" data-testid="concerts-upcoming-list"></div>
@@ -126,6 +129,7 @@
       </div>
 
       <div id="householdConcertsModalHost"></div>
+      <div id="householdConcertsToastHost" class="household-concerts-toast-host" aria-live="polite"></div>
     </div>
   </div>
 </div>
