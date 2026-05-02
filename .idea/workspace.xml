@@ -5,90 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/docs/ADVENTURE_PLANNER_RETIREMENT.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/TAB_ACTION_CONVENTIONS.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/check-tab-inline-onclick.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CSS/visited-locations-tab.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/visited-locations-tab.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/adventure-planner-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/adventure-planner-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/bike-trails-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/bike-trails-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/clean-tag-manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/clean-tag-manager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/tab-content-loader.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tab-content-loader.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/tag-bulk-manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tag-bulk-manager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/tv-mode-controller.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tv-mode-controller.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/app-backup-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/data/app-backup-manifest.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/AGGRESSIVE_FIX_FINAL.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/AGGRESSIVE_FIX_FINAL.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BIRDS_PROGRESSION_SPEC.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BIRDS_PROGRESSION_SPEC.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_ARCHITECTURE_CLEANUP_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_ARCHITECTURE_CLEANUP_PLAN.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_MIGRATION_TRACKER.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_MIGRATION_TRACKER.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_FINAL_PRE_TEST_REPORT.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_FINAL_PRE_TEST_REPORT.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_HARDENING_COMPLETION_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_HARDENING_COMPLETION_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_QUICK_START.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_QUICK_START.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_SETUP.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_TEST_MATRIX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_TEST_MATRIX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RESPONSIVENESS_FINAL_FIX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RESPONSIVENESS_FINAL_FIX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RESPONSIVENESS_FIX_v2.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RESPONSIVENESS_FIX_v2.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/CITY_EXPLORER_ENHANCEMENT_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/CITY_EXPLORER_ENHANCEMENT_PLAN.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/COMPLETE_SOLUTION.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/COMPLETE_SOLUTION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DEBUG_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DEBUG_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DEBUG_QUICK_REFERENCE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DEBUG_QUICK_REFERENCE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DEBUG_SYSTEM_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DEBUG_SYSTEM_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DIAGNOSTIC_INSTRUCTIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DIAGNOSTIC_INSTRUCTIONS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DIAGNOSTIC_LOGGING_ADDED.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DIAGNOSTIC_LOGGING_ADDED.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DOCUMENTATION_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DOCUMENTATION_INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DOCUMENTATION_ORGANIZATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DOCUMENTATION_ORGANIZATION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/FESTIVAL_SOURCES_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/FESTIVAL_SOURCES_SETUP.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/FINAL_FIX_ENHANCED_UX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/FINAL_FIX_ENHANCED_UX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/FIX_COMPLETE_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/FIX_COMPLETE_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/FOCUS_BUTTON_DIAGNOSTICS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/FOCUS_BUTTON_DIAGNOSTICS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/HIGH_VALUE_IMPROVEMENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/HIGH_VALUE_IMPROVEMENTS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/HOTFIX_REGISTRY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/HOTFIX_REGISTRY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IMPLEMENTATION_COMPLETE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IMPLEMENTATION_COMPLETE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IMPLEMENTATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IMPLEMENTATION_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IMPLEMENTATION_STATUS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IMPLEMENTATION_STATUS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IPHONE_VIEW_FIX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IPHONE_VIEW_FIX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/KNOWN_GOOD_WORKFLOW.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/KNOWN_GOOD_WORKFLOW.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MOBILE_POLISH_DOCUMENTATION_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MOBILE_POLISH_DOCUMENTATION_INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MOBILE_POLISH_QUICK_REF.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MOBILE_POLISH_QUICK_REF.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MOBILE_POLISH_STATUS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MOBILE_POLISH_STATUS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MOBILE_POLISH_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MOBILE_POLISH_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MOBILE_POLISH_TESTING_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MOBILE_POLISH_TESTING_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/NEARBY_TUNING_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/NEARBY_TUNING_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/PERFORMANCE_ENHANCEMENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/PERFORMANCE_ENHANCEMENTS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/PERSISTENCE_BACKEND_SCHEMA.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/PERSISTENCE_BACKEND_SCHEMA.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/PHASE2_SPECIES_EXPLORER_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/PHASE2_SPECIES_EXPLORER_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/PHASE2_VISUAL_CONSISTENCY_QA_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/PHASE2_VISUAL_CONSISTENCY_QA_CHECKLIST.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/POLISH_IMPLEMENTATION_VERIFICATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/POLISH_IMPLEMENTATION_VERIFICATION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/POLISH_LOG_RECOMMENDATION_RANKING.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/POLISH_LOG_RECOMMENDATION_RANKING.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/RELIABILITY_HARNESS_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/RELIABILITY_HARNESS_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/RELIABILITY_MERGE_DECISION.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/RELIABILITY_MERGE_DECISION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/RELIABILITY_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/RELIABILITY_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/SYSTEM_CONSOLIDATION_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/SYSTEM_CONSOLIDATION_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/TAB_REGRESSION_HARNESS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TAB_REGRESSION_HARNESS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/TESTING_INSTRUCTIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TESTING_INSTRUCTIONS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/TV_MODE_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TV_MODE_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/UI_CONSISTENCY_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/UI_CONSISTENCY_CHECKLIST.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-cta-action-order.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-cta-action-order.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/session-recovery-banner-regression.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/session-recovery-banner-regression.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/tv-mode-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/tv-mode-smoke.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -180,7 +99,7 @@
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
-      <workItem from="1777494531732" duration="91143000" />
+      <workItem from="1777494531732" duration="91691000" />
     </task>
     <servers />
   </component>

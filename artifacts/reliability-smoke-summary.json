@@ -1,25 +1,116 @@
 {
-  "generatedAt": "2026-05-02T05:59:33.278Z",
-  "pass": false,
+  "generatedAt": "2026-05-02T14:03:27.625Z",
+  "pass": true,
   "startupSamplesMs": [
-    118
+    103,
+    103,
+    101,
+    100,
+    102,
+    100,
+    101
   ],
-  "startupMsP95": 118,
-  "firstClickChecks": 1,
-  "firstClickSuccesses": 0,
-  "firstClickSuccessRate": 0,
+  "startupMsP95": 103,
+  "firstClickChecks": 3,
+  "firstClickSuccesses": 3,
+  "firstClickSuccessRate": 1,
   "checks": [
     {
-      "name": "first-click:bike-refresh",
-      "passed": false,
+      "name": "first-click:nature-explore",
+      "passed": true,
       "detail": {
+        "explorerActive": true
+      },
+      "at": "2026-05-02T14:03:28.746Z"
+    },
+    {
+      "name": "first-click:nature-run",
+      "passed": true,
+      "detail": {
+        "runActive": true
+      },
+      "at": "2026-05-02T14:03:30.164Z"
+    },
+    {
+      "name": "first-click:bike-refresh",
+      "passed": true,
+      "detail": {
+        "lastActionKey": "refresh:bike-data",
+        "refreshBtnState": {
+          "disabled": false,
+          "busy": false
+        },
         "scopeState": {
           "scope": "bike-trails",
           "inFlightCount": 0,
-          "trackedActionCount": 0
+          "trackedActionCount": 1
         }
       },
-      "at": "2026-05-02T05:59:34.595Z"
+      "at": "2026-05-02T14:03:31.285Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": ""
+      },
+      "at": "2026-05-02T14:03:32.243Z"
+    },
+    {
+      "name": "overlay:stale-row-detail-cleared",
+      "passed": true,
+      "detail": {
+        "explorerActive": true,
+        "modalHidden": true
+      },
+      "at": "2026-05-02T14:03:34.019Z"
+    },
+    {
+      "name": "repeat:nature-explore-tab-switches",
+      "passed": true,
+      "detail": {
+        "iterations": [
+          {
+            "iteration": 1,
+            "explorerActive": true
+          },
+          {
+            "iteration": 2,
+            "explorerActive": true
+          },
+          {
+            "iteration": 3,
+            "explorerActive": true
+          },
+          {
+            "iteration": 4,
+            "explorerActive": true
+          },
+          {
+            "iteration": 5,
+            "explorerActive": true
+          }
+        ]
+      },
+      "at": "2026-05-02T14:03:37.321Z"
+    },
+    {
+      "name": "update-banner:version-and-telemetry",
+      "passed": true,
+      "detail": {
+        "reliabilityTelemetry": {
+          "shown": 1,
+          "reloadClicked": 1,
+          "dismissClicked": 1
+        },
+        "buttonTelemetry": {
+          "updateBannerShown": 1,
+          "updateBannerReloadClicked": 1,
+          "updateBannerDismissClicked": 1
+        }
+      },
+      "at": "2026-05-02T14:03:38.172Z"
     }
   ]
 }

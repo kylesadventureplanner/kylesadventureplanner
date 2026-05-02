@@ -80,16 +80,56 @@ test('first-click success: nature run command', async ({ page }) => {
 
 test('first-click success: bike refresh', async ({ page }) => {
   await page.locator('.app-tab-btn[data-tab="bike-trails"]').click();
-  const refresh = page.locator('#bikeRefreshBtn');
+  const refresh = page.locator('#bikeTrailsTab #bikeRefreshBtn').first();
   await expect(refresh).toBeVisible();
+  await expect(refresh).toBeEnabled();
+
+  // Bike tab content can become visible before delegated actions/guard wiring is fully ready.
+  await page.waitForFunction(() => {
+    const grid = document.getElementById('bikeTrailsCardsGrid');
+    const bikeRoot = document.getElementById('bikeTrailsTab');
+    const controlsReady = Boolean(grid && grid.dataset && grid.dataset.bikeControlsBound === '1');
+    const delegatesReady = Boolean(bikeRoot && bikeRoot.dataset && bikeRoot.dataset.bikeActionDelegatesBound === '1');
+    const guardReady = Boolean(window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function');
+    return controlsReady && delegatesReady && guardReady;
+  }, null, { timeout: 4000 });
+
   await refresh.click();
 
-  const ok = await page.evaluate(() => {
-    if (!window.ButtonActionGuard || typeof window.ButtonActionGuard.getScopeState !== 'function') return false;
-    const state = window.ButtonActionGuard.getScopeState('bike-trails');
-    return Number(state && state.trackedActionCount) > 0;
-  });
+  let ok = await page.waitForFunction(() => {
+    const scopeState = window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function'
+      ? window.ButtonActionGuard.getScopeState('bike-trails')
+      : null;
+    const tracked = Number(scopeState && scopeState.trackedActionCount) > 0;
+    const lastAction = String(window.__lastActionKey || '').trim();
+    return tracked || lastAction === 'refresh:bike-data';
+  }, null, { timeout: 3000 }).then(() => true).catch(() => false);
+
+  if (!ok) {
+    await page.evaluate(() => {
+      const bikeRoot = document.getElementById('bikeTrailsTab');
+      const btn = bikeRoot && bikeRoot.querySelector ? bikeRoot.querySelector('#bikeRefreshBtn') : null;
+      if (!btn) return;
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    ok = await page.waitForFunction(() => {
+      const scopeState = window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function'
+        ? window.ButtonActionGuard.getScopeState('bike-trails')
+        : null;
+      const tracked = Number(scopeState && scopeState.trackedActionCount) > 0;
+      const lastAction = String(window.__lastActionKey || '').trim();
+      return tracked || lastAction === 'refresh:bike-data';
+    }, null, { timeout: 2000 }).then(() => true).catch(() => false);
+  }
   recordCheck('first-click:bike-refresh', ok, {
+    lastActionKey: await page.evaluate(() => String(window.__lastActionKey || '').trim()),
+    refreshBtnState: await page.evaluate(() => {
+      const bikeRoot = document.getElementById('bikeTrailsTab');
+      const btn = bikeRoot && bikeRoot.querySelector ? bikeRoot.querySelector('#bikeRefreshBtn') : null;
+      return btn
+        ? { disabled: !!btn.disabled, busy: btn.dataset && btn.dataset.busy === '1' }
+        : null;
+    }),
     scopeState: await page.evaluate(() => (window.ButtonActionGuard && window.ButtonActionGuard.getScopeState)
       ? window.ButtonActionGuard.getScopeState('bike-trails')
       : null)

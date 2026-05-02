@@ -2224,7 +2224,10 @@
     const grid = document.getElementById('bikeTrailsCardsGrid');
     if (!grid) return false;
     if (grid.dataset.bikeControlsBound === '1') return true;
-    const bikeRoot = document.querySelector('[data-tab="bike-trails"]') || document.body || document.documentElement;
+    const bikeRoot = document.getElementById('bikeTrailsTab')
+      || document.querySelector('.app-tab-pane[data-tab="bike-trails"]')
+      || document.body
+      || document.documentElement;
 
     if (bikeRoot && bikeRoot.dataset.bikeActionDelegatesBound !== '1') {
       bikeRoot.addEventListener('click', (event) => {
