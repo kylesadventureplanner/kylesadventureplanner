@@ -183,15 +183,15 @@ test.describe('Household Tools Concerts', () => {
       if (term.includes('queens')) {
         if (entity === 'song') {
           results = [
-            { artistName: 'Queens of the Stone Age', trackName: 'No One Knows' },
-            { artistName: 'Queens of the Stone Age', trackName: 'Go With the Flow' },
-            { artistName: 'Queens of the Stone Age', trackName: 'Little Sister' }
+            { artistName: 'Queens of the Stone Age', trackName: 'No One Knows', artworkUrl100: 'https://images.example/qotsa-song-1/100x100bb.jpg' },
+            { artistName: 'Queens of the Stone Age', trackName: 'Go With the Flow', artworkUrl100: 'https://images.example/qotsa-song-2/100x100bb.jpg' },
+            { artistName: 'Queens of the Stone Age', trackName: 'Little Sister', artworkUrl100: 'https://images.example/qotsa-song-3/100x100bb.jpg' }
           ];
         } else if (entity === 'album') {
           results = [
-            { artistName: 'Queens of the Stone Age', collectionName: 'Songs for the Deaf' },
-            { artistName: 'Queens of the Stone Age', collectionName: '...Like Clockwork' },
-            { artistName: 'Queens of the Stone Age', collectionName: 'Era Vulgaris' }
+            { artistName: 'Queens of the Stone Age', collectionName: 'Songs for the Deaf', artworkUrl100: 'https://images.example/qotsa-album-1/100x100bb.jpg' },
+            { artistName: 'Queens of the Stone Age', collectionName: '...Like Clockwork', artworkUrl100: 'https://images.example/qotsa-album-2/100x100bb.jpg' },
+            { artistName: 'Queens of the Stone Age', collectionName: 'Era Vulgaris', artworkUrl100: 'https://images.example/qotsa-album-3/100x100bb.jpg' }
           ];
         } else {
           results = [
@@ -383,6 +383,14 @@ test.describe('Household Tools Concerts', () => {
       });
     });
 
+    await page.route('https://images.example/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/jpeg',
+        body: Buffer.from('fake-remote-band-image')
+      });
+    });
+
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="household-tools"]').click();
     await expect(page.locator('#householdToolsRoot')).toBeVisible();
@@ -469,6 +477,82 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsPersonalStats')).toContainText('Most Seen');
   });
 
+  test('supports provenance tooltips, conflict picking, bulk lock, and Ctrl/Cmd+Z undo in enrichment flow', async ({ page }) => {
+    await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
+    await page.locator('[data-concert-action="search-web"]').first().click();
+    await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+
+    await page.locator('#householdConcertsBandForm input[name="Origin"]').fill('Manual Override City');
+    await page.locator('#householdConcertsBandForm [data-concert-action="auto-fill-band-profile"]').click();
+
+    await expect(page.locator('#householdConcertsBandForm [data-concert-action="auto-fill-band-profile"]')).toContainText(/\(\d+ changes\)/);
+    await expect(page.locator('#householdConcertsChangePreview')).toContainText('Choose one');
+
+    const originTitle = await page.locator('#householdConcertsBandForm input[name="Origin"]').getAttribute('title');
+    expect(String(originTitle || '')).toContain('Last updated:');
+    expect(String(originTitle || '')).toContain('source:');
+
+    await page.locator('#householdConcertsBandForm [data-concert-action="apply-change-preview"]').click();
+    await page.locator('#householdConcertsBandForm input[name="Origin"]').focus();
+    await page.keyboard.press('Meta+KeyZ');
+    await expect(page.locator('#householdConcertsBandForm input[name="Origin"]')).toHaveValue(/Manual Override City/);
+
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsBandForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Queens of the Stone Age');
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") .household-concerts-enrichment-badge').click();
+    await page.locator('.household-concerts-modal [data-concert-action="bulk-lock-high-confidence"]').click();
+    await page.locator('.household-concerts-modal .pill-button[data-concert-action="close-modal"]').click();
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") .household-concerts-lock-summary-badge')).toContainText('🔒');
+  });
+
+  test('can sync tour schedules without falling back to manual warning when source returns valid payload', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Nine Inch Nails") [data-concert-action="sync-tour"]').click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Synced 0 tour dates for Nine Inch Nails');
+  });
+
+  test('can choose and upload cover/logo candidates to OneDrive from the image picker modal', async ({ page }) => {
+    await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
+    await page.locator('[data-concert-action="search-web"]').first().click();
+    await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+
+    await page.locator('#householdConcertsBandForm [data-concert-action="open-band-image-picker"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Select Band Images');
+    await page.locator('.household-concerts-modal [data-concert-action="select-band-cover-candidate"]').first().click();
+    await page.locator('.household-concerts-modal [data-concert-action="select-band-logo-candidate"]').nth(1).click();
+    await page.locator('.household-concerts-modal [data-concert-action="apply-band-image-selection"]').click();
+
+    await expect(page.locator('#householdConcertsBandForm input[name="Band_Logo_URL"]')).toHaveValue(/onedrive\.example/);
+    await expect(page.locator('#householdConcertsBandForm input[name="Band_Cover_Photo_URL"]')).toHaveValue(/onedrive\.example/);
+  });
+
+  test('can launch Manage Photos from band profile modal for an existing saved band', async ({ page }) => {
+    await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
+    await page.locator('[data-concert-action="search-web"]').first().click();
+    await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsBandForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="open-band-details"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Manage Photos');
+    await page.locator('.household-concerts-modal [data-concert-action="open-band-image-picker"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Select Band Images');
+    await page.locator('.household-concerts-modal [data-concert-action="select-band-cover-candidate"]').first().click();
+    await page.locator('.household-concerts-modal [data-concert-action="select-band-logo-candidate"]').nth(1).click();
+    await page.locator('.household-concerts-modal [data-concert-action="apply-band-image-selection"]').click();
+
+    await expect(page.locator('.household-concerts-modal')).toContainText('Queens of the Stone Age');
+    await expect(page.locator('.household-concerts-modal .household-concerts-band-profile-cover')).toHaveAttribute('src', /onedrive\.example/);
+  });
+
   test('can add a favorite band from search results and log an attended concert', async ({ page }) => {
     await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
     await page.locator('[data-concert-action="search-web"]').first().click();
@@ -500,7 +584,7 @@ test.describe('Household Tools Concerts', () => {
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") .household-concerts-enrichment-badge').click();
     await expect(page.locator('.household-concerts-modal')).toContainText('Profile Refresh History');
     await expect(page.locator('.household-concerts-modal')).toContainText('Apple Music metadata');
-    await expect(page.locator('.household-concerts-modal')).toContainText('Field confidence by profile field');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Field confidence');
     await expect(page.locator('.household-concerts-modal')).toContainText('Band Members + Roles');
     await expect(page.locator('.household-concerts-refresh-confidence--high').first()).toBeVisible();
     await expect.poll(async () => page.locator('.household-concerts-source-icons-row .household-concerts-source-icon').count()).toBeGreaterThanOrEqual(4);
@@ -509,7 +593,9 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).not.toContainText('Last enriched from');
 
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="refresh-band-profile"]').click();
-    await expect(page.locator('#householdConcertsStatus')).toContainText('Band profile refreshed for Queens of the Stone Age');
+    await expect(page.locator('#householdConcertsStatus')).toContainText('Review the enrichment changes for Queens of the Stone Age before applying.');
+    await page.locator('.household-concerts-modal [data-concert-action="apply-refresh-preview"]').click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText(/Applied \d+ field update/);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
 
     await page.locator('[data-concert-action="open-concert-settings"]').click();

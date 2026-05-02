@@ -62,7 +62,6 @@ test.describe('Household Tools Concerts - Enhancements', () => {
 
     await page.route('https://graph.microsoft.com/**', async (route) => {
       const url = route.request().url();
-      const method = route.request().method();
 
       const respondJson = (payload) => route.fulfill({
         status: 200,
@@ -177,10 +176,10 @@ test.describe('Household Tools Concerts - Enhancements', () => {
   });
 
   test('ENHANCEMENT #4 - Personal Statistics Cards display correctly', async ({ page }) => {
-    // Stats should show after data loads
-    await expect(page.locator('.household-concerts-personal-stats')).toBeTruthy();
-    // Should show concert count
-    await expect(page.locator('.household-concerts-personal-stats .stat-card')).toContainText('3');
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Chase Center');
+    await page.locator('[data-view="stats"]').click();
+    await expect(page.locator('.household-concerts-personal-stats')).toBeVisible();
+    await expect(page.locator('.household-concerts-personal-stats .stat-card').first()).toContainText('3');
   });
 
   test('ENHANCEMENT #9 - Venue Performance Report aggregates data', async ({ page }) => {
@@ -226,18 +225,18 @@ test.describe('Household Tools Concerts - Enhancements', () => {
     const tabs = page.locator('.household-concerts-feature-tab');
 
     // Default view is active
-    await expect(tabs.first()).toHaveClass('active');
+    await expect(tabs.first()).toHaveClass(/active/);
 
     // Click stats tab
     await page.locator('[data-view="stats"]').click();
-    await expect(page.locator('[data-view="stats"]')).toHaveClass('active');
+    await expect(page.locator('[data-view="stats"]')).toHaveClass(/active/);
 
     // Personal stats should be visible
     await expect(page.locator('#householdConcertsPersonalStats')).toBeVisible();
 
     // Click gallery tab
     await page.locator('[data-view="gallery"]').click();
-    await expect(page.locator('[data-view="gallery"]')).toHaveClass('active');
+    await expect(page.locator('[data-view="gallery"]')).toHaveClass(/active/);
 
     // Gallery should be visible
     await expect(page.locator('#householdConcertsPhotoGallery')).toBeVisible();

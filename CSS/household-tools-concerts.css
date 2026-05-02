@@ -230,6 +230,17 @@
   background: #f8fafc;
 }
 
+#householdConcertsPane button.household-concerts-refresh-history-item {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+#householdConcertsPane .household-concerts-refresh-history-item.is-active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
 #householdConcertsPane .household-concerts-refresh-history-item strong {
   color: #0f172a;
 }
@@ -449,6 +460,20 @@
   margin: 0 0 4px;
   font-size: 19px;
   color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-lock-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 #householdConcertsPane .household-concerts-band-meta {
@@ -804,6 +829,10 @@
 
   #householdConcertsPane .household-concerts-search-actions {
 	flex-direction: row;
+  }
+
+  #householdConcertsPane .household-concerts-band-image-manual-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1261,6 +1290,86 @@
   color: #64748b;
 }
 
+#householdConcertsPane .household-concerts-similar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#householdConcertsPane .household-concerts-similar-item {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+#householdConcertsPane .household-concerts-similar-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#householdConcertsPane .household-concerts-similar-item span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#householdConcertsPane .household-concerts-similar-item span em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+#householdConcertsPane .household-concerts-image-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+#householdConcertsPane .household-concerts-image-candidate-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+#householdConcertsPane .household-concerts-image-candidate-item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+#householdConcertsPane .household-concerts-image-candidate-meta {
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+}
+
+#householdConcertsPane .household-concerts-image-candidate-meta span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+#householdConcertsPane .household-concerts-band-image-manual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 #householdConcertsPane .pill-button {
   border: 1px solid #93c5fd;
   background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
@@ -1322,6 +1431,31 @@
 #householdConcertsPane .household-concerts-field-provenance-panel h4 {
   margin: 0 0 10px;
   color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-history-diff-panel {
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+#householdConcertsPane .household-concerts-history-diff-panel h4 {
+  margin: 0 0 10px;
+}
+
+#householdConcertsPane .household-concerts-history-diff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#householdConcertsPane .household-concerts-history-diff-item {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  background: #fff;
 }
 
 #householdConcertsPane .household-concerts-field-provenance-list {
@@ -1511,6 +1645,29 @@
   gap: 8px;
   font-size: 12px;
   margin-left: 22px;
+}
+
+#householdConcertsPane .household-concerts-conflict-picker-row {
+  margin: 8px 0 0 22px;
+  display: grid;
+  gap: 4px;
+}
+
+#householdConcertsPane .household-concerts-conflict-picker-row label {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#householdConcertsPane .household-concerts-conflict-picker {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 #householdConcertsPane .diff-old {
