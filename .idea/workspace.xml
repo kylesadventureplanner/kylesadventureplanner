@@ -5,10 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tmp-debug-bulk-selected-candidates.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/edit-mode-submit-guards-Ed-0840a-lk-and-chain-submit-buttons/error-context.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/edit-mode-search-candidates.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-search-candidates.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -102,7 +102,7 @@
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
       <workItem from="1777494531732" duration="92762000" />
-      <workItem from="1777741223725" duration="34066000" />
+      <workItem from="1777741223725" duration="36427000" />
     </task>
     <servers />
   </component>
