@@ -1306,13 +1306,13 @@
     return score;
   }
 
-  async function fetchWikimediaImageCandidates(bandName) {
-    var cleanName = String(bandName || '').trim();
-    if (!cleanName) return [];
-    var intents = [
-      { key: 'logo', query: cleanName + ' logo' },
-      { key: 'group-photo', query: cleanName + ' group photo' }
-    ];
+   async function fetchWikimediaImageCandidates(bandName) {
+     var cleanName = String(bandName || '').trim();
+     if (!cleanName) return [];
+     var intents = [
+       { key: 'logo', query: cleanName + ' band logo' },
+       { key: 'group-photo', query: cleanName + ' band photo' }
+     ];
     var candidates = [];
 
     for (var i = 0; i < intents.length; i += 1) {
