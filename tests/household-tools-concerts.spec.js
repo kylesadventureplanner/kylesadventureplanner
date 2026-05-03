@@ -443,6 +443,32 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
   });
 
+  test('can toggle backend write audit mode from concert settings', async ({ page }) => {
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await expect(page.locator('#householdConcertsSettingsForm')).toBeVisible();
+    await page.locator('#householdConcertsSettingsForm input[name="backendWriteAudit"]').check();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect.poll(() => page.evaluate(() => {
+      return !!(window.HouseholdConcerts && window.HouseholdConcerts.isBackendWriteAuditEnabled && window.HouseholdConcerts.isBackendWriteAuditEnabled());
+    })).toBe(true);
+
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await expect(page.locator('#householdConcertsSettingsForm input[name="backendWriteAudit"]')).toBeChecked();
+    await page.locator('#householdConcertsSettingsForm input[name="backendWriteAudit"]').uncheck();
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect.poll(() => page.evaluate(() => {
+      return !!(window.HouseholdConcerts && window.HouseholdConcerts.isBackendWriteAuditEnabled && window.HouseholdConcerts.isBackendWriteAuditEnabled());
+    })).toBe(false);
+  });
+
   test('can add recommended artists directly from band profile modal', async ({ page }) => {
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
     await expect(page.locator('.household-concerts-modal')).toContainText('Recommended bands to add');

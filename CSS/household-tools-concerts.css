@@ -297,6 +297,21 @@
   background: transparent;
 }
 
+#householdConcertsPane .household-concerts-debug-tip {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#householdConcertsPane .household-concerts-debug-tip strong {
+  color: #1d4ed8;
+}
+
 #householdConcertsPane .household-concerts-search-row input,
 #householdConcertsPane .household-concerts-filter-row input,
 #householdConcertsPane .household-concerts-form-row input,

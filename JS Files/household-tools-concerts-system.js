@@ -28,6 +28,7 @@
   var BAND_PROFILE_META_STORAGE_KEY = 'householdConcertsBandProfileMetaV1';
   var BAND_PROFILE_OVERRIDES_STORAGE_KEY = 'householdConcertsBandProfileOverridesV1';
   var BAND_PROFILE_LOCKS_STORAGE_KEY = 'householdConcertsBandProfileLocksV1';
+  var BACKEND_WRITE_AUDIT_STORAGE_KEY = 'householdConcertsBackendWriteAuditV1';
   var DEFAULT_CONCERTS_LOCATION = {
     latitude: 35.3187,
     longitude: -82.4609,
@@ -53,6 +54,14 @@
     setlistUrl: 'Setlist.fm URL',
     bandsintownUrl: 'Bandsintown URL',
     wikipediaUrl: 'Wikipedia URL'
+  };
+  var TABLE_WRITE_COLUMN_ALIASES = {
+    bandmembersroles: ['bandmembers'],
+    bandmembersandroles: ['bandmembers'],
+    bandmemberroles: ['bandmembers'],
+    recordlabel: ['recordlabel', 'record_label'],
+    bandcoverimageurl: ['bandcoverphotourl'],
+    bandcoverurl: ['bandcoverphotourl']
   };
   var BAND_FORM_NAME_TO_PREFILL_KEY = {
     Band_Name: 'bandName',
@@ -353,6 +362,33 @@
 
   function normalizeColumnName(value) {
     return normalizeText(value).replace(/[^a-z0-9]/g, '');
+  }
+
+  function isBackendWriteAuditEnabled() {
+    try {
+      if (global.__HOUSEHOLD_CONCERTS_WRITE_AUDIT === true) return true;
+      return String(global.localStorage.getItem(BACKEND_WRITE_AUDIT_STORAGE_KEY) || '').trim() === '1';
+    } catch (_error) {
+      return global.__HOUSEHOLD_CONCERTS_WRITE_AUDIT === true;
+    }
+  }
+
+  function setBackendWriteAuditEnabled(enabled) {
+    var next = !!enabled;
+    global.__HOUSEHOLD_CONCERTS_WRITE_AUDIT = next;
+    try {
+      if (next) global.localStorage.setItem(BACKEND_WRITE_AUDIT_STORAGE_KEY, '1');
+      else global.localStorage.removeItem(BACKEND_WRITE_AUDIT_STORAGE_KEY);
+    } catch (_error) {
+      // Ignore storage errors.
+    }
+    return next;
+  }
+
+  function summarizeAuditValue(value) {
+    var str = String(value == null ? '' : value);
+    if (!str) return '<empty>';
+    return str.length > 80 ? (str.slice(0, 80) + '…') : str;
   }
 
   function escapeHtml(value) {
@@ -819,13 +855,32 @@
     throw new Error('Could not locate ' + WORKBOOK_NAME + '. Checked: ' + candidates.join(', '));
   }
 
-  function mapRecordToRowByColumns(record, columns) {
+  function mapRecordToRowByColumns(record, columns, options) {
+    var safeOptions = options && typeof options === 'object' ? options : {};
     var normalizedValues = {};
     Object.entries(record || {}).forEach(function (entry) {
       var normalized = normalizeColumnName(entry[0]);
       if (normalized) normalizedValues[normalized] = entry[1];
     });
-    return (Array.isArray(columns) ? columns : [])
+    function resolveValueForColumn(normalizedName) {
+      if (Object.prototype.hasOwnProperty.call(normalizedValues, normalizedName)) {
+        return { value: normalizedValues[normalizedName], sourceKey: normalizedName, sourceType: 'exact' };
+      }
+      var aliases = TABLE_WRITE_COLUMN_ALIASES[normalizedName] || [];
+      for (var aliasIdx = 0; aliasIdx < aliases.length; aliasIdx += 1) {
+        var alias = normalizeColumnName(aliases[aliasIdx]);
+        if (alias && Object.prototype.hasOwnProperty.call(normalizedValues, alias)) {
+          return { value: normalizedValues[alias], sourceKey: alias, sourceType: 'alias' };
+        }
+      }
+      // Handles workbook variants like "Band Members + Roles" or "Band Members and Roles".
+      if (/bandmembers/.test(normalizedName) && Object.prototype.hasOwnProperty.call(normalizedValues, 'bandmembers')) {
+        return { value: normalizedValues.bandmembers, sourceKey: 'bandmembers', sourceType: 'pattern' };
+      }
+      return { value: '', sourceKey: '', sourceType: 'missing' };
+    }
+    var auditRows = [];
+    var rowValues = (Array.isArray(columns) ? columns : [])
       .slice()
       .sort(function (a, b) {
         var ai = Number.isInteger(a.index) ? a.index : 0;
@@ -834,16 +889,34 @@
       })
       .map(function (column) {
         var normalizedName = normalizeColumnName(column.name || '');
-        var value = Object.prototype.hasOwnProperty.call(normalizedValues, normalizedName)
-          ? normalizedValues[normalizedName]
-          : '';
+        var resolved = resolveValueForColumn(normalizedName);
+        var value = resolved.value;
+        auditRows.push({
+          column: String(column.name || '').trim(),
+          normalizedColumn: normalizedName,
+          sourceKey: resolved.sourceKey,
+          sourceType: resolved.sourceType,
+          valuePreview: summarizeAuditValue(value)
+        });
         return value == null ? '' : value;
       });
+    if (safeOptions.audit && isBackendWriteAuditEnabled()) {
+      console.groupCollapsed('[Concerts Write Audit] ' + (safeOptions.tableName || 'Unknown table') + ' -> ' + (safeOptions.context || 'row add'));
+      console.table(auditRows);
+      console.log('Record keys:', Object.keys(record || {}));
+      console.log('Raw record:', record || {});
+      console.groupEnd();
+    }
+    return rowValues;
   }
 
   async function appendRecordToTable(filePath, tableName, record) {
     var schema = await fetchTableColumnsAndRows(filePath, tableName, 1);
-    var row = mapRecordToRowByColumns(record, schema.columns || []);
+    var row = mapRecordToRowByColumns(record, schema.columns || [], {
+      audit: true,
+      tableName: tableName,
+      context: 'appendRecordToTable'
+    });
     var encodedPath = encodeGraphPath(filePath);
     var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/add';
     await fetchJson(url, { method: 'POST', body: { values: [row] } });
@@ -2989,6 +3062,7 @@
 
   function openConcertSettingsModal() {
     var settings = normalizeConcertSettings(state.settings);
+    var writeAuditEnabled = isBackendWriteAuditEnabled();
     openModal(
       '<div class="household-concerts-modal-head"><div><h3>Concert Settings</h3><p>Set your home base and enrichment preferences for band profiles.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
       + '<form id="householdConcertsSettingsForm" class="household-concerts-form">'
@@ -3000,6 +3074,8 @@
       + '<div class="household-concerts-form-row"><label>Auto-fill Behavior</label>'
       + '<div class="household-concerts-settings-stack">'
       + '<label><input type="checkbox" name="autoFillOnOpen" value="1"' + (settings.autoFillOnOpen ? ' checked' : '') + '> Auto-fill profile when opening Add Favorite Band from search</label>'
+      + '<label><input type="checkbox" name="backendWriteAudit" value="1"' + (writeAuditEnabled ? ' checked' : '') + '> Enable backend write audit logs (debug field-to-column mapping)</label>'
+      + '<p class="household-concerts-debug-tip">Debug tip: open browser DevTools console and look for <strong>[Concerts Write Audit]</strong> entries after saving records.</p>'
       + '</div></div>'
       + '<div class="household-concerts-form-row"><label>Enrichment Sources</label>'
       + '<div class="household-concerts-settings-stack">'
@@ -3034,6 +3110,7 @@
     }
 
     saveConcertSettings(next);
+    setBackendWriteAuditEnabled(!!form.querySelector('[name="backendWriteAudit"]:checked'));
     if (next.homeBaseMode === 'hendersonville') {
       resetConcertsLocationToDefault();
     } else {
@@ -3773,21 +3850,26 @@
           throw new Error(lastError && lastError.message ? lastError.message : 'Tour sync failed.');
         }
        var added = 0;
-       events.slice(0, 10).forEach(function (event) {
+       var workbookPath = await findWorkbookPath();
+       var slicedEvents = events.slice(0, 10);
+       for (var eventIdx = 0; eventIdx < slicedEvents.length; eventIdx += 1) {
+         var event = slicedEvents[eventIdx];
          var existsAlready = state.upcomingConcerts.some(function (c) {
-            return normalizeText(c.bandName) === normalizeText(cleanName) && toIsoDate(c.concertDate) === toIsoDate(event.datetime);
+           return normalizeText(c.bandName) === normalizeText(cleanName) && toIsoDate(c.concertDate) === toIsoDate(event.datetime);
          });
-         if (!existsAlready && event.venue) {
-           state.upcomingConcerts.push(parseUpcomingConcert({
-              Band_Name: cleanName,
-             Concert_Date: event.datetime,
-             Venue: event.venue.name || '',
-             City: event.venue.city || '',
-             State: event.venue.country === 'United States' ? event.venue.region : ''
-           }));
-           added += 1;
-         }
-       });
+         if (existsAlready || !event.venue) continue;
+         var upcomingRecord = {
+           Band_Name: cleanName,
+           Concert_Date: toIsoDate(event.datetime),
+           Day_of_Week: formatDayOfWeek(event.datetime),
+           Venue: event.venue.name || '',
+           City: event.venue.city || '',
+           State: event.venue.country === 'United States' ? event.venue.region : ''
+         };
+         await appendRecordToTable(workbookPath, UPCOMING_TABLE, upcomingRecord);
+         state.upcomingConcerts.push(parseUpcomingConcert(upcomingRecord));
+         added += 1;
+       }
         setStatus('Synced ' + added + ' tour dates for ' + cleanName + '.', 'success');
        renderAll();
        maybeHydrateUpcomingDistances();
@@ -4268,6 +4350,8 @@
   global.HouseholdConcerts = {
     init: init,
     refresh: refreshData,
+    setBackendWriteAuditEnabled: setBackendWriteAuditEnabled,
+    isBackendWriteAuditEnabled: isBackendWriteAuditEnabled,
     __state: state
   };
 })(window);

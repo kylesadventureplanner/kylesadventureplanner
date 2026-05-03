@@ -5,8 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/azure-static-web-apps-victorious-wave-0ec1bb10f.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/azure-static-web-apps-victorious-wave-0ec1bb10f.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/household-tools-concerts.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/household-tools-concerts.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/household-tools-concerts.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/household-tools-concerts.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -99,7 +102,7 @@
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
       <workItem from="1777494531732" duration="92762000" />
-      <workItem from="1777741223725" duration="19817000" />
+      <workItem from="1777741223725" duration="20953000" />
     </task>
     <servers />
   </component>
