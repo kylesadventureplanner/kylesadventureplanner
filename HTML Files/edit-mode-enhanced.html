@@ -7522,7 +7522,24 @@
       if (inputTypeEl) inputTypeEl.value = 'placeId';
       if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
       setBulkCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected candidate(s)...`, 'success');
-      const result = await submitBulkAddPlaces();
+
+       let result = null;
+       if (window.enhancedAutomation && typeof window.enhancedAutomation.bulkAddPlaces === 'function') {
+         result = await window.enhancedAutomation.bulkAddPlaces(uniquePlaceIds.join('\n'), 'placeId', dryRun, { target: targetContext });
+         window.enhancedAutomation.displayResults(result, statusDiv);
+         applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
+         applyAddWriteDiagnostics(result, target, { rowsRequested: uniquePlaceIds.length });
+        toastAddWriteDiagnostics(result, 'Add selected candidates', { rowsRequested: uniquePlaceIds.length });
+        if (result && result.success && !dryRun) {
+          document.getElementById('bulkInput').value = '';
+          clearDraft('bulk');
+        }
+        await runPostAddRefreshHooks(result, dryRun);
+        return;
+      } else {
+        result = await submitBulkAddPlaces();
+      }
+
       applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
     }
 

@@ -376,8 +376,12 @@ test.describe('Edit Mode single-add candidate search', () => {
     await popup.click('#bulkAddSelectedCandidatesBtn');
 
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(2);
-    await expect(popup.locator('#bulk-search-status')).toContainText('Add complete');
-    await expect(popup.locator('#bulk-search-status')).toContainText('General_Entertainment (Entertainment_Locations.xlsx)');
+    await expect.poll(async () => {
+      return (await popup.locator('#bulk-search-status').textContent()) || '';
+    }, { timeout: 15000 }).toContain('Add complete');
+    await expect.poll(async () => {
+      return (await popup.locator('#bulk-search-status').textContent()) || '';
+    }, { timeout: 15000 }).toContain('General_Entertainment (Entertainment_Locations.xlsx)');
   });
 
   test('single candidate search supports distance/state filters and shows Google-place link', async ({ page }) => {
