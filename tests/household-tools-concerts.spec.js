@@ -105,6 +105,7 @@ test.describe('Household Tools Concerts', () => {
     await page.addInitScript(() => {
       window.accessToken = 'test-access-token';
       window.__historicShowsRequests = [];
+      window.__imageProxyRequests = [];
       navigator.geolocation.getCurrentPosition = function (success) {
         success({
           coords: {
@@ -146,6 +147,16 @@ test.describe('Household Tools Concerts', () => {
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        if (resolvedUrl.hostname === 'blocked-images.example') {
+          throw new TypeError('Failed to fetch');
+        }
+        if (resolvedUrl.pathname === '/api/public/image-fetch') {
+          window.__imageProxyRequests.push(resolvedUrl.toString());
+          return new Response('fake-proxy-image', {
+            status: 200,
+            headers: { 'Content-Type': 'image/png' }
           });
         }
         return originalFetch(input, init);
@@ -488,6 +499,60 @@ test.describe('Household Tools Concerts', () => {
       });
     });
 
+    await page.route('https://commons.wikimedia.org/w/api.php**', async (route) => {
+      const url = new URL(route.request().url());
+      const listMode = String(url.searchParams.get('list') || '').toLowerCase();
+      const propMode = String(url.searchParams.get('prop') || '').toLowerCase();
+      const query = String(url.searchParams.get('srsearch') || '').toLowerCase();
+      if (listMode === 'search') {
+        const logoRows = [
+          { title: 'File:Queens_of_the_Stone_Age_logo.png' },
+          { title: 'File:Queens_of_the_Stone_Age_wordmark.svg' }
+        ];
+        const groupRows = [
+          { title: 'File:Queens_of_the_Stone_Age_live_2018.jpg' },
+          { title: 'File:Queens_of_the_Stone_Age_group_photo.jpg' }
+        ];
+        const rows = query.includes('group') ? groupRows : logoRows;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ query: { search: rows } })
+        });
+        return;
+      }
+      if (propMode === 'imageinfo') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            query: {
+              pages: {
+                1: {
+                  title: 'File:Queens_of_the_Stone_Age_logo.png',
+                  imageinfo: [{ url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Queens_of_the_Stone_Age_logo.png', thumburl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Queens_of_the_Stone_Age_logo.png', mime: 'image/png' }]
+                },
+                2: {
+                  title: 'File:Queens_of_the_Stone_Age_group_photo.jpg',
+                  imageinfo: [{ url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Queens_of_the_Stone_Age_group_photo.jpg', thumburl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Queens_of_the_Stone_Age_group_photo.jpg', mime: 'image/jpeg' }]
+                }
+              }
+            }
+          })
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ query: { search: [] } }) });
+    });
+
+    await page.route('https://commons.wikimedia.org/wiki/Special:FilePath/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/jpeg',
+        body: Buffer.from('fake-commons-image')
+      });
+    });
+
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="household-tools"]').click();
     await expect(page.locator('#householdToolsRoot')).toBeVisible();
@@ -633,11 +698,14 @@ test.describe('Household Tools Concerts', () => {
 
     const firstBand = page.locator('[data-testid="concerts-favorites-grid"] .household-concerts-band-card h3').first();
     await expect(firstBand).toContainText('Nine Inch Nails');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).not.toContainText('Depeche Mode');
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Tier 1 (The Best Bands)');
-    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Bands Seen Live (Not Favorites)');
-    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Tier 4 (Attended Concert / Not Favorite)');
     await expect(page.locator('#householdConcertsSummaryGrid')).toContainText('Favorite Bands');
     await expect(page.locator('#householdConcertsSummaryGrid')).toContainText('Bands Seen Live (Not Favorites)');
+
+    await page.locator('[data-concert-action="set-tier4-visibility"][data-tier4-visible="1"]').click();
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Bands Seen Live (Not Favorites)');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Depeche Mode');
   });
 
   test('tier filter chips can isolate Tier 1 bands', async ({ page }) => {
@@ -767,6 +835,78 @@ test.describe('Household Tools Concerts', () => {
 
     await expect(page.locator('#householdConcertsBandForm input[name="Band_Logo_URL"]')).toHaveValue(/onedrive\.example/);
     await expect(page.locator('#householdConcertsBandForm input[name="Band_Cover_Photo_URL"]')).toHaveValue(/onedrive\.example/);
+    const bandPhotoUploads = writes.filter((entry) => String(entry.method || '').toUpperCase() === 'PUT' && String(entry.url || '').includes('Copilot_Apps/Band_Photos'));
+    expect(bandPhotoUploads.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('band profile modal supports previous/next navigation between bands', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+    await expect(page.locator('.household-concerts-modal h3')).toContainText('Depeche Mode');
+    await page.locator('.household-concerts-modal [data-concert-action="open-band-details-next"]').click();
+    await expect(page.locator('.household-concerts-modal h3')).toContainText('Nine Inch Nails');
+    await page.locator('.household-concerts-modal [data-concert-action="open-band-details-prev"]').click();
+    await expect(page.locator('.household-concerts-modal h3')).toContainText('Depeche Mode');
+  });
+
+  test('can mark a band as priority-live and show it in the priority dashboard', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="toggle-priority-band"]').click();
+    await expect(page.locator('#householdConcertsPriorityDashboard')).toContainText('Depeche Mode');
+    await expect(page.locator('#householdConcertsPriorityDashboard')).toContainText('Priority Live Targets');
+  });
+
+  test('can update a band tier from profile modal and separate Tier 4 into seen-live section', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+    await page.selectOption('#householdConcertsBandTierQuickSelect', 'Tier 4 (Attended Concert / Not Favorite)');
+    await page.locator('.household-concerts-modal [data-concert-action="save-band-tier"]').click();
+    await page.locator('.household-concerts-modal [data-concert-action="close-modal"]').first().click();
+    await page.locator('[data-concert-action="set-tier4-visibility"][data-tier4-visible="1"]').click();
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Bands Seen Live (Not Favorites)');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Depeche Mode');
+  });
+
+  test('favorites dashboard paginates long band lists', async ({ page }) => {
+    await expect.poll(async () => page.evaluate(() => {
+      const state = window.HouseholdConcerts && window.HouseholdConcerts.__state;
+      if (!state || !Array.isArray(state.favoriteBands) || !state.favoriteBands.length) return { nextDisabled: true, pageText: '' };
+      const seed = state.favoriteBands[0];
+      while (state.favoriteBands.length < 18) {
+        const idx = state.favoriteBands.length;
+        state.favoriteBands.push(Object.assign({}, seed, {
+          id: 'paged-band-' + idx,
+          bandName: 'Paged Band ' + idx,
+          bandTier: 'Tier 2 (Great Bands)'
+        }));
+      }
+      const input = document.getElementById('householdConcertsFilterInput');
+      if (input) input.dispatchEvent(new Event('input', { bubbles: true }));
+      const nextBtn = document.querySelector('[data-testid="concerts-favorites-grid"] [data-concert-action="set-bands-page"][data-page="2"]');
+      const pager = document.querySelector('[data-testid="concerts-favorites-grid"] .household-concerts-pagination');
+      return { nextDisabled: !nextBtn || !!nextBtn.disabled, pageText: pager ? String(pager.textContent || '') : '' };
+    })).toMatchObject({ nextDisabled: false });
+
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] .household-concerts-pagination')).toContainText('Page 1 of');
+    await page.locator('[data-testid="concerts-favorites-grid"] [data-concert-action="set-bands-page"][data-page="2"]').click();
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] .household-concerts-pagination')).toContainText('Page 2 of');
+  });
+
+  test('can import band image URL via proxy fallback when direct fetch fails', async ({ page }) => {
+    await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
+    await page.locator('[data-concert-action="search-web"]').first().click();
+    await page.locator('[data-testid="concerts-search-results"] [data-concert-action="open-add-band"]').first().click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+
+    await page.locator('#householdConcertsBandForm [data-concert-action="open-band-image-picker"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Select Band Images');
+    await page.locator('#householdConcertsBandLogoUrlInput').fill('https://blocked-images.example/qotsa-logo.png');
+    await page.locator('.household-concerts-modal [data-concert-action="import-band-logo-url"]').click();
+
+    await expect(page.locator('#householdConcertsBandImagePickerStatus')).toContainText('Imported URL and uploaded successfully.');
+    const proxyRequests = await page.evaluate(() => Array.isArray(window.__imageProxyRequests) ? window.__imageProxyRequests.slice() : []);
+    expect(proxyRequests.length).toBeGreaterThan(0);
+
+    await page.locator('.household-concerts-modal [data-concert-action="apply-band-image-selection"]').click();
+    await expect(page.locator('#householdConcertsBandForm')).toBeVisible();
+    await expect(page.locator('#householdConcertsBandForm input[name="Band_Logo_URL"]')).toHaveValue(/onedrive\.example/);
   });
 
   test('can launch Manage Photos from band profile modal for an existing saved band', async ({ page }) => {

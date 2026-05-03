@@ -23,6 +23,7 @@
   var CONCERT_ATTENDEE_OPTIONS = ['Kyle', 'Heather', 'Both'];
   var HISTORIC_RADIUS_OPTIONS = [25, 50, 100];
   var HISTORIC_DEFAULT_FROM_YEAR = 2006;
+  var BAND_DASHBOARD_PAGE_SIZE = 12;
   var HISTORIC_SEARCH_LOCATIONS = [
     { id: 'richardson', label: 'Richardson, TX 75081', latitude: 32.9483, longitude: -96.7299 },
     { id: 'hendersonville', label: 'Hendersonville, NC 28791', latitude: 35.3187, longitude: -82.4609 }
@@ -40,6 +41,8 @@
   var BACKEND_WRITE_AUDIT_STORAGE_KEY = 'householdConcertsBackendWriteAuditV1';
   var WORKBOOK_PATH_STORAGE_KEY = 'householdConcertsWorkbookPathV1';
   var BAND_TIER_STORAGE_KEY = 'householdConcertsBandTierOverridesV1';
+  var SHOW_TIER4_STORAGE_KEY = 'householdConcertsShowTier4BandsV1';
+  var PRIORITY_BANDS_STORAGE_KEY = 'householdConcertsPriorityBandsV1';
   var DEFAULT_CONCERTS_LOCATION = {
     latitude: 35.3187,
     longitude: -82.4609,
@@ -163,6 +166,8 @@
      bandFilter: '',
      genreFilter: '',
       tierFilter: '',
+      showTier4Bands: readStringStorage(SHOW_TIER4_STORAGE_KEY, '0') === '1',
+      bandsPage: 1,
      distanceIndex: 3,
      searchBusy: false,
      geocodeBusy: false,
@@ -183,6 +188,8 @@
       recommendationToast: null,
       unsyncedBandsReport: null,
       unsyncedScanBusy: false,
+      priorityBands: readJsonStorage(PRIORITY_BANDS_STORAGE_KEY, {}),
+      festivalDashboard: { busy: false, generatedAt: 0, festivals: [], message: '' },
      pendingSearchQuery: '',
      attendedUploadFiles: [],
      attendedUploadedPhotoUrls: [],
@@ -344,6 +351,13 @@
 
   function isTier4Band(value) {
     return normalizeBandTier(value) === BAND_TIER_OPTIONS[3].value;
+  }
+
+  function getNextBandTierValue(currentTier) {
+    var normalized = normalizeBandTier(currentTier);
+    var idx = BAND_TIER_OPTIONS.findIndex(function (option) { return option.value === normalized; });
+    var nextIdx = idx >= 0 ? ((idx + 1) % BAND_TIER_OPTIONS.length) : 1;
+    return BAND_TIER_OPTIONS[nextIdx].value;
   }
 
   function getBandTierOverride(bandNameOrKey) {
@@ -1028,7 +1042,58 @@
     var rolePart = normalizeKey(role || 'image') || 'image';
     var stamp = new Date().toISOString().replace(/[:.]/g, '-');
     var namePart = sanitizeFileName(fileName || (rolePart + '.jpg'));
-    return 'Band_Photos/' + bandPart + '/' + stamp + '-' + rolePart + '-' + namePart;
+    return 'Copilot_Apps/Band_Photos/' + bandPart + '/' + stamp + '-' + rolePart + '-' + namePart;
+  }
+
+  function getBandPageCount(totalCount) {
+    var count = Math.max(1, Number(totalCount) || 0);
+    return Math.max(1, Math.ceil(count / BAND_DASHBOARD_PAGE_SIZE));
+  }
+
+  function clampBandsPage(totalCount) {
+    var pageCount = getBandPageCount(totalCount);
+    state.bandsPage = Math.max(1, Math.min(pageCount, Number(state.bandsPage) || 1));
+    return state.bandsPage;
+  }
+
+  function parseTimelineEntry(rawLine) {
+    var raw = String(rawLine || '').trim();
+    if (!raw) return null;
+    var status = /^(former|past)/i.test(raw) ? 'former' : (/^(current|present)/i.test(raw) ? 'current' : 'member');
+    var cleaned = raw.replace(/^(former|past|current|present)\s*:\s*/i, '').trim();
+    var yearMatch = cleaned.match(/(19|20)\d{2}\s*[-]\s*((19|20)\d{2}|present)/i);
+    var era = yearMatch ? yearMatch[0].replace(/\s+/g, ' ').trim() : '';
+    var name = cleaned.replace(/\(([^)]*)\)/g, '').replace(/\s{2,}/g, ' ').trim();
+    if (!name) name = cleaned;
+    return { name: name, era: era, status: status };
+  }
+
+  function getBandTimelineEntries(band) {
+    var rows = [];
+    var timelineRows = String((band && band.memberTimeline) || '').split(/\n+/);
+    timelineRows.forEach(function (row) {
+      var parsed = parseTimelineEntry(row);
+      if (parsed) rows.push(parsed);
+    });
+    if (!rows.length) {
+      splitList((band && band.bandMembers) || '').forEach(function (memberRow) {
+        var memberName = String(memberRow || '').split('—')[0].trim();
+        if (!memberName) return;
+        rows.push({ name: memberName, era: '', status: 'member' });
+      });
+    }
+    return rows.slice(0, 14);
+  }
+
+  function renderBandTimelineVisual(band) {
+    var entries = getBandTimelineEntries(band);
+    if (!entries.length) return '<p class="household-concerts-muted">Use refresh to enrich current/former members by era.</p>';
+    return '<div class="household-concerts-timeline">' + entries.map(function (entry) {
+      return '<div class="household-concerts-timeline-item household-concerts-timeline-item--' + escapeHtml(entry.status) + '">'
+        + '<span class="household-concerts-timeline-dot" aria-hidden="true"></span>'
+        + '<div class="household-concerts-timeline-content"><strong>' + escapeHtml(entry.name) + '</strong>' + (entry.era ? ('<span>' + escapeHtml(entry.era) + '</span>') : '') + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
   }
 
   async function uploadBandImageToOneDrive(fileOrBlob, meta, role, fileName) {
@@ -1054,17 +1119,143 @@
   async function uploadBandImageFromUrl(imageUrl, meta, role) {
     var url = String(imageUrl || '').trim();
     if (!url) throw new Error('Enter an image URL first.');
-    var response = await fetch(safeUrl(url));
+    var blob = await fetchBandImageBlobWithFallback(url);
+    var extension = inferImageExtensionFromMime(blob.type, url);
+    return uploadBandImageToOneDrive(blob, meta, role, (normalizeKey((meta && meta.bandName) || 'band') || 'band') + '-' + role + extension);
+  }
+
+  function inferImageExtensionFromMime(mimeType, sourceUrl) {
+    var mime = String(mimeType || '').toLowerCase();
+    if (mime.indexOf('image/png') === 0) return '.png';
+    if (mime.indexOf('image/webp') === 0) return '.webp';
+    if (mime.indexOf('image/gif') === 0) return '.gif';
+    if (mime.indexOf('image/svg') === 0) return '.svg';
+    if (mime.indexOf('image/jpeg') === 0 || mime.indexOf('image/jpg') === 0) return '.jpg';
+    var safeSource = String(sourceUrl || '').toLowerCase();
+    if (/\.png(\?|$)/.test(safeSource)) return '.png';
+    if (/\.webp(\?|$)/.test(safeSource)) return '.webp';
+    if (/\.gif(\?|$)/.test(safeSource)) return '.gif';
+    if (/\.svg(\?|$)/.test(safeSource)) return '.svg';
+    return '.jpg';
+  }
+
+  function isImageBlobLike(blob, sourceUrl) {
+    if (!blob) return false;
+    var mime = String(blob.type || '').toLowerCase();
+    if (/^image\//.test(mime)) return true;
+    return /\.(png|jpe?g|webp|gif|svg)(\?|$)/i.test(String(sourceUrl || ''));
+  }
+
+  async function fetchImageBlobDirect(url) {
+    var response = await fetch(safeUrl(url), {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit'
+    });
     if (!response.ok) throw new Error('Could not download image (' + response.status + ').');
     var blob = await response.blob();
-    var extension = (/image\/png/i.test(blob.type) ? '.png' : (/image\/webp/i.test(blob.type) ? '.webp' : '.jpg'));
-    return uploadBandImageToOneDrive(blob, meta, role, (normalizeKey((meta && meta.bandName) || 'band') || 'band') + '-' + role + extension);
+    if (!isImageBlobLike(blob, url)) {
+      throw new Error('That URL did not return an image file.');
+    }
+    return blob;
+  }
+
+  async function fetchImageBlobViaProxy(url) {
+    var response = await fetch('/api/public/image-fetch?url=' + encodeURIComponent(url), {
+      method: 'GET',
+      headers: { Accept: 'image/*' }
+    });
+    if (!response.ok) throw new Error('Proxy image fetch failed (' + response.status + ').');
+    var blob = await response.blob();
+    if (!isImageBlobLike(blob, url)) {
+      throw new Error('Proxy response was not an image file.');
+    }
+    return blob;
+  }
+
+  async function fetchBandImageBlobWithFallback(url) {
+    var directError = null;
+    try {
+      return await fetchImageBlobDirect(url);
+    } catch (error) {
+      directError = error;
+    }
+    try {
+      return await fetchImageBlobViaProxy(url);
+    } catch (proxyError) {
+      var directMessage = directError && directError.message ? String(directError.message) : 'Direct fetch failed.';
+      var proxyMessage = proxyError && proxyError.message ? String(proxyError.message) : 'Proxy fetch failed.';
+      throw new Error('Could not import image URL. ' + directMessage + ' ' + proxyMessage + '');
+    }
+  }
+
+  function scoreBandImageCandidate(candidate, cleanBandName) {
+    var safe = candidate && typeof candidate === 'object' ? candidate : {};
+    var score = 0;
+    var source = normalizeText(safe.source);
+    var intent = normalizeText(safe.intent);
+    var haystack = normalizeText([safe.label, safe.url, safe.thumbUrl].join(' '));
+    var bandKey = normalizeText(cleanBandName).replace(/^the\s+/, '');
+
+    if (source.indexOf('wikimedia') >= 0) score += 90;
+    if (source.indexOf('apple') >= 0) score += 30;
+    if (intent === 'logo') score += 50;
+    if (intent === 'group-photo') score += 45;
+    if (bandKey && haystack.indexOf(bandKey) >= 0) score += 20;
+    if (/\blogo\b/.test(haystack)) score += 30;
+    if (/\b(group|band)\s+(photo|image|members?)\b/.test(haystack)) score += 25;
+    if (/\b(album|single|ep|soundtrack|cover art|artwork)\b/.test(haystack)) score -= 45;
+
+    return score;
+  }
+
+  async function fetchWikimediaImageCandidates(bandName) {
+    var cleanName = String(bandName || '').trim();
+    if (!cleanName) return [];
+    var intents = [
+      { key: 'logo', query: cleanName + ' logo' },
+      { key: 'group-photo', query: cleanName + ' group photo' }
+    ];
+    var candidates = [];
+
+    for (var i = 0; i < intents.length; i += 1) {
+      var intent = intents[i];
+      var searchUrl = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&list=search&srnamespace=6&srlimit=8&srsearch=' + encodeURIComponent(intent.query);
+      var searchPayload = await fetchJsonPublic(searchUrl).catch(function () { return {}; });
+      var rows = searchPayload && searchPayload.query && Array.isArray(searchPayload.query.search)
+        ? searchPayload.query.search
+        : [];
+      var titles = rows.map(function (row) { return String(row && row.title ? row.title : '').trim(); }).filter(Boolean);
+      if (!titles.length) continue;
+
+      var detailUrl = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url|mime&iiurlwidth=320&titles=' + encodeURIComponent(titles.join('|'));
+      var detailPayload = await fetchJsonPublic(detailUrl).catch(function () { return {}; });
+      var pages = detailPayload && detailPayload.query && detailPayload.query.pages ? detailPayload.query.pages : {};
+
+      Object.keys(pages).forEach(function (pageKey) {
+        var page = pages[pageKey] || {};
+        var imageInfo = Array.isArray(page.imageinfo) ? page.imageinfo[0] : null;
+        var imageUrl = String(imageInfo && imageInfo.url ? imageInfo.url : '').trim();
+        if (!imageUrl) return;
+        candidates.push({
+          url: imageUrl,
+          thumbUrl: String(imageInfo.thumburl || imageUrl).trim(),
+          label: String(page.title || intent.query).replace(/^File:/i, '').trim(),
+          source: 'Wikimedia Commons',
+          intent: intent.key
+        });
+      });
+    }
+
+    return candidates;
   }
 
   async function fetchBandImageCandidates(bandName) {
     var cleanName = String(bandName || '').trim();
     if (!cleanName) throw new Error('Enter a band name first.');
     var sources = [];
+    var commonsCandidates = await fetchWikimediaImageCandidates(cleanName).catch(function () { return []; });
+    sources.push.apply(sources, commonsCandidates);
     var songPayload = await fetchJsonPublic('https://itunes.apple.com/search?entity=song&limit=12&term=' + encodeURIComponent(cleanName));
     var albumPayload = await fetchJsonPublic('https://itunes.apple.com/search?entity=album&limit=12&term=' + encodeURIComponent(cleanName));
     var all = [].concat(songPayload.results || [], albumPayload.results || []);
@@ -1078,14 +1269,19 @@
         url: highRes,
         thumbUrl: art,
         label: String(entry.collectionName || entry.trackName || artistName).trim(),
-        source: 'Apple Music'
+        source: 'Apple Music',
+        intent: /\b(album|single|ep)\b/i.test(String(entry.collectionName || entry.trackName || '')) ? 'album' : 'artist'
       });
     });
     var unique = [];
     sources.forEach(function (item) {
       if (!item.url) return;
       if (unique.some(function (existing) { return normalizeText(existing.url) === normalizeText(item.url); })) return;
+      item.rankScore = scoreBandImageCandidate(item, cleanName);
       unique.push(item);
+    });
+    unique.sort(function (a, b) {
+      return (Number(b.rankScore) || 0) - (Number(a.rankScore) || 0);
     });
     return unique.slice(0, 24);
   }
@@ -2181,6 +2377,39 @@
     }) || null;
   }
 
+  function isPriorityBand(bandLike) {
+    var key = normalizeKey((bandLike && (bandLike.id || bandLike.bandName)) || '');
+    if (!key) return false;
+    return !!state.priorityBands[key];
+  }
+
+  function setPriorityBandFlag(bandLike, enabled) {
+    var key = normalizeKey((bandLike && (bandLike.id || bandLike.bandName)) || '');
+    if (!key) return;
+    if (enabled) state.priorityBands[key] = { at: Date.now() };
+    else delete state.priorityBands[key];
+    writeJsonStorage(PRIORITY_BANDS_STORAGE_KEY, state.priorityBands);
+  }
+
+  async function updateBandTierForBand(band, tierValue, options) {
+    if (!band) return;
+    var nextTier = normalizeBandTier(tierValue || '');
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    try {
+      await persistFavoriteBandProfilePatch(band, { bandTier: nextTier }, { skipRender: true });
+      setBandTierOverride(band.id || band.bandName, nextTier);
+      state.favoriteBands = state.favoriteBands.map(function (entry) {
+        if (normalizeKey(entry.id) !== normalizeKey(band.id)) return entry;
+        return Object.assign({}, entry, { bandTier: nextTier });
+      });
+      if (!safeOptions.silentStatus) setStatus('Updated tier for ' + band.bandName + ' to ' + nextTier + '.', 'success');
+      renderAll();
+      if (safeOptions.reopenProfile) openBandDetails(getBandByKey(band.id));
+    } catch (error) {
+      setStatus(error && error.message ? error.message : 'Could not update band tier.', 'error');
+    }
+  }
+
   function computeBandStats(bandKey) {
     var key = normalizeKey(bandKey);
     var attended = state.attendedConcerts.filter(function (item) { return item.bandKey === key; });
@@ -2213,7 +2442,12 @@
     var genreFilter = normalizeText(state.genreFilter);
     var tierFilter = normalizeText(state.tierFilter);
     return state.favoriteBands.filter(function (band) {
-      if (tierFilter && normalizeText(normalizeBandTier(band.bandTier)) !== tierFilter) return false;
+      var isTier4 = isTier4Band(band.bandTier);
+      if (tierFilter) {
+        if (normalizeText(normalizeBandTier(band.bandTier)) !== tierFilter) return false;
+      } else if (!state.showTier4Bands && isTier4) {
+        return false;
+      }
       if (genreFilter) {
         var hasGenre = (band.genres || []).some(function (genre) { return normalizeText(genre) === genreFilter; });
         if (!hasGenre) return false;
@@ -2304,7 +2538,11 @@
   function renderTierChips() {
     var el = $(TIER_CHIPS_ID);
     if (!el) return;
-    var html = ['<button type="button" class="household-concerts-chip' + (state.tierFilter ? '' : ' is-active') + '" data-concert-action="set-tier-filter" data-tier="">All tiers</button>'];
+    var viewMode = [
+      '<button type="button" class="household-concerts-chip' + ((!state.showTier4Bands && !state.tierFilter) ? ' is-active' : '') + '" data-concert-action="set-tier4-visibility" data-tier4-visible="0">Favorites (Tier 1-3)</button>',
+      '<button type="button" class="household-concerts-chip' + ((state.showTier4Bands && !state.tierFilter) ? ' is-active' : '') + '" data-concert-action="set-tier4-visibility" data-tier4-visible="1">Include Tier 4</button>'
+    ];
+    var html = viewMode.concat(['<button type="button" class="household-concerts-chip' + (state.tierFilter ? '' : ' is-active') + '" data-concert-action="set-tier-filter" data-tier="">All visible tiers</button>']);
     BAND_TIER_OPTIONS.forEach(function (option) {
       var active = normalizeText(option.value) === normalizeText(state.tierFilter);
       html.push('<button type="button" class="household-concerts-chip' + (active ? ' is-active' : '') + '" data-concert-action="set-tier-filter" data-tier="' + escapeHtml(option.value) + '">' + escapeHtml(option.value) + '</button>');
@@ -2317,12 +2555,17 @@
      if (!el) return;
      var bands = getFilteredBands();
      if (!bands.length) {
+       state.bandsPage = 1;
        el.innerHTML = emptyState('No bands match the current filters.', 'Try a different search, tier filter, or add a new band from the web search panel.');
        return;
      }
+     var page = clampBandsPage(bands.length);
+     var start = (page - 1) * BAND_DASHBOARD_PAGE_SIZE;
+     var end = start + BAND_DASHBOARD_PAGE_SIZE;
+     var pagedBands = bands.slice(start, end);
      var activeBandKey = normalizeKey(resolveActiveBand() && resolveActiveBand().id);
-     var favoriteBands = bands.filter(function (band) { return !isTier4Band(band.bandTier); });
-     var seenLiveBands = bands.filter(function (band) { return isTier4Band(band.bandTier); });
+     var favoriteBands = pagedBands.filter(function (band) { return !isTier4Band(band.bandTier); });
+     var seenLiveBands = pagedBands.filter(function (band) { return isTier4Band(band.bandTier); });
      var renderBandCard = function (band) {
        var stats = computeBandStats(band.id);
        var isActive = normalizeKey(band.id) === activeBandKey;
@@ -2330,6 +2573,7 @@
        var genres = (band.genres || []).slice(0, 4);
        var songs = (band.songs || []).slice(0, 4);
        var tags = getBandTags(band.bandName);
+       var priority = isPriorityBand(band);
         var enrichmentBadge = renderBandEnrichmentBadge(band);
          var lockBadge = renderBandLockBadge(band);
        var links = renderBandLinks(band, true);
@@ -2367,6 +2611,8 @@
          + '<div class="household-concerts-band-actions">'
          + '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-band-details" data-band-key="' + escapeHtml(band.id) + '">View Profile</button>'
+         + '<button type="button" class="pill-button" data-concert-action="cycle-band-tier" data-band-key="' + escapeHtml(band.id) + '">Tier: ' + escapeHtml(normalizeBandTier(band.bandTier).replace(/\s*\(.+\)$/, '')) + '</button>'
+         + '<button type="button" class="pill-button" data-concert-action="toggle-priority-band" data-band-key="' + escapeHtml(band.id) + '">' + (priority ? '⭐ Prioritized' : '☆ Prioritize Live') + '</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-band-image-picker" data-band-key="' + escapeHtml(band.id) + '">Manage Photos</button>'
          + '<button type="button" class="pill-button" data-concert-action="refresh-band-profile" data-band-key="' + escapeHtml(band.id) + '">↻ Refresh Profile</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-log-concert" data-band-key="' + escapeHtml(band.id) + '">Log Concert</button>'
@@ -2377,8 +2623,15 @@
          + '</article>';
      };
      var favoriteSection = '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Favorite Bands</h4><p>' + favoriteBands.length + ' band' + (favoriteBands.length === 1 ? '' : 's') + '</p></div></div>' + (favoriteBands.length ? favoriteBands.map(renderBandCard).join('') : '<p class="household-concerts-muted">No favorites in this filter range.</p>') + '</section>';
-     var seenLiveSection = '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Bands Seen Live (Not Favorites)</h4><p>' + seenLiveBands.length + ' band' + (seenLiveBands.length === 1 ? '' : 's') + '</p></div></div>' + (seenLiveBands.length ? seenLiveBands.map(renderBandCard).join('') : '<p class="household-concerts-muted">No Tier 4 bands in this filter range.</p>') + '</section>';
-     el.innerHTML = favoriteSection + seenLiveSection;
+     var shouldShowSeenLiveSection = state.showTier4Bands || normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value);
+     var seenLiveSection = shouldShowSeenLiveSection
+       ? '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Bands Seen Live (Not Favorites)</h4><p>' + seenLiveBands.length + ' band' + (seenLiveBands.length === 1 ? '' : 's') + '</p></div></div>' + (seenLiveBands.length ? seenLiveBands.map(renderBandCard).join('') : '<p class="household-concerts-muted">No Tier 4 bands in this filter range.</p>') + '</section>'
+       : '';
+     var pageCount = getBandPageCount(bands.length);
+     var pagination = '<div class="household-concerts-pagination"><button type="button" class="pill-button" data-concert-action="set-bands-page" data-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>Previous</button>'
+       + '<span>Page ' + page + ' of ' + pageCount + ' • Showing ' + (start + 1) + '-' + Math.min(end, bands.length) + ' of ' + bands.length + '</span>'
+       + '<button type="button" class="pill-button" data-concert-action="set-bands-page" data-page="' + (page + 1) + '"' + (page >= pageCount ? ' disabled' : '') + '>Next</button></div>';
+     el.innerHTML = favoriteSection + seenLiveSection + pagination;
    }
 
   function statPill(label, value) {
@@ -2427,6 +2680,17 @@
     var fallback = getFilteredBands()[0] || state.favoriteBands[0] || null;
     state.activeBandKey = fallback ? fallback.id : '';
     return fallback;
+  }
+
+  function resolveAdjacentBand(band, direction) {
+    var list = getFilteredBands();
+    if (!list.length || !band) return null;
+    var currentIndex = list.findIndex(function (entry) { return normalizeKey(entry.id) === normalizeKey(band.id); });
+    if (currentIndex < 0) currentIndex = 0;
+    var delta = direction === 'prev' ? -1 : 1;
+    var nextIndex = currentIndex + delta;
+    if (nextIndex < 0 || nextIndex >= list.length) return null;
+    return list[nextIndex] || null;
   }
 
   function renderSearchResults() {
@@ -2598,6 +2862,105 @@
       + '</div>';
   }
 
+  function renderPriorityBandsDashboard() {
+    var el = document.getElementById('householdConcertsPriorityDashboard');
+    if (!el) return;
+    var prioritized = state.favoriteBands.filter(function (band) { return isPriorityBand(band); });
+    var prioritizedKeys = new Set(prioritized.map(function (band) { return normalizeKey(band.id); }));
+    var relatedUpcoming = state.upcomingConcerts.filter(function (concert) {
+      return prioritizedKeys.has(normalizeKey(concert.bandKey));
+    }).sort(function (a, b) {
+      return String(a.concertDate || '').localeCompare(String(b.concertDate || ''));
+    }).slice(0, 20);
+    el.innerHTML = '<div class="household-concerts-panel-head"><div><h3>Priority Live Targets</h3><p>Bands you want to prioritize seeing live, with their nearby/upcoming shows.</p></div>'
+      + '<button type="button" class="pill-button" data-concert-action="refresh-priority-dashboard">Refresh Priority Concerts</button></div>'
+      + (prioritized.length
+        ? '<div class="household-concerts-tag-row">' + prioritized.map(function (band) {
+          return '<span class="household-concerts-tag">⭐ ' + escapeHtml(band.bandName) + '</span>';
+        }).join('') + '</div>'
+        : '<p class="household-concerts-muted">Mark bands as prioritized from a band card or profile.</p>')
+      + (relatedUpcoming.length
+        ? '<div class="household-concerts-entry-list">' + relatedUpcoming.map(function (concert) {
+          return '<article class="household-concerts-entry-card"><h4>' + escapeHtml(concert.bandName) + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue TBD') + '</p><p class="household-concerts-muted">' + escapeHtml([concert.city, concert.state].filter(Boolean).join(', ')) + '</p></article>';
+        }).join('') + '</div>'
+        : '<p class="household-concerts-muted">No upcoming shows saved yet for prioritized bands. Use Sync Tour on those bands.</p>');
+  }
+
+  function looksLikeFestivalEvent(event) {
+    var hay = normalizeText([
+      event && event.venue && event.venue.name,
+      event && event.title,
+      event && event.description
+    ].join(' '));
+    return /festival|fest\b|music festival|lineup/.test(hay);
+  }
+
+  async function refreshFestivalDashboard() {
+    if (state.festivalDashboard.busy) return;
+    state.festivalDashboard.busy = true;
+    state.festivalDashboard.message = 'Scanning favorite bands for upcoming festival appearances...';
+    renderFestivalDashboard();
+    try {
+      var map = {};
+      var bands = state.favoriteBands.filter(function (band) { return !isTier4Band(band.bandTier); }).slice(0, 24);
+      for (var i = 0; i < bands.length; i += 1) {
+        var band = bands[i];
+        var events = [];
+        try {
+          events = await fetchBandsintownEventsByArtistKey(extractBandsintownArtistSlug(band.bandsintownUrl) || band.bandName);
+        } catch (_error) {
+          events = [];
+        }
+        events.filter(looksLikeFestivalEvent).forEach(function (event) {
+          var date = String((event && event.datetime) || '').slice(0, 10);
+          var venueName = String((event && event.venue && event.venue.name) || 'Festival').trim();
+          var city = String((event && event.venue && event.venue.city) || '').trim();
+          var region = String((event && event.venue && event.venue.region) || '').trim();
+          var key = normalizeKey(venueName + '::' + date + '::' + city + '::' + region);
+          if (!map[key]) {
+            map[key] = {
+              key: key,
+              name: venueName,
+              date: date,
+              city: city,
+              state: region,
+              url: String((event && event.url) || '').trim(),
+              bands: []
+            };
+          }
+          if (map[key].bands.indexOf(band.bandName) < 0) map[key].bands.push(band.bandName);
+        });
+      }
+      state.festivalDashboard.festivals = Object.keys(map).map(function (key) { return map[key]; }).sort(function (a, b) {
+        return String(a.date || '').localeCompare(String(b.date || ''));
+      });
+      state.festivalDashboard.generatedAt = Date.now();
+      state.festivalDashboard.message = state.festivalDashboard.festivals.length
+        ? ('Found ' + state.festivalDashboard.festivals.length + ' festival match' + (state.festivalDashboard.festivals.length === 1 ? '' : 'es') + '.')
+        : 'No upcoming festival matches found for favorite bands.';
+    } finally {
+      state.festivalDashboard.busy = false;
+      renderFestivalDashboard();
+    }
+  }
+
+  function renderFestivalDashboard() {
+    var el = document.getElementById('householdConcertsFestivalDashboard');
+    if (!el) return;
+    var data = state.festivalDashboard || { festivals: [], message: '' };
+    el.innerHTML = '<div class="household-concerts-panel-head"><div><h3>Music Festival Dashboard</h3><p>Upcoming festivals across the country featuring your favorite bands.</p></div>'
+      + '<button type="button" class="pill-button" data-concert-action="refresh-festival-dashboard">' + (data.busy ? 'Refreshing...' : 'Refresh Festivals') + '</button></div>'
+      + (data.message ? '<p class="household-concerts-muted">' + escapeHtml(data.message) + '</p>' : '')
+      + (Array.isArray(data.festivals) && data.festivals.length
+        ? '<div class="household-concerts-entry-list">' + data.festivals.slice(0, 20).map(function (festival) {
+          return '<article class="household-concerts-entry-card"><h4>' + escapeHtml(festival.name) + '</h4><p>' + escapeHtml(formatDate(festival.date)) + ' • ' + escapeHtml([festival.city, festival.state].filter(Boolean).join(', ')) + '</p>'
+            + '<p class="household-concerts-muted">Favorite bands playing: ' + escapeHtml(festival.bands.join(', ')) + '</p>'
+            + (festival.url ? ('<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(festival.url)) + '" target="_blank" rel="noopener noreferrer">Open Festival</a>') : '')
+            + '</article>';
+        }).join('') + '</div>'
+        : '<p class="household-concerts-muted">Run Refresh Festivals to scan for nationwide festival opportunities.</p>');
+  }
+
    function renderAll() {
      renderStatus();
      renderSummary();
@@ -2608,6 +2971,8 @@
      renderDiscovery();
      renderAttendedConcerts();
      renderUpcomingConcerts();
+     renderPriorityBandsDashboard();
+     renderFestivalDashboard();
      // ENHANCEMENT: New renderers
      renderPersonalStats();
      renderVenuePerformance();
@@ -2886,6 +3251,22 @@
       })
       .map(function (item) { return String(item.collectionName || '').trim(); })
       .filter(Boolean)).slice(0, 6).join(', ');
+    var albumCoverCandidates = albumResults
+      .filter(function (item) {
+        var artistName = normalizeText(item.artistName || '');
+        return artistName === normalizeText(cleanName) || normalizeText(cleanName).indexOf(artistName) >= 0;
+      })
+      .map(function (item) {
+        var art = String(item.artworkUrl100 || item.artworkUrl60 || '').trim();
+        if (!art) return null;
+        return {
+          url: art.replace(/\/\d+x\d+bb\./, '/1200x1200bb.'),
+          label: String(item.collectionName || '').trim(),
+          releaseDate: String(item.releaseDate || '').trim()
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 8);
 
     var lastReleaseDate = albumResults
       .map(function (item) { return String(item.releaseDate || '').trim(); })
@@ -2904,6 +3285,7 @@
       youTubeUrl: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(cleanName),
       setlistUrl: 'https://www.setlist.fm/search?query=' + encodeURIComponent(cleanName),
       wikipediaUrl: 'https://en.wikipedia.org/w/index.php?search=' + encodeURIComponent(cleanName),
+      albumCoverCandidates: albumCoverCandidates,
       sourceLabel: 'Auto-filled from Apple Music metadata',
       sourceKey: 'apple',
       enrichmentConfidence: artist.artistName ? 'high' : 'medium'
@@ -3019,6 +3401,16 @@
       wikipediaUrl: preferSpecificUrl(current.wikipediaUrl, incoming.wikipediaUrl),
       lastReleaseDate: preferFilledValue(current.lastReleaseDate, incoming.lastReleaseDate),
       memberTimeline: preferFilledValue(current.memberTimeline, incoming.memberTimeline),
+      albumCoverCandidates: uniqueStrings([].concat(current.albumCoverCandidates || [], incoming.albumCoverCandidates || []).map(function (item) {
+        if (!item || !item.url) return '';
+        return JSON.stringify({
+          url: String(item.url || '').trim(),
+          label: String(item.label || '').trim(),
+          releaseDate: String(item.releaseDate || '').trim()
+        });
+      }).filter(Boolean)).map(function (entry) {
+        try { return JSON.parse(entry); } catch (_error) { return null; }
+      }).filter(Boolean),
       linkCompletenessScore: Number.isFinite(Number(incoming.linkCompletenessScore)) ? Number(incoming.linkCompletenessScore) : (Number.isFinite(Number(current.linkCompletenessScore)) ? Number(current.linkCompletenessScore) : null),
       enrichmentHealthScore: Number.isFinite(Number(incoming.enrichmentHealthScore)) ? Number(incoming.enrichmentHealthScore) : (Number.isFinite(Number(current.enrichmentHealthScore)) ? Number(current.enrichmentHealthScore) : null),
       sourceLabel: preferFilledValue(incoming.sourceLabel, current.sourceLabel),
@@ -3098,6 +3490,37 @@
     merged.conflicts = conflicts;
     merged.fieldProvenance = fieldProvenance;
     return merged;
+  }
+
+  function pickBestAlbumCoverCandidate(enriched) {
+    var list = Array.isArray(enriched && enriched.albumCoverCandidates) ? enriched.albumCoverCandidates.slice() : [];
+    if (!list.length) return null;
+    list.sort(function (a, b) {
+      return String(b && b.releaseDate || '').localeCompare(String(a && a.releaseDate || ''));
+    });
+    return list[0] || null;
+  }
+
+  function shouldImportAlbumCover(enriched, existingBand) {
+    var currentCover = String((enriched && enriched.bandCoverPhotoUrl) || (existingBand && existingBand.bandCoverPhotoUrl) || '').trim();
+    if (!currentCover) return true;
+    return /itunes|mzstatic|apple\.com/i.test(currentCover);
+  }
+
+  async function maybeImportAlbumCoverToOneDrive(enriched, existingBand) {
+    if (!enriched || typeof enriched !== 'object') return enriched;
+    if (!shouldImportAlbumCover(enriched, existingBand)) return enriched;
+    var candidate = pickBestAlbumCoverCandidate(enriched);
+    if (!candidate || !candidate.url) return enriched;
+    try {
+      var uploadedCoverUrl = await uploadBandImageFromUrl(candidate.url, {
+        bandName: String((enriched.bandName || (existingBand && existingBand.bandName) || '')).trim()
+      }, 'album-cover');
+      enriched.bandCoverPhotoUrl = uploadedCoverUrl;
+      return enriched;
+    } catch (_error) {
+      return enriched;
+    }
   }
 
   function renderBandEnrichmentBadge(band) {
@@ -3747,6 +4170,7 @@
     setBandFormStatus('Fetching enrichment data for ' + current.bandName + '…', 'info');
     try {
       var enriched = await enrichBandProfileData(current);
+      enriched = await maybeImportAlbumCoverToOneDrive(enriched, current);
       var bandKey = current.bandName;
       if (safeOptions.silent || safeOptions.noPreview) {
         // Direct apply (used by auto-fill-on-open for new bands with no existing values)
@@ -4004,7 +4428,7 @@
       selectedLogoIndex: Number.isFinite(selectedLogoIndex) ? selectedLogoIndex : -1
     };
     openModal(
-      '<div class="household-concerts-modal-head"><div><h3>Select Band Images</h3><p>Choose a cover and logo, then upload to OneDrive `Band_Photos`.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+      '<div class="household-concerts-modal-head"><div><h3>Select Band Images</h3><p>Choose a cover and logo, then upload to OneDrive `Copilot_Apps/Band_Photos`.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
       + '<div class="household-concerts-band-profile">'
       + '<div id="householdConcertsBandImagePickerStatus" class="household-concerts-upload-status household-concerts-upload-status--info">Pick candidate images, or upload/import your own.</div>'
       + renderBandImagePickerCandidates(state.bandImagePicker.candidates)
@@ -4065,12 +4489,12 @@
         closeModal();
         renderAll();
         openBandDetails(getBandByKey(sourceBandKey));
-        setStatus('Band images uploaded to OneDrive `Band_Photos` and applied to ' + (sourceBand ? sourceBand.bandName : 'this band') + '.', 'success');
+        setStatus('Band images uploaded to OneDrive `Copilot_Apps/Band_Photos` and applied to ' + (sourceBand ? sourceBand.bandName : 'this band') + '.', 'success');
         return;
       }
       closeModal();
       openBandForm(formData);
-      setStatus('Band images uploaded to OneDrive `Band_Photos` and applied to the form.', 'success');
+      setStatus('Band images uploaded to OneDrive `Copilot_Apps/Band_Photos` and applied to the form.', 'success');
     } catch (error) {
       setBandImagePickerStatus(error && error.message ? error.message : 'Could not upload selected image(s).', 'error');
     }
@@ -4552,8 +4976,13 @@
     var similar = computeSimilarBands(band);
     var recommendations = getVisibleDiscoveryRecommendationsForBand(band.id || normalizeKey(band.bandName));
     var enrichmentBadge = renderBandEnrichmentBadge(band);
+    var prevBand = resolveAdjacentBand(band, 'prev');
+    var nextBand = resolveAdjacentBand(band, 'next');
     openModal(
-      '<div class="household-concerts-modal-head"><div><h3>' + escapeHtml(band.bandName) + '</h3><p>' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + '</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+      '<div class="household-concerts-modal-head"><div><h3>' + escapeHtml(band.bandName) + '</h3><p>' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + '</p></div><div class="household-concerts-form-actions">'
+      + '<button type="button" class="pill-button" data-concert-action="open-band-details-prev" data-band-key="' + escapeHtml(band.id) + '"' + (prevBand ? '' : ' disabled') + '>Previous Band</button>'
+      + '<button type="button" class="pill-button" data-concert-action="open-band-details-next" data-band-key="' + escapeHtml(band.id) + '"' + (nextBand ? '' : ' disabled') + '>Next Band</button>'
+      + '<button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div></div>'
       + '<div class="household-concerts-band-profile">'
       + (band.bandCoverPhotoUrl ? '<img class="household-concerts-band-profile-cover" src="' + escapeHtml(safeUrl(band.bandCoverPhotoUrl)) + '" alt="' + escapeHtml(band.bandName) + ' cover image">' : '')
       + '<div class="household-concerts-band-profile-head">'
@@ -4571,8 +5000,15 @@
       + detailLine('Discography', band.releases.length ? band.releases.join(', ') : band.discography || 'Add albums or eras')
       + detailLine('Top Songs', band.songs.length ? band.songs.join(', ') : band.topSongs || 'Add notable tracks')
       + detailLine('Band Members', band.members.length ? band.members.join(' • ') : band.bandMembers || 'Add members and roles')
-      + detailLine('Lineup Timeline', band.memberTimeline || 'Use refresh to enrich current/former members by era')
       + '</div>'
+      + '<div class="household-concerts-form-row"><label>Update Band Tier</label><div class="household-concerts-form-actions">'
+      + '<select id="householdConcertsBandTierQuickSelect">' + BAND_TIER_OPTIONS.map(function (option) {
+        return '<option value="' + escapeHtml(option.value) + '"' + (normalizeBandTier(band.bandTier) === option.value ? ' selected' : '') + '>' + escapeHtml(option.value) + '</option>';
+      }).join('') + '</select>'
+      + '<button type="button" class="pill-button" data-concert-action="save-band-tier" data-band-key="' + escapeHtml(band.id) + '">Save Tier</button>'
+      + '<button type="button" class="pill-button" data-concert-action="toggle-priority-band" data-band-key="' + escapeHtml(band.id) + '">' + (isPriorityBand(band) ? '⭐ Prioritized for Live Shows' : '☆ Prioritize Live') + '</button>'
+      + '</div></div>'
+      + '<div class="household-concerts-band-profile-timeline"><h4>Lineup Timeline</h4>' + renderBandTimelineVisual(band) + '</div>'
       + renderBandLinks(band, false)
       + '<div class="household-concerts-band-profile-columns">'
       + '<div><h4>Similar favorite bands</h4>' + (similar.length ? '<div class="household-concerts-similar-list">' + similar.map(function (entry) {
@@ -4860,6 +5296,7 @@
     setStatus('Refreshing band profile for ' + band.bandName + '…', 'info');
     try {
       var enriched = await enrichBandProfileData(mapBandToPrefillShape(band));
+      enriched = await maybeImportAlbumCoverToOneDrive(enriched, band);
       if (safeOptions.noPreview) {
         // Direct apply (old behaviour, used from band cards Refresh Profile button)
         await persistFavoriteBandProfilePatch(band, enriched, { skipRender: true });
@@ -5154,7 +5591,8 @@
      var attendeeCounts = summarizeAttendeeCounts(state.attendedConcerts);
      var total = attendeeCounts.householdTotal;
      var avgRating = total ? state.attendedConcerts.reduce(function (sum, c) { return sum + (c.rating || 0); }, 0) / total : 0;
-     var favoredBand = state.favoriteBands.length ? state.favoriteBands.reduce(function (best, band) {
+     var favoritePool = state.favoriteBands.filter(function (band) { return !isTier4Band(band.bandTier); });
+     var favoredBand = favoritePool.length ? favoritePool.reduce(function (best, band) {
        var count = state.attendedConcerts.filter(function (c) { return normalizeKey(c.bandName) === normalizeKey(band.bandName); }).length;
        return count > (best.count || 0) ? { name: band.bandName, count: count } : best;
      }, {}) : null;
@@ -5664,6 +6102,43 @@
         case 'open-band-details':
           openBandDetails(getBandByKey(target.getAttribute('data-band-key')) || getBandByKey(target.getAttribute('data-band-name')));
           break;
+         case 'cycle-band-tier': {
+           var cycleBand = getBandByKey(target.getAttribute('data-band-key'));
+           if (!cycleBand) break;
+           updateBandTierForBand(cycleBand, getNextBandTierValue(cycleBand.bandTier));
+           break;
+         }
+         case 'save-band-tier': {
+           var tierBand = getBandByKey(target.getAttribute('data-band-key'));
+           if (!tierBand) break;
+           var tierSelect = document.getElementById('householdConcertsBandTierQuickSelect');
+           updateBandTierForBand(tierBand, String((tierSelect && tierSelect.value) || tierBand.bandTier || '').trim(), { reopenProfile: true });
+           break;
+         }
+         case 'toggle-priority-band': {
+           var priorityBand = getBandByKey(target.getAttribute('data-band-key'));
+           if (!priorityBand) break;
+           var nextPriority = !isPriorityBand(priorityBand);
+           setPriorityBandFlag(priorityBand, nextPriority);
+           setStatus((nextPriority ? 'Prioritized ' : 'Removed priority for ') + priorityBand.bandName + '.', 'success');
+           renderAll();
+           if (document.querySelector('#householdConcertsModalHost .household-concerts-modal')) {
+             openBandDetails(priorityBand);
+           }
+           break;
+         }
+         case 'open-band-details-prev': {
+           var prevCurrent = getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand();
+           var prevBand = resolveAdjacentBand(prevCurrent, 'prev');
+           if (prevBand) openBandDetails(prevBand);
+           break;
+         }
+         case 'open-band-details-next': {
+           var nextCurrent = getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand();
+           var nextBand = resolveAdjacentBand(nextCurrent, 'next');
+           if (nextBand) openBandDetails(nextBand);
+           break;
+         }
          case 'refresh-band-profile':
            refreshSavedBandProfile(getBandByKey(target.getAttribute('data-band-key')), { noPreview: false });
            break;
@@ -5682,11 +6157,30 @@
          }
          case 'set-genre-filter':
            state.genreFilter = String(target.getAttribute('data-genre') || '').trim();
+           state.bandsPage = 1;
+           renderAll();
+           break;
+         case 'set-tier4-visibility':
+           state.showTier4Bands = String(target.getAttribute('data-tier4-visible') || '') === '1';
+           if (!state.showTier4Bands && normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value)) {
+             state.tierFilter = '';
+           }
+           state.bandsPage = 1;
+           writeStringStorage(SHOW_TIER4_STORAGE_KEY, state.showTier4Bands ? '1' : '0');
            renderAll();
            break;
          case 'set-tier-filter':
            state.tierFilter = String(target.getAttribute('data-tier') || '').trim();
+           state.bandsPage = 1;
+           if (normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value)) {
+             state.showTier4Bands = true;
+             writeStringStorage(SHOW_TIER4_STORAGE_KEY, '1');
+           }
            renderAll();
+           break;
+         case 'set-bands-page':
+           state.bandsPage = Number(target.getAttribute('data-page') || 1) || 1;
+           renderFavoriteBands();
            break;
          case 'toggle-form-field-lock':
          case 'toggle-preview-field-lock':
@@ -5732,6 +6226,18 @@
            break;
         case 'refresh-discovery':
           loadDiscoveryForBand(getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand(), true);
+          break;
+        case 'refresh-priority-dashboard':
+          (async function () {
+            var prioritizedBands = state.favoriteBands.filter(function (band) { return isPriorityBand(band); });
+            for (var idx = 0; idx < prioritizedBands.length; idx += 1) {
+              await syncTourScheduleForBand(prioritizedBands[idx]);
+            }
+            renderPriorityBandsDashboard();
+          })();
+          break;
+        case 'refresh-festival-dashboard':
+          refreshFestivalDashboard();
           break;
         case 'use-location':
           captureUserLocation();
@@ -5898,6 +6404,7 @@
        }
        if (target.id === 'householdConcertsFilterInput') {
          state.bandFilter = String(target.value || '').trim();
+         state.bandsPage = 1;
          renderAll();
        }
        if (target.id === 'householdConcertsDistanceSlider') {

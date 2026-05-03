@@ -1810,3 +1810,75 @@
   color: #94a3b8;
   font-style: italic;
 }
+
+#householdConcertsPane .household-concerts-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+#householdConcertsPane .household-concerts-pagination span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+#householdConcertsPane .household-concerts-band-profile-timeline {
+  margin-top: 12px;
+}
+
+#householdConcertsPane .household-concerts-band-profile-timeline h4 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-timeline {
+  display: grid;
+  gap: 8px;
+  border-left: 2px solid #cbd5e1;
+  padding-left: 12px;
+}
+
+#householdConcertsPane .household-concerts-timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+#householdConcertsPane .household-concerts-timeline-dot {
+  position: absolute;
+  left: -18px;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #93c5fd;
+}
+
+#householdConcertsPane .household-concerts-timeline-item--former .household-concerts-timeline-dot {
+  background: #64748b;
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+#householdConcertsPane .household-concerts-timeline-content {
+  display: grid;
+  gap: 2px;
+}
+
+#householdConcertsPane .household-concerts-timeline-content strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+#householdConcertsPane .household-concerts-timeline-content span {
+  color: #64748b;
+  font-size: 12px;
+}
+

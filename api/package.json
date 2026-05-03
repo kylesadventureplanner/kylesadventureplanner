@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "check": "node --check deviceAuthStart/index.js && node --check deviceAuthPoll/index.js && node --check bandsintownProxy/index.js && node --check historicShowsProxy/index.js && node --check shared/device-flow-crypto.js"
+    "check": "node --check deviceAuthStart/index.js && node --check deviceAuthPoll/index.js && node --check bandsintownProxy/index.js && node --check historicShowsProxy/index.js && node --check imageFetchProxy/index.js && node --check shared/device-flow-crypto.js"
   }
 }
 
