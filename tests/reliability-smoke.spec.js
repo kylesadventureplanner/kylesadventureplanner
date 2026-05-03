@@ -48,6 +48,46 @@ async function waitForInteractive(page) {
   return readiness;
 }
 
+async function waitForAdventureDeepLinkRouteState(page, options = {}) {
+  const subtabKey = String(options.subtabKey || '').trim();
+  const viewKey = String(options.viewKey || '').trim();
+  const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 8000;
+  await page.waitForFunction((payload) => {
+    const safe = payload || {};
+    const targetSubtab = String(safe.subtabKey || '').trim();
+    const targetView = String(safe.viewKey || '').trim();
+    if (!targetSubtab) return false;
+    const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activePrimaryTab = activePrimary ? activePrimary.getAttribute('data-tab') : '';
+    if (activePrimaryTab !== 'visited-locations') return false;
+
+    const subtabBtn = document.getElementById(`visitedProgressTab-${targetSubtab}`);
+    const subtabSelected = Boolean(subtabBtn && subtabBtn.getAttribute('aria-selected') === 'true');
+    if (!subtabSelected) return false;
+
+    const currentUrl = new URL(window.location.href);
+    if ((currentUrl.searchParams.get('tab') || '') !== 'visited-locations') return false;
+    if (targetSubtab && (currentUrl.searchParams.get('visitedSubtab') || '') !== targetSubtab) return false;
+    if (targetView && (currentUrl.searchParams.get('visitedView') || '') !== targetView) return false;
+
+    const visitedState = window.__visitedState || null;
+    if (visitedState && visitedState.activeProgressSubTab && visitedState.activeProgressSubTab !== targetSubtab) return false;
+
+    if (targetView) {
+      const viewNode = document.querySelector(`#visitedProgressPane-${targetSubtab} [data-visited-subtab-view="${targetView}"]`);
+      const viewVisible = Boolean(viewNode && viewNode.hidden === false && viewNode.getAttribute('aria-hidden') === 'false');
+      if (!viewVisible) return false;
+
+      if (visitedState && visitedState.subtabExplorer && visitedState.subtabExplorer[targetSubtab]) {
+        const explorerStateView = String(visitedState.subtabExplorer[targetSubtab].view || '').trim();
+        if (explorerStateView && explorerStateView !== targetView) return false;
+      }
+    }
+
+    return true;
+  }, { subtabKey, viewKey }, { timeout: timeoutMs });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await waitForInteractive(page);
@@ -108,6 +148,7 @@ test('first-click success: bike edit mode', async ({ page }) => {
 test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ page }) => {
   await page.goto('/?tab=bike-trails');
   await waitForInteractive(page);
+  await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'bike-trails' });
 
   const routed = await page.evaluate(() => {
     const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
@@ -132,6 +173,7 @@ test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ p
 test('outdoors explorer URL opens Adventure Challenge explorer view', async ({ page }) => {
   await page.goto('/?tab=visited-locations&visitedSubtab=outdoors&visitedView=explorer');
   await waitForInteractive(page);
+  await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'outdoors', viewKey: 'explorer' });
 
   const routed = await page.evaluate(() => {
     const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');

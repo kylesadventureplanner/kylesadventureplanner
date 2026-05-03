@@ -653,6 +653,17 @@
     setActiveProgressSubTab(root, requestedSubtab);
   }
 
+  function isVisitedStandaloneLaunchSatisfied(root, launch) {
+    if (!root || !launch || !launch.subtabKey || launch.view !== 'explorer') return false;
+    const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activePrimaryTab = activePrimary ? activePrimary.getAttribute('data-tab') : '';
+    const subtabBtn = document.getElementById(`visitedProgressTab-${launch.subtabKey}`);
+    const explorerView = root.querySelector(`#visitedProgressPane-${launch.subtabKey} [data-visited-subtab-view="explorer"]`);
+    return activePrimaryTab === 'visited-locations'
+      && Boolean(subtabBtn && subtabBtn.getAttribute('aria-selected') === 'true')
+      && Boolean(explorerView && explorerView.hidden === false && explorerView.getAttribute('aria-hidden') === 'false');
+  }
+
   async function applyVisitedStandaloneLaunchState(root) {
     if (state.urlLaunchApplied) return;
 
@@ -680,6 +691,7 @@
       return;
     }
 
+    let shouldRetryLaunch = false;
     try {
       if (state.activeProgressSubTab !== launch.subtabKey) {
         setActiveProgressSubTab(root, launch.subtabKey);
@@ -689,7 +701,18 @@
       // Fall back to view activation even if explorer data loading hits a startup race.
       setExplorerView(root, launch.subtabKey, 'explorer');
     } finally {
-      state.urlLaunchApplied = true;
+      if (!isVisitedStandaloneLaunchSatisfied(root, launch)) {
+        state.urlLaunchRetryCount += 1;
+        if (state.urlLaunchRetryCount <= 20) {
+          shouldRetryLaunch = true;
+          window.setTimeout(() => {
+            applyVisitedStandaloneLaunchState(document.getElementById('visitedLocationsRoot'));
+          }, 120);
+        }
+      }
+      if (!shouldRetryLaunch) {
+        state.urlLaunchApplied = true;
+      }
     }
   }
 
