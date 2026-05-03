@@ -323,5 +323,43 @@ jobs:
             exit 1
           fi
 
-          npx playwright test tests/reliability-smoke.spec.js --grep "first-click success: nature explore" --reporter=list
+      - name: Post-Deploy Smoke Diagnostics
+        if: ${{ github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
+        run: |
+          WHOAMI_VALUE="$(whoami)"
+          ID_VALUE="$(id)"
+          WORKSPACE_LS_LAD="$(ls -lad "${GITHUB_WORKSPACE}" 2>/dev/null || echo 'unavailable')"
+          TEST_RESULTS_LS_LAD="$(ls -lad "${GITHUB_WORKSPACE}/test-results" 2>/dev/null || echo 'missing')"
+
+          echo "Collecting runner identity and ownership context before post-deploy smoke..."
+          echo "whoami: ${WHOAMI_VALUE}"
+          echo "${ID_VALUE}"
+          echo "workspace: ${GITHUB_WORKSPACE}"
+          ls -lad "${GITHUB_WORKSPACE}" || true
+          ls -la "${GITHUB_WORKSPACE}" | head -n 200 || true
+          echo "test-results directory details (if present):"
+          ls -lad "${GITHUB_WORKSPACE}/test-results" || true
+          ls -la "${GITHUB_WORKSPACE}/test-results" || true
+
+          {
+            echo "### Post-deploy smoke diagnostics"
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| whoami | \`${WHOAMI_VALUE}\` |"
+            echo "| id | \`${ID_VALUE}\` |"
+            echo "| workspace | \`${GITHUB_WORKSPACE}\` |"
+            echo "| workspace (ls -lad) | \`${WORKSPACE_LS_LAD}\` |"
+            echo "| test-results (ls -lad) | \`${TEST_RESULTS_LS_LAD}\` |"
+            echo "| details | See raw logs in **Post-Deploy Smoke Diagnostics** step for full listings. |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post-Deploy Smoke Check (blocking)
+        if: ${{ github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
+        env:
+          APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+        run: |
+          POST_DEPLOY_RESULTS_DIR="${RUNNER_TEMP}/post-deploy-playwright-${GITHUB_RUN_ID}"
+          mkdir -p "${POST_DEPLOY_RESULTS_DIR}"
+          npx playwright test tests/reliability-smoke.spec.js --config=playwright.config.production.js --grep "first-click success: nature explore" --reporter=list --output="${POST_DEPLOY_RESULTS_DIR}"
 
