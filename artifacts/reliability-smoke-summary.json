@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-05-02T23:47:47.375Z",
+  "generatedAt": "2026-05-03T00:06:47.801Z",
   "pass": true,
   "startupSamplesMs": [
-    103,
+    104,
     102,
     103,
     104,
-    69,
+    68,
     105,
-    66,
-    101,
-    101,
+    65,
+    104,
     102,
-    101
+    103,
+    103
   ],
   "startupMsP95": 105,
   "firstClickChecks": 3,
@@ -25,7 +25,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-05-02T23:47:49.253Z"
+      "at": "2026-05-03T00:06:48.891Z"
     },
     {
       "name": "first-click:nature-run",
@@ -33,7 +33,7 @@
       "detail": {
         "runActive": true
       },
-      "at": "2026-05-02T23:47:50.622Z"
+      "at": "2026-05-03T00:06:50.176Z"
     },
     {
       "name": "first-click:bike-edit-mode",
@@ -43,7 +43,7 @@
         "editModeViewActive": true,
         "activeProgressSubTab": "bike-trails"
       },
-      "at": "2026-05-02T23:47:51.537Z"
+      "at": "2026-05-03T00:06:51.161Z"
     },
     {
       "name": "legacy-bike-tab-url:routes-to-adventure-bike-subtab",
@@ -54,7 +54,7 @@
         "tabParam": "visited-locations",
         "subtabParam": "bike-trails"
       },
-      "at": "2026-05-02T23:47:52.153Z"
+      "at": "2026-05-03T00:06:51.823Z"
     },
     {
       "name": "outdoors-explorer-url:routes-to-explorer-view",
@@ -64,7 +64,7 @@
         "outdoorsSelected": true,
         "explorerViewVisible": true
       },
-      "at": "2026-05-02T23:47:52.737Z"
+      "at": "2026-05-03T00:06:52.415Z"
     },
     {
       "name": "probe:hidden-overlay-detected",
@@ -73,7 +73,7 @@
         "blockedPoints": 5,
         "reason": ""
       },
-      "at": "2026-05-02T23:47:53.705Z"
+      "at": "2026-05-03T00:06:53.483Z"
     },
     {
       "name": "overlay:stale-row-detail-cleared",
@@ -82,7 +82,7 @@
         "explorerActive": true,
         "modalHidden": true
       },
-      "at": "2026-05-02T23:47:55.412Z"
+      "at": "2026-05-03T00:06:55.260Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -111,7 +111,7 @@
           }
         ]
       },
-      "at": "2026-05-02T23:48:00.204Z"
+      "at": "2026-05-03T00:06:59.769Z"
     },
     {
       "name": "update-banner:version-and-telemetry",
@@ -128,7 +128,7 @@
           "updateBannerDismissClicked": 1
         }
       },
-      "at": "2026-05-02T23:48:00.996Z"
+      "at": "2026-05-03T00:07:00.602Z"
     }
   ]
 }

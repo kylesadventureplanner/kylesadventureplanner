@@ -27,8 +27,10 @@ jobs:
         with:
           node-version: '20'
       - name: Install Dependencies
+        id: installdeps
         run: npm ci
       - name: Install Playwright Browser
+        id: installplaywright
         run: |
           # Retry once to smooth over transient apt/network failures on runners.
           npx playwright install --with-deps chromium || (
@@ -37,10 +39,12 @@ jobs:
             npx playwright install --with-deps chromium
           )
       - name: Start Local Static Server For Smoke Tests
+        id: startlocalserver
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/swa-local-server.log 2>&1 &
           echo $! > /tmp/swa-local-server.pid
       - name: Wait For Local Server
+        id: waitlocalserver
         run: |
           for i in {1..40}; do
             if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
@@ -53,8 +57,10 @@ jobs:
           cat /tmp/swa-local-server.log || true
           exit 1
       - name: Reliability Ownership Check
+        id: reliabilityownership
         run: npm run reliability:ownership
       - name: Reliability Smoke Suite
+        id: reliabilitysmoke
         env:
           APP_URL: http://127.0.0.1:4173
         run: npm run reliability:smoke
@@ -78,8 +84,10 @@ jobs:
         run: |
           echo '- **Diagnostics artifact:** `playwright-diagnostics-${{ github.run_id }}` (Actions run page -> **Artifacts**)' >> "$GITHUB_STEP_SUMMARY"
       - name: Reliability Release Gate
+        id: reliabilitygate
         run: npm run reliability:gate
       - name: Stamp Deployment Metadata
+        id: stampdeploymentmetadata
         run: |
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-8)"
           DEPLOYMENT_TAG="ci.${GITHUB_RUN_NUMBER}.${SHORT_SHA}"
@@ -103,26 +111,38 @@ jobs:
           if [ -f /tmp/swa-local-server.pid ]; then
             kill "$(cat /tmp/swa-local-server.pid)" || true
           fi
-      # Primary deploy path uses SWA CLI to avoid Docker/MCR registry dependency.
-      - name: Build And Deploy (SWA CLI)
-        id: deploycli
-        continue-on-error: true
+      - name: Determine Deploy Eligibility
+        id: deployeligibility
+        if: always()
         env:
           SWA_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
           SWA_EVENT_NAME: ${{ github.event_name }}
           SWA_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          if [ -z "${SWA_DEPLOYMENT_TOKEN}" ]; then
-            echo "Missing SWA deployment token secret"
-            exit 1
-          fi
-
           if [ "${SWA_EVENT_NAME}" = "pull_request" ] && [ -n "${SWA_PR_NUMBER}" ]; then
             SWA_ENVIRONMENT="pr-${SWA_PR_NUMBER}"
           else
             SWA_ENVIRONMENT="production"
           fi
 
+          if [ -z "${SWA_DEPLOYMENT_TOKEN}" ]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Missing SWA deployment token secret" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Deployment token available" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "environment=${SWA_ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+      # Primary deploy path uses SWA CLI to avoid Docker/MCR registry dependency.
+      - name: Build And Deploy (SWA CLI)
+        id: deploycli
+        if: ${{ success() && steps.deployeligibility.outputs.should_deploy == 'true' }}
+        continue-on-error: true
+        env:
+          SWA_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
+          SWA_ENVIRONMENT: ${{ steps.deployeligibility.outputs.environment }}
+        run: |
           echo "Deploying via SWA CLI (${SWA_ENVIRONMENT})"
           for attempt in 1 2 3; do
             if npx --yes @azure/static-web-apps-cli@2.0.7 deploy . \
@@ -141,7 +161,7 @@ jobs:
       # Optional fallback to legacy action if SWA CLI fails for token/env reasons.
       - name: Build And Deploy (Azure action fallback)
         id: builddeploy
-        if: ${{ steps.deploycli.outcome == 'failure' }}
+        if: ${{ steps.deployeligibility.outputs.should_deploy == 'true' && steps.deploycli.outcome == 'failure' }}
         continue-on-error: true
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -155,21 +175,119 @@ jobs:
       - name: Deploy Path Summary
         if: always()
         run: |
-          if [ "${{ steps.deploycli.outcome }}" = "success" ]; then
+          FAILED_PREREQ_NAME=""
+          FAILED_PREREQ_ID=""
+          icon_for_outcome() {
+            case "$1" in
+              success)
+                printf '✅ %s' "$1"
+                ;;
+              failure)
+                printf '⚠️ %s' "$1"
+                ;;
+              skipped)
+                printf '⏭️ %s' "$1"
+                ;;
+              *)
+                printf '• %s' "${1:-unknown}"
+                ;;
+            esac
+          }
+
+          if [ "${{ steps.installdeps.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Install Dependencies"
+            FAILED_PREREQ_ID="installdeps"
+          elif [ "${{ steps.installplaywright.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Install Playwright Browser"
+            FAILED_PREREQ_ID="installplaywright"
+          elif [ "${{ steps.startlocalserver.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Start Local Static Server For Smoke Tests"
+            FAILED_PREREQ_ID="startlocalserver"
+          elif [ "${{ steps.waitlocalserver.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Wait For Local Server"
+            FAILED_PREREQ_ID="waitlocalserver"
+          elif [ "${{ steps.reliabilityownership.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Reliability Ownership Check"
+            FAILED_PREREQ_ID="reliabilityownership"
+          elif [ "${{ steps.reliabilitysmoke.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Reliability Smoke Suite"
+            FAILED_PREREQ_ID="reliabilitysmoke"
+          elif [ "${{ steps.reliabilitygate.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Reliability Release Gate"
+            FAILED_PREREQ_ID="reliabilitygate"
+          elif [ "${{ steps.stampdeploymentmetadata.outcome }}" = "failure" ]; then
+            FAILED_PREREQ_NAME="Stamp Deployment Metadata"
+            FAILED_PREREQ_ID="stampdeploymentmetadata"
+          fi
+
+          FINAL_DEPLOY_PATH=""
+          BLOCKING_PREREQ_SUMMARY="None"
+          if [ -n "${FAILED_PREREQ_NAME}" ]; then
+            BLOCKING_PREREQ_SUMMARY="${FAILED_PREREQ_NAME} (${FAILED_PREREQ_ID})"
+          fi
+
+          {
+            echo "### Pre-deploy step outcomes"
+            echo "| Step | Id | Outcome | Notes |"
+            echo "| --- | --- | --- | --- |"
+            echo "| Install Dependencies | installdeps | $(icon_for_outcome "${{ steps.installdeps.outcome }}") | $([ "${{ steps.installdeps.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Install Playwright Browser | installplaywright | $(icon_for_outcome "${{ steps.installplaywright.outcome }}") | $([ "${{ steps.installplaywright.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Start Local Static Server For Smoke Tests | startlocalserver | $(icon_for_outcome "${{ steps.startlocalserver.outcome }}") | $([ "${{ steps.startlocalserver.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Wait For Local Server | waitlocalserver | $(icon_for_outcome "${{ steps.waitlocalserver.outcome }}") | $([ "${{ steps.waitlocalserver.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Reliability Ownership Check | reliabilityownership | $(icon_for_outcome "${{ steps.reliabilityownership.outcome }}") | $([ "${{ steps.reliabilityownership.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Reliability Smoke Suite | reliabilitysmoke | $(icon_for_outcome "${{ steps.reliabilitysmoke.outcome }}") | $([ "${{ steps.reliabilitysmoke.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Reliability Release Gate | reliabilitygate | $(icon_for_outcome "${{ steps.reliabilitygate.outcome }}") | $([ "${{ steps.reliabilitygate.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo "| Stamp Deployment Metadata | stampdeploymentmetadata | $(icon_for_outcome "${{ steps.stampdeploymentmetadata.outcome }}") | $([ "${{ steps.stampdeploymentmetadata.outcome }}" = "failure" ] && echo "Blocking failure" || echo "") |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.deployeligibility.outputs.should_deploy }}" != "true" ]; then
+            echo "::notice::Deploy skipped: ${{ steps.deployeligibility.outputs.reason }}"
+            FINAL_DEPLOY_PATH="⏭️ skipped (${{ steps.deployeligibility.outputs.reason }})"
+          elif [ "${{ steps.deploycli.outcome }}" = "success" ]; then
             echo "::notice::Deploy source: primary SWA CLI"
-            echo "- **Deploy path:** primary (SWA CLI)" >> "$GITHUB_STEP_SUMMARY"
+            FINAL_DEPLOY_PATH="✅ primary (SWA CLI)"
           elif [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
             echo "::notice::Deploy source: fallback Azure/static-web-apps-deploy action"
-            echo "- **Deploy path:** fallback (Azure/static-web-apps-deploy)" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::Deploy source: unresolved (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
-            echo "- **Deploy path:** unresolved (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})" >> "$GITHUB_STEP_SUMMARY"
+            FINAL_DEPLOY_PATH="✅ fallback (Azure/static-web-apps-deploy)"
+          elif [ "${{ steps.deploycli.outcome }}" = "failure" ] || [ "${{ steps.builddeploy.outcome }}" = "failure" ]; then
+            echo "::warning::Deploy source: attempted but failed (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+            FINAL_DEPLOY_PATH="⚠️ failed (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+            {
+              echo "### Deploy status"
+              echo "| Field | Value |"
+              echo "| --- | --- |"
+              echo "| Eligibility | ${{ steps.deployeligibility.outputs.should_deploy }} (${{ steps.deployeligibility.outputs.reason }}) |"
+              echo "| Target environment | ${{ steps.deployeligibility.outputs.environment }} |"
+              echo "| Blocking prerequisite | ${BLOCKING_PREREQ_SUMMARY} |"
+              echo "| Deploy path | ${FINAL_DEPLOY_PATH} |"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
+          else
+            if [ -n "${FAILED_PREREQ_NAME}" ]; then
+              echo "::notice::Deploy not attempted because prerequisite failed: ${FAILED_PREREQ_NAME}"
+              FINAL_DEPLOY_PATH="⏭️ not attempted (blocked by ${FAILED_PREREQ_NAME}; cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+            else
+              echo "::notice::Deploy not attempted because an earlier step failed or the job was interrupted (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+              FINAL_DEPLOY_PATH="⏭️ not attempted (earlier step failure or interruption; cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+            fi
           fi
+
+          {
+            echo "### Deploy status"
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Eligibility | ${{ steps.deployeligibility.outputs.should_deploy }} (${{ steps.deployeligibility.outputs.reason }}) |"
+            echo "| Target environment | ${{ steps.deployeligibility.outputs.environment }} |"
+            echo "| Blocking prerequisite | ${BLOCKING_PREREQ_SUMMARY} |"
+            echo "| Deploy path | ${FINAL_DEPLOY_PATH} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Informational-only: checks live deployment health without blocking release.
       - name: Post-Deploy Smoke Check (non-blocking)
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && (steps.deploycli.outcome == 'success' || steps.builddeploy.outcome == 'success') }}
         continue-on-error: true
         env:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
