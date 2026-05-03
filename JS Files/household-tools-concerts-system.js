@@ -151,6 +151,7 @@
     'Concerts/',
     ''
   ];
+  var BAND_PHOTOS_ROOT_PATH = 'Copilot_Apps/Band_Photos';
 
    var state = {
      initialized: false,
@@ -1045,7 +1046,47 @@
     var rolePart = normalizeKey(role || 'image') || 'image';
     var stamp = new Date().toISOString().replace(/[:.]/g, '-');
     var namePart = sanitizeFileName(fileName || (rolePart + '.jpg'));
-    return 'Copilot_Apps/Band_Photos/' + bandPart + '/' + stamp + '-' + rolePart + '-' + namePart;
+    return BAND_PHOTOS_ROOT_PATH + '/' + bandPart + '/' + stamp + '-' + rolePart + '-' + namePart;
+  }
+
+  function parentFolderPath(filePath) {
+    var value = String(filePath || '').trim();
+    if (!value || value.indexOf('/') < 0) return '';
+    return value.slice(0, value.lastIndexOf('/'));
+  }
+
+  async function ensureDriveFolderPath(folderPath) {
+    var cleanPath = String(folderPath || '').trim().replace(/^\/+|\/+$/g, '');
+    if (!cleanPath) return;
+    var segments = cleanPath.split('/').map(function (part) { return String(part || '').trim(); }).filter(Boolean);
+    if (!segments.length) return;
+
+    var currentPath = '';
+    var currentItem = { id: 'root', isRoot: true };
+    for (var i = 0; i < segments.length; i += 1) {
+      var segment = segments[i];
+      currentPath = currentPath ? (currentPath + '/' + segment) : segment;
+      try {
+        currentItem = await fetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodeGraphPath(currentPath));
+        currentItem.isRoot = false;
+        continue;
+      } catch (error) {
+        if (!isGraphItemNotFoundError(error)) throw error;
+      }
+
+      var createUrl = currentItem.isRoot
+        ? 'https://graph.microsoft.com/v1.0/me/drive/root/children'
+        : ('https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent(currentItem.id) + '/children');
+      currentItem = await fetchJson(createUrl, {
+        method: 'POST',
+        body: {
+          name: segment,
+          folder: {},
+          '@microsoft.graph.conflictBehavior': 'replace'
+        }
+      });
+      currentItem.isRoot = false;
+    }
   }
 
   function getBandPageCount(totalCount) {
@@ -1104,6 +1145,8 @@
     var safeMeta = meta && typeof meta === 'object' ? meta : {};
     var inferredName = fileName || fileOrBlob.name || (normalizeKey(safeMeta.bandName || 'band') || 'band') + '-' + (role || 'image') + '.jpg';
     var uploadPath = buildBandPhotoUploadPath(safeMeta, inferredName, role);
+    var folderPath = parentFolderPath(uploadPath);
+    if (folderPath) await ensureDriveFolderPath(folderPath);
     var encodedPath = encodeGraphPath(uploadPath);
     var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/content';
     var response = await fetchGraphRaw(url, {
@@ -1116,7 +1159,12 @@
     var payload = await response.json().catch(function () { return {}; });
     var resolvedUrl = String(payload.webUrl || payload['@microsoft.graph.downloadUrl'] || '').trim();
     if (!resolvedUrl) throw new Error('Upload succeeded but OneDrive did not return a shareable URL.');
-    return resolvedUrl;
+    return {
+      url: resolvedUrl,
+      uploadPath: uploadPath,
+      fileId: String(payload.id || '').trim(),
+      fileName: String(payload.name || inferredName || '').trim()
+    };
   }
 
   async function uploadBandImageFromUrl(imageUrl, meta, role) {
@@ -1124,7 +1172,8 @@
     if (!url) throw new Error('Enter an image URL first.');
     var blob = await fetchBandImageBlobWithFallback(url);
     var extension = inferImageExtensionFromMime(blob.type, url);
-    return uploadBandImageToOneDrive(blob, meta, role, (normalizeKey((meta && meta.bandName) || 'band') || 'band') + '-' + role + extension);
+    var result = await uploadBandImageToOneDrive(blob, meta, role, (normalizeKey((meta && meta.bandName) || 'band') || 'band') + '-' + role + extension);
+    return result && result.url ? result.url : String(result || '').trim();
   }
 
   function inferImageExtensionFromMime(mimeType, sourceUrl) {
@@ -4607,11 +4656,13 @@
     }
     setBandImagePickerStatus('Uploading file to OneDrive...', 'info');
     try {
-      var url = await uploadBandImageToOneDrive(file, { bandName: String(formData.bandName || state.bandImagePicker.bandName || '').trim() }, role, file.name || 'band-image.jpg');
+      var uploadResult = await uploadBandImageToOneDrive(file, { bandName: String(formData.bandName || state.bandImagePicker.bandName || '').trim() }, role, file.name || 'band-image.jpg');
+      var url = uploadResult && uploadResult.url ? uploadResult.url : String(uploadResult || '').trim();
       if (formFieldName === 'Band_Logo_URL') formData.bandLogoUrl = url;
       if (formFieldName === 'Band_Cover_Photo_URL') formData.bandCoverPhotoUrl = url;
       state.bandImagePicker.formData = formData;
-      setBandImagePickerStatus('Uploaded successfully and applied to form.', 'success');
+      var locationHint = uploadResult && uploadResult.uploadPath ? (' Saved to ' + uploadResult.uploadPath + '.') : '';
+      setBandImagePickerStatus('Uploaded successfully and applied to form.' + locationHint, 'success');
     } catch (error) {
       setBandImagePickerStatus(error && error.message ? error.message : 'Upload failed.', 'error');
     }

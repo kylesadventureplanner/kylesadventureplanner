@@ -65,6 +65,10 @@
     @keyframes phSpin { to { transform: rotate(360deg); } }
     .ph-url-retry-btn { margin-left: auto; background: none; border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: .85em; color: inherit; }
     .ph-url-retry-btn:hover { opacity: .75; }
+    .ph-copy-path-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 5px 12px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; cursor: pointer; font-size: .8em; color: #166534; transition: background .15s, opacity .15s; }
+    .ph-copy-path-btn:hover { background: #dcfce7; }
+    .ph-copy-path-btn.ph-hidden { display: none !important; }
+    .ph-copy-path-btn--copied { background: #166534 !important; color: #fff !important; border-color: #166534 !important; }
 
     /* ── Enrich Modal ───────────────────────────────── */
     .enrich-backdrop {
@@ -3454,6 +3458,7 @@
       '<label for="phUploadInput" class="ph-upload-label">📁 Choose Photos (or drag &amp; drop)</label>' +
       '<div id="phUploadQueue" class="ph-upload-queue"></div>' +
       '<button type="button" class="tm-btn primary" id="phUploadBtn" disabled>Upload to OneDrive</button>' +
+      '<button type="button" id="phCopyLastPathBtn" class="ph-copy-path-btn ph-hidden" title="Copy the OneDrive path used for the last upload">📋 Copy last upload path</button>' +
       '</div>' +
 
       '</div>'; // end tm-wrap
@@ -8364,6 +8369,16 @@
               showDetailToast('✅ Photo uploaded to OneDrive. Click Save Photos to persist metadata.', 'success', 3200);
               setUrlStatus('success', 'Uploaded to OneDrive — click Save Photos to persist metadata.');
               if (urlInput) urlInput.value = '';
+              // Reveal "Copy last upload path" button
+              var lastPath = (uploadedPhoto || {}).oneDrivePath || '';
+              if (lastPath) {
+                window.__lastOneDriveUploadPath = lastPath;
+                var copyBtn = document.getElementById('phCopyLastPathBtn');
+                if (copyBtn) {
+                  copyBtn.classList.remove('ph-hidden');
+                  copyBtn.title = 'Copy path: ' + lastPath;
+                }
+              }
             })
             .catch(function (err) {
               var msg = (err && err.message ? err.message : String(err));
@@ -8435,6 +8450,16 @@
             if (queueDiv) queueDiv.innerHTML = '';
             setPhotoStatus(uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded to OneDrive and staged — click Save Photos to persist metadata.', false);
             showDetailToast('✅ ' + uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded. Click Save Photos to persist metadata.', 'success', 3600);
+            // Reveal "Copy last upload path" button
+            var lastPath = (uploaded[uploaded.length - 1] || {}).oneDrivePath || '';
+            if (lastPath) {
+              window.__lastOneDriveUploadPath = lastPath;
+              var copyBtn = document.getElementById('phCopyLastPathBtn');
+              if (copyBtn) {
+                copyBtn.classList.remove('ph-hidden');
+                copyBtn.title = 'Copy path: ' + lastPath;
+              }
+            }
           })
           .catch(function (err) {
             setPhotoStatus('Upload failed: ' + (err && err.message ? err.message : String(err)), true);
@@ -8443,6 +8468,36 @@
           .finally(function () {
             if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = 'Upload to OneDrive'; }
           });
+        return;
+      }
+
+      if (closestFromEvent(e, '#phCopyLastPathBtn')) {
+        var pathToCopy = window.__lastOneDriveUploadPath || '';
+        if (!pathToCopy) return;
+        var copyPathBtn = document.getElementById('phCopyLastPathBtn');
+        navigator.clipboard.writeText(pathToCopy).then(function () {
+          if (copyPathBtn) {
+            var origText = copyPathBtn.textContent;
+            copyPathBtn.textContent = '✅ Copied!';
+            copyPathBtn.classList.add('ph-copy-path-btn--copied');
+            setTimeout(function () {
+              copyPathBtn.textContent = origText || '📋 Copy last upload path';
+              copyPathBtn.classList.remove('ph-copy-path-btn--copied');
+            }, 2000);
+          }
+          showDetailToast('📋 Copied: ' + pathToCopy, 'info', 3000);
+        }).catch(function () {
+          // Fallback for older browsers
+          var ta = document.createElement('textarea');
+          ta.value = pathToCopy;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showDetailToast('📋 Copied: ' + pathToCopy, 'info', 3000);
+        });
         return;
       }
     });
