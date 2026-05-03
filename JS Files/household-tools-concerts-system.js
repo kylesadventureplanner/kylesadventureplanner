@@ -142,8 +142,6 @@
     };
   }
   var WORKBOOK_PREFIXES = [
-    'Copilot_Apps/Kyles_Adventure_Finder/Household Tools/',
-    'Copilot_Apps/Kyles_Adventure_Finder/Household/',
     'Copilot_Apps/Kyles_Adventure_Finder/',
     'Concerts/',
     ''

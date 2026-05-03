@@ -2338,6 +2338,61 @@
       align-items: center;
     }
 
+    /* Adventure Cards Grid Container */
+    .adventure-cards-grid,
+    #adventureCardsGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      padding: 16px 0;
+      margin-bottom: 24px;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .adventure-cards-grid,
+      #adventureCardsGrid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+
+    /* Pagination Controls */
+    .pagination-controls,
+    #paginationControls,
+    #paginationControlsTop {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      align-items: center;
+    }
+
+    .pagination-controls.hidden,
+    #paginationControls[style*="display: none"],
+    #paginationControlsTop[style*="display: none"] {
+      display: none !important;
+    }
+
+    /* Adventure List Actions Container */
+    .adventure-list-actions,
+    #adventureListActions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      align-items: center;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
     /* Card Body */
     .adventure-card-body {
       padding: var(--space-xl);
@@ -9065,14 +9120,38 @@
       </div>
     </div>
 
-    <!-- Adventure Challenge Tab -->
-    <div class="app-tab-pane active" data-tab="visited-locations" id="visitedLocationsTab">
-      <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">🎮</div>
-        <div class="tab-placeholder-text">Adventure Challenge</div>
-        <div class="tab-placeholder-subtext">Take on the Adventure Challenge and discover what to do next</div>
-      </div>
-    </div>
+     <!-- Adventure Challenge Tab -->
+     <div class="app-tab-pane active" data-tab="visited-locations" id="visitedLocationsTab">
+       <!-- Adventure Planner Controls Section -->
+       <div id="adventureListActions" class="adventure-list-actions" style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+         <div style="font-size: 12px; color: #64748b; font-weight: 600;">📊 <span id="resultsCount">0 adventures</span></div>
+       </div>
+
+       <!-- Adventure Cards Grid -->
+       <div id="adventureCardsGrid" class="adventure-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; padding: 16px 0; margin-bottom: 24px; opacity: 1;">
+         <!-- Adventure cards will be rendered here by renderPaginatedCards() -->
+       </div>
+
+       <!-- Pagination Controls (Top) -->
+       <div id="paginationControlsTop" class="pagination-controls" style="display: none; justify-content: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+         <button id="prevPageBtnTop" class="pill-button" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600;">◀️ Prev</button>
+         <span id="currentPageNumTop" style="display: inline-block; min-width: 40px; text-align: center;">1</span>
+         <span style="color: #9ca3af;">of</span>
+         <span id="totalPagesNumTop" style="display: inline-block; min-width: 40px; text-align: center;">1</span>
+         <button id="nextPageBtnTop" class="pill-button" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600;">Next ▶️</button>
+         <span style="color: #9ca3af;">(Showing <span id="showingRangeStartTop">1</span>-<span id="showingRangeEndTop">20</span> of <span id="totalResultsNumTop">0</span>)</span>
+       </div>
+
+       <!-- Pagination Controls (Bottom) -->
+       <div id="paginationControls" class="pagination-controls" style="display: none; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
+         <button id="prevPageBtn" class="pill-button" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600;">◀️ Prev</button>
+         <span id="currentPageNum" style="display: inline-block; min-width: 40px; text-align: center;">1</span>
+         <span style="color: #9ca3af;">of</span>
+         <span id="totalPagesNum" style="display: inline-block; min-width: 40px; text-align: center;">1</span>
+         <button id="nextPageBtn" class="pill-button" style="padding: 8px 16px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600;">Next ▶️</button>
+         <span style="color: #9ca3af;">(Showing <span id="showingRangeStart">1</span>-<span id="showingRangeEnd">20</span> of <span id="totalResultsNum">0</span>)</span>
+       </div>
+     </div>
 
     <!-- Offline Mode Tab -->
     <div class="app-tab-pane" data-tab="offline-mode" id="offlineModeTab">
@@ -9232,6 +9311,22 @@
 
 <script>
   console.log('🎬 MAIN SCRIPT BLOCK STARTING - timestamp:', new Date().toLocaleTimeString());
+
+  // Suppress Microsoft Office web-client-content-script errors that don't affect app functionality
+  const originalConsoleError = console.error;
+  console.error = function(...args) {
+    const message = String((args[0] || '')).toLowerCase();
+    // Suppress "Could not find identifiable element" errors from web-client-content-script.js
+    if (message.includes('could not find identifiable element')) {
+      return; // Silently suppress this error
+    }
+    // Suppress other known non-critical Office integration errors
+    if (message.includes('web-client-content-script') && !message.includes('critical')) {
+      return; // Suppress non-critical Office script errors
+    }
+    // Pass through all other errors normally
+    originalConsoleError.apply(console, args);
+  };
 
   // ============================================================
   // AUTH ALREADY SETUP - Real auth defined in early MSAL script
