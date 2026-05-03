@@ -1882,3 +1882,56 @@
   font-size: 12px;
 }
 
+/* ===== IMAGE CROP / POSITION MODAL ===== */
+#householdConcertsPane .household-concerts-crop-preview-wrap {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-crop-preview-cover {
+  width: 100%;
+  height: 200px;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: cover;
+  transition: background-position 0.1s ease, background-size 0.1s ease;
+}
+
+#householdConcertsPane .household-concerts-crop-preview-logo {
+  display: block;
+  width: 110px;
+  height: 110px;
+  border-radius: 20px;
+  object-fit: cover;
+  object-position: 50% 50%;
+  margin: 20px auto;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  transition: object-position 0.1s ease;
+}
+
+#householdConcertsPane .household-concerts-crop-value-badge {
+  display: inline-block;
+  background: #ede9fe;
+  color: #4338ca;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+  min-width: 38px;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+#householdConcertsPane .household-concerts-form input[type="range"] {
+  width: 100%;
+  margin-top: 6px;
+  accent-color: #4338ca;
+  cursor: pointer;
+}
