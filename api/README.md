@@ -6,6 +6,9 @@ This folder contains Azure Functions endpoints used by the secure Microsoft Devi
 
 - `POST /api/auth/device/start`
 - `POST /api/auth/device/poll`
+- `GET /api/public/bandsintown?route=artist|events&artist=<band name or slug>`
+- `GET /api/public/historic-shows?band=<name>&fromYear=<yyyy>&toYear=<yyyy>&radiusMiles=<25|50|100>&latitude=<num>&longitude=<num>&locationLabel=<text>` (merged from setlist.fm + Bandsintown when available)
+- `GET /api/public/historic-shows?mode=song-stats&band=<name>&fromYear=<yyyy>&toYear=<yyyy>` (setlist.fm top-song frequency summary)
 
 ## Environment Variables
 
@@ -14,6 +17,8 @@ This folder contains Azure Functions endpoints used by the secure Microsoft Devi
 - `AAD_DEVICE_CLIENT_SECRET` (optional)
 - `AAD_DEVICE_SCOPES` (optional, default: `User.Read Files.ReadWrite openid profile`)
 - `DEVICE_FLOW_SIGNING_SECRET` (required)
+- `SETLISTFM_API_KEY` (required for historic concert search)
+- `BANDSINTOWN_APP_ID` (optional, default: `kyles_adventure_planner`)
 
 ## Local Run
 

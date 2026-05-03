@@ -69,10 +69,31 @@
 
 #householdConcertsPane .household-concerts-status {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   padding: 14px 16px;
   font-size: 14px;
   font-weight: 600;
+}
+
+#householdConcertsPane .household-concerts-schema-warning {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #9a3412;
+}
+
+#householdConcertsPane .household-concerts-schema-warning-copy {
+  margin-left: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+#householdConcertsPane .household-concerts-historic-results-grid {
+  display: grid;
+  gap: 10px;
 }
 
 #householdConcertsPane .household-concerts-status--info {
@@ -286,6 +307,22 @@
   gap: 8px;
   font-size: 14px;
   color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-settings-inline-row,
+#householdConcertsPane .household-concerts-settings-tier-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#householdConcertsPane .household-concerts-settings-tier-row select {
+  max-width: 320px;
+}
+
+#householdConcertsPane .household-concerts-tier-section {
+  margin-bottom: 18px;
 }
 
 #householdConcertsPane .household-concerts-settings-stack input[type="checkbox"],

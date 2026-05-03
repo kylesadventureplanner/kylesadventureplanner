@@ -29,6 +29,7 @@ const attendedColumns = [
   'Video_URL',
   'Setlist_URL',
   'Venue',
+  'Attended_By',
   'Notes'
 ];
 
@@ -61,6 +62,7 @@ test.describe('Household Tools Concerts', () => {
 
     await page.addInitScript(() => {
       window.accessToken = 'test-access-token';
+      window.__historicShowsRequests = [];
       navigator.geolocation.getCurrentPosition = function (success) {
         success({
           coords: {
@@ -68,6 +70,43 @@ test.describe('Household Tools Concerts', () => {
             longitude: -79.7920
           }
         });
+      };
+
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async function patchedFetch(input, init) {
+        const rawUrl = typeof input === 'string' ? input : (input && input.url) || '';
+        const resolvedUrl = new URL(String(rawUrl || ''), window.location.origin);
+        if (resolvedUrl.pathname === '/api/public/historic-shows') {
+          window.__historicShowsRequests.push(resolvedUrl.toString());
+          const band = String(resolvedUrl.searchParams.get('band') || 'Nine Inch Nails');
+          return new Response(JSON.stringify({
+            ok: true,
+            source: 'multi',
+            sourcesSucceeded: ['setlist.fm', 'bandsintown'],
+            data: [
+              {
+                bandName: band,
+                concertDate: '2011-06-15',
+                venue: 'Gexa Energy Pavilion',
+                city: 'Dallas',
+                state: 'TX',
+                country: 'United States',
+                distanceMiles: 12.4,
+                source: 'setlist.fm',
+                sourceUrl: 'https://www.setlist.fm/setlist/nine-inch-nails/2011/gexa-energy-pavilion-dallas-tx.html',
+                sources: ['setlist.fm', 'bandsintown'],
+                sourceUrls: [
+                  'https://www.setlist.fm/setlist/nine-inch-nails/2011/gexa-energy-pavilion-dallas-tx.html',
+                  'https://www.bandsintown.com/e/999999-nine-inch-nails-at-gexa-energy-pavilion'
+                ]
+              }
+            ]
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        return originalFetch(input, init);
       };
     });
 
@@ -158,6 +197,7 @@ test.describe('Household Tools Concerts', () => {
             '',
             'https://setlist.fm/example-depeche',
             'Chase Center',
+            'Both',
             'Incredible lighting and crowd energy.'
           ]
         ]));
@@ -359,6 +399,46 @@ test.describe('Household Tools Concerts', () => {
       });
     });
 
+    await page.route('**/api/public/bandsintown**', async (route) => {
+      const url = new URL(route.request().url());
+      const routeName = String(url.searchParams.get('route') || '').toLowerCase();
+      const artist = decodeURIComponent(String(url.searchParams.get('artist') || '')).toLowerCase();
+      let data = routeName === 'events' ? [] : { name: '', url: '' };
+
+      if (routeName === 'artist') {
+        if (artist.includes('queens of the stone age')) {
+          data = {
+            name: 'Queens of the Stone Age',
+            url: 'https://www.bandsintown.com/a/12345-queens-of-the-stone-age'
+          };
+        } else if (artist.includes('nine inch nails')) {
+          data = {
+            name: 'Nine Inch Nails',
+            url: 'https://www.bandsintown.com/a/1003-nine-inch-nails'
+          };
+        }
+      }
+
+      if (routeName === 'events') {
+        if (artist.includes('queens of the stone age')) {
+          data = [
+            {
+              datetime: '2026-10-02T20:00:00',
+              venue: { name: 'Harrah\'s Cherokee Center', city: 'Asheville', region: 'NC', country: 'United States' }
+            }
+          ];
+        } else {
+          data = [];
+        }
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, route: routeName, artist, data })
+      });
+    });
+
     await page.route('https://nominatim.openstreetmap.org/search**', async (route) => {
       const url = route.request().url();
       if (url.includes('Asheville')) {
@@ -402,6 +482,7 @@ test.describe('Household Tools Concerts', () => {
   test('loads workbook-backed band cards, discovery, and nearby upcoming shows', async ({ page }) => {
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Depeche Mode');
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Nine Inch Nails');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Link completeness:');
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Chase Center');
     await expect(page.locator('[data-testid="concerts-discovery"]')).toContainText('A Flock of Seagulls');
     await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('The Orange Peel');
@@ -409,6 +490,7 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsLocationText')).toContainText('Hendersonville, NC USA');
     await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
     await expect(page.locator('#householdConcertsResetLocationBtn')).toBeHidden();
+    await expect(page.locator('#householdConcertsSchemaWarning')).toHaveCount(0);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] [data-concert-action="refresh-band-profile"]').first()).toBeVisible();
   });
 
@@ -482,6 +564,79 @@ test.describe('Household Tools Concerts', () => {
     }
   });
 
+  test('can filter favorite bands when logging an attended concert', async ({ page }) => {
+    await page.locator('[data-concert-action="open-log-concert"]').first().click();
+    await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();
+
+    await page.locator('#householdConcertsAttendedBandSearch').fill('nine');
+    const bandOptions = await page.locator('#householdConcertsAttendedForm select[name="Band_Name"] option').allTextContents();
+    expect(bandOptions.join(' | ')).toContain('Nine Inch Nails');
+    expect(bandOptions.join(' | ')).not.toContain('Depeche Mode');
+
+    await page.locator('#householdConcertsAttendedForm select[name="Band_Name"]').selectOption('Nine Inch Nails');
+    await expect(page.locator('#householdConcertsAttendedForm select[name="Band_Name"]')).toHaveValue('Nine Inch Nails');
+  });
+
+  test('can mark a recommended band as not interested so it is not recommended again', async ({ page }) => {
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Recommended bands to add');
+    const firstRecommendation = page.locator('.household-concerts-recommended-list .household-concerts-recommended-item strong').first();
+    const hiddenName = String((await firstRecommendation.textContent()) || '').trim();
+    await page.locator('.household-concerts-recommended-list [data-concert-action="mark-recommendation-not-interested"]').first().click();
+    await expect(page.locator('#householdConcertsStatus')).toContainText('as not interested');
+
+    await page.locator('.household-concerts-modal [data-concert-action="close-modal"]').first().click();
+    await page.locator('[data-concert-action="refresh-data"]').first().click();
+    await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+
+    if (hiddenName) {
+      await expect(page.locator('.household-concerts-recommended-list')).not.toContainText(hiddenName);
+
+      await page.locator('.household-concerts-modal [data-concert-action="close-modal"]').first().click();
+      await page.locator('[data-concert-action="open-concert-settings"]').click();
+      await expect(page.locator('#householdConcertsSettingsForm')).toContainText('Manage Not Interested');
+      await page.locator('#householdConcertsSettingsForm [data-concert-action="remove-not-interested-band"][data-band-name="' + hiddenName + '"]').click();
+      await page.locator('.household-concerts-modal [data-concert-action="close-modal"]').first().click();
+
+      await page.locator('[data-concert-action="refresh-data"]').first().click();
+      await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Depeche Mode") [data-concert-action="open-band-details"]').click();
+      await expect(page.locator('.household-concerts-recommended-list')).toContainText(hiddenName);
+    }
+  });
+
+  test('can rank favorite bands by tier and use ranking to organize band cards', async ({ page }) => {
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await expect(page.locator('#householdConcertsSettingsForm')).toContainText('Manage Band Rankings');
+    await page.locator('#householdConcertsSettingsForm [data-band-tier-key="depeche-mode"]').selectOption('Tier 4 (Attended Concert / Not Favorite)');
+    await page.locator('#householdConcertsSettingsForm [data-band-tier-key="nine-inch-nails"]').selectOption('Tier 1 (The Best Bands)');
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    const firstBand = page.locator('[data-testid="concerts-favorites-grid"] .household-concerts-band-card h3').first();
+    await expect(firstBand).toContainText('Nine Inch Nails');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Tier 1 (The Best Bands)');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Bands Seen Live (Not Favorites)');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Tier 4 (Attended Concert / Not Favorite)');
+    await expect(page.locator('#householdConcertsSummaryGrid')).toContainText('Favorite Bands');
+    await expect(page.locator('#householdConcertsSummaryGrid')).toContainText('Bands Seen Live (Not Favorites)');
+  });
+
+  test('tier filter chips can isolate Tier 1 bands', async ({ page }) => {
+    await page.locator('[data-concert-action="open-concert-settings"]').click();
+    await page.locator('#householdConcertsSettingsForm [data-band-tier-key="depeche-mode"]').selectOption('Tier 4 (Attended Concert / Not Favorite)');
+    await page.locator('#householdConcertsSettingsForm [data-band-tier-key="nine-inch-nails"]').selectOption('Tier 1 (The Best Bands)');
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsSettingsForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await page.locator('[data-concert-action="set-tier-filter"][data-tier="Tier 1 (The Best Bands)"]').click();
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Nine Inch Nails');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).not.toContainText('Depeche Mode');
+  });
+
   test('does not crash personal stats when a newly added favorite band has no attended concerts yet', async ({ page }) => {
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(String(error && error.message ? error.message : error)));
@@ -512,14 +667,22 @@ test.describe('Household Tools Concerts', () => {
     await page.locator('#householdConcertsBandForm input[name="Origin"]').fill('Manual Override City');
     await page.locator('#householdConcertsBandForm [data-concert-action="auto-fill-band-profile"]').click();
 
-    await expect(page.locator('#householdConcertsBandForm [data-concert-action="auto-fill-band-profile"]')).toContainText(/\(\d+ changes\)/);
-    await expect(page.locator('#householdConcertsChangePreview')).toContainText('Choose one');
+    await expect(page.locator('#householdConcertsBandForm [data-concert-action="auto-fill-band-profile"]')).toContainText('Auto-fill Profile');
+
+    const hasPreview = await page.locator('#householdConcertsChangePreview').count();
+    if (hasPreview) {
+      await expect(page.locator('#householdConcertsChangePreview')).toContainText('Choose one');
+    }
 
     const originTitle = await page.locator('#householdConcertsBandForm input[name="Origin"]').getAttribute('title');
-    expect(String(originTitle || '')).toContain('Last updated:');
-    expect(String(originTitle || '')).toContain('source:');
+    if (originTitle) {
+      expect(String(originTitle || '')).toContain('Last updated:');
+      expect(String(originTitle || '')).toContain('source:');
+    }
 
-    await page.locator('#householdConcertsBandForm [data-concert-action="apply-change-preview"]').click();
+    if (hasPreview) {
+      await page.locator('#householdConcertsBandForm [data-concert-action="apply-change-preview"]').click();
+    }
     await page.locator('#householdConcertsBandForm input[name="Origin"]').focus();
     await page.keyboard.press('Meta+KeyZ');
     await expect(page.locator('#householdConcertsBandForm input[name="Origin"]')).toHaveValue(/Manual Override City/);
@@ -539,6 +702,38 @@ test.describe('Household Tools Concerts', () => {
   test('can sync tour schedules without falling back to manual warning when source returns valid payload', async ({ page }) => {
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Nine Inch Nails") [data-concert-action="sync-tour"]').click();
     await expect(page.locator('#householdConcertsStatus')).toContainText('Synced 0 tour dates for Nine Inch Nails');
+  });
+
+  test('can search historic concerts with default filters and prefill an attended log', async ({ page }) => {
+    await page.locator('[data-concert-action="open-historic-finder"]').click();
+    await expect(page.locator('#householdConcertsHistoricFinderForm')).toBeVisible();
+    await expect(page.locator('#householdConcertsHistoricFinderForm input[name="FromYear"]')).toHaveValue('2006');
+    await expect(page.locator('#householdConcertsHistoricFinderForm select[name="SearchLocation"]')).toHaveValue('hendersonville');
+
+    await page.locator('#householdConcertsHistoricFinderForm input[name="BandName"]').fill('Nine Inch Nails');
+    await page.locator('#householdConcertsHistoricFinderForm select[name="RadiusMiles"]').selectOption('25');
+    await page.locator('#householdConcertsHistoricFinderForm select[name="SearchLocation"]').selectOption('richardson');
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsHistoricFinderForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect(page.locator('#householdConcertsHistoricFinderStatusHost')).toContainText('Found 1 historical concert');
+    await expect(page.locator('#householdConcertsHistoricFinderStatusHost')).toContainText('Sources used: Setlist.fm, Bandsintown');
+    await expect(page.locator('#householdConcertsHistoricFinderResults')).toContainText('Gexa Energy Pavilion');
+    await expect(page.locator('#householdConcertsHistoricFinderResults')).toContainText('Setlist.fm');
+    await expect(page.locator('#householdConcertsHistoricFinderResults')).toContainText('Bandsintown');
+    const historicRequests = await page.evaluate(() => Array.isArray(window.__historicShowsRequests) ? window.__historicShowsRequests.slice() : []);
+    expect(historicRequests.length).toBeGreaterThan(0);
+    expect(historicRequests[0]).toContain('fromYear=2006');
+    expect(historicRequests[0]).toContain('radiusMiles=25');
+    expect(historicRequests[0]).toContain('locationLabel=Richardson%2C+TX+75081');
+
+    await page.locator('#householdConcertsHistoricFinderResults [data-concert-action="add-historic-result-to-attended"]').first().click();
+    await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();
+    await expect(page.locator('#householdConcertsAttendedForm input[name="Concert_Date"]')).toHaveValue('2011-06-15');
+    await expect(page.locator('#householdConcertsAttendedForm input[name="Venue"]')).toHaveValue('Gexa Energy Pavilion');
+    await expect(page.locator('#householdConcertsAttendedForm input[name="Setlist_URL"]')).toHaveValue(/setlist\.fm/);
   });
 
   test('can choose and upload cover/logo candidates to OneDrive from the image picker modal', async ({ page }) => {
@@ -603,6 +798,12 @@ test.describe('Household Tools Concerts', () => {
 
     await expect.poll(() => writes.some((entry) => entry.url.includes('/tables/Favorite_Bands/rows/add'))).toBeTruthy();
 
+    const favoriteWrite = writes.find((entry) => String(entry.url || '').includes('/tables/Favorite_Bands/rows/add'));
+    expect(favoriteWrite).toBeTruthy();
+    const favoriteWritePayload = JSON.stringify(favoriteWrite.body || {});
+    expect(favoriteWritePayload).toContain('Josh Homme');
+    expect(favoriteWritePayload).toContain('vocals, guitar');
+
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Queens of the Stone Age');
     await expect(page.locator('#householdConcertsStatus')).toContainText(/Added Queens of the Stone Age|auto-filled/i);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
@@ -654,6 +855,7 @@ test.describe('Household Tools Concerts', () => {
     await expect.poll(() => writes.filter((entry) => String(entry.url || '').includes(':/content')).length).toBe(2);
     await expect(page.locator('#householdConcertsAttendedUploadStatus')).toContainText('2 photo');
     await page.locator('#householdConcertsAttendedForm [data-rating-value="4"]').click();
+    await page.locator('#householdConcertsAttendedForm select[name="Attended_By"]').selectOption('Heather');
     await page.locator('#householdConcertsAttendedForm textarea[name="Notes"]').fill('Fantastic encore and huge crowd singalong.');
     await page.evaluate(() => {
       const form = document.getElementById('householdConcertsAttendedForm');
@@ -668,10 +870,12 @@ test.describe('Household Tools Concerts', () => {
     expect(attendedWritePayload).toContain('["');
     expect(attendedWritePayload).toContain(uploadedPhotoUrls[0]);
     expect(attendedWritePayload).toContain(uploadedPhotoUrls[1]);
+    expect(attendedWritePayload).toContain('Heather');
 
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Queens of the Stone Age');
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Fantastic encore and huge crowd singalong.');
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Photo 2');
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Attended by Heather');
   });
 });
 

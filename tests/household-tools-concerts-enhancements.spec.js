@@ -29,6 +29,7 @@ const attendedColumns = [
   'Video_URL',
   'Setlist_URL',
   'Venue',
+  'Attended_By',
   'Notes'
 ];
 
@@ -130,6 +131,7 @@ test.describe('Household Tools Concerts - Enhancements', () => {
             '',
             'https://setlist.fm/example-depeche',
             'Chase Center',
+            'Both',
             'Incredible lighting'
           ],
           [
@@ -140,6 +142,7 @@ test.describe('Household Tools Concerts - Enhancements', () => {
             '',
             '',
             'The Forum',
+            'Kyle',
             'Great crowd'
           ],
           [
@@ -150,6 +153,7 @@ test.describe('Household Tools Concerts - Enhancements', () => {
             '',
             '',
             'Fox Theater',
+            'Heather',
             'Unforgettable set'
           ]
         ]));
@@ -177,9 +181,13 @@ test.describe('Household Tools Concerts - Enhancements', () => {
 
   test('ENHANCEMENT #4 - Personal Statistics Cards display correctly', async ({ page }) => {
     await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Chase Center');
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Attended by Kyle + Heather');
     await page.locator('[data-view="stats"]').click();
     await expect(page.locator('.household-concerts-personal-stats')).toBeVisible();
     await expect(page.locator('.household-concerts-personal-stats .stat-card').first()).toContainText('3');
+    await expect(page.locator('#householdConcertsPersonalStats')).toContainText('Kyle');
+    await expect(page.locator('#householdConcertsPersonalStats')).toContainText('Heather');
+    await expect(page.locator('#householdConcertsPersonalStats')).toContainText('Together');
   });
 
   test('ENHANCEMENT #9 - Venue Performance Report aggregates data', async ({ page }) => {
@@ -188,6 +196,7 @@ test.describe('Household Tools Concerts - Enhancements', () => {
     await expect(page.locator('#householdConcertsVenueReport')).toBeVisible();
     // Chase Center should appear twice in data
     await expect(page.locator('#householdConcertsVenueReport')).toContainText('Chase Center');
+    await expect(page.locator('#householdConcertsVenueReport')).toContainText('Attendee Mix: Kyle 1 • Heather 1 • Together 1');
   });
 
   test('ENHANCEMENT #7 - Gamification achievements unlock', async ({ page }) => {
@@ -195,6 +204,9 @@ test.describe('Household Tools Concerts - Enhancements', () => {
     await page.locator('[data-view="stats"]').click();
     // With 3 concerts, should have unlocked multiple achievements
     await expect(page.locator('.household-concerts-achievement.is-unlocked')).toBeTruthy();
+    await expect(page.locator('#householdConcertsAchievements')).toContainText(/kyle first concert/i);
+    await expect(page.locator('#householdConcertsAchievements')).toContainText(/heather first concert/i);
+    await expect(page.locator('#householdConcertsAchievements')).toContainText(/duo night out/i);
   });
 
   test('ENHANCEMENT #7 - Photo Gallery renders', async ({ page }) => {
@@ -210,7 +222,9 @@ test.describe('Household Tools Concerts - Enhancements', () => {
     await page.locator('[data-view="analytics"]').click();
     await expect(page.locator('#householdConcertsAnalyticsDash')).toBeVisible();
     // Should show peak month/year
-    await expect(page.locator('.analytics-card')).toHaveCount(3);
+    await expect(page.locator('.analytics-card')).toHaveCount(4);
+    await expect(page.locator('#householdConcertsAnalyticsDash')).toContainText('Attendee Mix');
+    await expect(page.locator('#householdConcertsAnalyticsDash')).toContainText('Kyle 2 • Heather 2 • Together 1');
   });
 
   test('ENHANCEMENT #10 - Smart Tagging displays on band cards', async ({ page }) => {
