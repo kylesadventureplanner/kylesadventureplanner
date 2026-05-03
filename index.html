@@ -10341,11 +10341,11 @@
     }
 
     // Intercept console.error to capture errors
-    const originalConsoleError = console.error;
+    const baseConsoleError = console.error;
     console.error = function(...args) {
     const message = args.join(' ');
     if (window.__isIgnorableConsoleNoise?.(message) || window.__isExpectedAuthCancellation?.(message)) {
-      originalConsoleError.apply(console, args);
+      baseConsoleError.apply(console, args);
       return;
     }
     logErrorToBar('error', message);
@@ -10353,10 +10353,10 @@
     // Call through but skip re-invoking if ErrorManager already wraps this layer
     // (prevents double-logging when consolidated-debug-error-system.js loads first).
     if (!window.__errorBarConsoleErrorInstalled) {
-      originalConsoleError.apply(console, args);
+      baseConsoleError.apply(console, args);
     } else {
       // Use the raw browser console directly to avoid recursion through ErrorManager wrapper.
-      (window.__rawConsoleError || originalConsoleError).apply(console, args);
+      (window.__rawConsoleError || baseConsoleError).apply(console, args);
     }
     };
 

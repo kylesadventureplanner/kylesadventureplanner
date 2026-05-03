@@ -2919,6 +2919,11 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
 window.handlePopulateMissingFieldsEnhanced = window.handlePopulateMissingFieldsEnhanced || window.handlePopulateMissingFields;
 
+// Export getPlaceDetails for global access by other systems
+window.getPlaceDetails = window.getPlaceDetails || async function(placeId, options = {}) {
+  return getPlaceDetailsFromAPI(placeId, 0, 1, options);
+};
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
