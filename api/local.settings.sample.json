@@ -7,6 +7,8 @@
     "AAD_DEVICE_CLIENT_ID": "<client-id>",
     "AAD_DEVICE_CLIENT_SECRET": "<optional-client-secret>",
     "AAD_DEVICE_SCOPES": "User.Read Files.ReadWrite openid profile",
-    "DEVICE_FLOW_SIGNING_SECRET": "replace-with-long-random-secret"
+    "DEVICE_FLOW_SIGNING_SECRET": "replace-with-long-random-secret",
+    "SETLISTFM_API_KEY": "<your-setlist.fm-api-key>",
+    "BANDSINTOWN_APP_ID": "kyles_adventure_planner"
   }
 }

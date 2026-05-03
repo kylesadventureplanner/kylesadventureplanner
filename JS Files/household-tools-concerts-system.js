@@ -3318,13 +3318,19 @@
       try {
         return await fetchBandsintownViaProxy('artist', key);
       } catch (proxyError) {
-        if (!isBandsintownProxyUnavailableError(proxyError)) throw proxyError;
+        // If it's a known unavailability (404/5xx/timeout), try direct fallback or return {}
+        // For any other unexpected error also fall back rather than crashing — meta is non-critical
         if (!canUseBandsintownDirectFallback()) {
-          throw new Error('Bandsintown proxy is unavailable. Deploy /api/public/bandsintown to enable tour sync in web builds.');
+          return {}; // Web build — can't hit Bandsintown directly; artist meta is optional
         }
+        // On local dev, fall through to direct API below
       }
     }
-    return fetchJsonPublic('https://www.bandsintown.com/api/v2/artists/' + encodeURIComponent(key) + '?app_id=kyles_adventure_planner');
+    try {
+      return await fetchJsonPublic('https://www.bandsintown.com/api/v2/artists/' + encodeURIComponent(key) + '?app_id=kyles_adventure_planner');
+    } catch (_directError) {
+      return {}; // Direct API also unavailable — return empty, sync continues with band name
+    }
   }
 
   function extractMemberRolesFromMusicBrainzRelations(relations) {
@@ -5979,13 +5985,14 @@
        renderAll();
        maybeHydrateUpcomingDistances();
        return added;
-     } catch (error) {
-       console.error('Tour sync failed:', error);
-         var syncMessage = String(error && error.message ? error.message : '').trim();
-         var proxyMessage = /bandsintown proxy failed|bandsintown request timed out/i.test(syncMessage)
-           ? 'Bandsintown is temporarily unavailable through your app proxy. Please retry in 30–60 seconds or add dates manually.'
-           : 'Could not sync tour schedule. Using manual entry instead.';
-         setStatus(proxyMessage + (syncMessage ? ' (' + syncMessage + ')' : ''), 'warning');
+      } catch (error) {
+        console.error('Tour sync failed:', error);
+          var syncMessage = String(error && error.message ? error.message : '').trim();
+          var isBandsintownDown = /bandsintown proxy failed|bandsintown request timed out|request failed \((500|502|503)\)|upstream_error|temporarily unavailable/i.test(syncMessage);
+          var proxyMessage = isBandsintownDown
+            ? 'Bandsintown is temporarily unavailable. Tour dates cannot be synced right now — please add upcoming dates manually or retry in a few minutes.'
+            : 'Could not sync tour schedule. You can add upcoming dates manually instead.';
+          setStatus(proxyMessage + (syncMessage && !isBandsintownDown ? ' (' + syncMessage + ')' : ''), 'warning');
        return 0;
      } finally {
        state.tourSyncBusy = false;

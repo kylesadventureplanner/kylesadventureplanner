@@ -85,7 +85,10 @@ module.exports = async function bandsintownProxy(context, req) {
 
     if (!upstream.ok) {
       context.log.warn('bandsintownProxy upstream failure', { status: upstream.status, route, artist });
-      context.res = json(upstream.status, {
+      // Normalize upstream 5xx to 502 (Bad Gateway) so clients can classify it as unavailable
+      // rather than confusing it with a missing proxy endpoint (404) or invalid parameters (400).
+      const clientStatus = upstream.status >= 500 ? 502 : upstream.status;
+      context.res = json(clientStatus, {
         ok: false,
         error: 'upstream_error',
         message: `Bandsintown request failed (${upstream.status}).`,
