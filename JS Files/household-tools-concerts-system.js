@@ -5296,6 +5296,94 @@
      );
    }
 
+   // Text Parser Modal Functions
+   function openTextParserModal(formType) {
+     var title = formType === 'attended' ? 'Log Concert from Text' : 'Add Upcoming Concert from Text';
+     var instructions = formType === 'attended'
+       ? 'Paste concert details (band name, date, venue, rating, etc.) and we\'ll extract and populate the form for you.'
+       : 'Paste concert details (band name, date, venue, city, state) and we\'ll extract and populate the form for you.';
+     
+     openModal(
+       '<div class="household-concerts-modal-head"><div><h3>' + title + '</h3><p>' + instructions + '</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+       + '<form id="householdConcertsTextParserForm" class="household-concerts-form">'
+       + formRow('Paste Concert Details', '<textarea id="householdConcertsTextParserInput" rows="8" placeholder="Example:\nBand: Nine Inch Nails\nDate: August 13, 2024\nVenue: The Orange Peel\nCity: Asheville\nState: NC\nRating: 5 stars\n\nOr copy-paste from an email, ticket confirmation, setlist.fm, etc." style="font-family:monospace;"></textarea>')
+       + formRow('Parsing Status', '<div id="householdConcertsParsingStatus" style="min-height:20px;"></div>')
+       + '<div class="household-concerts-form-actions">'
+       + '<button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button>'
+       + '<button type="button" class="pill-button pill-button-primary" data-concert-action="parse-concert-text" data-parser-form-type="' + formType + '">Parse & Apply</button>'
+       + '</div>'
+       + '</form>'
+     );
+   }
+
+   function handleConcertTextParsing(formType) {
+     if (!window.ConcertTextParser) {
+       setStatus('Text parser module not loaded. Please refresh the page.', 'error');
+       return;
+     }
+
+     var textarea = document.getElementById('householdConcertsTextParserInput');
+     if (!textarea) return;
+
+     var text = textarea.value.trim();
+     if (!text) {
+       showParsingStatus('Please paste some concert details first.', 'warning');
+       return;
+     }
+
+     // Get favorite band names for validation
+     var favoriteBandNames = state.favoriteBands.map(function(band) {
+       return band.bandName;
+     });
+
+     // Parse the text
+     var result = window.ConcertTextParser.parseConcertText(text, favoriteBandNames);
+
+     if (!result.success) {
+       showParsingStatus('Could not extract any concert details. Please check the format and try again.', 'error');
+       return;
+     }
+
+     // Show parsing results
+     var statusHtml = '<div style="padding:10px;background:#e8f5e9;border-radius:4px;border-left:4px solid #4CAF50;">'
+       + '<strong>✓ Extracted Details:</strong><br>'
+       + (result.data.bandName ? '🎵 Band: ' + escapeHtml(result.data.bandName) + ' <span style="font-size:11px;">' + window.ConcertTextParser.getConfidenceBadge(result.data.confidence.bandName) + '</span><br>' : '')
+       + (result.data.date ? '📅 Date: ' + escapeHtml(result.data.date) + ' <span style="font-size:11px;">' + window.ConcertTextParser.getConfidenceBadge(result.data.confidence.date) + '</span><br>' : '')
+       + (result.data.venue ? '🎪 Venue: ' + escapeHtml(result.data.venue) + ' <span style="font-size:11px;">' + window.ConcertTextParser.getConfidenceBadge(result.data.confidence.venue) + '</span><br>' : '')
+       + (result.data.city ? '🏙️ City: ' + escapeHtml(result.data.city) + (result.data.state ? ', ' + escapeHtml(result.data.state) : '') + ' <span style="font-size:11px;">' + window.ConcertTextParser.getConfidenceBadge(result.data.confidence.location) + '</span><br>' : '')
+       + (result.data.rating ? '⭐ Rating: ' + result.data.rating + '/5 stars<br>' : '')
+       + '<p style="margin:8px 0 0 0;font-size:12px;"><strong>Applying to form… Click "Parse & Apply" again to confirm or adjust values.</strong></p>'
+       + '</div>';
+
+     showParsingStatus(statusHtml, 'success');
+
+     // Apply parsed data to the underlying form after a brief delay
+     setTimeout(function() {
+       var formId = formType === 'attended' ? 'householdConcertsAttendedForm' : 'householdConcertsUpcomingForm';
+       var form = document.getElementById(formId);
+
+       if (form) {
+         window.ConcertTextParser.applyParsedDataToForm(form, result);
+         setStatus('Concert details parsed and applied! Review and save when ready.', 'success');
+         closeModal();
+       }
+     }, 800);
+   }
+
+   function showParsingStatus(message, tone) {
+     var statusDiv = document.getElementById('householdConcertsParsingStatus');
+     if (statusDiv) {
+       statusDiv.innerHTML = message;
+       if (tone === 'error') {
+         statusDiv.style.color = '#d32f2f';
+       } else if (tone === 'warning') {
+         statusDiv.style.color = '#f57c00';
+       } else {
+         statusDiv.style.color = '#388e3c';
+       }
+     }
+   }
+
    function openAttendedConcertForm(band, prefill) {
      state.attendedUploadFiles = [];
       var safePrefill = prefill && typeof prefill === 'object' ? prefill : {};
