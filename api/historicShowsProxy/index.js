@@ -345,7 +345,9 @@ async function fetchBandsintownEvents(params, appId) {
 }
 
 module.exports = async function historicShowsProxy(context, req) {
-  if (req.method === 'OPTIONS') {
+  const safeReq = req || (context && context.req) || { method: 'GET', query: {} };
+  const method = String(safeReq.method || 'GET').toUpperCase();
+  if (method === 'OPTIONS') {
 	context.res = json(204, '');
 	return;
   }
@@ -353,14 +355,14 @@ module.exports = async function historicShowsProxy(context, req) {
   const setlistApiKey = String(process.env.SETLISTFM_API_KEY || '').trim();
   const bandsintownAppId = String(process.env.BANDSINTOWN_APP_ID || DEFAULT_BANDSINTOWN_APP_ID).trim();
 
-  const band = readParam(req, 'band');
-  const mode = normalizeKey(readParam(req, 'mode'));
-  const fromYear = clamp(toNumber(readParam(req, 'fromYear'), DEFAULT_FROM_YEAR), 1960, 2100);
-  const toYear = clamp(toNumber(readParam(req, 'toYear'), new Date().getFullYear()), fromYear, 2100);
-  const radiusMiles = clamp(toNumber(readParam(req, 'radiusMiles'), 50), 1, 500);
-  const latitude = toNumber(readParam(req, 'latitude'), NaN);
-  const longitude = toNumber(readParam(req, 'longitude'), NaN);
-  const locationLabel = readParam(req, 'locationLabel');
+  const band = readParam(safeReq, 'band');
+  const mode = normalizeKey(readParam(safeReq, 'mode'));
+  const fromYear = clamp(toNumber(readParam(safeReq, 'fromYear'), DEFAULT_FROM_YEAR), 1960, 2100);
+  const toYear = clamp(toNumber(readParam(safeReq, 'toYear'), new Date().getFullYear()), fromYear, 2100);
+  const radiusMiles = clamp(toNumber(readParam(safeReq, 'radiusMiles'), 50), 1, 500);
+  const latitude = toNumber(readParam(safeReq, 'latitude'), NaN);
+  const longitude = toNumber(readParam(safeReq, 'longitude'), NaN);
+  const locationLabel = readParam(safeReq, 'locationLabel');
 
   if (!band) {
 	context.res = json(400, { ok: false, error: 'missing_band', message: 'Band query parameter is required.' });

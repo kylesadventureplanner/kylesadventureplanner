@@ -33,12 +33,14 @@ function isImageContentType(value) {
 }
 
 module.exports = async function imageFetchProxy(context, req) {
-  if (req.method === 'OPTIONS') {
+  const safeReq = req || (context && context.req) || { method: 'GET', query: {} };
+  const method = String(safeReq.method || 'GET').toUpperCase();
+  if (method === 'OPTIONS') {
     context.res = response(204, '');
     return;
   }
 
-  const targetUrl = readParam(req, 'url');
+  const targetUrl = readParam(safeReq, 'url');
   if (!targetUrl) {
     context.res = response(400, {
       ok: false,
@@ -57,8 +59,9 @@ module.exports = async function imageFetchProxy(context, req) {
     return;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const hasAbort = typeof AbortController === 'function';
+  const controller = hasAbort ? new AbortController() : null;
+  const timeout = hasAbort ? setTimeout(() => controller.abort(), 15000) : null;
 
   try {
     const upstream = await fetch(targetUrl, {
@@ -67,7 +70,7 @@ module.exports = async function imageFetchProxy(context, req) {
         Accept: 'image/*',
         'User-Agent': 'KylesAdventurePlanner/1.0 (+https://kylesadventureplanner)'
       },
-      signal: controller.signal
+      signal: controller ? controller.signal : undefined
     });
 
     if (!upstream.ok) {
@@ -105,7 +108,7 @@ module.exports = async function imageFetchProxy(context, req) {
       message
     }, { 'Content-Type': 'application/json' });
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 };
 

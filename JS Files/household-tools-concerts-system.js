@@ -43,6 +43,7 @@
   var BAND_TIER_STORAGE_KEY = 'householdConcertsBandTierOverridesV1';
   var SHOW_TIER4_STORAGE_KEY = 'householdConcertsShowTier4BandsV1';
   var PRIORITY_BANDS_STORAGE_KEY = 'householdConcertsPriorityBandsV1';
+  var UPCOMING_TICKETS_STORAGE_KEY = 'householdConcertsUpcomingTicketsV1';
   var DEFAULT_CONCERTS_LOCATION = {
     latitude: 35.3187,
     longitude: -82.4609,
@@ -189,7 +190,9 @@
       unsyncedBandsReport: null,
       unsyncedScanBusy: false,
       priorityBands: readJsonStorage(PRIORITY_BANDS_STORAGE_KEY, {}),
+      upcomingTickets: readJsonStorage(UPCOMING_TICKETS_STORAGE_KEY, {}),
       festivalDashboard: { busy: false, generatedAt: 0, festivals: [], message: '' },
+      apiOutages: {},
      pendingSearchQuery: '',
      attendedUploadFiles: [],
      attendedUploadedPhotoUrls: [],
@@ -2357,8 +2360,12 @@
     var concertDate = toIsoDate(readValue(record, ['Concert_Date', 'Concert Date']));
     var city = String(readValue(record, ['City']) || '').trim();
     var stateName = String(readValue(record, ['State']) || '').trim();
+    var key = [normalizeKey(bandName), concertDate, normalizeKey(readValue(record, ['Venue']) || ''), normalizeKey(city), normalizeKey(stateName)].join('::');
+    var ticketRaw = String(readValue(record, ['Tickets_Purchased', 'Tickets Purchased', 'Ticket Purchased']) || '').trim();
+    var ticketLocal = !!state.upcomingTickets[normalizeKey(key)];
+    var ticketsPurchased = /^(yes|true|1|purchased)$/i.test(ticketRaw) || ticketLocal;
     return {
-      id: [normalizeKey(bandName), concertDate, normalizeKey(readValue(record, ['Venue']) || ''), normalizeKey(city), normalizeKey(stateName)].join('::'),
+      id: key,
       bandKey: normalizeKey(bandName),
       bandName: bandName,
       concertDate: concertDate,
@@ -2366,7 +2373,9 @@
       venue: String(readValue(record, ['Venue']) || '').trim(),
       city: city,
       state: stateName,
-      distanceMiles: null
+      distanceMiles: null,
+      ticketsPurchased: ticketsPurchased,
+      __rowIndex: Number.isInteger(Number(record && record.__rowIndex)) ? Number(record.__rowIndex) : -1
     };
   }
 
@@ -2389,6 +2398,37 @@
     if (enabled) state.priorityBands[key] = { at: Date.now() };
     else delete state.priorityBands[key];
     writeJsonStorage(PRIORITY_BANDS_STORAGE_KEY, state.priorityBands);
+  }
+
+  function setUpcomingTicketFlag(concert, enabled) {
+    var key = normalizeKey(concert && concert.id);
+    if (!key) return;
+    if (enabled) state.upcomingTickets[key] = { at: Date.now() };
+    else delete state.upcomingTickets[key];
+    writeJsonStorage(UPCOMING_TICKETS_STORAGE_KEY, state.upcomingTickets);
+  }
+
+  function buildUpcomingRecordFromConcert(concert) {
+    var safe = concert && typeof concert === 'object' ? concert : {};
+    return {
+      Band_Name: String(safe.bandName || '').trim(),
+      Concert_Date: toIsoDate(safe.concertDate),
+      Day_of_Week: String(safe.dayOfWeek || formatDayOfWeek(safe.concertDate)).trim(),
+      Venue: String(safe.venue || '').trim(),
+      City: String(safe.city || '').trim(),
+      State: String(safe.state || '').trim(),
+      Tickets_Purchased: safe.ticketsPurchased ? 'Yes' : 'No'
+    };
+  }
+
+  async function persistUpcomingTicketStatus(concert) {
+    if (!concert) return;
+    try {
+      var workbookPath = await findWorkbookPath();
+      await updateRecordInTableByIndex(workbookPath, UPCOMING_TABLE, concert.__rowIndex, buildUpcomingRecordFromConcert(concert));
+    } catch (_error) {
+      // Keep local fallback even if workbook schema does not include ticket column yet.
+    }
   }
 
   async function updateBandTierForBand(band, tierValue, options) {
@@ -2844,6 +2884,10 @@
         + '<span>' + escapeHtml(concert.venue || 'Venue not set') + '</span>'
         + '<span>' + escapeHtml([concert.city, concert.state].filter(Boolean).join(', ') || 'City / state not set') + '</span>'
         + '</div>'
+        + '<div class="household-concerts-form-actions">'
+        + (concert.ticketsPurchased ? '<span class="household-concerts-tag">🎟 Tickets Purchased</span>' : '<span class="household-concerts-muted">No tickets marked yet.</span>')
+        + '<button type="button" class="pill-button" data-concert-action="toggle-upcoming-ticket" data-upcoming-id="' + escapeHtml(concert.id) + '">' + (concert.ticketsPurchased ? 'Mark Tickets Not Purchased' : 'Mark Tickets Purchased') + '</button>'
+        + '</div>'
         + '</article>';
     }).join('');
   }
@@ -2971,6 +3015,7 @@
      renderDiscovery();
      renderAttendedConcerts();
      renderUpcomingConcerts();
+     renderTicketedCalendar();
      renderPriorityBandsDashboard();
      renderFestivalDashboard();
      // ENHANCEMENT: New renderers
@@ -3053,12 +3098,31 @@
   }
 
   async function fetchJsonPublic(url, options) {
+    function outageKeyForUrl(rawUrl) {
+      var text = String(rawUrl || '');
+      if (text.indexOf('/api/public/bandsintown') >= 0) return 'bandsintown';
+      if (text.indexOf('/api/public/historic-shows') >= 0) return 'historic-shows';
+      return '';
+    }
+    var outageKey = outageKeyForUrl(url);
+    var now = Date.now();
+    if (outageKey && state.apiOutages[outageKey] && Number(state.apiOutages[outageKey].until || 0) > now) {
+      throw new Error('Temporary outage for ' + outageKey + ' API. Retry in a few minutes.');
+    }
     var opts = options && typeof options === 'object' ? options : {};
     var response = await fetch(url, {
       method: opts.method || 'GET',
       headers: opts.headers || {}
     });
-    if (!response.ok) throw new Error('Request failed (' + response.status + ')');
+    if (!response.ok) {
+      if (outageKey && response.status >= 500) {
+        state.apiOutages[outageKey] = { until: now + (3 * 60 * 1000), status: response.status };
+      }
+      throw new Error('Request failed (' + response.status + ')');
+    }
+    if (outageKey) {
+      delete state.apiOutages[outageKey];
+    }
     return response.json().catch(function () { return {}; });
   }
 
@@ -4864,6 +4928,7 @@
       + formRow('Venue', '<input name="Venue" required placeholder="Venue name">')
       + formRow('City', '<input name="City" required placeholder="City">')
       + formRow('State', '<input name="State" required placeholder="State / Region">')
+      + formRow('Tickets Purchased', '<label><input type="checkbox" name="Tickets_Purchased" value="Yes"> We already purchased tickets</label>')
       + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">Save Upcoming Concert</button></div>'
       + '</form>'
     );
@@ -5408,6 +5473,7 @@
     var record = serializeForm(form);
     record.Concert_Date = toIsoDate(record.Concert_Date);
     record.Day_of_Week = formatDayOfWeek(record.Concert_Date);
+    record.Tickets_Purchased = form.querySelector('[name="Tickets_Purchased"]:checked') ? 'Yes' : 'No';
     if (!record.Band_Name || !record.Concert_Date || !record.Venue || !record.City || !record.State) {
       setStatus('Band, date, venue, city, and state are required for an upcoming concert.', 'warning');
       return;
@@ -5415,7 +5481,13 @@
     try {
       var workbookPath = await findWorkbookPath();
       await appendRecordToTable(workbookPath, UPCOMING_TABLE, record);
-      state.upcomingConcerts.push(parseUpcomingConcert(record));
+      var parsedUpcoming = parseUpcomingConcert(record);
+      if (parsedUpcoming) {
+        parsedUpcoming.ticketsPurchased = /^(yes|true|1)$/i.test(String(record.Tickets_Purchased || ''));
+        parsedUpcoming.__rowIndex = state.upcomingConcerts.length;
+        setUpcomingTicketFlag(parsedUpcoming, parsedUpcoming.ticketsPurchased);
+        state.upcomingConcerts.push(parsedUpcoming);
+      }
       closeModal();
       setStatus('Upcoming concert saved for ' + record.Band_Name + '.', 'success');
       renderAll();
@@ -5472,7 +5544,6 @@
        var data = entry[1];
        return '<article class="household-concerts-venue-card">'
          + '<div class="household-concerts-venue-header"><h4>' + escapeHtml(venueName) + '</h4></div>'
-         + '<div class="household-concerts-venue-stats">'
          + '<div class="stat"><span>Concerts</span><strong>' + data.count + '</strong></div>'
          + '<div class="stat"><span>Avg Rating</span><strong>' + (data.averageRating ? data.averageRating.toFixed(1) + '★' : '—') + '</strong></div>'
          + '<div class="stat"><span>Bands</span><strong>' + data.bandCount + '</strong></div>'
@@ -5482,6 +5553,39 @@
      }).join('');
    }
 
+
+    function renderTicketedCalendar() {
+      var el = document.getElementById('householdConcertsTicketedCalendar');
+      if (!el) return;
+      var ticketed = state.upcomingConcerts.filter(function (concert) { return !!concert.ticketsPurchased; }).slice().sort(function (a, b) {
+        return String(a.concertDate || '').localeCompare(String(b.concertDate || ''));
+      });
+      if (!ticketed.length) {
+        el.innerHTML = '<div class="household-concerts-panel-head"><div><h3>Ticketed Concert Calendar</h3></div></div><p class="household-concerts-muted">Mark upcoming shows as purchased to build this calendar.</p>';
+        return;
+      }
+      var byMonth = {};
+      ticketed.forEach(function (concert) {
+        var month = String(concert.concertDate || '').slice(0, 7) || 'Unknown';
+        if (!byMonth[month]) byMonth[month] = [];
+        byMonth[month].push(concert);
+      });
+      var months = Object.keys(byMonth).sort();
+        function formatMonthLabel(monthKey) {
+          if (!/^\d{4}-\d{2}$/.test(String(monthKey || ''))) return String(monthKey || 'Unknown');
+          var dt = new Date(monthKey + '-01T00:00:00');
+          if (Number.isNaN(dt.getTime())) return monthKey;
+          return dt.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+        }
+      el.innerHTML = '<div class="household-concerts-panel-head"><div><h3>Ticketed Concert Calendar</h3><p>Shows where tickets are already purchased.</p></div></div>'
+        + months.map(function (month) {
+            return '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>' + escapeHtml(formatMonthLabel(month)) + '</h4><p>' + byMonth[month].length + ' concert' + (byMonth[month].length === 1 ? '' : 's') + '</p></div></div>'
+            + byMonth[month].map(function (concert) {
+              return '<article class="household-concerts-entry-card"><h4>' + escapeHtml(concert.bandName) + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue TBD') + '</p><p class="household-concerts-muted">' + escapeHtml([concert.city, concert.state].filter(Boolean).join(', ')) + '</p></article>';
+            }).join('')
+            + '</section>';
+        }).join('');
+    }
    // ===== ENHANCEMENT: SMART TAGGING SYSTEM =====
    function getBandTags(bandName) {
      var key = normalizeKey(bandName);
@@ -6094,6 +6198,20 @@
         case 'open-add-upcoming':
           openUpcomingConcertForm(getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand());
           break;
+        case 'toggle-upcoming-ticket': {
+          var upcomingId = String(target.getAttribute('data-upcoming-id') || '').trim();
+          var concert = state.upcomingConcerts.find(function (item) { return String(item.id || '') === upcomingId; });
+          if (!concert) break;
+          concert.ticketsPurchased = !concert.ticketsPurchased;
+          setUpcomingTicketFlag(concert, concert.ticketsPurchased);
+          persistUpcomingTicketStatus(concert).catch(function () {
+            // Local status remains if backend table does not support Tickets_Purchased yet.
+          });
+          setStatus((concert.ticketsPurchased ? 'Marked tickets purchased for ' : 'Marked tickets not purchased for ') + concert.bandName + '.', 'success');
+          renderUpcomingConcerts();
+          renderTicketedCalendar();
+          break;
+        }
         case 'select-band':
           state.activeBandKey = normalizeKey(target.getAttribute('data-band-key'));
           renderAll();

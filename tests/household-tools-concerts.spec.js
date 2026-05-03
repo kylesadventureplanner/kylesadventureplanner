@@ -607,6 +607,14 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('#householdConcertsLocationChip')).toContainText('Using Hendersonville, NC USA');
   });
 
+  test('can mark upcoming concerts as ticket purchased and view them in ticketed calendar', async ({ page }) => {
+    await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('The Orange Peel');
+    await page.locator('[data-testid="concerts-upcoming-list"] [data-concert-action="toggle-upcoming-ticket"]').first().click();
+    await expect(page.locator('[data-testid="concerts-upcoming-list"]')).toContainText('Tickets Purchased');
+    await expect(page.locator('#householdConcertsTicketedCalendar')).toContainText('Ticketed Concert Calendar');
+    await expect(page.locator('#householdConcertsTicketedCalendar')).toContainText('Nine Inch Nails');
+  });
+
   test('can toggle backend write audit mode from concert settings', async ({ page }) => {
     await page.locator('[data-concert-action="open-concert-settings"]').click();
     await expect(page.locator('#householdConcertsSettingsForm')).toBeVisible();

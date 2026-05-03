@@ -33,13 +33,15 @@ function buildUpstreamUrl(route, artist) {
 }
 
 module.exports = async function bandsintownProxy(context, req) {
-  if (req.method === 'OPTIONS') {
+  const safeReq = req || (context && context.req) || { method: 'GET', query: {} };
+  const method = String(safeReq.method || 'GET').toUpperCase();
+  if (method === 'OPTIONS') {
     context.res = json(204, '');
     return;
   }
 
-  const route = readParam(req, 'route').toLowerCase();
-  const artist = readParam(req, 'artist');
+  const route = readParam(safeReq, 'route').toLowerCase();
+  const artist = readParam(safeReq, 'artist');
 
   if (!route || !artist) {
     context.res = json(400, {
@@ -60,8 +62,9 @@ module.exports = async function bandsintownProxy(context, req) {
     return;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const hasAbort = typeof AbortController === 'function';
+  const controller = hasAbort ? new AbortController() : null;
+  const timeout = hasAbort ? setTimeout(() => controller.abort(), 15000) : null;
 
   try {
     const upstream = await fetch(upstreamUrl, {
@@ -69,7 +72,7 @@ module.exports = async function bandsintownProxy(context, req) {
       headers: {
         Accept: 'application/json'
       },
-      signal: controller.signal
+      signal: controller ? controller.signal : undefined
     });
 
     const raw = await upstream.text().catch(() => '');
@@ -108,7 +111,7 @@ module.exports = async function bandsintownProxy(context, req) {
       message
     });
   } finally {
-    clearTimeout(timeout);
+    if (timeout) clearTimeout(timeout);
   }
 };
 
