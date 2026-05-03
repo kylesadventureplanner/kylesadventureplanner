@@ -22,6 +22,18 @@
   var WORKBOOK_NAME = 'Concerts_Bands.xlsx';
   var DISTANCE_STOPS = [25, 50, 75, 100, 250, 1000];
   var CONCERT_ATTENDEE_OPTIONS = ['Kyle', 'Heather', 'Both'];
+  var VENUE_PRESET_OPTIONS = [
+    'The Prophet Bar - Dallas, TX',
+    'The Door - Dallas, TX',
+    'Southside Ball Room - Dallas, TX',
+    'Curtain Club - Dallas, TX',
+    'House of Blues - Dallas, TX',
+    'The Bomb Factory - Dallas, TX',
+    'American Airlines Center - Dallas, TX',
+    'Gilley\'s - Dallas, TX',
+    'So What Music Festival - Arlington, TX',
+    'Gas Monkey Garage - Dallas, TX'
+  ];
   var HISTORIC_RADIUS_OPTIONS = [25, 50, 100];
   var HISTORIC_DEFAULT_FROM_YEAR = 2006;
   var BAND_DASHBOARD_PAGE_SIZE = 12;
@@ -93,7 +105,12 @@
     setlistUrl: ['Setlist.fm_URL', 'Setlist FM URL'],
     bandsintownUrl: ['Bandsintown_URL', 'Bandsintown URL'],
     wikipediaUrl: ['Wikipedia_URL', 'Wikipedia URL'],
-    bandTier: ['Band_Tier', 'Band Tier', 'Tier']
+    bandTier: ['Band_Tier', 'Band Tier', 'Tier'],
+    coverPositionX: ['Cover_Position_X', 'Cover Position X'],
+    coverPositionY: ['Cover_Position_Y', 'Cover Position Y'],
+    coverZoom: ['Cover_Zoom', 'Cover Zoom'],
+    logoPositionX: ['Logo_Position_X', 'Logo Position X'],
+    logoPositionY: ['Logo_Position_Y', 'Logo Position Y']
   };
   var BAND_TIER_OPTIONS = [
     { key: 'tier1', value: 'Tier 1 (The Best Bands)' },
@@ -108,7 +125,12 @@
     recordlabel: ['recordlabel', 'record_label'],
     bandcoverimageurl: ['bandcoverphotourl'],
     bandcoverurl: ['bandcoverphotourl'],
-    attendedby: ['attendee', 'attendees', 'whoattended']
+    attendedby: ['attendee', 'attendees', 'whoattended'],
+    coverpositionx: ['coverx', 'coverposx'],
+    coverpositiony: ['covery', 'coverposy'],
+    coverzoom: ['zoom', 'coverphotosize'],
+    logopositionx: ['logox', 'logoposx'],
+    logopositiony: ['logoy', 'logoposy']
   };
   var BAND_FORM_NAME_TO_PREFILL_KEY = {
     Band_Name: 'bandName',
@@ -203,6 +225,7 @@
      pendingSearchQuery: '',
      attendedUploadFiles: [],
      attendedUploadedPhotoUrls: [],
+     attendedLastUploadedPhotoUrls: [],
      attendedUploadBusy: false,
      attendedUploadStatus: { tone: 'info', message: '' },
       attendedBySchemaWarning: '',
@@ -564,6 +587,22 @@
       seen.add(key);
       return true;
     });
+  }
+
+  function getAllKnownVenueOptions() {
+    var fromHistory = uniqueStrings([].concat(
+      state.attendedConcerts.map(function (item) { return String((item && item.venue) || '').trim(); }),
+      state.upcomingConcerts.map(function (item) { return String((item && item.venue) || '').trim(); })
+    ).filter(Boolean));
+    return uniqueStrings([].concat(VENUE_PRESET_OPTIONS, fromHistory)).sort(function (a, b) {
+      return String(a || '').localeCompare(String(b || ''));
+    });
+  }
+
+  function renderVenueDatalistHtml(listId) {
+    return '<datalist id="' + escapeHtml(listId) + '">' + getAllKnownVenueOptions().map(function (venueName) {
+      return '<option value="' + escapeHtml(venueName) + '"></option>';
+    }).join('') + '</datalist>';
   }
 
   function splitList(value) {
@@ -2126,7 +2165,7 @@
     return '<span class="household-concerts-lock-summary-badge" title="' + escapeHtml('Locked fields: ' + count) + '">🔒 <strong>' + count + '</strong></span>';
   }
 
-  function mapBandToPrefillShape(band) {
+    function mapBandToPrefillShape(band) {
     var safeBand = band && typeof band === 'object' ? band : {};
     return {
       bandName: String(safeBand.bandName || '').trim(),
@@ -2149,6 +2188,11 @@
       wikipediaUrl: String(safeBand.wikipediaUrl || '').trim(),
       lastReleaseDate: String(safeBand.lastReleaseDate || '').trim(),
       memberTimeline: String(safeBand.memberTimeline || '').trim(),
+      coverPositionX: Number.isFinite(Number(safeBand.coverPositionX)) ? Number(safeBand.coverPositionX) : null,
+      coverPositionY: Number.isFinite(Number(safeBand.coverPositionY)) ? Number(safeBand.coverPositionY) : null,
+      coverZoom: Number.isFinite(Number(safeBand.coverZoom)) ? Number(safeBand.coverZoom) : null,
+      logoPositionX: Number.isFinite(Number(safeBand.logoPositionX)) ? Number(safeBand.logoPositionX) : null,
+      logoPositionY: Number.isFinite(Number(safeBand.logoPositionY)) ? Number(safeBand.logoPositionY) : null,
       topSongCandidates: Array.isArray(safeBand.topSongCandidates) ? safeBand.topSongCandidates.slice() : [],
       linkCompletenessScore: Number.isFinite(Number(safeBand.linkCompletenessScore)) ? Number(safeBand.linkCompletenessScore) : null,
       enrichmentHealthScore: Number.isFinite(Number(safeBand.enrichmentHealthScore)) ? Number(safeBand.enrichmentHealthScore) : null,
@@ -2159,7 +2203,7 @@
     };
   }
 
-  function applyBandProfileOverride(band) {
+    function applyBandProfileOverride(band) {
     if (!band || !band.id) return band;
     var override = getBandProfileOverride(band.id);
     if (!override) return band;
@@ -2185,6 +2229,11 @@
       wikipediaUrl: merged.wikipediaUrl || band.wikipediaUrl,
       lastReleaseDate: merged.lastReleaseDate || band.lastReleaseDate,
       memberTimeline: merged.memberTimeline || band.memberTimeline,
+      coverPositionX: Number.isFinite(Number(merged.coverPositionX)) ? Number(merged.coverPositionX) : (Number.isFinite(Number(band.coverPositionX)) ? Number(band.coverPositionX) : null),
+      coverPositionY: Number.isFinite(Number(merged.coverPositionY)) ? Number(merged.coverPositionY) : (Number.isFinite(Number(band.coverPositionY)) ? Number(band.coverPositionY) : null),
+      coverZoom: Number.isFinite(Number(merged.coverZoom)) ? Number(merged.coverZoom) : (Number.isFinite(Number(band.coverZoom)) ? Number(band.coverZoom) : null),
+      logoPositionX: Number.isFinite(Number(merged.logoPositionX)) ? Number(merged.logoPositionX) : (Number.isFinite(Number(band.logoPositionX)) ? Number(band.logoPositionX) : null),
+      logoPositionY: Number.isFinite(Number(merged.logoPositionY)) ? Number(merged.logoPositionY) : (Number.isFinite(Number(band.logoPositionY)) ? Number(band.logoPositionY) : null),
       topSongCandidates: mergeTopSongCandidates(band.topSongCandidates || [], merged.topSongCandidates || []),
       linkCompletenessScore: Number.isFinite(Number(merged.linkCompletenessScore)) ? Number(merged.linkCompletenessScore) : band.linkCompletenessScore,
       enrichmentHealthScore: Number.isFinite(Number(merged.enrichmentHealthScore)) ? Number(merged.enrichmentHealthScore) : band.enrichmentHealthScore,
@@ -2199,7 +2248,7 @@
     return nextBand;
   }
 
-  function parseFavoriteBandRecord(record, options) {
+    function parseFavoriteBandRecord(record, options) {
     var safeOptions = options && typeof options === 'object' ? options : {};
     var bandName = String(readFavoriteBandValue(record, 'bandName') || '').trim();
     if (!bandName) return null;
@@ -2226,6 +2275,11 @@
       lastReleaseDate: String(readValue(record, ['Last_Release_Date', 'Last Release Date']) || '').trim(),
       memberTimeline: String(readValue(record, ['Member_Timeline', 'Member Timeline']) || '').trim(),
       bandTier: normalizeBandTier(readFavoriteBandValue(record, 'bandTier') || getBandTierOverride(bandName)),
+      coverPositionX: Number.isFinite(Number(readFavoriteBandValue(record, 'coverPositionX'))) ? Number(readFavoriteBandValue(record, 'coverPositionX')) : null,
+      coverPositionY: Number.isFinite(Number(readFavoriteBandValue(record, 'coverPositionY'))) ? Number(readFavoriteBandValue(record, 'coverPositionY')) : null,
+      coverZoom: Number.isFinite(Number(readFavoriteBandValue(record, 'coverZoom'))) ? Number(readFavoriteBandValue(record, 'coverZoom')) : null,
+      logoPositionX: Number.isFinite(Number(readFavoriteBandValue(record, 'logoPositionX'))) ? Number(readFavoriteBandValue(record, 'logoPositionX')) : null,
+      logoPositionY: Number.isFinite(Number(readFavoriteBandValue(record, 'logoPositionY'))) ? Number(readFavoriteBandValue(record, 'logoPositionY')) : null,
       __rowIndex: Number.isInteger(Number(record && record.__rowIndex)) ? Number(record.__rowIndex) : -1,
       __rowId: String(record && record.__rowId ? record.__rowId : '').trim(),
       genres: splitGenres(readFavoriteBandValue(record, 'associatedGenres')),
@@ -2997,23 +3051,44 @@
       el.innerHTML = emptyState('No concerts logged yet', 'Use “Log Concert” to capture the date, venue, rating, photos, notes, and setlist links for a show you attended.');
       return;
     }
-    el.innerHTML = concerts.map(function (concert) {
-      var photoUrls = Array.isArray(concert.photoUrls) && concert.photoUrls.length
-        ? concert.photoUrls
-        : (concert.photoUrl ? [concert.photoUrl] : []);
-      return '<article class="household-concerts-entry-card">'
-        + '<div class="household-concerts-entry-head"><div><h4>' + escapeHtml(concert.bandName) + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue not set') + '</p></div><div class="household-concerts-rating">' + escapeHtml(formatRatingStars(concert.rating)) + '</div></div>'
-        + '<p class="household-concerts-muted">Attended by ' + escapeHtml(getAttendedByLabel(concert.attendedBy)) + '</p>'
-        + (concert.notes ? '<p class="household-concerts-entry-note">' + escapeHtml(concert.notes) + '</p>' : '')
-        + '<div class="household-concerts-link-row">'
-        + photoUrls.map(function (photoUrl, idx) {
-          var label = photoUrls.length > 1 ? ('Photo ' + (idx + 1)) : 'Photo';
-          return '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(photoUrl)) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    var groups = [];
+    var groupMap = {};
+    concerts.forEach(function (concert) {
+      var groupKey = [toIsoDate(concert.concertDate), normalizeKey(concert.venue || 'venue-not-set')].join('::');
+      if (!groupMap[groupKey]) {
+        groupMap[groupKey] = {
+          concertDate: toIsoDate(concert.concertDate),
+          venue: concert.venue,
+          items: []
+        };
+        groups.push(groupMap[groupKey]);
+      }
+      groupMap[groupKey].items.push(concert);
+    });
+    el.innerHTML = groups.map(function (group) {
+      var groupBands = uniqueStrings(group.items.map(function (item) { return String(item.bandName || '').trim(); }).filter(Boolean));
+      return '<section class="household-concerts-tier-section">'
+        + '<div class="household-concerts-panel-head"><div><h4>' + escapeHtml(formatDate(group.concertDate)) + ' • ' + escapeHtml(group.venue || 'Venue not set') + '</h4><p>' + group.items.length + ' log entr' + (group.items.length === 1 ? 'y' : 'ies') + (groupBands.length ? (' • ' + escapeHtml(groupBands.join(', '))) : '') + '</p></div></div>'
+        + group.items.map(function (concert) {
+          var photoUrls = Array.isArray(concert.photoUrls) && concert.photoUrls.length
+            ? concert.photoUrls
+            : (concert.photoUrl ? [concert.photoUrl] : []);
+          return '<article class="household-concerts-entry-card">'
+            + '<div class="household-concerts-entry-head"><div><h4>' + escapeHtml(concert.bandName) + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue not set') + '</p></div><div class="household-concerts-rating">' + escapeHtml(formatRatingStars(concert.rating)) + '</div></div>'
+            + '<p class="household-concerts-muted">Attended by ' + escapeHtml(getAttendedByLabel(concert.attendedBy)) + '</p>'
+            + (concert.notes ? '<p class="household-concerts-entry-note">' + escapeHtml(concert.notes) + '</p>' : '')
+            + '<div class="household-concerts-link-row">'
+            + photoUrls.map(function (photoUrl, idx) {
+              var label = photoUrls.length > 1 ? ('Photo ' + (idx + 1)) : 'Photo';
+              return '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(photoUrl)) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+            }).join('')
+            + (concert.videoUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.videoUrl)) + '" target="_blank" rel="noopener noreferrer">Video</a>' : '')
+            + (concert.setlistUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.setlistUrl)) + '" target="_blank" rel="noopener noreferrer">Setlist</a>' : '')
+            + '</div>'
+            + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="duplicate-attended-concert" data-attended-id="' + escapeHtml(concert.id) + '">Copy Log</button></div>'
+            + '</article>';
         }).join('')
-        + (concert.videoUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.videoUrl)) + '" target="_blank" rel="noopener noreferrer">Video</a>' : '')
-        + (concert.setlistUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.setlistUrl)) + '" target="_blank" rel="noopener noreferrer">Setlist</a>' : '')
-        + '</div>'
-        + '</article>';
+        + '</section>';
     }).join('');
   }
 
@@ -3618,7 +3693,7 @@
     }
   }
 
-  function mergeBandPrefill(base, addition) {
+    function mergeBandPrefill(base, addition) {
     var current = base && typeof base === 'object' ? base : {};
     var incoming = addition && typeof addition === 'object' ? addition : {};
     var mergedTopSongCandidates = mergeTopSongCandidates(current.topSongCandidates || [], incoming.topSongCandidates || []);
@@ -3645,6 +3720,11 @@
       wikipediaUrl: preferSpecificUrl(current.wikipediaUrl, incoming.wikipediaUrl),
       lastReleaseDate: preferFilledValue(current.lastReleaseDate, incoming.lastReleaseDate),
       memberTimeline: preferFilledValue(current.memberTimeline, incoming.memberTimeline),
+      coverPositionX: Number.isFinite(Number(incoming.coverPositionX)) ? Number(incoming.coverPositionX) : (Number.isFinite(Number(current.coverPositionX)) ? Number(current.coverPositionX) : null),
+      coverPositionY: Number.isFinite(Number(incoming.coverPositionY)) ? Number(incoming.coverPositionY) : (Number.isFinite(Number(current.coverPositionY)) ? Number(current.coverPositionY) : null),
+      coverZoom: Number.isFinite(Number(incoming.coverZoom)) ? Number(incoming.coverZoom) : (Number.isFinite(Number(current.coverZoom)) ? Number(current.coverZoom) : null),
+      logoPositionX: Number.isFinite(Number(incoming.logoPositionX)) ? Number(incoming.logoPositionX) : (Number.isFinite(Number(current.logoPositionX)) ? Number(current.logoPositionX) : null),
+      logoPositionY: Number.isFinite(Number(incoming.logoPositionY)) ? Number(incoming.logoPositionY) : (Number.isFinite(Number(current.logoPositionY)) ? Number(current.logoPositionY) : null),
       albumCoverCandidates: uniqueStrings([].concat(current.albumCoverCandidates || [], incoming.albumCoverCandidates || []).map(function (item) {
         if (!item || !item.url) return '';
         return JSON.stringify({
@@ -4173,6 +4253,7 @@
     host.innerHTML = '';
     state.attendedUploadFiles = [];
     state.attendedUploadedPhotoUrls = [];
+    state.attendedLastUploadedPhotoUrls = [];
     state.attendedUploadBusy = false;
     state.attendedUploadStatus = { tone: 'info', message: '' };
     state.bandImagePicker = null;
@@ -4214,7 +4295,10 @@
          var uploaded = await uploadConcertPhotoToOneDrive(selectedFiles[i], resolveAttendedUploadMeta(form));
          uploadedUrls.push(uploaded.url);
        }
-       state.attendedUploadedPhotoUrls = mergePhotoUrlLists(state.attendedUploadedPhotoUrls, uploadedUrls);
+        state.attendedUploadedPhotoUrls = uniqueStrings([].concat(state.attendedUploadedPhotoUrls, uploadedUrls).map(function (url) {
+          return String(url || '').trim();
+        }).filter(Boolean));
+          state.attendedLastUploadedPhotoUrls = uploadedUrls.slice();
        var photoInput = form.querySelector('[name="Photo_URL"]');
        if (photoInput) {
          var manualUrls = parsePhotoUrlsField(photoInput.value || '');
@@ -4414,7 +4498,9 @@
     setBandFormStatus('Fetching enrichment data for ' + current.bandName + '…', 'info');
     try {
       var enriched = await enrichBandProfileData(current);
-      enriched = await maybeImportAlbumCoverToOneDrive(enriched, current);
+      if (!safeOptions.silent) {
+        enriched = await maybeImportAlbumCoverToOneDrive(enriched, current);
+      }
       var bandKey = current.bandName;
       if (safeOptions.silent || safeOptions.noPreview) {
         // Direct apply (used by auto-fill-on-open for new bands with no existing values)
@@ -4656,12 +4742,15 @@
   function getBandImageCrop(bandId) {
     var key = normalizeKey(bandId);
     var overrides = (key && state.bandProfileOverrides && state.bandProfileOverrides[key]) ? state.bandProfileOverrides[key] : {};
+    var band = key ? getBandByKey(key) : null;
     return {
-      coverPositionX: Number.isFinite(Number(overrides.coverPositionX)) ? Number(overrides.coverPositionX) : 50,
-      coverPositionY: Number.isFinite(Number(overrides.coverPositionY)) ? Number(overrides.coverPositionY) : 50,
-      coverZoom: (Number.isFinite(Number(overrides.coverZoom)) && Number(overrides.coverZoom) >= 100) ? Number(overrides.coverZoom) : 100,
-      logoPositionX: Number.isFinite(Number(overrides.logoPositionX)) ? Number(overrides.logoPositionX) : 50,
-      logoPositionY: Number.isFinite(Number(overrides.logoPositionY)) ? Number(overrides.logoPositionY) : 50
+      coverPositionX: Number.isFinite(Number(overrides.coverPositionX)) ? Number(overrides.coverPositionX) : (Number.isFinite(Number(band && band.coverPositionX)) ? Number(band.coverPositionX) : 50),
+      coverPositionY: Number.isFinite(Number(overrides.coverPositionY)) ? Number(overrides.coverPositionY) : (Number.isFinite(Number(band && band.coverPositionY)) ? Number(band.coverPositionY) : 50),
+      coverZoom: (Number.isFinite(Number(overrides.coverZoom)) && Number(overrides.coverZoom) >= 100)
+        ? Number(overrides.coverZoom)
+        : ((Number.isFinite(Number(band && band.coverZoom)) && Number(band && band.coverZoom) >= 100) ? Number(band.coverZoom) : 100),
+      logoPositionX: Number.isFinite(Number(overrides.logoPositionX)) ? Number(overrides.logoPositionX) : (Number.isFinite(Number(band && band.logoPositionX)) ? Number(band.logoPositionX) : 50),
+      logoPositionY: Number.isFinite(Number(overrides.logoPositionY)) ? Number(overrides.logoPositionY) : (Number.isFinite(Number(band && band.logoPositionY)) ? Number(band.logoPositionY) : 50)
     };
   }
 
@@ -4670,7 +4759,7 @@
     var crop = getBandImageCrop(band.id);
     var bgPos = crop.coverPositionX + '% ' + crop.coverPositionY + '%';
     var bgSize = crop.coverZoom > 100 ? crop.coverZoom + '%' : 'cover';
-    return ' style="background-image:url(\'' + escapeHtml(safeUrl(band.bandCoverPhotoUrl)) + '\');background-position:' + bgPos + ';background-size:' + bgSize + '"';
+    return ' style="background-image:url(' + escapeHtml(safeUrl(band.bandCoverPhotoUrl)) + ');background-position:' + bgPos + ';background-size:' + bgSize + '"';
   }
 
   function openImagePositionModal(bandKey, imageType) {
@@ -4688,7 +4777,7 @@
     var safeImgUrl = escapeHtml(safeUrl(imageUrl));
     var previewHtml = imageType === 'logo'
       ? '<div class="household-concerts-crop-preview-wrap"><img id="hcCropPreviewLogo" class="household-concerts-crop-preview-logo" src="' + safeImgUrl + '" alt="Logo preview" style="object-position:' + currentX + '% ' + currentY + '%"></div>'
-      : '<div class="household-concerts-crop-preview-wrap"><div id="hcCropPreviewCover" class="household-concerts-crop-preview-cover" style="background-image:url(\'' + safeImgUrl + '\');background-position:' + currentX + '% ' + currentY + '%;background-size:' + (currentZoom > 100 ? currentZoom + '%' : 'cover') + '"></div></div>';
+      : '<div class="household-concerts-crop-preview-wrap"><div id="hcCropPreviewCover" class="household-concerts-crop-preview-cover" style="background-image:url(' + safeImgUrl + ');background-position:' + currentX + '% ' + currentY + '%;background-size:' + (currentZoom > 100 ? currentZoom + '%' : 'cover') + '"></div></div>';
     var zoomRowHtml = imageType === 'cover'
       ? '<div class="household-concerts-form-row"><label>Zoom <span id="hcCropZoomLabel" class="household-concerts-crop-value-badge">' + currentZoom + '%</span></label><input id="householdConcertsCropZoom" type="range" min="100" max="300" step="5" value="' + currentZoom + '"></div>'
       : '';
@@ -4734,7 +4823,7 @@
     }
   }
 
-  function applyImagePosition(bandKey, imageType) {
+  async function applyImagePosition(bandKey, imageType) {
     var xInput = document.getElementById('householdConcertsCropX');
     var yInput = document.getElementById('householdConcertsCropY');
     var zInput = document.getElementById('householdConcertsCropZoom');
@@ -4744,14 +4833,44 @@
     var patch = imageType === 'logo'
       ? { logoPositionX: x, logoPositionY: y }
       : { coverPositionX: x, coverPositionY: y, coverZoom: zoom };
-    saveBandProfileOverride(bandKey, patch);
-    closeModal();
-    renderAll();
-    var band = getBandByKey(bandKey);
-    setStatus((band ? band.bandName : 'Band') + ' ' + (imageType === 'logo' ? 'logo' : 'cover photo') + ' position updated.', 'success');
+    try {
+      await persistBandImagePositionPatch(bandKey, patch);
+      closeModal();
+      renderAll();
+      var band = getBandByKey(bandKey);
+      setStatus((band ? band.bandName : 'Band') + ' ' + (imageType === 'logo' ? 'logo' : 'cover photo') + ' position updated.', 'success');
+    } catch (error) {
+      setStatus(error && error.message ? error.message : 'Could not update image position.', 'error');
+    }
   }
 
-  function openBandImagePickerModal(form, candidates, options) {
+  async function persistBandImagePositionPatch(bandKey, patch) {
+    var safeBandKey = String(bandKey || '').trim();
+    if (!safeBandKey || !patch || typeof patch !== 'object') return;
+    var band = getBandByKey(safeBandKey);
+    saveBandProfileOverride(safeBandKey, patch);
+    if (!band) return;
+    state.favoriteBands = state.favoriteBands.map(function (entry) {
+      if (!entry || normalizeKey(entry.id || entry.bandName) !== normalizeKey(band.id || band.bandName)) return entry;
+      return Object.assign({}, entry, patch);
+    });
+    await persistFavoriteBandProfilePatch(band, patch, { skipRender: true });
+  }
+
+  async function resetImagePosition(bandKey, imageType) {
+    var safeType = String(imageType || '').trim();
+    var patch = safeType === 'logo'
+      ? { logoPositionX: 50, logoPositionY: 50 }
+      : { coverPositionX: 50, coverPositionY: 50, coverZoom: 100 };
+    try {
+      await persistBandImagePositionPatch(bandKey, patch);
+      openImagePositionModal(bandKey, safeType);
+    } catch (error) {
+      setStatus(error && error.message ? error.message : 'Could not reset image position.', 'error');
+    }
+  }
+
+    function openBandImagePickerModal(form, candidates, options) {
     var safeOptions = options && typeof options === 'object' ? options : {};
     var existing = state.bandImagePicker && typeof state.bandImagePicker === 'object' ? state.bandImagePicker : null;
     var formData = form
@@ -4771,6 +4890,9 @@
       selectedCoverIndex: Number.isFinite(selectedCoverIndex) ? selectedCoverIndex : -1,
       selectedLogoIndex: Number.isFinite(selectedLogoIndex) ? selectedLogoIndex : -1
     };
+    var pickerBandKey = state.bandImagePicker.sourceType === 'band'
+      ? normalizeKey(state.bandImagePicker.sourceBandKey || state.bandImagePicker.bandName || '')
+      : '';
     openModal(
       '<div class="household-concerts-modal-head"><div><h3>Select Band Images</h3><p>Choose a cover and logo, then upload to OneDrive `Copilot_Apps/Band_Photos`.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
       + '<div class="household-concerts-band-profile">'
@@ -4782,6 +4904,9 @@
       + '<div class="household-concerts-form-row"><label>Import logo from URL</label><input id="householdConcertsBandLogoUrlInput" placeholder="https://..."><button type="button" class="pill-button" data-concert-action="import-band-logo-url">Import Logo URL</button></div>'
       + '<div class="household-concerts-form-row"><label>Import cover from URL</label><input id="householdConcertsBandCoverUrlInput" placeholder="https://..."><button type="button" class="pill-button" data-concert-action="import-band-cover-url">Import Cover URL</button></div>'
       + '</div>'
+      + (pickerBandKey
+        ? '<div class="household-concerts-form-row"><label>Adjust image position</label><div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="open-image-position-cover" data-band-key="' + escapeHtml(pickerBandKey) + '">Adjust Cover Position</button><button type="button" class="pill-button" data-concert-action="open-image-position-logo" data-band-key="' + escapeHtml(pickerBandKey) + '">Adjust Logo Position</button></div></div>'
+        : '')
       + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="button" class="pill-button pill-button-primary" data-concert-action="apply-band-image-selection">Save Selected to OneDrive</button></div>'
       + '</div>'
     );
@@ -4829,6 +4954,13 @@
           };
           await persistFavoriteBandProfilePatch(sourceBand, imagePatch, { skipRender: true });
           saveBandProfileOverride(sourceBandKey, imagePatch);
+          state.favoriteBands = state.favoriteBands.map(function (entry) {
+            if (!entry) return entry;
+            var sameId = normalizeKey(entry.id || '') === normalizeKey(sourceBand.id || '');
+            var sameName = normalizeKey(entry.bandName || '') === normalizeKey(sourceBand.bandName || '');
+            if (!sameId && !sameName) return entry;
+            return Object.assign({}, entry, imagePatch);
+          });
         }
         closeModal();
         renderAll();
@@ -4955,7 +5087,11 @@
       applyBandFormFieldTooltips(bandForm);
       updateAutoFillButtonBadge(bandForm, 0);
     }
-    if (data.bandName && normalizeConcertSettings(state.settings).autoFillOnOpen) {
+    var shouldAutoFillOnOpen = data.bandName && (
+      normalizeConcertSettings(state.settings).autoFillOnOpen
+      || /search|recommend/i.test(String(data.sourceLabel || ''))
+    );
+    if (shouldAutoFillOnOpen) {
       global.setTimeout(function () {
         var form = document.getElementById('householdConcertsBandForm');
         if (form) autoFillBandForm(form, { silent: true });
@@ -4989,7 +5125,7 @@
      }
    }
 
-   function buildAttendedBandOptionsHtml(selectedBandName, searchTerm) {
+     function buildAttendedBandOptionsHtml(selectedBandName, searchTerm) {
      var selected = normalizeText(selectedBandName);
      var filter = normalizeText(searchTerm);
      var options = state.favoriteBands.filter(function (item) {
@@ -5162,33 +5298,43 @@
 
    function openAttendedConcertForm(band, prefill) {
      state.attendedUploadFiles = [];
-     state.attendedUploadedPhotoUrls = [];
+      var safePrefill = prefill && typeof prefill === 'object' ? prefill : {};
+      var seededPhotoUrls = mergePhotoUrlLists(
+        Array.isArray(safePrefill.photoUrls) ? safePrefill.photoUrls : [],
+        safePrefill.photoUrl ? [safePrefill.photoUrl] : []
+      );
+      state.attendedUploadedPhotoUrls = seededPhotoUrls;
+      state.attendedLastUploadedPhotoUrls = [];
      state.attendedUploadBusy = false;
      state.attendedUploadStatus = {
        tone: 'info',
        message: 'Optional: upload a concert photo directly to OneDrive, or paste a URL manually.'
      };
-     var safePrefill = prefill && typeof prefill === 'object' ? prefill : {};
      var bandName = String(safePrefill.bandName || (band && band.bandName) || '').trim();
      var concertDate = toIsoDate(safePrefill.concertDate || '');
      var venue = String(safePrefill.venue || '').trim();
+      var rating = Math.max(0, Math.min(5, Number(safePrefill.rating) || 0));
+      var videoUrl = String(safePrefill.videoUrl || '').trim();
      var setlistUrl = String(safePrefill.setlistUrl || '').trim();
      var notes = String(safePrefill.notes || '').trim();
+      var photoTextareaValue = seededPhotoUrls.join('\n');
      var attendedBy = normalizeAttendedBy(safePrefill.attendedBy || 'Both');
      var bandOptions = buildAttendedBandOptionsHtml(bandName, '');
+      var venueListId = 'householdConcertsVenueOptionsAttended';
      openModal(
        '<div class="household-concerts-modal-head"><div><h3>Log Attended Concert</h3><p>Track the band, date, venue, star rating, photos, notes, and setlist links for a show you have seen.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
        + '<form id="householdConcertsAttendedForm" class="household-concerts-form">'
        + formRow('Find Favorite Band', '<input id="householdConcertsAttendedBandSearch" type="search" placeholder="Type to filter favorite bands…" aria-label="Filter favorite bands for attended concert">')
        + formRow('Band', '<select name="Band_Name" required>' + bandOptions + '</select>')
        + formRow('Concert Date', '<input type="date" name="Concert_Date" required value="' + escapeHtml(concertDate) + '">')
-       + formRow('Venue', '<input name="Venue" required placeholder="Venue name" value="' + escapeHtml(venue) + '">')
+        + formRow('Venue', '<input name="Venue" list="' + venueListId + '" required placeholder="Venue name" value="' + escapeHtml(venue) + '"><small class="household-concerts-muted">Choose from saved venues or type a new one.</small>')
+        + renderVenueDatalistHtml(venueListId)
        + formRow('Attended By', '<select name="Attended_By">' + CONCERT_ATTENDEE_OPTIONS.map(function (option) { return '<option value="' + option + '"' + (option === attendedBy ? ' selected' : '') + '>' + option + '</option>'; }).join('') + '</select>')
-       + '<div class="household-concerts-form-row"><label>Rating</label><div class="household-concerts-star-row">' + renderRatingStars(0) + '</div><input type="hidden" name="Rating" value="0"></div>'
+        + '<div class="household-concerts-form-row"><label>Rating</label><div class="household-concerts-star-row">' + renderRatingStars(rating) + '</div><input type="hidden" name="Rating" value="' + rating + '"></div>'
        + '<div class="household-concerts-form-row household-concerts-upload-row"><label>Upload Photos to OneDrive</label><div class="household-concerts-upload-inline"><input id="householdConcertsPhotoFileInput" type="file" accept="image/*" multiple><button type="button" class="pill-button" data-concert-action="upload-attended-photo">Upload Selected</button></div><div id="householdConcertsAttendedUploadStatus" class="household-concerts-upload-status household-concerts-upload-status--info">' + escapeHtml(state.attendedUploadStatus.message) + '</div></div>'
-       + formRow('Photo URL(s)', '<textarea name="Photo_URL" rows="2" placeholder="Single URL, multiple URLs separated by new lines/commas, or JSON array."></textarea>')
+        + formRow('Photo URL(s)', '<textarea name="Photo_URL" rows="2" placeholder="Single URL, multiple URLs separated by new lines/commas, or JSON array.">' + escapeHtml(photoTextareaValue) + '</textarea>')
        + '<div class="household-concerts-form-row"><label>Manage Photos</label><div id="householdConcertsPhotoPreview" class="household-concerts-manage-photos-container">' + renderManagedPhotosPreview() + '</div></div>'
-       + formRow('Video URL', '<input name="Video_URL" placeholder="https://…">')
+        + formRow('Video URL', '<input name="Video_URL" placeholder="https://…" value="' + escapeHtml(videoUrl) + '">')
        + formRow('Setlist URL', '<input name="Setlist_URL" placeholder="https://…" value="' + escapeHtml(setlistUrl) + '">')
        + formRow('Notes', '<textarea name="Notes" rows="4" placeholder="Favorite moments, opening acts, sound quality, crowd, etc.">' + escapeHtml(notes) + '</textarea>')
        + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">Save Concert Log</button></div>'
@@ -5196,18 +5342,20 @@
      );
    }
 
-  function openUpcomingConcertForm(band) {
+     function openUpcomingConcertForm(band) {
     var bandName = band && band.bandName ? band.bandName : '';
     var bandOptions = state.favoriteBands.map(function (item) {
       var selected = normalizeText(item.bandName) === normalizeText(bandName) ? ' selected' : '';
       return '<option value="' + escapeHtml(item.bandName) + '"' + selected + '>' + escapeHtml(item.bandName) + '</option>';
     }).join('');
+    var venueListId = 'householdConcertsVenueOptionsUpcoming';
     openModal(
       '<div class="household-concerts-modal-head"><div><h3>Add Upcoming Concert</h3><p>Store future shows, then use your location and distance slider to keep nearby opportunities front and center.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
       + '<form id="householdConcertsUpcomingForm" class="household-concerts-form">'
       + formRow('Band', '<select name="Band_Name" required><option value="">Choose a favorite band</option>' + bandOptions + '</select>')
       + formRow('Concert Date', '<input type="date" name="Concert_Date" required>')
-      + formRow('Venue', '<input name="Venue" required placeholder="Venue name">')
+      + formRow('Venue', '<input name="Venue" list="' + venueListId + '" required placeholder="Venue name"><small class="household-concerts-muted">Choose from saved venues or type a new one.</small>')
+      + renderVenueDatalistHtml(venueListId)
       + formRow('City', '<input name="City" required placeholder="City">')
       + formRow('State', '<input name="State" required placeholder="State / Region">')
       + formRow('Tickets Purchased', '<label><input type="checkbox" name="Tickets_Purchased" value="Yes"> We already purchased tickets</label>')
@@ -5482,7 +5630,7 @@
     }
   }
 
-  function buildFavoriteRecordFromPrefill(prefill) {
+     function buildFavoriteRecordFromPrefill(prefill) {
     var safePrefill = prefill && typeof prefill === 'object' ? prefill : {};
     return {
       Band_Name: String(safePrefill.bandName || '').trim(),
@@ -5504,8 +5652,13 @@
       Bandsintown_URL: String(safePrefill.bandsintownUrl || '').trim(),
       Wikipedia_URL: String(safePrefill.wikipediaUrl || '').trim(),
       Last_Release_Date: String(safePrefill.lastReleaseDate || '').trim(),
-      Member_Timeline: String(safePrefill.memberTimeline || '').trim(),
-      Band_Tier: normalizeBandTier(safePrefill.bandTier || ''),
+       Member_Timeline: String(safePrefill.memberTimeline || '').trim(),
+       Band_Tier: normalizeBandTier(safePrefill.bandTier || ''),
+       Cover_Position_X: Number.isFinite(Number(safePrefill.coverPositionX)) ? Number(safePrefill.coverPositionX) : '',
+       Cover_Position_Y: Number.isFinite(Number(safePrefill.coverPositionY)) ? Number(safePrefill.coverPositionY) : '',
+       Cover_Zoom: Number.isFinite(Number(safePrefill.coverZoom)) ? Number(safePrefill.coverZoom) : '',
+       Logo_Position_X: Number.isFinite(Number(safePrefill.logoPositionX)) ? Number(safePrefill.logoPositionX) : '',
+       Logo_Position_Y: Number.isFinite(Number(safePrefill.logoPositionY)) ? Number(safePrefill.logoPositionY) : '',
       sourceLabel: String(safePrefill.sourceLabel || '').trim(),
       enrichmentConfidence: String(safePrefill.enrichmentConfidence || '').trim(),
       sourceKeys: Array.isArray(safePrefill.sourceKeys) ? safePrefill.sourceKeys.join(',') : String(safePrefill.sourceKeys || ''),
@@ -5651,7 +5804,9 @@
     if (!safeOptions.silent) setStatus('Refreshing band profile for ' + band.bandName + '…', 'info');
     try {
       var enriched = await enrichBandProfileData(mapBandToPrefillShape(band));
-      enriched = await maybeImportAlbumCoverToOneDrive(enriched, band);
+      if (safeOptions.importAlbumCover === true) {
+        enriched = await maybeImportAlbumCoverToOneDrive(enriched, band);
+      }
       if (safeOptions.noPreview) {
         // Direct apply (old behaviour, used from band cards Refresh Profile button)
         await persistFavoriteBandProfilePatch(band, enriched, { skipRender: true });
@@ -5767,7 +5922,7 @@
       return;
     }
     var manualPhotoUrls = parsePhotoUrlsField(record.Photo_URL);
-    var combinedPhotoUrls = mergePhotoUrlLists(manualPhotoUrls, state.attendedUploadedPhotoUrls);
+    var combinedPhotoUrls = mergePhotoUrlLists(manualPhotoUrls, state.attendedUploadedPhotoUrls, state.attendedLastUploadedPhotoUrls);
     if (!combinedPhotoUrls.length && state.attendedUploadFiles.length) {
       try {
         combinedPhotoUrls = mergePhotoUrlLists(combinedPhotoUrls, await uploadAttendedPhotoFromForm(form));
@@ -5792,6 +5947,14 @@
       console.error('❌ Could not save attended concert:', error);
       setStatus(error && error.message ? error.message : 'Could not save attended concert.', 'error');
     }
+  }
+
+  function getAttendedConcertById(concertId) {
+    var targetId = String(concertId || '').trim();
+    if (!targetId) return null;
+    return state.attendedConcerts.find(function (item) {
+      return String((item && item.id) || '').trim() === targetId;
+    }) || null;
   }
 
   async function saveUpcomingConcert(form) {
@@ -6521,10 +6684,7 @@
         case 'reset-image-position': {
           var resetBandKey = String(target.getAttribute('data-band-key') || '').trim();
           var resetImageType = String(target.getAttribute('data-image-type') || '').trim();
-          saveBandProfileOverride(resetBandKey, resetImageType === 'logo'
-            ? { logoPositionX: 50, logoPositionY: 50 }
-            : { coverPositionX: 50, coverPositionY: 50, coverZoom: 100 });
-          openImagePositionModal(resetBandKey, resetImageType);
+          resetImagePosition(resetBandKey, resetImageType);
           break;
         }
         case 'upload-band-logo-file':
@@ -6542,6 +6702,24 @@
         case 'open-log-concert':
           openAttendedConcertForm(getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand());
           break;
+        case 'duplicate-attended-concert': {
+          var sourceConcert = getAttendedConcertById(target.getAttribute('data-attended-id'));
+          if (!sourceConcert) break;
+          openAttendedConcertForm(getBandByKey(sourceConcert.bandKey), {
+            bandName: sourceConcert.bandName,
+            concertDate: sourceConcert.concertDate,
+            venue: sourceConcert.venue,
+            attendedBy: sourceConcert.attendedBy,
+            rating: sourceConcert.rating,
+            photoUrls: sourceConcert.photoUrls,
+            photoUrl: sourceConcert.photoUrl,
+            videoUrl: sourceConcert.videoUrl,
+            setlistUrl: sourceConcert.setlistUrl,
+            notes: sourceConcert.notes
+          });
+          setStatus('Copied concert log. Update the band (or any field) and save as a new entry.', 'info');
+          break;
+        }
         case 'open-add-upcoming':
           openUpcomingConcertForm(getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand());
           break;

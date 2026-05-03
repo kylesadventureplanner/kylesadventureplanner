@@ -960,6 +960,47 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('.household-concerts-modal')).toContainText('No unsynced band profile changes found');
   });
 
+  test('can copy attended logs, keep same-show grouping, and use venue presets with free typing', async ({ page }) => {
+    await page.locator('[data-concert-action="open-log-concert"]').first().click();
+    await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();
+
+    const venueInput = page.locator('#householdConcertsAttendedForm input[name="Venue"]');
+    await expect(venueInput).toHaveAttribute('list', 'householdConcertsVenueOptionsAttended');
+    const attendedVenueOptions = await page.evaluate(() => {
+      const list = document.getElementById('householdConcertsVenueOptionsAttended');
+      if (!list) return [];
+      return Array.from(list.querySelectorAll('option')).map((option) => String(option.value || '').trim()).filter(Boolean);
+    });
+    expect(attendedVenueOptions).toContain('House of Blues - Dallas, TX');
+
+    await page.locator('#householdConcertsAttendedForm input[name="Concert_Date"]').fill('2026-06-15');
+    await venueInput.fill('House of Blues - Dallas, TX');
+    await page.locator('#householdConcertsAttendedForm [data-rating-value="4"]').click();
+    await page.locator('#householdConcertsAttendedForm textarea[name="Notes"]').fill('First entry for same-show grouping.');
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsAttendedForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('First entry for same-show grouping.');
+
+    await page.locator('[data-testid="concerts-attended-list"] [data-concert-action="duplicate-attended-concert"]').first().click();
+    await expect(page.locator('#householdConcertsAttendedForm')).toBeVisible();
+    await expect(page.locator('#householdConcertsAttendedForm input[name="Concert_Date"]')).toHaveValue('2026-06-15');
+    await expect(page.locator('#householdConcertsAttendedForm input[name="Venue"]')).toHaveValue('House of Blues - Dallas, TX');
+
+    await page.locator('#householdConcertsAttendedForm select[name="Band_Name"]').selectOption('Nine Inch Nails');
+    await page.locator('#householdConcertsAttendedForm textarea[name="Notes"]').fill('Copied log changed to second band at same show.');
+    await page.evaluate(() => {
+      const form = document.getElementById('householdConcertsAttendedForm');
+      if (form && typeof form.requestSubmit === 'function') form.requestSubmit();
+    });
+
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('2 log entries');
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('House of Blues - Dallas, TX');
+    await expect(page.locator('[data-testid="concerts-attended-list"]')).toContainText('Nine Inch Nails');
+  });
+
   test('can add a favorite band from search results and log an attended concert', async ({ page }) => {
     await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
     await page.locator('[data-concert-action="search-web"]').first().click();
