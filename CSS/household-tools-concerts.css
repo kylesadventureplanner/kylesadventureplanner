@@ -215,6 +215,14 @@
   filter: brightness(0.98);
 }
 
+#householdConcertsPane .household-concerts-enrichment-badge--static {
+  cursor: default;
+}
+
+#householdConcertsPane .household-concerts-enrichment-badge--static:hover {
+  filter: none;
+}
+
 #householdConcertsPane .household-concerts-location-chip {
   display: inline-flex;
   align-items: center;

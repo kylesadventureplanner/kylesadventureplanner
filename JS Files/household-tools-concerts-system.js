@@ -154,6 +154,7 @@
      loading: false,
      workbookPath: '',
       workbookPathHint: readStringStorage(WORKBOOK_PATH_STORAGE_KEY, ''),
+      lastWorkbookPathDiagnosticsReport: null,
       tableSchemaCache: {},
      favoriteBands: [],
      attendedConcerts: [],
@@ -753,6 +754,118 @@
     };
   }
 
+  function computeBandEnrichmentHealth(bandLike, metaLike) {
+    var band = bandLike && typeof bandLike === 'object' ? bandLike : {};
+    var meta = metaLike && typeof metaLike === 'object' ? metaLike : {};
+    var links = summarizeLinkCompletenessForBandShape(band);
+    var releases = Array.isArray(band.releases) && band.releases.length
+      ? band.releases
+      : splitList(band.discography || '');
+    var songs = Array.isArray(band.songs) && band.songs.length
+      ? band.songs
+      : splitList(band.topSongs || '');
+    var candidates = mergeTopSongCandidates(band.topSongCandidates || [], []);
+    var timelineText = String(band.memberTimeline || '').trim();
+    var membersCount = Array.isArray(band.members) && band.members.length
+      ? band.members.length
+      : splitList(band.bandMembers || '').length;
+    var hasLastReleaseDate = !!toIsoDate(band.lastReleaseDate);
+
+    var components = [];
+
+    components.push({
+      key: 'links',
+      label: 'Links',
+      weight: 35,
+      available: true,
+      score: links.score
+    });
+
+    var timelineScore = 0;
+    var timelineAvailable = !!(timelineText || membersCount);
+    if (timelineText) {
+      var timelineMarkers = (timelineText.match(/(19|20)\d{2}/g) || []).length;
+      timelineScore = Math.min(100, 55 + (timelineMarkers * 12) + (timelineText.length >= 90 ? 15 : 0));
+    } else if (membersCount) {
+      timelineScore = Math.min(45, 20 + (membersCount * 8));
+    }
+    components.push({
+      key: 'timeline',
+      label: 'Timeline',
+      weight: 25,
+      available: timelineAvailable,
+      score: timelineScore
+    });
+
+    var releaseScore = 0;
+    var releaseAvailable = releases.length > 0 || hasLastReleaseDate;
+    if (releaseAvailable) {
+      releaseScore = Math.min(100, Math.round((Math.min(releases.length, 8) / 8) * 90 + (hasLastReleaseDate ? 10 : 0)));
+    }
+    components.push({
+      key: 'releases',
+      label: 'Release depth',
+      weight: 20,
+      available: releaseAvailable,
+      score: releaseScore
+    });
+
+    var topTrackScore = 0;
+    var topTrackAvailable = candidates.length > 0 || songs.length > 0;
+    if (candidates.length) {
+      var totalCandidateScore = candidates.reduce(function (sum, entry) {
+        var score = Number(entry && entry.score);
+        return sum + (Number.isFinite(score) && score > 0 ? score : 1);
+      }, 0);
+      var leadScore = Number(candidates[0] && candidates[0].score);
+      var leadShare = totalCandidateScore > 0
+        ? ((Number.isFinite(leadScore) && leadScore > 0 ? leadScore : 1) / totalCandidateScore)
+        : 0;
+      var coverage = Math.min(candidates.length, 8) / 8;
+      topTrackScore = Math.round(Math.min(1, (leadShare * 0.6) + (coverage * 0.4)) * 100);
+    } else if (songs.length) {
+      topTrackScore = Math.min(70, 35 + (songs.length * 7));
+    }
+    components.push({
+      key: 'topTracks',
+      label: 'Top tracks',
+      weight: 20,
+      available: topTrackAvailable,
+      score: topTrackScore
+    });
+
+    var availableComponents = components.filter(function (entry) { return !!entry.available; });
+    var weightSum = availableComponents.reduce(function (sum, entry) { return sum + entry.weight; }, 0);
+    var rawScore = weightSum
+      ? Math.round(availableComponents.reduce(function (sum, entry) { return sum + (entry.score * entry.weight); }, 0) / weightSum)
+      : 0;
+
+    var evidenceCap = 100;
+    if (availableComponents.length <= 1) evidenceCap = 60;
+    else if (availableComponents.length === 2) evidenceCap = 80;
+    else if (availableComponents.length === 3) evidenceCap = 92;
+
+    var score = Math.max(0, Math.min(evidenceCap, rawScore));
+    var sourceCount = Array.isArray(meta.sourceKeys) ? meta.sourceKeys.length : 0;
+    var confidenceLabel = String(meta.enrichmentConfidence || '').trim();
+
+    return {
+      score: score,
+      availableSignals: availableComponents.length,
+      confidence: confidenceLabel,
+      sourceCount: sourceCount,
+      breakdown: components.map(function (entry) {
+        return {
+          key: entry.key,
+          label: entry.label,
+          score: Math.round(Math.max(0, Math.min(100, Number(entry.score) || 0))),
+          available: !!entry.available,
+          weight: entry.weight
+        };
+      })
+    };
+  }
+
   function chooseBestNameMatch(query, items, getName) {
     var normalizedQuery = normalizeText(query);
     var list = Array.isArray(items) ? items : [];
@@ -1029,6 +1142,172 @@
     });
   }
 
+  async function probeWorkbookPathCandidate(filePath) {
+    var candidate = String(filePath || '').trim();
+    if (!candidate) {
+      return { ok: false, message: 'empty candidate' };
+    }
+    var encodedPath = encodeGraphPath(candidate);
+    var tableRef = encodeURIComponent(FAVORITE_TABLE);
+    var baseUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef;
+    var payload = await fetchJson(baseUrl + '/columns?$select=name,index');
+    var columns = Array.isArray(payload.value) ? payload.value : [];
+    return {
+      ok: true,
+      columnCount: columns.length
+    };
+  }
+
+  async function collectWorkbookPathDiagnostics() {
+    var report = {
+      generatedAt: Date.now(),
+      currentResolvedPath: String(state.workbookPath || '').trim(),
+      currentHintPath: String(state.workbookPathHint || '').trim(),
+      resolvedPath: '',
+      discoveryError: '',
+      checks: []
+    };
+
+    var seen = new Set();
+    var candidates = getWorkbookPathCandidates().map(function (path) {
+      return { path: path, source: 'configured' };
+    });
+
+    try {
+      var discovered = await discoverWorkbookPathCandidates();
+      discovered.forEach(function (path) {
+        var key = normalizeText(path);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        candidates.push({ path: path, source: 'drive-search' });
+      });
+    } catch (error) {
+      report.discoveryError = String(error && error.message ? error.message : 'Discovery request failed.');
+    }
+
+    candidates.forEach(function (entry) {
+      var key = normalizeText(entry.path);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      report.checks.push({ path: entry.path, source: entry.source, ok: false, message: 'pending' });
+    });
+
+    for (var i = 0; i < report.checks.length; i += 1) {
+      var check = report.checks[i];
+      try {
+        var probe = await probeWorkbookPathCandidate(check.path);
+        check.ok = !!probe.ok;
+        check.message = probe.ok
+          ? ('Found table "' + FAVORITE_TABLE + '" (' + (probe.columnCount || 0) + ' columns).')
+          : String(probe.message || 'Probe failed.');
+        if (!report.resolvedPath && check.ok) report.resolvedPath = check.path;
+      } catch (error) {
+        check.ok = false;
+        check.message = String(error && error.message ? error.message : 'Probe failed.');
+      }
+    }
+
+    return report;
+  }
+
+  function renderWorkbookPathDiagnosticsHtml(report) {
+    var safe = report && typeof report === 'object' ? report : {};
+    var checks = Array.isArray(safe.checks) ? safe.checks : [];
+    var generatedLabel = formatDateTimeShort(safe.generatedAt) || 'Unknown time';
+    var resolvedPath = String(safe.resolvedPath || '').trim();
+    var currentPath = String(safe.currentResolvedPath || '').trim();
+    var hintPath = String(safe.currentHintPath || '').trim();
+    return '<div class="household-concerts-band-profile">'
+      + '<p class="household-concerts-muted">Generated: ' + escapeHtml(generatedLabel) + '</p>'
+      + '<div class="household-concerts-band-detail-grid">'
+      + detailLine('Resolved by probe', resolvedPath || 'Not found')
+      + detailLine('Current cached path', currentPath || 'None')
+      + detailLine('Current hint path', hintPath || 'None')
+      + '</div>'
+      + (safe.discoveryError ? ('<div class="household-concerts-upload-status household-concerts-upload-status--warning">Drive search warning: ' + escapeHtml(safe.discoveryError) + '</div>') : '')
+      + '<div class="household-concerts-panel"><h4>Path checks</h4>'
+      + (checks.length
+        ? checks.map(function (check) {
+          return '<article class="household-concerts-entry-card">'
+            + '<div class="household-concerts-entry-head"><div><h4>' + escapeHtml(check.path || '') + '</h4><p>' + escapeHtml(check.source || 'configured') + '</p></div><div class="household-concerts-upcoming-distance">' + (check.ok ? 'OK' : 'Fail') + '</div></div>'
+            + '<p class="household-concerts-muted">' + escapeHtml(check.message || '') + '</p>'
+            + '</article>';
+        }).join('')
+        : '<p class="household-concerts-muted">No candidate paths were available.</p>')
+      + '</div>'
+      + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="copy-workbook-path-diagnostics-json">Copy Diagnostics JSON</button><button type="button" class="pill-button" data-concert-action="download-workbook-path-diagnostics-json">Download Diagnostics .json</button><button type="button" class="pill-button" data-concert-action="open-workbook-path-diagnostics">Re-run diagnostics</button><button type="button" class="pill-button" data-concert-action="close-modal">Close</button></div>'
+      + '</div>';
+  }
+
+  function downloadWorkbookPathDiagnosticsJson(report) {
+    var payload = report && typeof report === 'object' ? report : null;
+    if (!payload) return false;
+    var rawStamp = String(new Date(payload.generatedAt || Date.now()).toISOString());
+    var stamp = rawStamp.replace(/[:]/g, '-').replace(/\..+$/, '');
+    var fileName = 'concerts-workbook-path-diagnostics-' + stamp + '.json';
+    var body = JSON.stringify(payload, null, 2);
+    var blob = new Blob([body], { type: 'application/json;charset=utf-8' });
+    var objectUrl = URL.createObjectURL(blob);
+    var anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(objectUrl);
+    return true;
+  }
+
+  function openWorkbookPathDiagnosticsModal() {
+    state.lastWorkbookPathDiagnosticsReport = null;
+    openModal(
+      '<div class="household-concerts-modal-head"><div><h3>Workbook Path Diagnostics</h3><p>Shows every workbook path candidate checked for Concerts data loading.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+      + '<div id="householdConcertsWorkbookDiagnosticsBody" class="household-concerts-band-profile">'
+      + '<div class="household-concerts-upload-status household-concerts-upload-status--info">Checking workbook path candidates…</div>'
+      + '</div>'
+    );
+    (async function () {
+      var bodyEl = document.getElementById('householdConcertsWorkbookDiagnosticsBody');
+      if (!bodyEl) return;
+      try {
+        var report = await collectWorkbookPathDiagnostics();
+        state.lastWorkbookPathDiagnosticsReport = report;
+        bodyEl.innerHTML = renderWorkbookPathDiagnosticsHtml(report);
+      } catch (error) {
+        state.lastWorkbookPathDiagnosticsReport = null;
+        bodyEl.innerHTML = '<div class="household-concerts-upload-status household-concerts-upload-status--error">'
+          + escapeHtml(error && error.message ? error.message : 'Could not run workbook diagnostics.')
+          + '</div><div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="open-workbook-path-diagnostics">Retry</button><button type="button" class="pill-button" data-concert-action="close-modal">Close</button></div>';
+      }
+    })();
+  }
+
+  function buildWorkbookPathFromDriveItem(item) {
+    var safeItem = item && typeof item === 'object' ? item : {};
+    var itemName = String(safeItem.name || '').trim();
+    if (!itemName) return '';
+    var parentPath = String((safeItem.parentReference && safeItem.parentReference.path) || '').trim();
+    var rootPrefix = '/drive/root:';
+    if (parentPath.indexOf(rootPrefix) === 0) {
+      parentPath = parentPath.slice(rootPrefix.length);
+    }
+    parentPath = parentPath.replace(/^\/+|\/+$/g, '');
+    return parentPath ? (parentPath + '/' + itemName) : itemName;
+  }
+
+  async function discoverWorkbookPathCandidates() {
+    var searchUrl = 'https://graph.microsoft.com/v1.0/me/drive/root/search(q=%27' + encodeURIComponent(WORKBOOK_NAME) + '%27)?$select=name,parentReference';
+    var payload = await fetchJson(searchUrl);
+    var seen = new Set();
+    return (Array.isArray(payload.value) ? payload.value : []).map(function (item) {
+      return buildWorkbookPathFromDriveItem(item);
+    }).filter(function (candidate) {
+      if (!candidate || seen.has(candidate)) return false;
+      seen.add(candidate);
+      return true;
+    });
+  }
+
   function getTableSchemaCacheKey(filePath, tableName) {
     return normalizeKey(filePath) + '::' + normalizeKey(tableName);
   }
@@ -1149,6 +1428,7 @@
   async function findWorkbookPath() {
     if (state.workbookPath) return state.workbookPath;
     var candidates = getWorkbookPathCandidates();
+    var checked = candidates.slice();
     for (var i = 0; i < candidates.length; i += 1) {
       var candidate = candidates[i];
       try {
@@ -1159,7 +1439,24 @@
         // Probe next candidate.
       }
     }
-    throw new Error('Could not locate ' + WORKBOOK_NAME + '. Checked: ' + candidates.join(', '));
+    try {
+      var discoveredCandidates = await discoverWorkbookPathCandidates();
+      for (var j = 0; j < discoveredCandidates.length; j += 1) {
+        var discovered = discoveredCandidates[j];
+        if (!discovered || checked.indexOf(discovered) >= 0) continue;
+        checked.push(discovered);
+        try {
+          await fetchTableColumns(discovered, FAVORITE_TABLE);
+          rememberResolvedWorkbookPath(discovered);
+          return discovered;
+        } catch (_error2) {
+          // Probe next discovered candidate.
+        }
+      }
+    } catch (_discoveryError) {
+      // Fall through to final error.
+    }
+    throw new Error('Could not locate ' + WORKBOOK_NAME + '. Checked: ' + checked.join(', '));
   }
 
   function mapRecordToRowByColumns(record, columns, options) {
@@ -1549,6 +1846,7 @@
       memberTimeline: String(safeBand.memberTimeline || '').trim(),
       topSongCandidates: Array.isArray(safeBand.topSongCandidates) ? safeBand.topSongCandidates.slice() : [],
       linkCompletenessScore: Number.isFinite(Number(safeBand.linkCompletenessScore)) ? Number(safeBand.linkCompletenessScore) : null,
+      enrichmentHealthScore: Number.isFinite(Number(safeBand.enrichmentHealthScore)) ? Number(safeBand.enrichmentHealthScore) : null,
       bandTier: normalizeBandTier(safeBand.bandTier || ''),
       sourceLabel: String((getBandProfileMeta(safeBand.id || safeBand.bandName) || {}).lastEnrichedFrom || '').trim(),
       sourceKeys: (getBandProfileMeta(safeBand.id || safeBand.bandName) || {}).sourceKeys || [],
@@ -1561,7 +1859,7 @@
     var override = getBandProfileOverride(band.id);
     if (!override) return band;
     var merged = mergeBandPrefill(mapBandToPrefillShape(band), override);
-    return Object.assign({}, band, {
+    var nextBand = Object.assign({}, band, {
       bandName: merged.bandName || band.bandName,
       bandMembers: merged.bandMembers || band.bandMembers,
       bandLogoUrl: merged.bandLogoUrl || band.bandLogoUrl,
@@ -1584,12 +1882,16 @@
       memberTimeline: merged.memberTimeline || band.memberTimeline,
       topSongCandidates: mergeTopSongCandidates(band.topSongCandidates || [], merged.topSongCandidates || []),
       linkCompletenessScore: Number.isFinite(Number(merged.linkCompletenessScore)) ? Number(merged.linkCompletenessScore) : band.linkCompletenessScore,
+      enrichmentHealthScore: Number.isFinite(Number(merged.enrichmentHealthScore)) ? Number(merged.enrichmentHealthScore) : band.enrichmentHealthScore,
       bandTier: normalizeBandTier(merged.bandTier || band.bandTier || getBandTierOverride(band.id || band.bandName)),
       genres: splitGenres(merged.associatedGenres || band.associatedGenres),
       members: splitList(merged.bandMembers || band.bandMembers),
       songs: splitList(merged.topSongs || band.topSongs),
       releases: splitList(merged.discography || band.discography)
     });
+    var meta = getBandProfileMeta(nextBand.id || nextBand.bandName) || {};
+    nextBand.enrichmentHealthScore = computeBandEnrichmentHealth(nextBand, meta).score;
+    return nextBand;
   }
 
   function parseFavoriteBand(record) {
@@ -1860,6 +2162,7 @@
          + '<div class="household-concerts-band-actions">'
          + '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-band-details" data-band-key="' + escapeHtml(band.id) + '">View Profile</button>'
+         + '<button type="button" class="pill-button" data-concert-action="open-band-image-picker" data-band-key="' + escapeHtml(band.id) + '">Manage Photos</button>'
          + '<button type="button" class="pill-button" data-concert-action="refresh-band-profile" data-band-key="' + escapeHtml(band.id) + '">↻ Refresh Profile</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-log-concert" data-band-key="' + escapeHtml(band.id) + '">Log Concert</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-add-upcoming" data-band-key="' + escapeHtml(band.id) + '">Add Upcoming</button>'
@@ -2257,6 +2560,14 @@
     return !isLocalHostname(host);
   }
 
+  function canUseBandsintownDirectFallback() {
+    if (global.__allowBandsintownDirect === true) return true;
+    if (!(global && global.location)) return true;
+    var host = String(global.location.hostname || '').trim().toLowerCase();
+    if (!host) return true;
+    return isLocalHostname(host);
+  }
+
   function buildBandsintownProxyUrl(route, artistKey) {
     var cleanRoute = String(route || '').trim();
     var cleanArtist = String(artistKey || '').trim();
@@ -2290,6 +2601,9 @@
         return await fetchBandsintownViaProxy('artist', key);
       } catch (proxyError) {
         if (!isBandsintownProxyUnavailableError(proxyError)) throw proxyError;
+        if (!canUseBandsintownDirectFallback()) {
+          throw new Error('Bandsintown proxy is unavailable. Deploy /api/public/bandsintown to enable tour sync in web builds.');
+        }
       }
     }
     return fetchJsonPublic('https://www.bandsintown.com/api/v2/artists/' + encodeURIComponent(key) + '?app_id=kyles_adventure_planner');
@@ -2501,6 +2815,7 @@
       lastReleaseDate: preferFilledValue(current.lastReleaseDate, incoming.lastReleaseDate),
       memberTimeline: preferFilledValue(current.memberTimeline, incoming.memberTimeline),
       linkCompletenessScore: Number.isFinite(Number(incoming.linkCompletenessScore)) ? Number(incoming.linkCompletenessScore) : (Number.isFinite(Number(current.linkCompletenessScore)) ? Number(current.linkCompletenessScore) : null),
+      enrichmentHealthScore: Number.isFinite(Number(incoming.enrichmentHealthScore)) ? Number(incoming.enrichmentHealthScore) : (Number.isFinite(Number(current.enrichmentHealthScore)) ? Number(current.enrichmentHealthScore) : null),
       sourceLabel: preferFilledValue(incoming.sourceLabel, current.sourceLabel),
       enrichmentConfidence: preferFilledValue(incoming.enrichmentConfidence, current.enrichmentConfidence),
       sourceKeys: uniqueStrings([].concat(
@@ -2561,6 +2876,10 @@
     if (completeness.missing.length) {
       merged.missingLinks = completeness.missing;
     }
+    merged.enrichmentHealthScore = computeBandEnrichmentHealth(merged, {
+      sourceKeys: merged.sourceKeys,
+      enrichmentConfidence: merged.enrichmentConfidence
+    }).score;
     var conflicts = {};
     Object.keys(fieldCandidates).forEach(function (fieldKey) {
       var candidates = fieldCandidates[fieldKey] || [];
@@ -2578,10 +2897,18 @@
 
   function renderBandEnrichmentBadge(band) {
     var meta = getBandProfileMeta(band && band.id ? band.id : band && band.bandName);
-    if (!meta || !meta.lastEnrichedFrom) return '';
+    var health = computeBandEnrichmentHealth(band, meta || {});
+    var breakdownText = health.breakdown.filter(function (entry) { return entry.available; }).map(function (entry) {
+      return entry.label + ': ' + entry.score + '%';
+    }).join(' • ');
+    var healthLabel = 'Profile ' + health.score + '% complete';
+    var healthTitle = breakdownText ? ('Enrichment health — ' + breakdownText + '.') : 'Enrichment health score.';
+    if (!meta || !meta.lastEnrichedFrom) {
+      return '<span class="household-concerts-enrichment-badge household-concerts-enrichment-badge--static" title="' + escapeHtml(healthTitle) + '">✨ ' + escapeHtml(healthLabel) + '</span>';
+    }
     var stamp = formatDateTimeShort(meta.lastEnrichedAt);
-    var title = stamp ? ('Last enriched ' + stamp) : 'Band profile was auto-enriched';
-    return '<button type="button" class="household-concerts-enrichment-badge" data-concert-action="open-band-refresh-history" data-band-key="' + escapeHtml(band.id || normalizeKey(band.bandName)) + '" title="' + escapeHtml(title + '. Click for refresh history.') + '">✨ Last enriched from ' + escapeHtml(meta.lastEnrichedFrom) + (stamp ? ' • ' + escapeHtml(stamp) : '') + '</button>';
+    var title = (stamp ? ('Last enriched ' + stamp) : 'Band profile was auto-enriched') + '. ' + healthTitle;
+    return '<button type="button" class="household-concerts-enrichment-badge" data-concert-action="open-band-refresh-history" data-band-key="' + escapeHtml(band.id || normalizeKey(band.bandName)) + '" title="' + escapeHtml(title + ' Click for refresh history.') + '">✨ ' + escapeHtml(healthLabel) + ' • Last enriched from ' + escapeHtml(meta.lastEnrichedFrom) + (stamp ? ' • ' + escapeHtml(stamp) : '') + '</button>';
   }
 
   function renderSourceIcon(sourceKey) {
@@ -3951,6 +4278,7 @@
       + '<label><input type="checkbox" name="autoFillOnOpen" value="1"' + (settings.autoFillOnOpen ? ' checked' : '') + '> Auto-fill profile when opening Add Favorite Band from search</label>'
       + '<label><input type="checkbox" name="backendWriteAudit" value="1"' + (writeAuditEnabled ? ' checked' : '') + '> Enable backend write audit logs (debug field-to-column mapping)</label>'
       + '<p class="household-concerts-debug-tip">Debug tip: open browser DevTools console and look for <strong>[Concerts Write Audit]</strong> entries after saving records.</p>'
+      + '<button type="button" class="pill-button" data-concert-action="open-workbook-path-diagnostics">Workbook Path Diagnostics</button>'
       + '</div></div>'
       + '<div class="household-concerts-form-row"><label>Enrichment Sources</label>'
       + '<div class="household-concerts-settings-stack">'
@@ -4050,7 +4378,7 @@
       + '<div class="household-concerts-band-profile-columns">'
       + '<div><h4>Similar favorite bands</h4>' + (similar.length ? '<div class="household-concerts-similar-list">' + similar.map(function (entry) {
         var candidate = entry.band;
-        return '<button type="button" class="household-concerts-similar-item" data-concert-action="open-band-details" data-band-key="' + escapeHtml(candidate.id) + '">'
+        return '<button type="button" class="household-concerts-similar-item" data-concert-action="open-band-details" data-band-key="' + escapeHtml(candidate.id) + '" data-band-name="' + escapeHtml(candidate.bandName) + '">'
           + (candidate.bandLogoUrl ? '<img class="household-concerts-similar-logo" src="' + escapeHtml(safeUrl(candidate.bandLogoUrl)) + '" alt="' + escapeHtml(candidate.bandName) + ' logo">' : '<span class="household-concerts-similar-logo household-concerts-band-logo--placeholder">🎵</span>')
           + '<span><strong>' + escapeHtml(candidate.bandName) + '</strong><em>' + escapeHtml((candidate.genres || []).slice(0, 3).join(', ') || candidate.origin || 'Shared style') + '</em></span>'
           + '</button>';
@@ -4747,6 +5075,9 @@
          payload = await fetchBandsintownViaProxy('events', key);
        } catch (proxyError) {
          if (!isBandsintownProxyUnavailableError(proxyError)) throw proxyError;
+          if (!canUseBandsintownDirectFallback()) {
+            throw new Error('Bandsintown proxy is unavailable. Deploy /api/public/bandsintown to enable tour sync in web builds.');
+          }
        }
      }
      if (typeof payload === 'undefined') {
@@ -4947,6 +5278,37 @@
         case 'open-concert-settings':
           openConcertSettingsModal();
           break;
+        case 'open-workbook-path-diagnostics':
+          openWorkbookPathDiagnosticsModal();
+          break;
+        case 'copy-workbook-path-diagnostics-json': {
+          var diagnosticsReport = state.lastWorkbookPathDiagnosticsReport;
+          if (!diagnosticsReport || typeof diagnosticsReport !== 'object') {
+            setStatus('Run workbook diagnostics first, then copy the report JSON.', 'warning');
+            break;
+          }
+          (async function () {
+            var payload = JSON.stringify(diagnosticsReport, null, 2);
+            var copied = await copyTextToClipboard(payload);
+            setStatus(copied ? 'Copied workbook diagnostics JSON to clipboard.' : 'Could not copy diagnostics JSON. Open console and copy manually.', copied ? 'success' : 'warning');
+          })();
+          break;
+        }
+        case 'download-workbook-path-diagnostics-json': {
+          var diagnosticsDownloadReport = state.lastWorkbookPathDiagnosticsReport;
+          if (!diagnosticsDownloadReport || typeof diagnosticsDownloadReport !== 'object') {
+            setStatus('Run workbook diagnostics first, then download the report JSON.', 'warning');
+            break;
+          }
+          var downloaded = false;
+          try {
+            downloaded = downloadWorkbookPathDiagnosticsJson(diagnosticsDownloadReport);
+          } catch (_error) {
+            downloaded = false;
+          }
+          setStatus(downloaded ? 'Downloaded workbook diagnostics JSON.' : 'Could not download diagnostics JSON on this browser.', downloaded ? 'success' : 'warning');
+          break;
+        }
         case 'remove-not-interested-band': {
           var restoreBand = String(target.getAttribute('data-band-name') || '').trim();
           if (!restoreBand) break;
@@ -5058,7 +5420,7 @@
           loadDiscoveryForBand(resolveActiveBand(), false);
           break;
         case 'open-band-details':
-          openBandDetails(getBandByKey(target.getAttribute('data-band-key')));
+          openBandDetails(getBandByKey(target.getAttribute('data-band-key')) || getBandByKey(target.getAttribute('data-band-name')));
           break;
          case 'refresh-band-profile':
            refreshSavedBandProfile(getBandByKey(target.getAttribute('data-band-key')), { noPreview: false });

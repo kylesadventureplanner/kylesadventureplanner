@@ -806,6 +806,7 @@ test.describe('Household Tools Concerts', () => {
 
     await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Queens of the Stone Age');
     await expect(page.locator('#householdConcertsStatus')).toContainText(/Added Queens of the Stone Age|auto-filled/i);
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText(/Profile\s+\d+% complete/);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
 
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") .household-concerts-enrichment-badge').click();
@@ -817,6 +818,7 @@ test.describe('Household Tools Concerts', () => {
     await expect.poll(async () => page.locator('.household-concerts-source-icons-row .household-concerts-source-icon').count()).toBeGreaterThanOrEqual(4);
     await page.locator('.household-concerts-modal [data-concert-action="clear-band-refresh-history"]').click();
     await expect(page.locator('#householdConcertsStatus')).toContainText('Cleared profile refresh history for Queens of the Stone Age');
+    await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText(/Profile\s+\d+% complete/);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).not.toContainText('Last enriched from');
 
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="refresh-band-profile"]').click();
