@@ -6,26 +6,12 @@
     ".js": "text/javascript; charset=utf-8",
     ".json": "application/json"
   },
-  "httpHeaders": [
-    {
-      "path": "/**",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-      }
-    },
-    {
-      "path": "/JS Files/**",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
-      }
-    },
-    {
-      "path": "/CSS/**",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
-      }
-    }
-  ]
+  "globalHeaders": {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
+  },
+  "platform": {
+    "apiRuntime": "node:20"
+  }
 }

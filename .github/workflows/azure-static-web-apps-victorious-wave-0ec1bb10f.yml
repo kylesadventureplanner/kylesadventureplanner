@@ -148,6 +148,8 @@ jobs:
             if npx --yes @azure/static-web-apps-cli@2.0.7 deploy . \
               --deployment-token "${SWA_DEPLOYMENT_TOKEN}" \
               --api-location "api" \
+              --api-language "node" \
+              --api-version "20" \
               --env "${SWA_ENVIRONMENT}"; then
               exit 0
             fi
@@ -285,21 +287,37 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Informational-only: checks live deployment health without blocking release.
-      - name: Post-Deploy Smoke Check (non-blocking)
+      - name: Post-Deploy Tag Verification (blocking)
         if: ${{ github.event_name == 'push' && (steps.deploycli.outcome == 'success' || steps.builddeploy.outcome == 'success') }}
-        continue-on-error: true
         env:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
         run: |
-          echo "Running non-blocking live smoke check against ${APP_URL}"
-          LIVE_HTML="$(curl -fsS "${APP_URL}")"
-          if echo "${LIVE_HTML}" | grep -F "${DEPLOYMENT_TAG}" >/dev/null 2>&1; then
-            echo "::notice::Live app contains current deployment tag: ${DEPLOYMENT_TAG}"
-            echo "- **Live deployment tag check:** found ${DEPLOYMENT_TAG}" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::Live app does not yet show deployment tag ${DEPLOYMENT_TAG} (cache/propagation may still be in progress)"
-            echo "- **Live deployment tag check:** tag not found yet (${DEPLOYMENT_TAG})" >> "$GITHUB_STEP_SUMMARY"
+          echo "Running blocking live tag verification against ${APP_URL}"
+          MAX_ATTEMPTS=12
+          SLEEP_SECONDS=10
+          TAG_FOUND=false
+
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            TS="$(date +%s)"
+            LIVE_HTML="$(curl -fsS "${APP_URL}?nocache=${TS}")"
+            if echo "${LIVE_HTML}" | grep -F "${DEPLOYMENT_TAG}" >/dev/null 2>&1; then
+              TAG_FOUND=true
+              echo "::notice::Live app contains current deployment tag: ${DEPLOYMENT_TAG} (attempt ${attempt}/${MAX_ATTEMPTS})"
+              echo "- **Live deployment tag check:** found ${DEPLOYMENT_TAG} (attempt ${attempt}/${MAX_ATTEMPTS})" >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+
+            echo "Attempt ${attempt}/${MAX_ATTEMPTS}: deployment tag ${DEPLOYMENT_TAG} not visible yet."
+            if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+              sleep "${SLEEP_SECONDS}"
+            fi
+          done
+
+          if [ "${TAG_FOUND}" != "true" ]; then
+            echo "::error::Live app never exposed deployment tag ${DEPLOYMENT_TAG} after ${MAX_ATTEMPTS} attempts. Failing release to prevent stale green deploys."
+            echo "- **Live deployment tag check:** missing ${DEPLOYMENT_TAG} after ${MAX_ATTEMPTS} attempts" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
+
           npx playwright test tests/reliability-smoke.spec.js --grep "first-click success: nature explore" --reporter=list
 
