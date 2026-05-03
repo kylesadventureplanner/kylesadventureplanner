@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/bandsintownProxy/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/api/bandsintownProxy/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/api/local.settings.sample.json" beforeDir="false" afterPath="$PROJECT_DIR$/api/local.settings.sample.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -101,7 +99,7 @@
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
       <workItem from="1777494531732" duration="92762000" />
-      <workItem from="1777741223725" duration="54135000" />
+      <workItem from="1777741223725" duration="54451000" />
     </task>
     <servers />
   </component>

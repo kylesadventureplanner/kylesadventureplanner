@@ -498,10 +498,54 @@
 }
 
 #householdConcertsPane .household-concerts-favorites-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
 }
+
+/* Inner grid that holds the actual band cards — columns controlled inline by JS */
+#householdConcertsPane .household-concerts-band-grid {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 0 4px;
+}
+
+/* Toolbar: column picker + top pagination on the same row */
+#householdConcertsPane .household-concerts-bands-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 14px;
+}
+
+/* Column count picker */
+#householdConcertsPane .household-concerts-col-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#householdConcertsPane .household-concerts-col-control-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+#householdConcertsPane .household-concerts-bands-toolbar .household-concerts-pagination {
+  border: none;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 
 #householdConcertsPane .household-concerts-band-card {
   overflow: hidden;
@@ -1816,9 +1860,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+#householdConcertsPane .household-concerts-pagination--bottom {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid #e2e8f0;
+}
+
+#householdConcertsPane .household-concerts-pagination--top {
+  padding: 0;
+  border: none;
 }
 
 #householdConcertsPane .household-concerts-pagination span {
