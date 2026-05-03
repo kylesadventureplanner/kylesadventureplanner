@@ -665,6 +665,10 @@
   font-size: 13px;
 }
 
+#householdConcertsPane .household-concerts-band-stats {
+  min-height: 40px;
+}
+
 #householdConcertsPane .household-concerts-stat-pill {
   display: inline-flex;
   align-items: center;
