@@ -14,6 +14,12 @@ const summary = {
   checks: []
 };
 
+function getSummaryOutputPath() {
+  const override = String(process.env.RELIABILITY_SMOKE_SUMMARY_PATH || '').trim();
+  if (override) return path.resolve(override);
+  return path.resolve(process.cwd(), 'artifacts', 'reliability-smoke-summary.json');
+}
+
 function recordCheck(name, passed, detail = {}) {
   summary.checks.push({
     name,
@@ -364,8 +370,9 @@ test.afterAll(async () => {
 
   summary.pass = summary.checks.every((row) => row.passed) && summary.firstClickSuccessRate >= 0.99;
 
-  const outDir = path.resolve(process.cwd(), 'artifacts');
+  const outputPath = getSummaryOutputPath();
+  const outDir = path.dirname(outputPath);
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'reliability-smoke-summary.json'), JSON.stringify(summary, null, 2));
+  fs.writeFileSync(outputPath, JSON.stringify(summary, null, 2));
 });
 

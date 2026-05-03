@@ -358,6 +358,7 @@ jobs:
         if: ${{ github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
         env:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+          RELIABILITY_SMOKE_SUMMARY_PATH: ${{ runner.temp }}/post-deploy-reliability-smoke-summary-${{ github.run_id }}.json
         run: |
           POST_DEPLOY_RESULTS_DIR="${RUNNER_TEMP}/post-deploy-playwright-${GITHUB_RUN_ID}"
           mkdir -p "${POST_DEPLOY_RESULTS_DIR}"
