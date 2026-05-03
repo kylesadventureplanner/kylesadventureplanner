@@ -8160,7 +8160,7 @@
       const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
       const guard = beginSubmitGuard('addBulk', 'bulkSubmitBtn', statusDiv);
-      if (!guard) return;
+      if (!guard) return { success: false, error: 'Submit already in progress.' };
       try {
         const target = getSelectedTarget('actionTargetSelect');
         const targetContext = cloneTargetContext(target);

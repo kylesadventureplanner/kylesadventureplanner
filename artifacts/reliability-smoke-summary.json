@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-05-03T03:07:51.611Z",
+  "generatedAt": "2026-05-03T03:32:34.267Z",
   "pass": true,
   "startupSamplesMs": [
-    106,
-    106,
     105,
     105,
-    69,
     104,
-    74,
     105,
-    105,
-    109,
-    105
+    75,
+    108,
+    68,
+    106,
+    107,
+    104,
+    104
   ],
-  "startupMsP95": 109,
+  "startupMsP95": 108,
   "firstClickChecks": 3,
   "firstClickSuccesses": 3,
   "firstClickSuccessRate": 1,
@@ -25,7 +25,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-05-03T03:07:53.639Z"
+      "at": "2026-05-03T03:32:36.144Z"
     },
     {
       "name": "first-click:nature-run",
@@ -33,7 +33,7 @@
       "detail": {
         "runActive": true
       },
-      "at": "2026-05-03T03:07:55.032Z"
+      "at": "2026-05-03T03:32:37.513Z"
     },
     {
       "name": "first-click:bike-edit-mode",
@@ -43,7 +43,7 @@
         "editModeViewActive": true,
         "activeProgressSubTab": "bike-trails"
       },
-      "at": "2026-05-03T03:07:55.985Z"
+      "at": "2026-05-03T03:32:38.473Z"
     },
     {
       "name": "legacy-bike-tab-url:routes-to-adventure-bike-subtab",
@@ -54,7 +54,7 @@
         "tabParam": "visited-locations",
         "subtabParam": "bike-trails"
       },
-      "at": "2026-05-03T03:07:56.593Z"
+      "at": "2026-05-03T03:32:39.079Z"
     },
     {
       "name": "outdoors-explorer-url:routes-to-explorer-view",
@@ -64,7 +64,7 @@
         "outdoorsSelected": true,
         "explorerViewVisible": true
       },
-      "at": "2026-05-03T03:07:57.196Z"
+      "at": "2026-05-03T03:32:39.690Z"
     },
     {
       "name": "probe:hidden-overlay-detected",
@@ -73,7 +73,7 @@
         "blockedPoints": 5,
         "reason": ""
       },
-      "at": "2026-05-03T03:07:58.206Z"
+      "at": "2026-05-03T03:32:40.697Z"
     },
     {
       "name": "overlay:stale-row-detail-cleared",
@@ -82,7 +82,7 @@
         "explorerActive": true,
         "modalHidden": true
       },
-      "at": "2026-05-03T03:07:59.963Z"
+      "at": "2026-05-03T03:32:42.490Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -111,7 +111,7 @@
           }
         ]
       },
-      "at": "2026-05-03T03:08:04.497Z"
+      "at": "2026-05-03T03:32:47.112Z"
     },
     {
       "name": "update-banner:version-and-telemetry",
@@ -128,7 +128,7 @@
           "updateBannerDismissClicked": 1
         }
       },
-      "at": "2026-05-03T03:08:05.317Z"
+      "at": "2026-05-03T03:32:47.944Z"
     }
   ]
 }

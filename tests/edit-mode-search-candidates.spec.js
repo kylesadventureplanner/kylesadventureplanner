@@ -355,6 +355,16 @@ test.describe('Edit Mode single-add candidate search', () => {
           directions: `https://maps.example.com/${placeId}`
         };
       };
+      // Mock the bulk add handler to return success
+      window.handleBulkAddPlacesWithProgress = async (locations, inputType, statusDiv, dryRun, options) => {
+        return {
+          success: true,
+          added: locations.length,
+          failed: 0,
+          skipped: 0,
+          message: `Successfully added ${locations.length} location(s)`
+        };
+      };
     });
 
     await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
