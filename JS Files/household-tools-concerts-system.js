@@ -127,6 +127,7 @@
     Member_Timeline: 'memberTimeline',
     Band_Tier: 'bandTier'
   };
+  var FAVORITE_SYNC_FIELD_KEYS = Object.keys(BAND_PROFILE_FIELD_LABELS).concat(['bandTier']);
 
   function getDefaultConcertSettings() {
     return {
@@ -180,6 +181,8 @@
       pendingEnrichmentDiffs: null,
        pendingRecommendationAdds: {},
       recommendationToast: null,
+      unsyncedBandsReport: null,
+      unsyncedScanBusy: false,
      pendingSearchQuery: '',
      attendedUploadFiles: [],
      attendedUploadedPhotoUrls: [],
@@ -1413,12 +1416,14 @@
       var index = Number.isInteger(column.index) ? column.index : idx;
       namesByIndex[index] = String(column.name || 'column_' + index).trim();
     });
-    return (Array.isArray(rows) ? rows : []).map(function (row) {
+    return (Array.isArray(rows) ? rows : []).map(function (row, index) {
       var values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
       var record = {};
       values.forEach(function (value, index) {
         record[namesByIndex[index] || ('column_' + index)] = value;
       });
+      record.__rowIndex = Number.isInteger(index) ? index : -1;
+      record.__rowId = String(row && row.id ? row.id : '').trim();
       return record;
     });
   }
@@ -1522,6 +1527,22 @@
     var encodedPath = encodeGraphPath(filePath);
     var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/add';
     await fetchJson(url, { method: 'POST', body: { values: [row] } });
+  }
+
+  async function updateRecordInTableByIndex(filePath, tableName, rowIndex, record) {
+    var safeRowIndex = Number(rowIndex);
+    if (!Number.isInteger(safeRowIndex) || safeRowIndex < 0) {
+      throw new Error('Could not determine the target row index for this Favorite Band update.');
+    }
+    var columns = await fetchTableColumns(filePath, tableName);
+    var row = mapRecordToRowByColumns(record, columns || [], {
+      audit: true,
+      tableName: tableName,
+      context: 'updateRecordInTableByIndex'
+    });
+    var encodedPath = encodeGraphPath(filePath);
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/itemAt(index=' + safeRowIndex + ')';
+    await fetchJson(url, { method: 'PATCH', body: { values: [row] } });
   }
 
   function readValue(record, aliases) {
@@ -1892,10 +1913,11 @@
     return nextBand;
   }
 
-  function parseFavoriteBand(record) {
+  function parseFavoriteBandRecord(record, options) {
+    var safeOptions = options && typeof options === 'object' ? options : {};
     var bandName = String(readFavoriteBandValue(record, 'bandName') || '').trim();
     if (!bandName) return null;
-    return applyBandProfileOverride({
+    var parsed = {
       id: normalizeKey(bandName) || ('band-' + Math.random().toString(36).slice(2, 8)),
       bandName: bandName,
       bandMembers: String(readFavoriteBandValue(record, 'bandMembers') || '').trim(),
@@ -1918,11 +1940,196 @@
       lastReleaseDate: String(readValue(record, ['Last_Release_Date', 'Last Release Date']) || '').trim(),
       memberTimeline: String(readValue(record, ['Member_Timeline', 'Member Timeline']) || '').trim(),
       bandTier: normalizeBandTier(readFavoriteBandValue(record, 'bandTier') || getBandTierOverride(bandName)),
+      __rowIndex: Number.isInteger(Number(record && record.__rowIndex)) ? Number(record.__rowIndex) : -1,
+      __rowId: String(record && record.__rowId ? record.__rowId : '').trim(),
       genres: splitGenres(readFavoriteBandValue(record, 'associatedGenres')),
       members: splitList(readFavoriteBandValue(record, 'bandMembers')),
       songs: splitList(readFavoriteBandValue(record, 'topSongs')),
       releases: splitList(readFavoriteBandValue(record, 'discography'))
+    };
+    return safeOptions.applyOverride === false ? parsed : applyBandProfileOverride(parsed);
+  }
+
+  function parseFavoriteBand(record) {
+    return parseFavoriteBandRecord(record, { applyOverride: true });
+  }
+
+  function buildFavoriteRecordFromBandModel(bandModel) {
+    return buildFavoriteRecordFromPrefill(mapBandToPrefillShape(bandModel || {}));
+  }
+
+  async function resolveFavoriteBandRowIndex(filePath, band) {
+    if (band && Number.isInteger(Number(band.__rowIndex)) && Number(band.__rowIndex) >= 0) {
+      return Number(band.__rowIndex);
+    }
+    var targetName = normalizeText(band && band.bandName ? band.bandName : '');
+    if (!targetName) return -1;
+    var rows = await readTableSafe(filePath, FAVORITE_TABLE);
+    for (var idx = 0; idx < rows.length; idx += 1) {
+      var rowName = normalizeText(readFavoriteBandValue(rows[idx], 'bandName'));
+      if (rowName === targetName) {
+        return Number.isInteger(Number(rows[idx].__rowIndex)) ? Number(rows[idx].__rowIndex) : idx;
+      }
+    }
+    return -1;
+  }
+
+  function getNextFavoriteBandRowIndex() {
+    var maxIndex = -1;
+    state.favoriteBands.forEach(function (entry) {
+      var rowIndex = Number(entry && entry.__rowIndex);
+      if (Number.isInteger(rowIndex) && rowIndex > maxIndex) maxIndex = rowIndex;
     });
+    return maxIndex + 1;
+  }
+
+  async function persistFavoriteBandProfilePatch(band, patch, options) {
+    var safeBand = band && typeof band === 'object' ? band : null;
+    var safePatch = patch && typeof patch === 'object' ? patch : null;
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    if (!safeBand || !safePatch) throw new Error('No band changes were provided to sync.');
+
+    var workbookPath = await findWorkbookPath();
+    var rowIndex = await resolveFavoriteBandRowIndex(workbookPath, safeBand);
+    if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+      throw new Error('Could not locate the Favorite_Bands row for ' + (safeBand.bandName || 'this band') + '.');
+    }
+
+    var mergedBand = Object.assign({}, safeBand, safePatch, { __rowIndex: rowIndex });
+    var record = buildFavoriteRecordFromBandModel(mergedBand);
+    await updateRecordInTableByIndex(workbookPath, FAVORITE_TABLE, rowIndex, record);
+
+    state.favoriteBands = state.favoriteBands.map(function (entry) {
+      if (!entry || entry.id !== safeBand.id) return entry;
+      var mergedEntry = Object.assign({}, entry, safePatch, { __rowIndex: rowIndex });
+      return applyBandProfileOverride(mergedEntry);
+    });
+    if (!safeOptions.skipRender) renderAll();
+    return getBandByKey(safeBand.id || safeBand.bandName) || Object.assign({}, safeBand, safePatch, { __rowIndex: rowIndex });
+  }
+
+  function formatSyncDriftFieldValue(value) {
+    var text = String(value == null ? '' : value).trim();
+    return text || '';
+  }
+
+  function collectFavoriteBandSyncDiffs(localBand, backendBand) {
+    var local = localBand && typeof localBand === 'object' ? localBand : {};
+    var backend = backendBand && typeof backendBand === 'object' ? backendBand : {};
+    var diffs = [];
+    FAVORITE_SYNC_FIELD_KEYS.forEach(function (fieldKey) {
+      var localValue = formatSyncDriftFieldValue(local[fieldKey]);
+      var backendValue = formatSyncDriftFieldValue(backend[fieldKey]);
+      if (normalizeText(localValue) === normalizeText(backendValue)) return;
+      diffs.push({
+        fieldKey: fieldKey,
+        label: BAND_PROFILE_FIELD_LABELS[fieldKey] || (fieldKey === 'bandTier' ? 'Band Tier' : fieldKey),
+        localValue: localValue,
+        backendValue: backendValue
+      });
+    });
+    return diffs;
+  }
+
+  function renderUnsyncedBandChangesReport(report) {
+    var payload = report && typeof report === 'object' ? report : { items: [] };
+    var items = Array.isArray(payload.items) ? payload.items : [];
+    var generatedAt = payload.generatedAt ? formatDateTimeShort(payload.generatedAt) : '';
+    openModal(
+      '<div class="household-concerts-modal-head"><div><h3>Unsynced Band Profile Changes</h3><p>'
+        + (generatedAt ? ('Scan completed ' + escapeHtml(generatedAt) + '.') : 'Scan complete.')
+        + '</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+      + '<div class="household-concerts-band-profile">'
+      + (items.length
+        ? ('<div class="household-concerts-sync-drift-list">' + items.map(function (item) {
+          var fields = Array.isArray(item.fields) ? item.fields : [];
+          return '<article class="household-concerts-sync-drift-item">'
+            + '<div class="household-concerts-sync-drift-head"><strong>' + escapeHtml(item.bandName || 'Band') + '</strong>'
+            + '<button type="button" class="pill-button" data-concert-action="force-sync-band-change" data-band-key="' + escapeHtml(item.bandKey || '') + '">Force Sync</button></div>'
+            + '<ul>' + fields.map(function (field) {
+              return '<li><strong>' + escapeHtml(field.label || field.fieldKey || 'Field') + ':</strong> '
+                + '<span class="household-concerts-sync-drift-local">Local: ' + escapeHtml(safeTruncate(field.localValue || '(empty)', 120)) + '</span> '
+                + '<span class="household-concerts-sync-drift-backend">Excel: ' + escapeHtml(safeTruncate(field.backendValue || '(empty)', 120)) + '</span></li>';
+            }).join('') + '</ul>'
+            + '</article>';
+        }).join('') + '</div>')
+        : '<p class="household-concerts-muted">No unsynced band profile changes found. Local app and Excel are in sync.</p>')
+      + '<div class="household-concerts-form-actions">'
+      + '<button type="button" class="pill-button" data-concert-action="scan-unsynced-band-changes">Re-scan</button>'
+      + (items.length ? '<button type="button" class="pill-button pill-button-primary" data-concert-action="force-sync-all-band-changes">Force Sync All</button>' : '')
+      + '<button type="button" class="pill-button" data-concert-action="close-modal">Close</button>'
+      + '</div></div>'
+    );
+  }
+
+  async function scanUnsyncedBandChanges(options) {
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    if (state.unsyncedScanBusy) return state.unsyncedBandsReport;
+    state.unsyncedScanBusy = true;
+    if (!safeOptions.silent) setStatus('Scanning Favorite Bands for unsynced profile changes…', 'info');
+    try {
+      var workbookPath = await findWorkbookPath();
+      var backendRows = await readTableSafe(workbookPath, FAVORITE_TABLE);
+      var backendBands = backendRows.map(function (row) {
+        return parseFavoriteBandRecord(row, { applyOverride: false });
+      }).filter(Boolean);
+      var backendByKey = new Map();
+      backendBands.forEach(function (band) {
+        backendByKey.set(normalizeKey(band.bandName), band);
+      });
+
+      var items = [];
+      state.favoriteBands.forEach(function (localBand) {
+        if (!localBand) return;
+        var key = normalizeKey(localBand.bandName || localBand.id || '');
+        if (!key) return;
+        var backendBand = backendByKey.get(key);
+        if (!backendBand) {
+          items.push({
+            bandKey: key,
+            bandName: String(localBand.bandName || '').trim(),
+            fields: [{
+              fieldKey: 'bandName',
+              label: 'Band record',
+              localValue: 'Present in app',
+              backendValue: 'Missing in Favorite_Bands table'
+            }]
+          });
+          return;
+        }
+        var diffs = collectFavoriteBandSyncDiffs(localBand, backendBand);
+        if (!diffs.length) return;
+        items.push({ bandKey: key, bandName: localBand.bandName, fields: diffs });
+      });
+
+      state.unsyncedBandsReport = {
+        generatedAt: Date.now(),
+        workbookPath: workbookPath,
+        items: items
+      };
+      if (!safeOptions.silent) {
+        setStatus(items.length
+          ? ('Found ' + items.length + ' band profile entr' + (items.length === 1 ? 'y' : 'ies') + ' with unsynced changes.')
+          : 'No unsynced band profile changes found.', items.length ? 'warning' : 'success');
+      }
+      return state.unsyncedBandsReport;
+    } finally {
+      state.unsyncedScanBusy = false;
+    }
+  }
+
+  async function forceSyncBandChangesByKey(bandKey, options) {
+    var safeOptions = options && typeof options === 'object' ? options : {};
+    var targetBand = getBandByKey(bandKey);
+    if (!targetBand) throw new Error('Band not found for sync.');
+    var patch = mapBandToPrefillShape(targetBand);
+    await persistFavoriteBandProfilePatch(targetBand, patch, { skipRender: true });
+    saveBandProfileOverride(targetBand.id || targetBand.bandName, patch);
+    if (!safeOptions.silent) {
+      setStatus('Force-synced ' + targetBand.bandName + ' to Favorite_Bands in Excel.', 'success');
+    }
+    renderAll();
+    return true;
   }
 
   function parseAttendedConcert(record) {
@@ -3848,18 +4055,12 @@
         var sourceBandKey = String(state.bandImagePicker.sourceBandKey || '').trim();
         var sourceBand = getBandByKey(sourceBandKey);
         if (sourceBand) {
-          saveBandProfileOverride(sourceBandKey, {
+          var imagePatch = {
             bandLogoUrl: formData.bandLogoUrl || sourceBand.bandLogoUrl,
             bandCoverPhotoUrl: formData.bandCoverPhotoUrl || sourceBand.bandCoverPhotoUrl
-          });
-          state.favoriteBands = state.favoriteBands.map(function (entry) {
-            if (entry.id !== sourceBand.id) return entry;
-            var merged = Object.assign({}, entry, {
-              bandLogoUrl: formData.bandLogoUrl || entry.bandLogoUrl,
-              bandCoverPhotoUrl: formData.bandCoverPhotoUrl || entry.bandCoverPhotoUrl
-            });
-            return applyBandProfileOverride(merged);
-          });
+          };
+          await persistFavoriteBandProfilePatch(sourceBand, imagePatch, { skipRender: true });
+          saveBandProfileOverride(sourceBandKey, imagePatch);
         }
         closeModal();
         renderAll();
@@ -4476,7 +4677,8 @@
           fieldValues: buildFieldValuesSnapshotFromRecord(record)
         });
       }
-      state.favoriteBands.unshift(parseFavoriteBand(record));
+      var localRecord = Object.assign({ __rowIndex: getNextFavoriteBandRowIndex() }, record);
+      state.favoriteBands.unshift(parseFavoriteBand(localRecord));
       state.favoriteBands = state.favoriteBands.filter(Boolean).sort(function (a, b) { return a.bandName.localeCompare(b.bandName); });
       state.activeBandKey = normalizeKey(bandName);
       closeModal();
@@ -4562,7 +4764,8 @@
         });
       }
       if (!safeOptions.skipLocalInsert) {
-        state.favoriteBands.unshift(parseFavoriteBand(record));
+        var localRecord = Object.assign({ __rowIndex: getNextFavoriteBandRowIndex() }, record);
+        state.favoriteBands.unshift(parseFavoriteBand(localRecord));
         state.favoriteBands = state.favoriteBands.filter(Boolean).sort(function (a, b) { return a.bandName.localeCompare(b.bandName); });
         renderAll();
       }
@@ -4659,6 +4862,7 @@
       var enriched = await enrichBandProfileData(mapBandToPrefillShape(band));
       if (safeOptions.noPreview) {
         // Direct apply (old behaviour, used from band cards Refresh Profile button)
+        await persistFavoriteBandProfilePatch(band, enriched, { skipRender: true });
         saveBandProfileOverride(bandKey, enriched);
         saveBandProfileMeta(bandKey, {
           lastEnrichedFrom: String(enriched.sourceLabel || '').replace(/^Auto-filled from\s+/i, '').trim() || 'public metadata',
@@ -4667,10 +4871,6 @@
           sources: Array.isArray(enriched.sourceKeys) ? enriched.sourceKeys : inferSourceKeysFromLabel(enriched.sourceLabel || ''),
           fieldProvenance: normalizeFieldProvenanceMap(enriched.fieldProvenance || {}),
           fieldValues: enriched
-        });
-        state.favoriteBands = state.favoriteBands.map(function (entry) {
-          if (entry.id !== band.id) return entry;
-          return applyBandProfileOverride(Object.assign({}, entry));
         });
         renderAll();
         setStatus('Band profile refreshed for ' + band.bandName + '.', 'success');
@@ -4704,23 +4904,25 @@
     });
     var patchedBand = Object.assign({}, pending.band, partial);
     var bandKey = pending.band.id || normalizeKey(pending.band.bandName);
-    saveBandProfileOverride(bandKey, patchedBand);
-    saveBandProfileMeta(bandKey, {
-      lastEnrichedFrom: String(pending.enriched.sourceLabel || '').replace(/^Auto-filled from\s+/i, '').trim() || 'public metadata',
-      lastEnrichedAt: Date.now(),
-      enrichmentConfidence: String(pending.enriched.enrichmentConfidence || '').trim(),
-      sources: Array.isArray(pending.enriched.sourceKeys) ? pending.enriched.sourceKeys : inferSourceKeysFromLabel(pending.enriched.sourceLabel || ''),
-      fieldProvenance: normalizeFieldProvenanceMap(pending.enriched.fieldProvenance || {}),
-      fieldValues: patchedBand
-    });
-    state.favoriteBands = state.favoriteBands.map(function (entry) {
-      if (entry.id !== pending.band.id) return entry;
-      return applyBandProfileOverride(Object.assign({}, entry));
-    });
-    state.pendingEnrichmentDiffs = null;
-    closeModal();
-    setStatus('Applied ' + selectedKeys.size + ' field update' + (selectedKeys.size !== 1 ? 's' : '') + ' to ' + pending.band.bandName + '.', 'success');
-    renderAll();
+    try {
+      await persistFavoriteBandProfilePatch(pending.band, partial, { skipRender: true });
+      saveBandProfileOverride(bandKey, patchedBand);
+      saveBandProfileMeta(bandKey, {
+        lastEnrichedFrom: String(pending.enriched.sourceLabel || '').replace(/^Auto-filled from\s+/i, '').trim() || 'public metadata',
+        lastEnrichedAt: Date.now(),
+        enrichmentConfidence: String(pending.enriched.enrichmentConfidence || '').trim(),
+        sources: Array.isArray(pending.enriched.sourceKeys) ? pending.enriched.sourceKeys : inferSourceKeysFromLabel(pending.enriched.sourceLabel || ''),
+        fieldProvenance: normalizeFieldProvenanceMap(pending.enriched.fieldProvenance || {}),
+        fieldValues: patchedBand
+      });
+      state.pendingEnrichmentDiffs = null;
+      closeModal();
+      setStatus('Applied ' + selectedKeys.size + ' field update' + (selectedKeys.size !== 1 ? 's' : '') + ' to ' + pending.band.bandName + ' and synced to Excel.', 'success');
+      renderAll();
+    } catch (error) {
+      console.error('❌ Could not apply refresh preview updates:', error);
+      setStatus(error && error.message ? error.message : 'Could not sync selected profile updates to Excel.', 'error');
+    }
   }
 
   async function saveAttendedConcert(form) {
@@ -5215,6 +5417,48 @@
          case 'refresh-data':
            refreshData();
            break;
+          case 'scan-unsynced-band-changes':
+            (async function () {
+              try {
+                var report = await scanUnsyncedBandChanges();
+                renderUnsyncedBandChangesReport(report);
+              } catch (error) {
+                console.error('❌ Could not scan unsynced band profile changes:', error);
+                setStatus(error && error.message ? error.message : 'Could not scan unsynced band profile changes.', 'error');
+              }
+            })();
+            break;
+          case 'force-sync-band-change':
+            (async function () {
+              try {
+                await forceSyncBandChangesByKey(target.getAttribute('data-band-key'));
+                var refreshedReport = await scanUnsyncedBandChanges({ silent: true });
+                renderUnsyncedBandChangesReport(refreshedReport);
+              } catch (error) {
+                console.error('❌ Could not force-sync band profile changes:', error);
+                setStatus(error && error.message ? error.message : 'Could not force-sync this band profile.', 'error');
+              }
+            })();
+            break;
+          case 'force-sync-all-band-changes':
+            (async function () {
+              try {
+                var reportToSync = state.unsyncedBandsReport && Array.isArray(state.unsyncedBandsReport.items)
+                  ? state.unsyncedBandsReport
+                  : await scanUnsyncedBandChanges({ silent: true });
+                var items = Array.isArray(reportToSync && reportToSync.items) ? reportToSync.items : [];
+                for (var itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+                  await forceSyncBandChangesByKey(items[itemIndex].bandKey, { silent: true });
+                }
+                var reportAfterSync = await scanUnsyncedBandChanges({ silent: true });
+                renderUnsyncedBandChangesReport(reportAfterSync);
+                setStatus(items.length ? ('Force-synced ' + items.length + ' band profile entr' + (items.length === 1 ? 'y' : 'ies') + ' to Excel.') : 'No unsynced band profile changes were found.', items.length ? 'success' : 'info');
+              } catch (error) {
+                console.error('❌ Could not force-sync all band profile changes:', error);
+                setStatus(error && error.message ? error.message : 'Could not force-sync all band profiles.', 'error');
+              }
+            })();
+            break;
         case 'search-web':
           searchBands(($('householdConcertsSearchInput') || {}).value || '');
           break;

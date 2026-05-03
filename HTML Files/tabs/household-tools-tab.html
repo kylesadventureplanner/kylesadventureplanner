@@ -53,6 +53,7 @@
           <button type="button" class="pill-button" data-concert-action="open-log-concert">★ Log Concert</button>
           <button type="button" class="pill-button" data-concert-action="open-historic-finder">🕰 Find Historic Shows</button>
           <button type="button" class="pill-button" data-concert-action="open-add-upcoming">📅 Add Upcoming</button>
+          <button type="button" class="pill-button" data-concert-action="scan-unsynced-band-changes">🧪 Scan Unsynced Changes</button>
           <button type="button" class="pill-button" data-concert-action="open-concert-settings">⚙ Concert Settings</button>
           <button type="button" class="pill-button" data-concert-action="refresh-data">↻ Refresh</button>
         </div>
@@ -189,9 +190,19 @@
     const state = { activeSubTab: 'recipes' };
 
     function ensureConcertsInitialized(root) {
+      if (!isHouseholdToolsTabMountedAndActive(root)) return;
       if (window.HouseholdConcerts && typeof window.HouseholdConcerts.init === 'function') {
         window.HouseholdConcerts.init(root);
       }
+    }
+
+    function isHouseholdToolsTabMountedAndActive(root) {
+      if (!root || !document.body || !document.body.contains(root)) return false;
+      const pane = root.closest ? root.closest('.app-tab-pane[data-tab]') : null;
+      if (!pane) return true;
+      const tabId = String(pane.getAttribute('data-tab') || '').trim();
+      if (tabId !== 'household-tools') return false;
+      return pane.classList.contains('active');
     }
 
     function getHouseholdSubTabDockElements() {
@@ -380,6 +391,7 @@
     }
 
     function syncHouseholdSubTabs(root) {
+      if (!isHouseholdToolsTabMountedAndActive(root)) return;
       getHouseholdSubTabButtons(root).forEach((button) => {
         const tabKey = button.getAttribute('data-household-subtab');
         const isActive = tabKey === state.activeSubTab;

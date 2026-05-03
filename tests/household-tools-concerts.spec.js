@@ -59,6 +59,48 @@ test.describe('Household Tools Concerts', () => {
 
   test.beforeEach(async ({ page }) => {
     writes = [];
+    const favoriteRows = [
+      [
+        'Depeche Mode',
+        'Dave Gahan — Lead vocals\nMartin Gore — Guitar, keyboards, vocals\nAndrew Fletcher — Keyboards',
+        'https://example.com/dm-logo.jpg',
+        'https://example.com/dm-cover.jpg',
+        'Basildon, England',
+        '1980',
+        'Mute',
+        'Violator, Songs of Faith and Devotion, Memento Mori',
+        'Enjoy the Silence, Never Let Me Down Again, Personal Jesus',
+        'Synthpop, Alternative Rock',
+        'https://www.depechemode.com',
+        'https://www.depechemode.com/tour',
+        'https://facebook.com/depechemode',
+        'https://instagram.com/depechemode',
+        'https://youtube.com/depechemode',
+        'https://www.setlist.fm/setlists/depeche-mode-73d6b235.html',
+        'https://www.bandsintown.com/a/125-depeche-mode',
+        'https://en.wikipedia.org/wiki/Depeche_Mode'
+      ],
+      [
+        'Nine Inch Nails',
+        'Trent Reznor — Vocals, production\nAtticus Ross — Programming, keys',
+        '',
+        '',
+        'Cleveland, Ohio',
+        '1988',
+        'Nothing',
+        'Pretty Hate Machine, The Downward Spiral, Hesitation Marks',
+        'Closer, Head Like a Hole, Hurt',
+        'Industrial Rock, Alternative Rock',
+        'https://www.nin.com',
+        'https://www.nin.com/live',
+        '',
+        'https://instagram.com/nineinchnails',
+        'https://youtube.com/nineinchnails',
+        'https://www.setlist.fm/setlists/nine-inch-nails-1bd6ad44.html',
+        'https://www.bandsintown.com/a/1003-nine-inch-nails',
+        'https://en.wikipedia.org/wiki/Nine_Inch_Nails'
+      ]
+    ];
 
     await page.addInitScript(() => {
       window.accessToken = 'test-access-token';
@@ -123,6 +165,22 @@ test.describe('Household Tools Concerts', () => {
       if (method === 'POST' && url.includes('/rows/add')) {
         const body = route.request().postDataJSON ? route.request().postDataJSON() : null;
         writes.push({ url, body });
+        if (url.includes('/tables/Favorite_Bands/rows/add')) {
+          const newRow = Array.isArray(body && body.values && body.values[0]) ? body.values[0] : null;
+          if (newRow) favoriteRows.push(newRow.slice());
+        }
+        return respondJson({});
+      }
+
+      if (method === 'PATCH' && url.includes('/tables/Favorite_Bands/rows/itemAt(index=')) {
+        const body = route.request().postDataJSON ? route.request().postDataJSON() : null;
+        writes.push({ url, body, method: 'PATCH' });
+        const indexMatch = url.match(/itemAt\(index=(\d+)\)/);
+        const rowIndex = indexMatch ? Number(indexMatch[1]) : -1;
+        const nextValues = Array.isArray(body && body.values && body.values[0]) ? body.values[0] : null;
+        if (Number.isInteger(rowIndex) && rowIndex >= 0 && nextValues) {
+          favoriteRows[rowIndex] = nextValues.slice();
+        }
         return respondJson({});
       }
 
@@ -140,48 +198,7 @@ test.describe('Household Tools Concerts', () => {
         return respondJson(makeColumns(favoriteColumns));
       }
       if (url.includes('/tables/Favorite_Bands/rows')) {
-        return respondJson(makeRows([
-          [
-            'Depeche Mode',
-            'Dave Gahan — Lead vocals\nMartin Gore — Guitar, keyboards, vocals\nAndrew Fletcher — Keyboards',
-            'https://example.com/dm-logo.jpg',
-            'https://example.com/dm-cover.jpg',
-            'Basildon, England',
-            '1980',
-            'Mute',
-            'Violator, Songs of Faith and Devotion, Memento Mori',
-            'Enjoy the Silence, Never Let Me Down Again, Personal Jesus',
-            'Synthpop, Alternative Rock',
-            'https://www.depechemode.com',
-            'https://www.depechemode.com/tour',
-            'https://facebook.com/depechemode',
-            'https://instagram.com/depechemode',
-            'https://youtube.com/depechemode',
-            'https://www.setlist.fm/setlists/depeche-mode-73d6b235.html',
-            'https://www.bandsintown.com/a/125-depeche-mode',
-            'https://en.wikipedia.org/wiki/Depeche_Mode'
-          ],
-          [
-            'Nine Inch Nails',
-            'Trent Reznor — Vocals, production\nAtticus Ross — Programming, keys',
-            '',
-            '',
-            'Cleveland, Ohio',
-            '1988',
-            'Nothing',
-            'Pretty Hate Machine, The Downward Spiral, Hesitation Marks',
-            'Closer, Head Like a Hole, Hurt',
-            'Industrial Rock, Alternative Rock',
-            'https://www.nin.com',
-            'https://www.nin.com/live',
-            '',
-            'https://instagram.com/nineinchnails',
-            'https://youtube.com/nineinchnails',
-            'https://www.setlist.fm/setlists/nine-inch-nails-1bd6ad44.html',
-            'https://www.bandsintown.com/a/1003-nine-inch-nails',
-            'https://en.wikipedia.org/wiki/Nine_Inch_Nails'
-          ]
-        ]));
+        return respondJson(makeRows(favoriteRows));
       }
 
       if (url.includes('/tables/Attended_Concerts/columns')) {
@@ -774,6 +791,27 @@ test.describe('Household Tools Concerts', () => {
     await expect(page.locator('.household-concerts-modal .household-concerts-band-profile-cover')).toHaveAttribute('src', /onedrive\.example/);
   });
 
+  test('can scan and force-sync unsynced band profile changes to Excel', async ({ page }) => {
+    await expect(page.locator('[data-testid="concerts-favorites-grid"]')).toContainText('Depeche Mode');
+
+    await page.evaluate(() => {
+      const state = window.HouseholdConcerts && window.HouseholdConcerts.__state;
+      if (!state || !Array.isArray(state.favoriteBands)) return;
+      const band = state.favoriteBands.find((entry) => String(entry.bandName || '').toLowerCase().includes('depeche'));
+      if (!band) return;
+      band.websiteUrl = 'https://local-unsynced.example/depeche-mode';
+    });
+
+    await page.locator('[data-concert-action="scan-unsynced-band-changes"]').first().click();
+    await expect(page.locator('.household-concerts-modal')).toContainText('Unsynced Band Profile Changes');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Depeche Mode');
+    await expect(page.locator('.household-concerts-modal')).toContainText('Website URL');
+
+    await page.locator('.household-concerts-modal [data-concert-action="force-sync-band-change"]').first().click();
+    await expect.poll(() => writes.some((entry) => String(entry.url || '').includes('/tables/Favorite_Bands/rows/itemAt(index='))).toBeTruthy();
+    await expect(page.locator('.household-concerts-modal')).toContainText('No unsynced band profile changes found');
+  });
+
   test('can add a favorite band from search results and log an attended concert', async ({ page }) => {
     await page.locator('#householdConcertsSearchInput').fill('Queens of the Stone Age');
     await page.locator('[data-concert-action="search-web"]').first().click();
@@ -824,6 +862,7 @@ test.describe('Household Tools Concerts', () => {
     await page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age") [data-concert-action="refresh-band-profile"]').click();
     await expect(page.locator('#householdConcertsStatus')).toContainText('Review the enrichment changes for Queens of the Stone Age before applying.');
     await page.locator('.household-concerts-modal [data-concert-action="apply-refresh-preview"]').click();
+    await expect.poll(() => writes.some((entry) => String(entry.url || '').includes('/tables/Favorite_Bands/rows/itemAt(index='))).toBeTruthy();
     await expect(page.locator('#householdConcertsStatus')).toContainText(/Applied \d+ field update/);
     await expect(page.locator('[data-testid="concerts-favorites-grid"] article:has-text("Queens of the Stone Age")')).toContainText('Last enriched from');
 

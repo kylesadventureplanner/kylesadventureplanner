@@ -259,6 +259,43 @@
   background: #f8fafc;
 }
 
+#householdConcertsPane .household-concerts-sync-drift-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+#householdConcertsPane .household-concerts-sync-drift-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+#householdConcertsPane .household-concerts-sync-drift-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#householdConcertsPane .household-concerts-sync-drift-item ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+#householdConcertsPane .household-concerts-sync-drift-local {
+  color: #0f766e;
+}
+
+#householdConcertsPane .household-concerts-sync-drift-backend {
+  color: #7c2d12;
+}
+
 #householdConcertsPane button.household-concerts-refresh-history-item {
   width: 100%;
   text-align: left;

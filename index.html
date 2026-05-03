@@ -10798,6 +10798,7 @@
   let placesConfigErrorLogged = false;
   let googleServicesReady = false;
   let googleServicesInitPromise = null;
+  let googleApiNotReadyNoticeShown = false;
 
   function classifyPlacesError(error) {
     const raw = String(error?.message || error || "");
@@ -11041,7 +11042,10 @@
           console.log("✅ Google Maps services initialized lazily (NEW Places API)");
           return true;
         }
-        console.warn("⚠️ Google Maps API not yet loaded. Services will initialize when the loader is ready.");
+        if (!googleApiNotReadyNoticeShown) {
+          googleApiNotReadyNoticeShown = true;
+          console.info("ℹ️ Google Maps API not yet loaded. Services will initialize when the loader is ready.");
+        }
         return false;
       } catch (error) {
         console.error("❌ Error initializing Google Maps services:", error);
@@ -14336,21 +14340,35 @@
    * Render adventure cards from Excel data
    * @param {Array} adventuresArray - Array of adventure row data from Excel
    */
+  function isLegacyAdventurePlannerMountedAndActive() {
+    const legacyGrid = document.getElementById('adventureCardsGrid');
+    if (!legacyGrid || !document.body.contains(legacyGrid)) return false;
+    const pane = legacyGrid.closest ? legacyGrid.closest('.app-tab-pane[data-tab]') : null;
+    if (!pane) return true;
+    const tabId = String(pane.getAttribute('data-tab') || '').trim();
+    const isLegacyTab = tabId === 'adventure-planner';
+    return isLegacyTab && pane.classList.contains('active');
+  }
+
+  let missingAdventurePlannerDomNoticeShown = false;
+  function logMissingAdventurePlannerDom(contextLabel) {
+    if (missingAdventurePlannerDomNoticeShown) return;
+    missingAdventurePlannerDomNoticeShown = true;
+    console.info(`ℹ️ Skipping ${contextLabel}: legacy Adventure Planner container #adventureCardsGrid is not present in this tab layout.`);
+  }
+
   function renderAdventureCards(adventuresArray) {
     console.log('🎨 renderAdventureCards() called with', adventuresArray.length, 'items');
 
+    if (!isLegacyAdventurePlannerMountedAndActive()) {
+      logMissingAdventurePlannerDom('renderAdventureCards()');
+      return;
+    }
+
     const cardsGrid = document.getElementById("adventureCardsGrid");
     if (!cardsGrid) {
-      console.error("❌ Adventure cards grid container NOT FOUND!");
-      console.error("Attempted to find element with id='adventureCardsGrid'");
-      // Try to find it with alternative selectors
-      const alternativeGrid = document.querySelector('.adventure-cards-grid');
-      if (alternativeGrid) {
-        console.log("✅ Found alternative grid element using querySelector");
-      } else {
-        console.error("❌ Could not find grid with any selector!");
-        return;
-      }
+      logMissingAdventurePlannerDom('renderAdventureCards()');
+      return;
     }
 
     // Ensure grid is visible
@@ -14714,9 +14732,12 @@
     const pageAdventures = totalFilteredAdventures.slice(startIndex, endIndex);
 
     const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (!isLegacyAdventurePlannerMountedAndActive()) {
+      logMissingAdventurePlannerDom('renderPaginatedCards()');
+      return;
+    }
     if (!cardsGrid) {
-      console.error("❌ CRITICAL: adventureCardsGrid not found in renderPaginatedCards!");
-      console.error("This means the cards container is missing from the DOM");
+      logMissingAdventurePlannerDom('renderPaginatedCards()');
       return;
     }
 
@@ -18907,11 +18928,12 @@
    * Update Breadcrumb Menu Display
    */
   function updateBreadcrumbMenu() {
+    if (!isLegacyAdventurePlannerMountedAndActive()) return;
     const container = document.getElementById("breadcrumbContainer");
     const menu = document.getElementById("breadcrumbFilterMenu");
 
     if (!container || !menu) {
-      console.warn("Breadcrumb elements not found");
+      // Legacy breadcrumb menu is not present on modern tab layouts.
       return;
     }
 
@@ -23374,11 +23396,11 @@ COMMON ISSUES:
     // ============================================================
 
     window.addCityViewerButton = function() {
+      if (!isLegacyAdventurePlannerMountedAndActive()) return;
       // Find the Adventure List actions container
       const container = document.getElementById('adventureListActions');
 
       if (!container) {
-        console.warn('⚠️ Adventure List actions container not found');
         return;
       }
 
@@ -23444,11 +23466,11 @@ COMMON ISSUES:
      * Add Edit button to Adventure List actions
      */
     window.addEditButton = function() {
+      if (!isLegacyAdventurePlannerMountedAndActive()) return;
       // Find the Adventure List actions container
       const container = document.getElementById('adventureListActions');
 
       if (!container) {
-        console.warn('⚠️ Adventure List actions container not found');
         return;
       }
 
@@ -26799,6 +26821,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     'visited-locations-tab-system.js': '2026.04.23.live-debug.1',
     'consolidated-bulk-operations-system-v7-0-141.js': '2026.04.24.direct-patch-fix.1'
   };
+
+  // Keep runtime cache-busting/version consumers in sync with the stamped deployment constants.
+  window.__APP_ASSET_VERSION = DEPLOYMENT_TAG;
+  window.__APP_DEPLOYED_AT = DEPLOYED_AT_ISO;
+  window.__DEPLOYED_AT = DEPLOYED_AT_ISO;
+  window.__DEPLOYMENT_TAG = DEPLOYMENT_TAG;
 
   function evaluateChecks() {
     const fileMap = (window.__deploymentFileFingerprints && typeof window.__deploymentFileFingerprints === 'object')
