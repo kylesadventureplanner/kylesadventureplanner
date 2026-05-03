@@ -1566,6 +1566,12 @@
       || /resource could not be found/i.test(message);
   }
 
+  function isGraphDimensionMismatchError(error) {
+    var message = String(error && error.message ? error.message : '').trim();
+    return /graph request failed \(400\)/i.test(message)
+      && /doesn't match the size or dimensions of the range/i.test(message);
+  }
+
   async function fetchTableColumns(filePath, tableName) {
     var cachedColumns = getCachedTableColumns(filePath, tableName);
     if (cachedColumns.length) return cachedColumns;
@@ -1717,15 +1723,28 @@
   }
 
   async function appendRecordToTable(filePath, tableName, record) {
-    var columns = await fetchTableColumns(filePath, tableName);
-    var row = mapRecordToRowByColumns(record, columns || [], {
-      audit: true,
-      tableName: tableName,
-      context: 'appendRecordToTable'
-    });
     var encodedPath = encodeGraphPath(filePath);
     var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/add';
-    await fetchJson(url, { method: 'POST', body: { values: [row] } });
+    var attemptedSchemaRefresh = false;
+    for (;;) {
+      try {
+        var columns = await fetchTableColumns(filePath, tableName);
+        var row = mapRecordToRowByColumns(record, columns || [], {
+          audit: true,
+          tableName: tableName,
+          context: 'appendRecordToTable'
+        });
+        await fetchJson(url, { method: 'POST', body: { values: [row] } });
+        return;
+      } catch (error) {
+        if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
+          attemptedSchemaRefresh = true;
+          clearResolvedTableSchema(filePath, tableName);
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   async function updateRecordInTableByIndex(filePath, tableName, rowIndex, record) {
@@ -1733,15 +1752,28 @@
     if (!Number.isInteger(safeRowIndex) || safeRowIndex < 0) {
       throw new Error('Could not determine the target row index for this Favorite Band update.');
     }
-    var columns = await fetchTableColumns(filePath, tableName);
-    var row = mapRecordToRowByColumns(record, columns || [], {
-      audit: true,
-      tableName: tableName,
-      context: 'updateRecordInTableByIndex'
-    });
     var encodedPath = encodeGraphPath(filePath);
     var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/itemAt(index=' + safeRowIndex + ')';
-    await fetchJson(url, { method: 'PATCH', body: { values: [row] } });
+    var attemptedSchemaRefresh = false;
+    for (;;) {
+      try {
+        var columns = await fetchTableColumns(filePath, tableName);
+        var row = mapRecordToRowByColumns(record, columns || [], {
+          audit: true,
+          tableName: tableName,
+          context: 'updateRecordInTableByIndex'
+        });
+        await fetchJson(url, { method: 'PATCH', body: { values: [row] } });
+        return;
+      } catch (error) {
+        if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
+          attemptedSchemaRefresh = true;
+          clearResolvedTableSchema(filePath, tableName);
+          continue;
+        }
+        throw error;
+      }
+    }
   }
 
   function readValue(record, aliases) {
