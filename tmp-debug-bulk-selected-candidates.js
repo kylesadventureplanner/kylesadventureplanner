@@ -149,9 +149,14 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
 
   await popup.evaluate(() => {
     window.showToast = () => {};
+    window.__bulkDebugEvents = [];
+    const pushEvent = (label, payload = null) => {
+      window.__bulkDebugEvents.push({ t: Date.now(), label, payload });
+    };
     window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
       const placeId = String(inputValue || '').trim();
-      return {
+      pushEvent('resolve:start', { placeId });
+      const result = {
         placeId,
         name: `Resolved ${placeId}`,
         address: `Resolved ${placeId} Address, Denver, CO`,
@@ -163,6 +168,8 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
         userRatingsTotal: 77,
         directions: `https://maps.example.com/${placeId}`
       };
+      pushEvent('resolve:done', { placeId });
+      return result;
     };
     window.handleBulkAddPlacesWithProgress = async (locations) => ({
       success: true,
@@ -171,6 +178,36 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
       skipped: 0,
       message: `Successfully added ${locations.length} location(s)`
     });
+
+    const automation = window.enhancedAutomation;
+    if (automation && typeof automation.bulkAddPlaces === 'function') {
+      const originalBulk = automation.bulkAddPlaces.bind(automation);
+      automation.bulkAddPlaces = async (...args) => {
+        pushEvent('bulkAdd:start', { inputType: args[1], dryRun: !!args[2] });
+        try {
+          const result = await originalBulk(...args);
+          pushEvent('bulkAdd:done', { success: !!(result && result.success), added: Number(result && result.added) || 0, failed: Number(result && result.failed) || 0 });
+          return result;
+        } catch (error) {
+          pushEvent('bulkAdd:error', { message: String(error && error.message ? error.message : error) });
+          throw error;
+        }
+      };
+    }
+    if (automation && typeof automation.addSinglePlace === 'function') {
+      const originalSingle = automation.addSinglePlace.bind(automation);
+      automation.addSinglePlace = async (...args) => {
+        pushEvent('singleAdd:start', { inputType: args[1], input: String(args[0] || '').slice(0, 80) });
+        try {
+          const result = await originalSingle(...args);
+          pushEvent('singleAdd:done', { success: !!(result && result.success), error: result && result.error ? String(result.error) : '' });
+          return result;
+        } catch (error) {
+          pushEvent('singleAdd:error', { message: String(error && error.message ? error.message : error) });
+          throw error;
+        }
+      };
+    }
   });
 
   await popup.selectOption('#actionTargetSelect', 'ent_general');
@@ -187,7 +224,8 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
       hasBulkSearchStatus: !!document.getElementById('bulk-search-status'),
       bulkSearchStatus: document.getElementById('bulk-search-status')?.textContent || '',
       hasBulkStatus: !!document.getElementById('bulk-status'),
-      bulkStatus: document.getElementById('bulk-status')?.textContent || ''
+      bulkStatus: document.getElementById('bulk-status')?.textContent || '',
+      events: Array.isArray(window.__bulkDebugEvents) ? window.__bulkDebugEvents.slice(-8) : []
     }));
     console.log('tick', i, {
       graphCalls: graphCalls.length,
@@ -197,4 +235,3 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
 
   await browser.close();
 })();
-

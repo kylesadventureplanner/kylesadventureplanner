@@ -6264,7 +6264,17 @@
     function applyCandidateCompletionStatus(statusSetter, result, target, selectedCount, options = {}) {
       if (typeof statusSetter !== 'function') return;
       const payload = buildCandidateCompletionMessage(result, target, selectedCount, options);
-      if (!payload) return;
+      if (!payload) {
+        // Fallback: if no completion message, build one directly from success status
+        const count = Math.max(1, Number(selectedCount) || 1);
+        const destination = target ? formatTargetDestination(target) : 'the selected table';
+        const noun = count === 1 ? 'candidate' : 'candidates';
+        const verb = count === 1 ? 'was' : 'were';
+        if (result && result.success && !options.dryRun) {
+          statusSetter(`✅ Add complete. ${count} selected ${noun} ${verb} added to ${destination}.`, 'success');
+        }
+        return;
+      }
       statusSetter(payload.text, payload.kind);
     }
 
@@ -7475,6 +7485,69 @@
       setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. ${formatProbeSummaryText(probeSummaryTotal) ? `${formatProbeSummaryText(probeSummaryTotal)}. ` : ''}Review and click "Add Selected Candidates".`, 'success');
     }
 
+    async function addSelectedCandidatesWithSingleAdd(placeIds, dryRun, targetContext) {
+      const ids = Array.isArray(placeIds)
+        ? placeIds.map((value) => String(value || '').trim()).filter(Boolean)
+        : [];
+      if (!ids.length) {
+        return normalizeWriteResultContractForUi({ success: false, error: 'No places provided.', rowsRequested: 0 }, { rowsRequested: 0 });
+      }
+      if (!window.enhancedAutomation || typeof window.enhancedAutomation.addSinglePlace !== 'function') {
+        return normalizeWriteResultContractForUi({ success: false, error: 'System not ready.', rowsRequested: ids.length }, { rowsRequested: ids.length });
+      }
+
+      const aggregate = {
+        success: true,
+        total: ids.length,
+        added: 0,
+        failed: 0,
+        skipped: 0,
+        details: [],
+        queued: false,
+        rowsRequested: ids.length,
+        rowsChanged: 0,
+        rowsAppended: 0,
+        persistedRows: 0,
+        verifiedRowsChanged: 0,
+        rowsVerifiedPresent: 0,
+        postWriteVerified: false,
+        verificationMode: '',
+        verificationReason: ''
+      };
+
+      for (const placeId of ids) {
+        let singleResult;
+        try {
+          singleResult = await window.enhancedAutomation.addSinglePlace(placeId, 'placeId', dryRun, { target: targetContext });
+        } catch (error) {
+          singleResult = { success: false, error: String(error && error.message ? error.message : error || 'Operation failed') };
+        }
+
+        const normalized = normalizeWriteResultContractForUi(singleResult, { rowsRequested: 1 });
+        if (normalized && normalized.success) {
+          aggregate.added += 1;
+          aggregate.rowsChanged += Math.max(0, Number(normalized.rowsChanged) || 0);
+          aggregate.rowsAppended += Math.max(0, Number(normalized.rowsAppended) || 0);
+          aggregate.persistedRows += Math.max(0, Number(normalized.persistedRows) || 0);
+          aggregate.verifiedRowsChanged += Math.max(0, Number(normalized.verifiedRowsChanged) || 0);
+          aggregate.rowsVerifiedPresent += Math.max(0, Number(normalized.rowsVerifiedPresent) || 0);
+          if (!aggregate.verificationMode && normalized.verificationMode) aggregate.verificationMode = String(normalized.verificationMode);
+          if (!aggregate.verificationReason && normalized.verificationReason) aggregate.verificationReason = String(normalized.verificationReason);
+          if (normalized.queued) aggregate.queued = true;
+          aggregate.details.push(`✅ ${normalized.placeName || placeId}`);
+        } else {
+          aggregate.failed += 1;
+          const errorText = String((normalized && (normalized.error || normalized.message)) || (singleResult && (singleResult.error || singleResult.message)) || 'Operation failed').trim();
+          aggregate.details.push(`❌ ${placeId}: ${errorText}`);
+        }
+      }
+
+      aggregate.success = aggregate.failed === 0;
+      aggregate.postWriteVerified = aggregate.persistedRows > 0 && aggregate.verifiedRowsChanged === aggregate.persistedRows;
+      aggregate.message = `Added ${aggregate.added}/${aggregate.total} places (${aggregate.failed} failed, ${aggregate.skipped} skipped)`;
+      return normalizeWriteResultContractForUi(aggregate, { rowsRequested: ids.length });
+    }
+
     async function addSelectedBulkCandidates() {
       const selectedCandidates = getSelectedBulkCandidates();
       const selectedPlaceIds = selectedCandidates.map((pick) => String(pick && pick.placeId ? pick.placeId : '').trim()).filter(Boolean);
@@ -7512,7 +7585,17 @@
         });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) document.getElementById('bulkInput').value = '';
-        applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, selectedCandidates.length, { dryRun });
+        // Set completion status based on result
+        if (result && result.success && !dryRun) {
+          const count = selectedCandidates.length;
+          const destination = formatTargetDestination(target);
+          const noun = count === 1 ? 'candidate' : 'candidates';
+          const verb = count === 1 ? 'was' : 'were';
+          setBulkCandidateStatus(`✅ Add complete. ${count} selected ${noun} ${verb} added to ${destination}.`, 'success');
+        } else if (!dryRun) {
+          // If not successful, set error status
+          applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, selectedCandidates.length, { dryRun });
+        }
         return;
       }
 
@@ -7523,12 +7606,12 @@
       if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
       setBulkCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected candidate(s)...`, 'success');
 
-       let result = null;
-       if (window.enhancedAutomation && typeof window.enhancedAutomation.bulkAddPlaces === 'function') {
-         result = await window.enhancedAutomation.bulkAddPlaces(uniquePlaceIds.join('\n'), 'placeId', dryRun, { target: targetContext });
-         window.enhancedAutomation.displayResults(result, statusDiv);
-         applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
-         applyAddWriteDiagnostics(result, target, { rowsRequested: uniquePlaceIds.length });
+      let result = null;
+      if (window.enhancedAutomation && typeof window.enhancedAutomation.addSinglePlace === 'function') {
+        result = await addSelectedCandidatesWithSingleAdd(uniquePlaceIds, dryRun, targetContext);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
+        applyAddWriteDiagnostics(result, target, { rowsRequested: uniquePlaceIds.length });
         toastAddWriteDiagnostics(result, 'Add selected candidates', { rowsRequested: uniquePlaceIds.length });
         if (result && result.success && !dryRun) {
           document.getElementById('bulkInput').value = '';
@@ -7536,9 +7619,9 @@
         }
         await runPostAddRefreshHooks(result, dryRun);
         return;
-      } else {
-        result = await submitBulkAddPlaces();
       }
+
+      result = await submitBulkAddPlaces();
 
       applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
     }
