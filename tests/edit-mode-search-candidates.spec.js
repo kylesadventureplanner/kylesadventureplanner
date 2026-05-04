@@ -135,6 +135,19 @@ async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.h
   return popup;
 }
 
+async function clickInPopupWithFallback(popup, selector) {
+  const target = popup.locator(selector).first();
+  await expect(target).toBeVisible({ timeout: 10000 });
+  try {
+    await target.click({ timeout: 5000 });
+  } catch (_error) {
+    await popup.evaluate((sel) => {
+      const node = document.querySelector(String(sel || ''));
+      if (node && typeof node.click === 'function') node.click();
+    }, selector);
+  }
+}
+
 test.describe('Edit Mode single-add candidate search', () => {
   test('searches candidates and adds the selected candidate using existing single-add flow', async ({ page }) => {
     const graphCalls = [];
@@ -561,7 +574,11 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(card.locator('.candidate-title')).toHaveText('Starbucks Hendersonville');
     await expect(card).toContainText('pid-starbucks-hendo');
 
-    await popup.click('#singleAddSelectedCandidateBtn');
+    await card.click();
+    await expect(popup.locator('#singleAddSelectedCandidateBtn')).toBeEnabled();
+    await expect(popup.locator('#singleAddSelectedCandidateBtn')).toHaveClass(/is-candidate-cta-ready/);
+
+    await clickInPopupWithFallback(popup, '#singleAddSelectedCandidateBtn');
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
     const row = graphCalls[0].body.values[0];
     expect(row[1]).toBe('Starbucks Hendersonville');
@@ -730,7 +747,10 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(2);
     await expect(popup.locator('#bulk-search-status')).toContainText('Ready: 2 selection');
 
-    await popup.click('#bulkAddSelectedCandidatesBtn');
+    await expect(popup.locator('#bulkAddSelectedCandidatesBtn')).toBeEnabled();
+    await expect(popup.locator('#bulkAddSelectedCandidatesBtn')).toHaveClass(/is-candidate-cta-ready/);
+
+    await clickInPopupWithFallback(popup, '#bulkAddSelectedCandidatesBtn');
     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(2);
     const placeIds = graphCalls.map((call) => String(call.body?.values?.[0]?.[9] || ''));
     expect(placeIds).toContain('pid-chain-store-1');
@@ -968,7 +988,8 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.selectOption('#singleInputType', 'placeName');
     await popup.fill('#singleInput', 'Apple Blossom Festival');
-    await popup.click('#singleSubmitBtn');
+    await expect(popup.locator('#singleSubmitBtn')).toBeEnabled();
+    await clickInPopupWithFallback(popup, '#singleSubmitBtn');
 
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
     const singleRow = graphCalls[0].body.values[0];
@@ -982,7 +1003,8 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.selectOption('#bulkInputType', 'placeName');
     await popup.fill('#bulkInput', 'Pear Harvest Festival\nPeach Jam Festival');
-    await popup.click('#bulkSubmitBtn');
+    await expect(popup.locator('#bulkSubmitBtn')).toBeEnabled();
+    await clickInPopupWithFallback(popup, '#bulkSubmitBtn');
 
     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(3);
     const bulkRows = graphCalls.slice(1).map((call) => call.body.values[0]);

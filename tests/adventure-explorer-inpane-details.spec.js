@@ -1,5 +1,5 @@
 const { test, expect } = require('./reliability-test');
-const { waitForEmbeddedFrameReady } = require('./playwright-helpers');
+const { openAdventureChallenge, waitForEmbeddedFrameReady } = require('./playwright-helpers');
 
 // Keep retries scoped to this spec so flaky CI runs capture a trace.zip
 // without broadening retry behavior across the full smoke suite.
@@ -185,9 +185,8 @@ const EXPLORER_CASES = [
 ];
 
 async function gotoAdventureChallenge(page) {
-  await page.goto('/');
-  await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-  await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+  // This spec iterates advanced-only Adventure subtabs, so always bootstrap in advanced mode.
+  await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
 }
 
 async function openExplorerAndFindDetails(page) {
@@ -1168,7 +1167,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await linksBtn.click();
     await expect(details.locator('#linksModal')).toBeVisible();
     await details.locator('#linksRawInput').fill('example.org\nhttps://example.com/two');
-    await details.locator('#linksSaveBtn').click();
+    await clickDetailsControl(detailsFrame, '#linksSaveBtn');
     await expect(details.locator('#linksModal')).toBeHidden();
     await expect.poll(async () => {
       const frameHandle = await detailsFrame.elementHandle();

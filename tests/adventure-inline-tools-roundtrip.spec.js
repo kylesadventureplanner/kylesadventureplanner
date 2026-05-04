@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const {
+  activateFooterAction,
   openAdventureChallenge,
   ensureAdventureSubtabSelected,
   waitForEmbeddedFrameReady
@@ -232,12 +233,17 @@ test.describe('Adventure inline tools roundtrip', () => {
 
     const openLogBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-visit-log-outdoors"]').first();
     await expect(openLogBtn).toBeVisible();
-    await openLogBtn.click();
+    await activateFooterAction(page, openLogBtn);
 
     const logView = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="visit-log"]').first();
     const overviewView = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first();
     const logFrame = page.locator('#visitedVisitLogFrame-outdoors').first();
 
+    await expect.poll(async () => {
+      const viewVisible = await logView.isVisible().catch(() => false);
+      const frameCount = await logFrame.count().catch(() => 0);
+      return viewVisible || frameCount > 0;
+    }, { timeout: 10000 }).toBe(true);
     await expect(logView).toBeVisible();
     await expect(overviewView).toBeHidden();
     await expect(logFrame).toBeVisible();
