@@ -137,7 +137,11 @@
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
   const PROGRESS_SUBTAB_KEYS = ['all-locations', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
-  const DAILY_VISIBLE_PROGRESS_SUBTAB_KEYS = ['all-locations'];
+  const DAILY_PROGRESS_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges'];
+  const PROGRESS_SUBTAB_ROUTE_KEYS = Array.from(new Set([...PROGRESS_SUBTAB_KEYS, ...DAILY_PROGRESS_SUBTAB_KEYS]));
+  const PROGRESS_SUBTAB_PANE_MAP = {
+    'city-explorer': 'all-locations'
+  };
   const PROGRESS_SUBTAB_STATUS_LABELS = {
     'all-locations': 'All Locations',
     outdoors: 'Outdoors',
@@ -150,6 +154,8 @@
   };
   const PROGRESS_SUBTAB_EXPLORE_LABELS = {
     'all-locations': 'All Locations',
+    'city-explorer': 'City Explorer',
+    challenges: 'Challenges',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food & Drink',
@@ -387,7 +393,12 @@
   }
 
   function getAvailableProgressSubtabKeys() {
-    return isAdvancedAppMode() ? PROGRESS_SUBTAB_KEYS.slice() : DAILY_VISIBLE_PROGRESS_SUBTAB_KEYS.slice();
+    return isAdvancedAppMode() ? PROGRESS_SUBTAB_KEYS.slice() : DAILY_PROGRESS_SUBTAB_KEYS.slice();
+  }
+
+  function getProgressPaneKeyForTab(tabKey) {
+    const key = String(tabKey || '').trim();
+    return PROGRESS_SUBTAB_PANE_MAP[key] || key;
   }
 
   function getDefaultProgressSubtabKey() {
@@ -432,8 +443,10 @@
     const jumpLinks = root.querySelector('.visited-jump-links');
     if (!jumpLinks) return;
     const activeKey = normalizeProgressSubtabKey(state.activeProgressSubTab);
-    const explorerState = getExplorerState(activeKey);
-    const hideJumpLinks = activeKey === 'all-locations'
+    const paneKey = getProgressPaneKeyForTab(activeKey);
+    const explorerState = getExplorerState(paneKey);
+    const hideJumpLinks = activeKey === 'challenges'
+      || paneKey === 'all-locations'
       || explorerState.view === 'city-explorer'
       || explorerState.view === 'explorer'
       || explorerState.view === 'explorer-details'
@@ -554,6 +567,7 @@
      if (!root) return;
      const availableKeys = getAvailableProgressSubtabKeys();
      const active = normalizeProgressSubtabKey(state.activeProgressSubTab);
+      const activePaneKey = getProgressPaneKeyForTab(active);
      state.activeProgressSubTab = active;
 
      getProgressSubTabButtons(root).forEach((btn) => {
@@ -574,8 +588,7 @@
 
      root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
        const paneKey = pane.getAttribute('data-progress-pane');
-        const isAvailable = availableKeys.includes(paneKey);
-        const isActive = isAvailable && paneKey === active;
+        const isActive = paneKey === activePaneKey;
        pane.classList.toggle('is-active', isActive);
        pane.hidden = !isActive;
        pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
@@ -621,15 +634,23 @@
       .catch(() => {});
   }
 
-  function jumpToVisitedSection(targetKey) {
-    const key = normalizeProgressSubtabKey(state.activeProgressSubTab);
+  function jumpToVisitedSection(targetKey, options) {
+    const opts = options && typeof options === 'object' ? options : {};
+    const key = normalizeProgressSubtabKey(opts.subtabKey || state.activeProgressSubTab);
     const target = String(targetKey || '').trim();
-    const sectionIdByTarget = {
-      categories: `achv-section-${key}-category-progression`,
-      'challenges-badges': `achv-section-${key}-challenges-badges`,
-      quests: `achv-section-${key}-seasonal-quests`,
-      bingo: `achv-section-${key}-bingo`
-    };
+    const sectionIdByTarget = key === 'challenges'
+      ? {
+          categories: 'achv-root-challenges',
+          'challenges-badges': 'achv-root-challenges',
+          quests: 'achv-root-challenges',
+          bingo: 'achv-root-challenges'
+        }
+      : {
+          categories: `achv-section-${key}-category-progression`,
+          'challenges-badges': `achv-section-${key}-challenges-badges`,
+          quests: `achv-section-${key}-seasonal-quests`,
+          bingo: `achv-section-${key}-bingo`
+        };
 
     let el = null;
     if (target === 'diagnostics') {
@@ -649,6 +670,32 @@
       el.setAttribute('tabindex', '-1');
       el.focus({ preventScroll: true });
       window.setTimeout(() => el.removeAttribute('tabindex'), 700);
+    }
+  }
+
+  function applyDailyProgressSubtabBehavior(root, tabKey) {
+    if (!root || isAdvancedAppMode()) return;
+    const key = String(tabKey || '').trim();
+    if (!key) return;
+
+    if (key === 'all-locations') {
+      openSubtabExplorer(root, 'all-locations').catch(() => {
+        setExplorerView(root, 'all-locations', 'explorer');
+      });
+      return;
+    }
+
+    if (key === 'city-explorer') {
+      openCityExplorerForSubtab('all-locations', { preserveActiveTab: true });
+      return;
+    }
+
+    if (key === 'challenges') {
+      renderCombinedChallengesDashboard();
+      const challengesRoot = document.getElementById('achv-root-challenges');
+      if (challengesRoot && typeof challengesRoot.scrollIntoView === 'function') {
+        challengesRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   }
 
@@ -693,7 +740,7 @@
     const view = String(params.get('visitedView') || '').trim().toLowerCase();
     return {
       requestedTab,
-      subtabKey: PROGRESS_SUBTAB_KEYS.includes(subtabKey) ? subtabKey : '',
+      subtabKey: PROGRESS_SUBTAB_ROUTE_KEYS.includes(subtabKey) ? subtabKey : '',
       view
     };
   }
@@ -703,7 +750,7 @@
     const requestedTab = String(params.get('tab') || '').trim();
     const requestedSubtab = String(params.get('visitedSubtab') || '').trim();
 
-    if (PROGRESS_SUBTAB_KEYS.includes(requestedSubtab)) {
+    if (PROGRESS_SUBTAB_ROUTE_KEYS.includes(requestedSubtab)) {
       return requestedSubtab;
     }
 
@@ -725,10 +772,11 @@
 
   function isVisitedStandaloneLaunchSatisfied(root, launch) {
     if (!root || !launch || !launch.subtabKey || launch.view !== 'explorer') return false;
+    const paneKey = getProgressPaneKeyForTab(launch.subtabKey);
     const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
     const activePrimaryTab = activePrimary ? activePrimary.getAttribute('data-tab') : '';
     const subtabBtn = document.getElementById(`visitedProgressTab-${launch.subtabKey}`);
-    const explorerView = root.querySelector(`#visitedProgressPane-${launch.subtabKey} [data-visited-subtab-view="explorer"]`);
+    const explorerView = root.querySelector(`#visitedProgressPane-${paneKey} [data-visited-subtab-view="explorer"]`);
     return activePrimaryTab === 'visited-locations'
       && Boolean(subtabBtn && subtabBtn.getAttribute('aria-selected') === 'true')
       && Boolean(explorerView && explorerView.hidden === false && explorerView.getAttribute('aria-hidden') === 'false');
@@ -746,6 +794,12 @@
       state.urlLaunchApplied = true;
       return;
     }
+            const launchPaneKey = getProgressPaneKeyForTab(launch.subtabKey);
+            if (!getExplorerConfig(launchPaneKey)) {
+              state.urlLaunchApplied = true;
+              return;
+            }
+
     if (launch.subtabKey === 'bike-trails') {
       state.urlLaunchApplied = true;
       return;
@@ -766,10 +820,10 @@
       if (state.activeProgressSubTab !== launch.subtabKey) {
         setActiveProgressSubTab(root, launch.subtabKey);
       }
-      await openSubtabExplorer(root, launch.subtabKey);
+      await openSubtabExplorer(root, launchPaneKey);
     } catch (_error) {
       // Fall back to view activation even if explorer data loading hits a startup race.
-      setExplorerView(root, launch.subtabKey, 'explorer');
+      setExplorerView(root, launchPaneKey, 'explorer');
     } finally {
       if (!isVisitedStandaloneLaunchSatisfied(root, launch)) {
         state.urlLaunchRetryCount += 1;
@@ -868,21 +922,23 @@
     return visitLogUrl.toString();
   }
 
-  async function openCityExplorerForSubtab(subtabKey) {
+  async function openCityExplorerForSubtab(subtabKey, options = {}) {
     const root = document.getElementById('visitedLocationsRoot');
     if (!root) return;
     const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
-    const filter = CITY_EXPLORER_PREFILTERS[key] || { tag: '', label: PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Adventure' };
+    const paneKey = getProgressPaneKeyForTab(key);
+    const preserveActiveTab = options.preserveActiveTab === true;
+    const filter = CITY_EXPLORER_PREFILTERS[paneKey] || { tag: '', label: PROGRESS_SUBTAB_EXPLORE_LABELS[paneKey] || 'Adventure' };
 
     if (state.activeOverviewView !== 'main') {
       state.activeOverviewView = 'main';
       syncVisitedOverviewView(root);
     }
-    if (state.activeProgressSubTab !== key) {
+    if (!preserveActiveTab && state.activeProgressSubTab !== key) {
       setActiveProgressSubTab(root, key);
     }
 
-    const toolView = ensureInlineSubtabToolView(root, key, 'city');
+    const toolView = ensureInlineSubtabToolView(root, paneKey, 'city');
     if (!toolView) return;
     const frame = document.getElementById(toolView.frameId);
     if (!frame) return;
@@ -892,7 +948,7 @@
       preparedUrl = await window.prepareCityViewerInlineUrl({
         prefilterTag: filter.tag,
         prefilterLabel: filter.label,
-        sourceSubtab: key
+        sourceSubtab: paneKey
       });
     }
     if (!preparedUrl) {
@@ -901,7 +957,7 @@
       fallbackUrl.searchParams.set('dataMode', 'curated-only');
       if (filter.tag) fallbackUrl.searchParams.set('prefilterTag', filter.tag);
       if (filter.label) fallbackUrl.searchParams.set('prefilterLabel', filter.label);
-      fallbackUrl.searchParams.set('sourceSubtab', key);
+      fallbackUrl.searchParams.set('sourceSubtab', paneKey);
       fallbackUrl.searchParams.set('ts', String(Date.now()));
       preparedUrl = fallbackUrl.toString();
     }
@@ -909,14 +965,14 @@
     try {
       const prepared = new URL(preparedUrl, window.location.href);
       prepared.searchParams.set('embedded', '1');
-      prepared.searchParams.set('sourceSubtab', key);
+      prepared.searchParams.set('sourceSubtab', paneKey);
       preparedUrl = prepared.toString();
     } catch (_error) {
       // Keep prepared URL as-is if it cannot be normalized.
     }
 
     frame.src = preparedUrl;
-    setExplorerView(root, key, 'city-explorer');
+    setExplorerView(root, paneKey, 'city-explorer');
   }
 
   async function openCityExplorerStandaloneForSubtab(subtabKey) {
@@ -2010,6 +2066,7 @@
       if (tabKey !== state.activeProgressSubTab) {
         setActiveProgressSubTab(root, tabKey);
       }
+      applyDailyProgressSubtabBehavior(root, tabKey);
       scheduleVisitedSubTabInterceptionCheck(root, 0);
     });
 
@@ -2033,6 +2090,7 @@
       const nextButton = buttons[nextIndex];
       const tabKey = nextButton.getAttribute('data-progress-subtab') || 'outdoors';
       setActiveProgressSubTab(root, tabKey);
+      applyDailyProgressSubtabBehavior(root, tabKey);
       nextButton.focus();
     });
   }
@@ -4884,6 +4942,16 @@
       }
     } catch (_error) {
       // Achievement rerender is best-effort only.
+    }
+  }
+
+  function renderCombinedChallengesDashboard() {
+    try {
+      if (typeof AdventureAchievements !== 'undefined' && AdventureAchievements && typeof AdventureAchievements.renderAll === 'function') {
+        AdventureAchievements.renderAll('challenges');
+      }
+    } catch (_error) {
+      // Combined dashboard rendering is best-effort only.
     }
   }
 
@@ -8698,6 +8766,7 @@
           if (!liveRoot) return;
           syncProgressSubTabs(liveRoot);
           renderSubtabStatusBars();
+          applyDailyProgressSubtabBehavior(liveRoot, state.activeProgressSubTab);
           scheduleVisitedSubtabCtaOrderFinalization(liveRoot);
         });
       }
@@ -8773,6 +8842,7 @@
 
       syncProgressSubTabs(root);
       syncVisitedOverviewView(root);
+      applyDailyProgressSubtabBehavior(root, state.activeProgressSubTab);
       bindAllExplorerFilterInputs(root);
       bindProgressSubTabButtons(root);
       syncVisitedSubTabDock(root);

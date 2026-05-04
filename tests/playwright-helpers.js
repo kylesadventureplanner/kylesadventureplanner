@@ -4,6 +4,12 @@ function normalizeAppMode(mode) {
   return String(mode || '').trim().toLowerCase() === 'advanced' ? 'advanced' : 'daily';
 }
 
+function resolveAdventurePaneKey(subtabKey) {
+  const key = String(subtabKey || '').trim();
+  if (key === 'city-explorer') return 'all-locations';
+  return key;
+}
+
 /**
  * Seeds the persisted app mode before the next navigation.
  *
@@ -98,19 +104,20 @@ async function activateFooterAction(page, locator) {
  */
 async function waitForAdventureChallengeReady(page, subtabKey = 'all-locations') {
   const safeSubtabKey = String(subtabKey || 'all-locations');
+  const safePaneKey = resolveAdventurePaneKey(safeSubtabKey);
   await expect(page.locator('#visitedLocationsRoot')).toBeVisible({ timeout: 15000 });
-  await page.waitForFunction((key) => {
+  await page.waitForFunction(({ key, paneKey }) => {
     const root = document.getElementById('visitedLocationsRoot');
     if (!root) return false;
     const bound = root.dataset && root.dataset.bound === '1';
-    const pane = document.getElementById(`visitedProgressPane-${key}`);
+    const pane = document.getElementById(`visitedProgressPane-${paneKey}`);
     const dock = document.querySelector(`#appSubTabsSlot [data-progress-subtab="${key}"]`);
     if (!pane || !dock) return false;
     const paneVisible = !pane.hidden && pane.getAttribute('aria-hidden') !== 'true';
     const dockVisible = dock instanceof HTMLElement && dock.offsetParent !== null;
     return bound && paneVisible && dockVisible;
-  }, safeSubtabKey, { timeout: 15000 });
-  await expect(page.locator(`#visitedProgressPane-${safeSubtabKey}`)).toBeVisible({ timeout: 15000 });
+  }, { key: safeSubtabKey, paneKey: safePaneKey }, { timeout: 15000 });
+  await expect(page.locator(`#visitedProgressPane-${safePaneKey}`)).toBeVisible({ timeout: 15000 });
 }
 
 /**

@@ -11,6 +11,7 @@ const {
   waitForAdventureJumpLinksState
 } = require('./playwright-helpers');
 
+const DAILY_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges'];
 const ALL_SUBTAB_KEYS = ['all-locations', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
 
 const ADVENTURE_SUBTABS = [
@@ -49,10 +50,20 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
 
     await expect(page.locator('#appSubTabsSlot [data-progress-subtab="all-locations"]').first()).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#visitedProgressPane-all-locations')).toBeVisible();
-    await expect(page.locator('#visitedProgressPane-all-locations [data-visited-subtab-action="open-explorer-all-locations"]')).toContainText(/Explore Locations/i);
+    await waitForAdventureSubtabView(page, 'all-locations', 'explorer', { timeout: 15000 });
     await expect(page.locator('#visitedLocationsRoot [data-visited-jump="diagnostics"]')).toBeHidden();
 
-    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(['all-locations']);
+    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(DAILY_SUBTAB_KEYS);
+
+    await ensureAdventureSubtabSelected(page, 'city-explorer');
+    await expect(page.locator('#visitedProgressPane-all-locations [data-visited-subtab-view="city-explorer"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#visitedCityExplorerFrame-all-locations').first()).toBeVisible();
+
+    await ensureAdventureSubtabSelected(page, 'challenges');
+    await expect(page.locator('#visitedProgressPane-challenges')).toBeVisible();
+    await expect(page.locator('#achv-root-challenges')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#achv-root-challenges [data-achv-combined-subtab]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#visitedProgressPane-challenges .visited-subtab-action-row')).toHaveCount(0);
 
     await setAppMode(page, 'advanced');
     await ensureAdventureSubtabSelected(page, 'outdoors');
@@ -63,7 +74,8 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
     await setAppMode(page, 'daily');
     await waitForAdventureChallengeReady(page, 'all-locations');
     await expect(page.locator('#appSubTabsSlot [data-progress-subtab="all-locations"]').first()).toHaveAttribute('aria-selected', 'true');
-    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(['all-locations']);
+    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(DAILY_SUBTAB_KEYS);
+    await waitForAdventureSubtabView(page, 'all-locations', 'explorer', { timeout: 15000 });
   });
 });
 

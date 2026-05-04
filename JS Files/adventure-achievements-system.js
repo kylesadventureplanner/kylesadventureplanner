@@ -35,6 +35,7 @@ window.AdventureAchievements = (function () {
   const CHALLENGE_TIER_TARGETS = [1, 3, 5, 10, 15];
   const BADGE_LEVEL_TARGETS = [1, 5, 10, 20, 25];
   const LEVEL_NAMES = ['Rookie', 'Novice', 'Semi-Pro', 'Pro', 'MVP'];
+  const COMBINED_CONTAINER_KEY = 'challenges';
 
   function currentSeason() {
     const m = new Date().getMonth() + 1;
@@ -1188,26 +1189,75 @@ window.AdventureAchievements = (function () {
   }
 
   // ─── Main render ────────────────────────────────────────────────────────────
-  function renderAll(key) {
-    const container = document.getElementById(`achv-root-${key}`);
+  function normalizeCombinedSectionIds(html, key) {
+    return String(html || '').replace(
+      new RegExp(`id="achv-section-${key}-`, 'g'),
+      `id="achv-combined-section-${key}-`
+    );
+  }
+
+  function renderCombinedAllSubtabs(container) {
     if (!container) return;
-    const config = CONFIGS[key];
+    const keys = Object.keys(CONFIGS);
+    const state = loadState();
+
+    const blocks = keys.map((key) => {
+      const config = CONFIGS[key];
+      if (!config) return '';
+      const sub = getSubState(state, key);
+      const settings = getSubSettings(state, key);
+      const progress = buildProgressModel(key, config, sub, settings);
+      return `
+        <section class="card adventure-achv-section" data-achv-combined-subtab="${esc(key)}" style="margin-top:12px;">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${esc(config.icon || '🏅')} ${esc(config.label)}</div>
+              <div class="card-subtitle">Combined challenges dashboard for ${esc(config.label)}.</div>
+            </div>
+          </div>
+          ${normalizeCombinedSectionIds(renderCategorySection(key, config, sub, progress), key)}
+          ${normalizeCombinedSectionIds(renderChallengesSection(key, config, sub, progress), key)}
+          ${normalizeCombinedSectionIds(renderQuestsSection(key, config, progress), key)}
+          ${normalizeCombinedSectionIds(renderBingoSection(key, config, progress), key)}
+        </section>`;
+    }).join('');
+
+    container.innerHTML = blocks;
+
+    keys.forEach((key) => {
+      const block = container.querySelector(`[data-achv-combined-subtab="${key}"]`);
+      if (!block) return;
+      const config = CONFIGS[key];
+      if (!config) return;
+      bindEvents(block, key, config, state);
+    });
+  }
+
+  function renderAll(key) {
+    const normalizedKey = String(key || '').trim();
+    const container = document.getElementById(`achv-root-${normalizedKey}`);
+    if (!container) return;
+    if (normalizedKey === COMBINED_CONTAINER_KEY) {
+      renderCombinedAllSubtabs(container);
+      return;
+    }
+    const config = CONFIGS[normalizedKey];
     if (!config) return;
     const state = loadState();
-    const sub = getSubState(state, key);
-    const settings = getSubSettings(state, key);
-    const progress = buildProgressModel(key, config, sub, settings);
+    const sub = getSubState(state, normalizedKey);
+    const settings = getSubSettings(state, normalizedKey);
+    const progress = buildProgressModel(normalizedKey, config, sub, settings);
 
     container.innerHTML =
-      renderCategorySection(key, config, sub, progress) +
-      renderChallengesSection(key, config, sub, progress) +
-      renderQuestsSection(key, config, progress) +
-      renderBingoSection(key, config, progress);
+      renderCategorySection(normalizedKey, config, sub, progress) +
+      renderChallengesSection(normalizedKey, config, sub, progress) +
+      renderQuestsSection(normalizedKey, config, progress) +
+      renderBingoSection(normalizedKey, config, progress);
 
-    renderSyncModeInDiagnostics(key, progress);
-    renderStatusSyncButton(key, progress, state);
+    renderSyncModeInDiagnostics(normalizedKey, progress);
+    renderStatusSyncButton(normalizedKey, progress, state);
 
-    bindEvents(container, key, config, state);
+    bindEvents(container, normalizedKey, config, state);
   }
 
   function bindEvents(container, key, config, state) {
@@ -1338,6 +1388,10 @@ window.AdventureAchievements = (function () {
       const btn = clickTarget && clickTarget.closest ? clickTarget.closest('[data-progress-subtab]') : null;
       if (btn) {
         const k = btn.getAttribute('data-progress-subtab');
+        if (k === COMBINED_CONTAINER_KEY) {
+          setTimeout(() => renderAll(COMBINED_CONTAINER_KEY), 120);
+          return;
+        }
         if (CONFIGS[k]) setTimeout(() => renderAll(k), 120);
         return;
       }
@@ -1345,12 +1399,14 @@ window.AdventureAchievements = (function () {
       const visitToggle = clickTarget && clickTarget.closest ? clickTarget.closest('[data-visit-action="toggle"]') : null;
       if (visitToggle) {
         Object.keys(CONFIGS).forEach((k) => setTimeout(() => renderAll(k), 1200));
+        setTimeout(() => renderAll(COMBINED_CONTAINER_KEY), 1200);
         return;
       }
 
       const refreshAction = clickTarget && clickTarget.closest ? clickTarget.closest('[data-visited-subtab-action]') : null;
       if (refreshAction && /^(refresh-subtab-|open-explorer-|close-explorer-)/.test(String(refreshAction.getAttribute('data-visited-subtab-action') || ''))) {
         Object.keys(CONFIGS).forEach((k) => setTimeout(() => renderAll(k), 800));
+        setTimeout(() => renderAll(COMBINED_CONTAINER_KEY), 800);
       }
     });
   }

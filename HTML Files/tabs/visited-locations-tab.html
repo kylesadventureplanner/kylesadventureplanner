@@ -16,6 +16,8 @@
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories" hidden>
     <button id="visitedProgressTab-all-locations" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-all-locations" aria-selected="true" data-progress-subtab="all-locations" aria-label="Open All Locations section" title="Open All Locations section">🗺️ All Locations</button>
+    <button id="visitedProgressTab-city-explorer" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-all-locations" aria-selected="false" data-progress-subtab="city-explorer" aria-label="Open City Explorer" title="Open City Explorer">🏙️ City Explorer</button>
+    <button id="visitedProgressTab-challenges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-challenges" aria-selected="false" data-progress-subtab="challenges" aria-label="Open Challenges" title="Open Challenges">🏅 Challenges</button>
     <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="false" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section" data-advanced-only="true">🌲 Outdoors</button>
     <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section" data-advanced-only="true">🎬 Entertainment</button>
     <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section" data-advanced-only="true">🍽️ Food &amp; Drink</button>
@@ -74,6 +76,22 @@
       </div>
       <div id="visitedExplorerList-all-locations" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
+  </div>
+
+  <div id="visitedProgressPane-challenges" class="visited-progress-pane" data-progress-pane="challenges" role="tabpanel" aria-labelledby="visitedProgressTab-challenges" hidden>
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
+      <div class="card-header">
+        <div class="card-title">🏅 Challenges Hub</div>
+        <div class="card-subtitle">Combined challenge, badge, seasonal quest, and bingo progress across Adventure categories.</div>
+      </div>
+      <div class="visited-empty">
+        <div class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Challenges dashboard: ready.</span>
+          <span class="visited-subtab-status-meta">This view combines all supported Adventure achievement categories in one place.</span>
+        </div>
+      </div>
+    </div>
+    <div id="achv-root-challenges" data-achv-container="challenges"></div>
   </div>
 
   <div id="visitedProgressPane-outdoors" class="visited-progress-pane" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors" hidden>
