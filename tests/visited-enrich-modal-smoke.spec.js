@@ -1,5 +1,5 @@
 const { test, expect } = require('./reliability-test');
-const { installVisitedExplorerSeedFixture } = require('./playwright-helpers');
+const { installVisitedExplorerSeedFixture, setAppMode } = require('./playwright-helpers');
 
 test.describe('Visited enrich modal smoke', () => {
   test('supports changed highlights, selective save, confidence chips, and undo', async ({ page }, testInfo) => {
@@ -28,6 +28,7 @@ test.describe('Visited enrich modal smoke', () => {
 
     await installVisitedExplorerSeedFixture(page);
     await page.goto('/');
+    await setAppMode(page, 'advanced');
     await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
     await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
     await page.waitForFunction(() => {
