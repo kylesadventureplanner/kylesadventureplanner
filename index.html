@@ -23,6 +23,22 @@
     // Set your Google Places API key here
     window.GOOGLE_PLACES_API_KEY = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
 
+    (function bootstrapAppMode() {
+      var storageKey = 'kapAppModeV1';
+      var mode = 'daily';
+      try {
+        var raw = window.localStorage ? window.localStorage.getItem(storageKey) : null;
+        if (raw != null) {
+          var parsed = JSON.parse(raw);
+          if (parsed === 'advanced' || parsed === 'daily') mode = parsed;
+        }
+      } catch (_error) {
+        mode = 'daily';
+      }
+      document.documentElement.setAttribute('data-app-mode', mode);
+      window.__APP_MODE = mode;
+    })();
+
     // Central app-level UI labels config (single source for text customizations).
     window.APP_UI_LABELS = window.APP_UI_LABELS || {};
     window.APP_UI_LABELS.khFeedback = window.APP_UI_LABELS.khFeedback || {};
@@ -3953,6 +3969,22 @@
       gap: 10px;
       justify-content: flex-end;
       align-items: center;
+    }
+
+    html[data-app-mode="daily"] [data-advanced-only="true"],
+    html[data-app-mode="daily"] #deploymentFingerprintMount,
+    html[data-app-mode="daily"] #visitedHeaderSyncRetryBtn {
+      display: none !important;
+    }
+
+    #appModeToggleBtn[data-mode="daily"] {
+      background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);
+      color: #1d4ed8;
+    }
+
+    #appModeToggleBtn[data-mode="advanced"] {
+      background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+      color: #5b21b6;
     }
 
     .auth-status-line {
@@ -8957,22 +8989,39 @@
 
   <div class="header-right">
     <div class="header-actions-row">
-      <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
-      <button id="quickAddFab" class="auth-btn quick-add-header-btn" title="Quick Add a place" aria-label="Quick Add a place" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">➕ Quick Add <span class="qa-inbox-count" id="qaInboxCount" style="display:none;">0</span></button>
-      <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
-      <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
-      <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup">💾 App Backup</button>
-      <button id="diagnosticsHubBtn" class="auth-btn" title="Open Central Diagnostics Hub" data-tooltip="Open Central Diagnostics Hub">🩺 Diagnostics</button>
+      <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" data-advanced-only="true" onclick="location.reload()">🔄 Reload App</button>
+      <button id="quickAddFab" class="auth-btn quick-add-header-btn" title="Quick Add a place" aria-label="Quick Add a place" data-advanced-only="true" onclick="FamilyPrefs && FamilyPrefs.openQuickAdd()">➕ Quick Add <span class="qa-inbox-count" id="qaInboxCount" style="display:none;">0</span></button>
+      <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" data-advanced-only="true" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
+      <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode" data-advanced-only="true">📴 Offline Mode</button>
+      <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup" data-advanced-only="true">💾 App Backup</button>
+      <button id="diagnosticsHubBtn" class="auth-btn" title="Open Central Diagnostics Hub" data-tooltip="Open Central Diagnostics Hub" data-advanced-only="true">🩺 Diagnostics</button>
+      <button id="appModeToggleBtn" class="auth-btn" type="button" title="Switch between Daily Use Mode and Advanced Mode" aria-pressed="false">🛠 Advanced Mode</button>
       <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
-      <button id="deviceSignInBtn" class="auth-btn" title="Sign in using device code flow on another device">Sign In via Device</button>
+      <button id="deviceSignInBtn" class="auth-btn" title="Sign in using device code flow on another device" data-advanced-only="true">Sign In via Device</button>
       <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
     </div>
-    <div id="deploymentFingerprintMount" aria-live="polite"></div>
+    <div id="deploymentFingerprintMount" data-advanced-only="true" aria-live="polite"></div>
     <span id="authStatus" class="auth-status-line">Not signed in</span>
   </div>
 </header>
+<script>
+  (function initAppModeToggle() {
+    var STORAGE_KEY = "kapAppModeV1";
+    function normalizeAppMode(mode) { return mode === "advanced" ? "advanced" : "daily"; }
+    function readStoredMode() { try { var raw = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null; if (raw == null) return normalizeAppMode(window.__APP_MODE); return normalizeAppMode(JSON.parse(raw)); } catch (_error) { return normalizeAppMode(window.__APP_MODE); } }
+    function persistMode(mode) { try { if (window.localStorage) { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeAppMode(mode))); } } catch (_error) {} }
+    function updateToggleButton(mode) { var btn = document.getElementById("appModeToggleBtn"); if (btn == null) return; var normalized = normalizeAppMode(mode); var isAdvanced = normalized === "advanced"; btn.dataset.mode = normalized; btn.setAttribute("aria-pressed", isAdvanced ? "true" : "false"); btn.textContent = isAdvanced ? "✨ Daily Use Mode" : "🛠 Advanced Mode"; btn.title = isAdvanced ? "Advanced Mode is active. Click to switch back to Daily Use Mode." : "Daily Use Mode is active. Click to reveal advanced tools."; }
+    function applyAppMode(mode) { var normalized = normalizeAppMode(mode); document.documentElement.setAttribute("data-app-mode", normalized); window.__APP_MODE = normalized; updateToggleButton(normalized); document.dispatchEvent(new CustomEvent("kap:app-mode-changed", { detail: { mode: normalized, isAdvanced: normalized === "advanced" } })); return normalized; }
+    function bindToggle() { var btn = document.getElementById("appModeToggleBtn"); if (btn == null || btn.dataset.bound === "1") return; btn.dataset.bound = "1"; btn.addEventListener("click", function () { var nextMode = document.documentElement.getAttribute("data-app-mode") === "advanced" ? "daily" : "advanced"; persistMode(nextMode); applyAppMode(nextMode); }); }
+    window.getAppMode = function () { return normalizeAppMode(document.documentElement.getAttribute("data-app-mode") || window.__APP_MODE); };
+    window.setAppMode = function (mode) { var normalized = normalizeAppMode(mode); persistMode(normalized); return applyAppMode(normalized); };
+    window.toggleAppMode = function () { return window.setAppMode(window.getAppMode() === "advanced" ? "daily" : "advanced"); };
+    bindToggle(); applyAppMode(readStoredMode());
+    window.addEventListener("storage", function (event) { if (event && event.key === STORAGE_KEY) { applyAppMode(readStoredMode()); } });
+  })();
+</script>
 <div id="signInRequiredBanner" class="sign-in-required-banner" role="status" aria-live="polite" hidden>
   <span>🔐 Sign in required: connect your Microsoft account to load Excel data and use core app features.</span>
   <button id="signInRequiredBannerBtn" type="button" class="offline-action-btn">Sign In Now</button>
