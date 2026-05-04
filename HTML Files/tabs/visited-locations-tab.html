@@ -3,32 +3,80 @@
 
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header tab-shell-header">
-    <h1 id="visitedChallengeTitle">Adventure Challenge - Outdoors</h1>
+    <h1 id="visitedChallengeTitle">Adventure Challenge - All Locations</h1>
     <div class="visited-jump-links" role="navigation" aria-label="Jump to section links">
       <span class="visited-jump-links-label">Jump to section:</span>
       <button type="button" class="pill-button" data-visited-jump="categories">📊 Category Progression</button>
       <button type="button" class="pill-button" data-visited-jump="challenges-badges">🏅 Challenges &amp; Badges</button>
       <button type="button" class="pill-button" data-visited-jump="quests">📚 Seasonal Quests</button>
       <button type="button" class="pill-button" data-visited-jump="bingo">🟩 Outdoors Bingo</button>
-      <button type="button" class="pill-button" data-visited-jump="diagnostics">🧰 Diagnostics, Sync and Clean Up</button>
+      <button type="button" class="pill-button" data-visited-jump="diagnostics" data-advanced-only="true">🧰 Diagnostics, Sync and Clean Up</button>
     </div>
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories" hidden>
-    <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="true" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section">🌲 Outdoors</button>
-    <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section">🎬 Entertainment</button>
-    <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section">🍽️ Food &amp; Drink</button>
-    <button id="visitedProgressTab-retail" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-retail" aria-selected="false" data-progress-subtab="retail" aria-label="Open Retail section" title="Open Retail section">🛍️ Retail</button>
-    <button id="visitedProgressTab-wildlife-animals" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-wildlife-animals" aria-selected="false" data-progress-subtab="wildlife-animals" aria-label="Open Wildlife and Animals section" title="Open Wildlife and Animals section">🦌 Wildlife &amp; Animals</button>
-    <button id="visitedProgressTab-regional-festivals" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-regional-festivals" aria-selected="false" data-progress-subtab="regional-festivals" aria-label="Open Regional Festivals section" title="Open Regional Festivals section">🎉 Regional Festivals</button>
-    <button id="visitedProgressTab-bike-trails" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-bike-trails" aria-selected="false" data-progress-subtab="bike-trails" aria-label="Open Bike Trails section" title="Open Bike Trails section">🚴 Bike Trails</button>
+    <button id="visitedProgressTab-all-locations" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-all-locations" aria-selected="true" data-progress-subtab="all-locations" aria-label="Open All Locations section" title="Open All Locations section">🗺️ All Locations</button>
+    <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="false" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section" data-advanced-only="true">🌲 Outdoors</button>
+    <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section" data-advanced-only="true">🎬 Entertainment</button>
+    <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section" data-advanced-only="true">🍽️ Food &amp; Drink</button>
+    <button id="visitedProgressTab-retail" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-retail" aria-selected="false" data-progress-subtab="retail" aria-label="Open Retail section" title="Open Retail section" data-advanced-only="true">🛍️ Retail</button>
+    <button id="visitedProgressTab-wildlife-animals" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-wildlife-animals" aria-selected="false" data-progress-subtab="wildlife-animals" aria-label="Open Wildlife and Animals section" title="Open Wildlife and Animals section" data-advanced-only="true">🦌 Wildlife &amp; Animals</button>
+    <button id="visitedProgressTab-regional-festivals" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-regional-festivals" aria-selected="false" data-progress-subtab="regional-festivals" aria-label="Open Regional Festivals section" title="Open Regional Festivals section" data-advanced-only="true">🎉 Regional Festivals</button>
+    <button id="visitedProgressTab-bike-trails" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-bike-trails" aria-selected="false" data-progress-subtab="bike-trails" aria-label="Open Bike Trails section" title="Open Bike Trails section" data-advanced-only="true">🚴 Bike Trails</button>
   </div>
   <div id="visitedSubTabBlockerWarning" class="visited-subtab-blocker-warning" role="status" aria-live="polite" hidden></div>
 
   <div id="visitedSubTabAnnouncer" class="visited-sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
-  <div id="visitedProgressPane-outdoors" class="visited-progress-pane is-active" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors">
+  <div id="visitedProgressPane-all-locations" class="visited-progress-pane is-active" data-progress-pane="all-locations" role="tabpanel" aria-labelledby="visitedProgressTab-all-locations">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
+      <div class="card-header">
+        <div class="card-title">🗺️ All Locations</div>
+        <div class="card-subtitle">Browse all saved location tables together in one simplified daily-use view.</div>
+      </div>
+      <div class="visited-empty">
+        <div id="visitedSubtabStatus-all-locations" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">All Locations data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while All Locations loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-all-locations" title="Explore all saved locations" data-tooltip="Explore all saved locations">Explore Locations</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-explorer-newtab-all-locations" title="Open Explore Locations in a new tab" data-tooltip="Open Explore in new tab" aria-label="Open Explore Locations in a new tab">↗</button>
+          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-city-explorer-all-locations" title="Open City Explorer for all locations" data-tooltip="Open City Explorer for all locations">City Explorer</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-city-explorer-newtab-all-locations" title="Open City Explorer (All Locations) in a new tab" data-tooltip="Open City Explorer in new tab" aria-label="Open City Explorer (All Locations) in a new tab">↗</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row ui-section-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-all-locations" title="Back to All Locations" data-tooltip="Back to All Locations">← Back to All Locations</button>
+          <div class="visited-view-header-copy ui-section-header-copy">
+            <div class="card-title">🗺️ Explore All Locations</div>
+            <div class="card-subtitle">Combined directory sourced from <code>Nature_Locations.xlsx</code>, <code>Entertainment_Locations.xlsx</code>, and <code>Retail_Food_and_Drink.xlsx</code> excluding Festivals and Bike Trails.</div>
+          </div>
+        </div>
+        <div class="visited-explorer-basic-filter">
+          <input id="visitedExplorerSearch-all-locations" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search all locations" />
+          <div id="visitedExplorerTagBar-all-locations" class="visited-explorer-tag-bar" role="group" aria-label="Quick tag filters"></div>
+        </div>
+        <details class="visited-explorer-advanced-filters">
+          <summary class="visited-explorer-advanced-filters-summary ui-section-toggle-btn">⚙️ Advanced Filters</summary>
+          <div class="visited-explorer-advanced-filter-body">
+            <select id="visitedExplorerSort-all-locations" class="filter-select" aria-label="Sort all locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+            <select id="visitedExplorerState-all-locations" class="filter-select" aria-label="Filter all locations by state"><option value="all">State: All</option></select>
+            <select id="visitedExplorerCity-all-locations" class="filter-select" aria-label="Filter all locations by city"><option value="all">City: All</option></select>
+          </div>
+        </details>
+        <div id="visitedExplorerMeta-all-locations" class="card-subtitle" style="margin-top:8px;">Loading all locations...</div>
+      </div>
+      <div id="visitedExplorerList-all-locations" class="adventure-cards-grid" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="visitedProgressPane-outdoors" class="visited-progress-pane" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors" hidden>
     <!-- Simple intro card matching other Adventure Challenge sub-tabs -->
     <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
@@ -410,7 +458,7 @@
       </div>
     </div>
   </div>
-  <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details ui-diagnostics" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">
+  <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details ui-diagnostics" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;" data-advanced-only="true">
     <summary class="visited-diagnostics-summary visited-collapsible-summary ui-section-header-row ui-section-toggle-btn" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
       <span class="visited-diagnostics-summary-copy">
         <span id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</span>

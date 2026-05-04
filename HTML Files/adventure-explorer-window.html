@@ -479,6 +479,7 @@
 
     /* ── Configuration ──────────────────────────────────────────────── */
     const SUBTAB_LABELS = {
+      'all-locations': 'All Locations',
       outdoors: 'Outdoors',
       entertainment: 'Entertainment',
       'food-drink': 'Food & Drink',
@@ -489,6 +490,7 @@
     };
 
     const SUBTAB_ICONS = {
+      'all-locations': '🗺️',
       outdoors: '🌿',
       entertainment: '🎭',
       'food-drink': '🍽️',
@@ -499,6 +501,14 @@
     };
 
     const SUBTAB_SOURCES = {
+      'all-locations': [
+        { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' },
+        { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' },
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' }
+      ],
       outdoors: [
         { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' }
       ],

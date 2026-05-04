@@ -7,6 +7,7 @@
  *  3. target controls are scoped to their relevant tab.
  */
 const { test, expect } = require('./reliability-test');
+const { setAppMode } = require('./playwright-helpers');
 
 const EXPECTED_TARGET_IDS = [
   'nature_locations',
@@ -318,6 +319,7 @@ async function assertGraphGpsPayloadAndReread(page, options) {
 test.describe('Edit Mode – global header button', () => {
   test('header contains #globalEditModeBtn with correct label and handler', async ({ page }) => {
     await page.goto('/');
+    await setAppMode(page, 'advanced');
     const btn = page.locator('#globalEditModeBtn');
     await expect(btn).toBeVisible();
     await expect(btn).toHaveText(/Edit Mode/i);

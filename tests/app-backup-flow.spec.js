@@ -1,5 +1,5 @@
 const { test, expect } = require('./reliability-test');
-const { activateFooterAction } = require('./playwright-helpers');
+const { activateFooterAction, setAppMode } = require('./playwright-helpers');
 
 test.describe('App backup flow', () => {
   async function openAppBackup(page) {
@@ -42,6 +42,7 @@ test.describe('App backup flow', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await setAppMode(page, 'advanced');
     await expect(page.locator('#appBackupBtn')).toBeVisible();
   });
 

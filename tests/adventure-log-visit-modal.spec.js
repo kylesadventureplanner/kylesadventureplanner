@@ -1,14 +1,11 @@
 const { test, expect } = require('./reliability-test');
+const { openAdventureChallenge, waitForEmbeddedFrameReady } = require('./playwright-helpers');
 
 test.describe('Adventure log visit window', () => {
   test('Log Visit fields are interactive and editable', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
 
-    await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
-
-    const logBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-visit-log-outdoors"]').first();
+    const logBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-visit-log-newtab-outdoors"]').first();
     await expect(logBtn).toBeVisible();
 
     const [popup] = await Promise.all([
@@ -41,33 +38,35 @@ test.describe('Adventure log visit window', () => {
   });
 
   test('challenge cards open qualifying-locations window and support Add Missing Qualifying Location', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
-
-    await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
     await expect(page.locator('#achv-root-outdoors')).toBeVisible({ timeout: 12000 });
 
     const qualifyingBtn = page.locator('#achv-root-outdoors [data-achv-view-qualifying][data-achv-scope="challenge"]').first();
     await expect(qualifyingBtn).toBeVisible();
 
-    const [popup] = await Promise.all([
-      page.waitForEvent('popup'),
-      qualifyingBtn.click()
-    ]);
-    await popup.waitForLoadState('domcontentloaded');
+    await qualifyingBtn.click();
 
-    await expect(popup.locator('#visitedVisitLogTitle')).toBeVisible({ timeout: 8000 });
-    await expect(popup.locator('#visitedVisitLogQualifierSummary')).toBeVisible({ timeout: 8000 });
-    await expect(popup.locator('#visitedVisitLogQualifierSummary')).toContainText(/filtering by category/i);
+    const visitLogFrame = page.locator('#visitedVisitLogFrame-outdoors').first();
+    const inlineFrame = await waitForEmbeddedFrameReady(visitLogFrame, {
+      srcPattern: /visit-log-window\.html/i,
+      bodySelector: 'body.embedded-visit-log',
+      minWidth: 250,
+      minHeight: 120,
+      timeout: 20000
+    });
 
-    const refreshBtn = popup.locator('#visitedVisitLogRefreshBtn');
+    await expect(inlineFrame.locator('#visitedVisitLogTitle')).toBeVisible({ timeout: 8000 });
+    await expect(inlineFrame.locator('#visitedVisitLogQualifierSummary')).toBeVisible({ timeout: 8000 });
+    await expect(inlineFrame.locator('#visitedVisitLogQualifierSummary')).toContainText(/filtering by category/i);
+
+    const refreshBtn = inlineFrame.locator('#visitedVisitLogRefreshBtn');
     await expect(refreshBtn).toBeVisible();
     await refreshBtn.click();
-    await expect(popup.locator('#visitedVisitLogHelp')).toContainText(/Refreshed qualifying locations/i, { timeout: 10000 });
+    await expect(inlineFrame.locator('#visitedVisitLogHelp')).toContainText(/Refreshed qualifying locations/i, { timeout: 10000 });
 
-    const addMissingBtn = popup.locator('#visitedVisitLogAddMissingBtn');
+    const addMissingBtn = inlineFrame.locator('#visitedVisitLogAddMissingBtn');
     await expect(addMissingBtn).toBeVisible();
     await addMissingBtn.click();
+    await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="edit-mode"]').first()).toBeVisible({ timeout: 10000 });
   });
 });

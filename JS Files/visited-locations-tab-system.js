@@ -136,8 +136,10 @@
   const CATALOG_INITIAL_LIMIT = 60;
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
-  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
+  const PROGRESS_SUBTAB_KEYS = ['all-locations', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
+  const DAILY_VISIBLE_PROGRESS_SUBTAB_KEYS = ['all-locations'];
   const PROGRESS_SUBTAB_STATUS_LABELS = {
+    'all-locations': 'All Locations',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food & Drink',
@@ -147,6 +149,7 @@
     'bike-trails': 'Bike Trails'
   };
   const PROGRESS_SUBTAB_EXPLORE_LABELS = {
+    'all-locations': 'All Locations',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food & Drink',
@@ -156,6 +159,7 @@
     'bike-trails': 'Bike Trails'
   };
   const CITY_EXPLORER_PREFILTERS = {
+    'all-locations': { tag: 'all-locations', label: 'All Locations' },
     outdoors: { tag: 'hiking', label: 'Outdoors' },
     entertainment: { tag: 'entertainment', label: 'Entertainment' },
     'food-drink': { tag: 'restaurant', label: 'Food & Drink' },
@@ -168,6 +172,7 @@
   const EXPLORER_WORKBOOK_PREFIXES = ['Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/', ''];
   const VISIT_LOG_MEDIA_ROOT_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/Visit_Photos';
   const VISIT_LOG_MEDIA_SUBTAB_FOLDERS = {
+    'all-locations': 'All_Locations',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food_and_Drink',
@@ -204,6 +209,20 @@
     lastVisitedAt: ['last visited', 'visited at', 'last visit date']
   };
   const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
+    'all-locations': {
+      key: 'all-locations',
+      openAction: 'open-explorer-all-locations',
+      closeAction: 'close-explorer-all-locations',
+      emptyLabel: 'locations',
+      sources: [
+        { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' },
+        { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' },
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' }
+      ]
+    },
     outdoors: {
       key: 'outdoors',
       openAction: 'open-explorer-outdoors',
@@ -296,7 +315,7 @@
         skipped: false,
         reason: ''
       },
-     activeProgressSubTab: 'outdoors',
+     activeProgressSubTab: 'all-locations',
      activeOverviewView: 'main',
      weatherMode: 'auto',
      searchText: '',
@@ -356,6 +375,34 @@
     return Boolean(state.tracerEnabled || state.diagnosticsEnabled);
   }
 
+  function getCurrentAppModeSafe() {
+    if (typeof window.getAppMode === 'function') {
+      return window.getAppMode() === 'advanced' ? 'advanced' : 'daily';
+    }
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily';
+  }
+
+  function isAdvancedAppMode() {
+    return getCurrentAppModeSafe() === 'advanced';
+  }
+
+  function getAvailableProgressSubtabKeys() {
+    return isAdvancedAppMode() ? PROGRESS_SUBTAB_KEYS.slice() : DAILY_VISIBLE_PROGRESS_SUBTAB_KEYS.slice();
+  }
+
+  function getDefaultProgressSubtabKey() {
+    return getAvailableProgressSubtabKeys()[0] || 'all-locations';
+  }
+
+  function isProgressSubtabAvailable(tabKey) {
+    return getAvailableProgressSubtabKeys().includes(String(tabKey || '').trim());
+  }
+
+  function normalizeProgressSubtabKey(tabKey) {
+    var key = String(tabKey || '').trim();
+    return isProgressSubtabAvailable(key) ? key : getDefaultProgressSubtabKey();
+  }
+
   function logVisitedDiagnostics(...args) {
     if (!shouldLogVisitedDiagnostics()) return;
     console.log(...args);
@@ -377,14 +424,30 @@
 
   function getVisitedSubTabLabel(rawLabel) {
     const text = String(rawLabel || '').trim().replace(/^[^A-Za-z0-9]+/, '').trim();
-    return text || 'Outdoors';
+    return text || 'All Locations';
+  }
+
+  function updateVisitedJumpLinksVisibility(root) {
+    if (!root) return;
+    const jumpLinks = root.querySelector('.visited-jump-links');
+    if (!jumpLinks) return;
+    const activeKey = normalizeProgressSubtabKey(state.activeProgressSubTab);
+    const explorerState = getExplorerState(activeKey);
+    const hideJumpLinks = activeKey === 'all-locations'
+      || explorerState.view === 'city-explorer'
+      || explorerState.view === 'explorer'
+      || explorerState.view === 'explorer-details'
+      || explorerState.view === 'visit-log';
+    jumpLinks.hidden = hideJumpLinks;
+    jumpLinks.setAttribute('aria-hidden', hideJumpLinks ? 'true' : 'false');
+    jumpLinks.style.display = hideJumpLinks ? 'none' : '';
   }
 
   function updateVisitedChallengeTitle(root) {
     if (!root) return;
     const titleEl = root.querySelector('#visitedChallengeTitle');
     if (!titleEl) return;
-    const active = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
+    const active = normalizeProgressSubtabKey(state.activeProgressSubTab);
     const activeButton = getProgressSubTabButtons(root).find((btn) => btn.getAttribute('data-progress-subtab') === active);
     const label = getVisitedSubTabLabel(activeButton ? activeButton.textContent : active);
     titleEl.textContent = `Adventure Challenge - ${label}`;
@@ -489,11 +552,16 @@
 
    function syncProgressSubTabs(root) {
      if (!root) return;
-     const active = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
+     const availableKeys = getAvailableProgressSubtabKeys();
+     const active = normalizeProgressSubtabKey(state.activeProgressSubTab);
+     state.activeProgressSubTab = active;
 
      getProgressSubTabButtons(root).forEach((btn) => {
        const tabKey = btn.getAttribute('data-progress-subtab');
-       const isActive = tabKey === active;
+        const isAvailable = availableKeys.includes(tabKey);
+        const isActive = isAvailable && tabKey === active;
+        btn.hidden = !isAvailable;
+        btn.setAttribute('aria-hidden', isAvailable ? 'false' : 'true');
        btn.classList.toggle('active', isActive);
        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
        btn.setAttribute('tabindex', isActive ? '0' : '-1');
@@ -506,7 +574,8 @@
 
      root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
        const paneKey = pane.getAttribute('data-progress-pane');
-       const isActive = paneKey === active;
+        const isAvailable = availableKeys.includes(paneKey);
+        const isActive = isAvailable && paneKey === active;
        pane.classList.toggle('is-active', isActive);
        pane.hidden = !isActive;
        pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
@@ -520,6 +589,7 @@
      });
 
       updateVisitedChallengeTitle(root);
+      updateVisitedJumpLinksVisibility(root);
 
       syncVisitedSubTabDock(root);
 
@@ -541,7 +611,7 @@
       state.activeOverviewView = 'main';
       syncVisitedOverviewView(root);
     }
-    state.activeProgressSubTab = PROGRESS_SUBTAB_KEYS.includes(tabKey) ? tabKey : 'outdoors';
+    state.activeProgressSubTab = normalizeProgressSubtabKey(tabKey);
     syncProgressSubTabs(root);
     scheduleVisitedSubtabCtaOrderFinalization(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
@@ -552,7 +622,7 @@
   }
 
   function jumpToVisitedSection(targetKey) {
-    const key = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
+    const key = normalizeProgressSubtabKey(state.activeProgressSubTab);
     const target = String(targetKey || '').trim();
     const sectionIdByTarget = {
       categories: `achv-section-${key}-category-progression`,
@@ -1001,7 +1071,7 @@
       const batchBtn = document.querySelector(`[data-visited-subtab-action="${batchAction}"]`);
       if (exploreBtn) {
         exploreBtn.classList.add('visited-subtab-action-btn--explore');
-        exploreBtn.textContent = `🔎 Explore ${label}`;
+        exploreBtn.textContent = subtabKey === 'all-locations' ? '🔎 Explore Locations' : `🔎 Explore ${label}`;
         if (subtabKey === 'bike-trails') {
           const bikeCount = (state.latestLocations || []).filter((item) => item && item.sourceType === 'bike').length;
           exploreBtn.setAttribute('data-explore-count', bikeCount > 0 ? String(bikeCount) : '');
@@ -1916,6 +1986,10 @@
     return subTabs ? Array.from(subTabs.querySelectorAll('[data-progress-subtab]')) : [];
   }
 
+  function getVisibleProgressSubTabButtons(root) {
+    return getProgressSubTabButtons(root).filter((button) => !button.hidden && button.getAttribute('aria-hidden') !== 'true');
+  }
+
   function bindProgressSubTabButtons(root) {
     const subTabs = getVisitedSubTabsElement(root);
     if (!root || !subTabs || subTabs.dataset.progressSubTabBound === '1') return;
@@ -1943,7 +2017,7 @@
       const currentTabBtn = closestFromEventTarget(event.target, '[data-progress-subtab]');
       if (!currentTabBtn || !subTabs.contains(currentTabBtn)) return;
 
-      const buttons = getProgressSubTabButtons(root);
+      const buttons = getVisibleProgressSubTabButtons(root);
       if (buttons.length === 0) return;
       const index = buttons.indexOf(currentTabBtn);
       if (index < 0) return;
@@ -4593,22 +4667,13 @@
     const explorerState = getExplorerState(subtabKey);
     const nextView = String(view || 'overview').trim();
     explorerState.view = nextView || 'overview';
-    const jumpLinks = root ? root.querySelector('.visited-jump-links') : null;
-    if (jumpLinks) {
-      const hideJumpLinks = explorerState.view === 'city-explorer'
-        || explorerState.view === 'explorer'
-        || explorerState.view === 'explorer-details'
-        || explorerState.view === 'visit-log';
-      jumpLinks.hidden = hideJumpLinks;
-      jumpLinks.setAttribute('aria-hidden', hideJumpLinks ? 'true' : 'false');
-      jumpLinks.style.display = hideJumpLinks ? 'none' : '';
-    }
     pane.querySelectorAll('[data-visited-subtab-view]').forEach((node) => {
       const nodeView = node.getAttribute('data-visited-subtab-view');
       const show = nodeView === explorerState.view;
       node.hidden = !show;
       node.setAttribute('aria-hidden', show ? 'false' : 'true');
     });
+    updateVisitedJumpLinksVisibility(root);
   }
 
   function workbookPathCandidates(workbook) {
@@ -8427,6 +8492,7 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const subtabCtaConfigs = [
+            { key: 'all-locations', exploreAction: 'open-explorer-all-locations', exploreLabel: 'Explore Locations', exploreTitle: 'Explore all saved locations', cityLabel: 'All Locations', editLabel: 'All Locations', undoTitle: 'No All Locations action to undo yet', omitVisitLog: true, omitEditMode: true },
         { key: 'outdoors', exploreAction: 'open-explorer-outdoors', exploreLabel: 'Explore Outdoors', exploreTitle: 'Explore the Outdoors', visitLogTitle: 'Log an Outdoors visit', cityLabel: 'Outdoors', editLabel: 'Outdoors', undoTitle: 'No Outdoors action to undo yet' },
         { key: 'entertainment', exploreAction: 'open-explorer-entertainment', exploreLabel: 'Explore Entertainment', exploreTitle: 'Explore Entertainment', visitLogTitle: 'Log an Entertainment visit', cityLabel: 'Entertainment', editLabel: 'Entertainment', undoTitle: 'No Entertainment action to undo yet' },
         { key: 'food-drink', exploreAction: 'open-explorer-food-drink', exploreLabel: 'Explore Food & Drink', exploreTitle: 'Explore Food and Drink', visitLogTitle: 'Log a Food and Drink visit', cityLabel: 'Food & Drink', editLabel: 'Food & Drink', undoTitle: 'No Food and Drink action to undo yet' },
@@ -8451,14 +8517,28 @@
             { action: `open-visit-log-newtab-${key}`, label: '↗', title: `Open Log a Visit (${String(config.cityLabel || key).trim()}) in a new tab` }
           );
         }
+        if (!config.omitEditMode) {
+          entries.push(
+            { action: `open-edit-mode-${key}`, label: 'Edit Mode', title: `Open Edit Mode for ${String(config.editLabel || key).trim()}` },
+            { action: `open-edit-mode-newtab-${key}`, label: '↗', title: `Open Edit Mode (${String(config.editLabel || key).trim()}) in a new tab` }
+          );
+        }
+        if (!config.omitBatchTags && !config.omitEditMode) {
+          entries.push({ action: `open-batch-tags-${key}`, label: 'Batch Tags', title: `Open Batch Tag Actions for ${String(config.editLabel || key).trim()}` });
+        }
         entries.push(
-          { action: `open-edit-mode-${key}`, label: 'Edit Mode', title: `Open Edit Mode for ${String(config.editLabel || key).trim()}` },
-          { action: `open-edit-mode-newtab-${key}`, label: '↗', title: `Open Edit Mode (${String(config.editLabel || key).trim()}) in a new tab` },
-          { action: `open-batch-tags-${key}`, label: 'Batch Tags', title: `Open Batch Tag Actions for ${String(config.editLabel || key).trim()}` },
           { action: `refresh-subtab-${key}`, label: 'Refresh Data', title: `Refresh ${String(config.editLabel || key).trim()} data` },
           { action: `undo-subtab-${key}`, label: '↶ Undo', title: String(config.undoTitle || `No ${key} action to undo yet`).trim() }
         );
         return entries.filter((entry) => entry.action);
+      };
+
+      const isAdvancedOnlyAction = (action) => action.startsWith('open-batch-tags-') || action.startsWith('refresh-subtab-') || action.startsWith('undo-subtab-');
+
+      const applyActionModeAttributes = (button, action) => {
+        if (!button) return;
+        if (isAdvancedOnlyAction(action)) button.setAttribute('data-advanced-only', 'true');
+        else button.removeAttribute('data-advanced-only');
       };
 
       const canonicalPlanBySubtab = subtabCtaConfigs.reduce((acc, config) => {
@@ -8505,7 +8585,11 @@
 
       const ensureButton = (container, action, label, title) => {
         if (!container) return false;
-        if (container.querySelector(`[data-visited-subtab-action="${action}"]`)) return false;
+        const existing = container.querySelector(`[data-visited-subtab-action="${action}"]`);
+        if (existing) {
+          applyActionModeAttributes(existing, action);
+          return false;
+        }
         const btn = document.createElement('button');
         btn.type = 'button';
         const isNewtab = action.includes('-newtab-');
@@ -8526,6 +8610,7 @@
         btn.setAttribute('data-tooltip', title);
         btn.setAttribute('aria-label', title);
         btn.textContent = label;
+        applyActionModeAttributes(btn, action);
         if (action.startsWith('undo-subtab-')) {
           btn.setAttribute('aria-disabled', 'true');
           btn.disabled = true;
@@ -8605,6 +8690,17 @@
     function bindControls() {
       const root = document.getElementById('visitedLocationsRoot');
       if (!root) return;
+
+      if (root.dataset.appModeBound !== '1') {
+        root.dataset.appModeBound = '1';
+        document.addEventListener('kap:app-mode-changed', () => {
+          const liveRoot = document.getElementById('visitedLocationsRoot');
+          if (!liveRoot) return;
+          syncProgressSubTabs(liveRoot);
+          renderSubtabStatusBars();
+          scheduleVisitedSubtabCtaOrderFinalization(liveRoot);
+        });
+      }
 
       // Fail-safe for stale cached tab markup: ensure requested CTA buttons always exist.
       const ctaSyncReport = ensureVisitedSubtabCtaButtons(root);

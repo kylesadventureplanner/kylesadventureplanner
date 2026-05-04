@@ -584,6 +584,10 @@
     color: #14532d;
   }
 
+  html[data-app-mode="daily"] #visitedLocationsRoot [data-advanced-only="true"] {
+    display: none !important;
+  }
+
   #visitedLocationsRoot .visited-subtab-action-row {
     margin-top: 12px;
     gap: 8px;

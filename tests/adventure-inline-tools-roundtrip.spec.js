@@ -1,5 +1,9 @@
 const { test, expect } = require('@playwright/test');
-const { activateFooterAction, waitForAdventureChallengeReady, waitForEmbeddedFrameReady } = require('./playwright-helpers');
+const {
+  openAdventureChallenge,
+  ensureAdventureSubtabSelected,
+  waitForEmbeddedFrameReady
+} = require('./playwright-helpers');
 
 const CITY_INLINE_TEST_KEY = 'city_inline_payload';
 const CITY_INLINE_TEST_DATA = [
@@ -42,18 +46,8 @@ test.describe('Adventure inline tools roundtrip', () => {
   }
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Use activateFooterAction to handle any overlay interception, then wait for
-    // the Adventure Challenge to be fully bound before each inline-tools test.
-    await activateFooterAction(page, page.locator('.app-tab-btn[data-tab="visited-locations"]'));
-    await waitForAdventureChallengeReady(page, 'outdoors');
-    // Ensure the outdoors subtab dock is active (it may already be selected by default).
-    const outdoorsDock = page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first();
-    const isSelected = await outdoorsDock.getAttribute('aria-selected').catch(() => null);
-    if (isSelected !== 'true') {
-      await activateFooterAction(page, outdoorsDock);
-      await waitForAdventureChallengeReady(page, 'outdoors');
-    }
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
+    await ensureAdventureSubtabSelected(page, 'outdoors');
   });
 
   test('City Explorer inline opens and back returns to overview', async ({ page }) => {

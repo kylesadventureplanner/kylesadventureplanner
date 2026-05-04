@@ -3307,6 +3307,12 @@
     // Values are arrays of exact sourceLabel strings for that subtab.
     // Add a new entry here whenever a new worksheet tab / data source is onboarded.
     const SUBTAB_SOURCE_MAP = {
+      'all-locations':        ['Nature_Locations.xlsx / Nature_Locations',
+                               'Entertainment_Locations.xlsx / General_Entertainment',
+                               'Retail_Food_and_Drink.xlsx / Coffee',
+                               'Retail_Food_and_Drink.xlsx / Restaurants',
+                               'Retail_Food_and_Drink.xlsx / Retail',
+                               'Entertainment_Locations.xlsx / Wildlife_Animals'],
       // Food & Drink subtabs
       'coffee':                ['Retail_Food_and_Drink.xlsx / Coffee'],
       'restaurants':           ['Retail_Food_and_Drink.xlsx / Restaurants'],
@@ -3333,6 +3339,7 @@
       'animals':               ['Entertainment_Locations.xlsx / Wildlife_Animals'],
     };
     const SOURCE_SUBTAB_LABELS = {
+      'all-locations': 'All Locations',
       outdoors: 'Outdoors',
       entertainment: 'Entertainment',
       'food-drink': 'Food & Drink',

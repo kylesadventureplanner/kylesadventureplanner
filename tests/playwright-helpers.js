@@ -1,5 +1,51 @@
 const { expect } = require('@playwright/test');
 
+function normalizeAppMode(mode) {
+  return String(mode || '').trim().toLowerCase() === 'advanced' ? 'advanced' : 'daily';
+}
+
+/**
+ * Seeds the persisted app mode before the next navigation.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'daily'|'advanced'} [mode='daily']
+ */
+async function primeAppModeStorage(page, mode = 'daily') {
+  const normalized = normalizeAppMode(mode);
+  await page.addInitScript((appMode) => {
+    try {
+      window.localStorage.setItem('kapAppModeV1', appMode);
+    } catch (_error) {
+      // Ignore storage bootstrap failures in test mode.
+    }
+  }, normalized);
+  return normalized;
+}
+
+/**
+ * Switches app mode on a live page and waits for the DOM attribute to update.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'daily'|'advanced'} [mode='daily']
+ */
+async function setAppMode(page, mode = 'daily') {
+  const normalized = normalizeAppMode(mode);
+  await page.evaluate((appMode) => {
+    try {
+      window.localStorage.setItem('kapAppModeV1', appMode);
+    } catch (_error) {
+      // Ignore storage write failures in test mode.
+    }
+    if (typeof window.setAppMode === 'function') {
+      window.setAppMode(appMode);
+      return;
+    }
+    document.documentElement.setAttribute('data-app-mode', appMode);
+  }, normalized);
+  await expect.poll(() => page.evaluate(() => String(document.documentElement.getAttribute('data-app-mode') || ''))).toBe(normalized);
+  return normalized;
+}
+
 /**
  * Shared Playwright helpers used across smoke / integration specs.
  */
@@ -48,10 +94,10 @@ async function activateFooterAction(page, locator) {
  * interactive.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} [subtabKey='outdoors']
+ * @param {string} [subtabKey='all-locations']
  */
-async function waitForAdventureChallengeReady(page, subtabKey = 'outdoors') {
-  const safeSubtabKey = String(subtabKey || 'outdoors');
+async function waitForAdventureChallengeReady(page, subtabKey = 'all-locations') {
+  const safeSubtabKey = String(subtabKey || 'all-locations');
   await expect(page.locator('#visitedLocationsRoot')).toBeVisible({ timeout: 15000 });
   await page.waitForFunction((key) => {
     const root = document.getElementById('visitedLocationsRoot');
@@ -65,6 +111,60 @@ async function waitForAdventureChallengeReady(page, subtabKey = 'outdoors') {
     return bound && paneVisible && dockVisible;
   }, safeSubtabKey, { timeout: 15000 });
   await expect(page.locator(`#visitedProgressPane-${safeSubtabKey}`)).toBeVisible({ timeout: 15000 });
+}
+
+/**
+ * Opens Adventure Challenge using the requested app mode and waits for a target
+ * subtab to become interactive.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{ mode?: 'daily'|'advanced', subtabKey?: string }} [options]
+ */
+async function openAdventureChallenge(page, options = {}) {
+  const mode = normalizeAppMode(options.mode || 'daily');
+  const subtabKey = String(options.subtabKey || (mode === 'advanced' ? 'outdoors' : 'all-locations')).trim();
+  const initialSubtabKey = 'all-locations';
+  await primeAppModeStorage(page, mode);
+  await page.goto('/');
+  await setAppMode(page, mode);
+  await activateFooterAction(page, page.locator('.app-tab-btn[data-tab="visited-locations"]'));
+  await waitForAdventureChallengeReady(page, initialSubtabKey);
+  if (subtabKey && subtabKey !== initialSubtabKey) {
+    await ensureAdventureSubtabSelected(page, subtabKey);
+  }
+  return subtabKey;
+}
+
+/**
+ * Ensures an Adventure subtab is selected and ready.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} subtabKey
+ */
+async function ensureAdventureSubtabSelected(page, subtabKey) {
+  const safeSubtabKey = String(subtabKey || '').trim();
+  const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${safeSubtabKey}"]`).first();
+  await expect(dockButton).toBeVisible({ timeout: 15000 });
+  const isSelected = await dockButton.getAttribute('aria-selected').catch(() => null);
+  if (isSelected !== 'true') {
+    await activateFooterAction(page, dockButton);
+  }
+  await waitForAdventureChallengeReady(page, safeSubtabKey);
+  return dockButton;
+}
+
+/**
+ * Returns the visible Adventure subtab keys in dock order.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function readVisibleAdventureSubtabs(page) {
+  return page.evaluate(() => {
+    return Array.from(document.querySelectorAll('#appSubTabsSlot [data-progress-subtab]'))
+      .filter((node) => node instanceof HTMLElement && !node.hidden && node.getAttribute('aria-hidden') !== 'true' && node.offsetParent !== null)
+      .map((node) => String(node.getAttribute('data-progress-subtab') || '').trim())
+      .filter(Boolean);
+  });
 }
 
 /**
@@ -431,9 +531,14 @@ async function installVisitedExplorerSeedFixture(page) {
 }
 
 module.exports = {
+  primeAppModeStorage,
+  setAppMode,
   collapseErrorNotificationBar,
   activateFooterAction,
   waitForAdventureChallengeReady,
+  openAdventureChallenge,
+  ensureAdventureSubtabSelected,
+  readVisibleAdventureSubtabs,
   waitForAdventureSubtabView,
   openAdventureSubtabView,
   waitForAdventureJumpLinksState,

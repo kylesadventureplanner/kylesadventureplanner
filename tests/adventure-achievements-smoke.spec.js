@@ -1,4 +1,5 @@
 const { test, expect } = require('./reliability-test');
+const { openAdventureChallenge, primeAppModeStorage } = require('./playwright-helpers');
 
 const SUBTABS = [
   { key: 'outdoors', pane: '#visitedProgressPane-outdoors' },
@@ -18,9 +19,7 @@ const REQUIRED_SECTION_TEXT = [
 
 test.describe('Adventure achievements dashboard smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
   });
 
   SUBTABS.forEach(({ key, pane }) => {
@@ -138,9 +137,8 @@ test.describe('Adventure achievements dashboard smoke', () => {
       });
     });
 
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+    await primeAppModeStorage(page, 'advanced');
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
 
     await expect(page.locator('#visitedSubtabStatus-outdoors .visited-subtab-status-health')).toContainText(/Outdoors data:\s*ready/i, { timeout: 12000 });
     await expect(page.locator('#visitedSubtabStatus-outdoors [data-achv-sync-totals][data-achv-subtab="outdoors"]')).toHaveCount(0);

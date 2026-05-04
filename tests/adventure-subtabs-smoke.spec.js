@@ -1,11 +1,17 @@
 const { test, expect } = require('./reliability-test');
 const {
   activateFooterAction,
+  openAdventureChallenge,
+  ensureAdventureSubtabSelected,
+  readVisibleAdventureSubtabs,
+  setAppMode,
   waitForAdventureChallengeReady,
   waitForAdventureSubtabView,
   openAdventureSubtabView,
   waitForAdventureJumpLinksState
 } = require('./playwright-helpers');
+
+const ALL_SUBTAB_KEYS = ['all-locations', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
 
 const ADVENTURE_SUBTABS = [
   {
@@ -37,11 +43,33 @@ const ADVENTURE_SUBTABS = [
   }
 ];
 
-test.describe('Adventure Challenge new subtabs smoke', () => {
+test.describe('Adventure Challenge daily/advanced mode regression', () => {
+  test('daily mode defaults to All Locations and advanced mode restores the full subtab set', async ({ page }) => {
+    await openAdventureChallenge(page, { mode: 'daily', subtabKey: 'all-locations' });
+
+    await expect(page.locator('#appSubTabsSlot [data-progress-subtab="all-locations"]').first()).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#visitedProgressPane-all-locations')).toBeVisible();
+    await expect(page.locator('#visitedProgressPane-all-locations [data-visited-subtab-action="open-explorer-all-locations"]')).toContainText(/Explore Locations/i);
+    await expect(page.locator('#visitedLocationsRoot [data-visited-jump="diagnostics"]')).toBeHidden();
+
+    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(['all-locations']);
+
+    await setAppMode(page, 'advanced');
+    await ensureAdventureSubtabSelected(page, 'outdoors');
+
+    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(ALL_SUBTAB_KEYS);
+    await expect(page.locator('#visitedLocationsRoot [data-visited-jump="diagnostics"]')).toBeVisible();
+
+    await setAppMode(page, 'daily');
+    await waitForAdventureChallengeReady(page, 'all-locations');
+    await expect(page.locator('#appSubTabsSlot [data-progress-subtab="all-locations"]').first()).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(['all-locations']);
+  });
+});
+
+test.describe('Adventure Challenge advanced subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await activateFooterAction(page, page.locator('.app-tab-btn[data-tab="visited-locations"]'));
-    await waitForAdventureChallengeReady(page, 'outdoors');
+    await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
   });
 
   test('legacy top header controls are removed from Adventure Challenge', async ({ page }) => {
@@ -144,9 +172,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
 
   ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, logAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
-      const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
-      await expect(dockButton).toBeVisible();
-      await activateFooterAction(page, dockButton);
+      const dockButton = await ensureAdventureSubtabSelected(page, key);
 
       await expect(dockButton).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
       await waitForAdventureChallengeReady(page, key);

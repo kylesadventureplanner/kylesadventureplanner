@@ -1,20 +1,20 @@
 {
-  "generatedAt": "2026-05-04T00:10:31.877Z",
+  "generatedAt": "2026-05-04T18:37:50.206Z",
   "pass": true,
   "startupSamplesMs": [
-    102,
-    103,
-    101,
-    101,
-    72,
-    103,
-    67,
-    104,
-    100,
-    105,
-    109
+    111,
+    115,
+    115,
+    110,
+    60,
+    114,
+    65,
+    114,
+    112,
+    117,
+    118
   ],
-  "startupMsP95": 109,
+  "startupMsP95": 118,
   "firstClickChecks": 3,
   "firstClickSuccesses": 3,
   "firstClickSuccessRate": 1,
@@ -25,7 +25,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-05-04T00:10:32.934Z"
+      "at": "2026-05-04T18:37:51.241Z"
     },
     {
       "name": "first-click:nature-run",
@@ -33,7 +33,7 @@
       "detail": {
         "runActive": true
       },
-      "at": "2026-05-04T00:10:34.308Z"
+      "at": "2026-05-04T18:37:52.547Z"
     },
     {
       "name": "first-click:bike-edit-mode",
@@ -43,10 +43,10 @@
         "editModeViewActive": true,
         "activeProgressSubTab": "bike-trails"
       },
-      "at": "2026-05-04T00:10:35.218Z"
+      "at": "2026-05-04T18:37:54.077Z"
     },
     {
-      "name": "legacy-bike-tab-url:routes-to-adventure-bike-subtab",
+      "name": "legacy-bike-tab-url:bike-tools-reachable",
       "passed": true,
       "detail": {
         "activePrimaryTab": "visited-locations",
@@ -54,17 +54,17 @@
         "tabParam": "visited-locations",
         "subtabParam": "bike-trails"
       },
-      "at": "2026-05-04T00:10:35.832Z"
+      "at": "2026-05-04T18:37:54.955Z"
     },
     {
-      "name": "outdoors-explorer-url:routes-to-explorer-view",
+      "name": "all-locations-explorer-url:routes-to-explorer-view",
       "passed": true,
       "detail": {
         "activePrimaryTab": "visited-locations",
-        "outdoorsSelected": true,
+        "allLocationsSelected": true,
         "explorerViewVisible": true
       },
-      "at": "2026-05-04T00:10:36.432Z"
+      "at": "2026-05-04T18:37:55.556Z"
     },
     {
       "name": "probe:hidden-overlay-detected",
@@ -73,7 +73,7 @@
         "blockedPoints": 5,
         "reason": ""
       },
-      "at": "2026-05-04T00:10:37.381Z"
+      "at": "2026-05-04T18:37:56.610Z"
     },
     {
       "name": "overlay:stale-row-detail-cleared",
@@ -82,7 +82,7 @@
         "explorerActive": true,
         "modalHidden": true
       },
-      "at": "2026-05-04T00:10:39.113Z"
+      "at": "2026-05-04T18:37:57.728Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -111,7 +111,7 @@
           }
         ]
       },
-      "at": "2026-05-04T00:10:43.772Z"
+      "at": "2026-05-04T18:38:02.791Z"
     },
     {
       "name": "update-banner:version-and-telemetry",
@@ -128,7 +128,7 @@
           "updateBannerDismissClicked": 1
         }
       },
-      "at": "2026-05-04T00:10:44.580Z"
+      "at": "2026-05-04T18:38:03.693Z"
     }
   ]
 }

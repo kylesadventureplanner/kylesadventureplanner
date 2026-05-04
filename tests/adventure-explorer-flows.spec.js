@@ -1,6 +1,11 @@
 const { test, expect } = require('./reliability-test');
+const {
+  openAdventureChallenge,
+  ensureAdventureSubtabSelected
+} = require('./playwright-helpers');
 
 const EXPLORER_CASES = [
+  { key: 'all-locations', label: 'All Locations', mode: 'daily', openAction: 'open-explorer-all-locations', closeAction: 'close-explorer-all-locations' },
   { key: 'outdoors', label: 'Outdoors', openAction: 'open-explorer-outdoors', closeAction: 'close-explorer-outdoors' },
   { key: 'entertainment', label: 'Entertainment', openAction: 'open-explorer-entertainment', closeAction: 'close-explorer-entertainment' },
   { key: 'food-drink', label: 'Food & Drink', openAction: 'open-explorer-food-drink', closeAction: 'close-explorer-food-drink' },
@@ -10,15 +15,10 @@ const EXPLORER_CASES = [
 ];
 
 test.describe('Adventure explorer open/close flows', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
-    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
-  });
-
-  EXPLORER_CASES.forEach(({ key, label, openAction, closeAction }) => {
+  EXPLORER_CASES.forEach(({ key, label, mode = 'advanced', openAction, closeAction }) => {
     test(`explorer flow: ${label}`, async ({ page }) => {
-      await page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first().click();
+      await openAdventureChallenge(page, { mode, subtabKey: key });
+      await ensureAdventureSubtabSelected(page, key);
       await expect(page.locator(`#visitedProgressPane-${key}`)).toBeVisible();
 
       const openBtn = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${openAction}"]`).first();

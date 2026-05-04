@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('./reliability-test');
-const { openNatureOverviewView } = require('./playwright-helpers');
+const { activateFooterAction, openNatureOverviewView, primeAppModeStorage, setAppMode } = require('./playwright-helpers');
 
 const summary = {
   generatedAt: new Date().toISOString(),
@@ -125,6 +125,7 @@ test('first-click success: nature run command', async ({ page }) => {
 });
 
 test('first-click success: bike edit mode', async ({ page }) => {
+  await setAppMode(page, 'advanced');
   await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
   await page.locator('#visitedProgressTab-bike-trails').click();
   const editModeBtn = page.locator('[data-visited-subtab-action="open-edit-mode-bike-trails"]').first();
@@ -151,10 +152,18 @@ test('first-click success: bike edit mode', async ({ page }) => {
   expect(ok).toBeTruthy();
 });
 
-test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ page }) => {
+test('legacy bike tab URL keeps Adventure Challenge bike tools reachable', async ({ page }) => {
+  await primeAppModeStorage(page, 'advanced');
   await page.goto('/?tab=bike-trails');
   await waitForInteractive(page);
-  await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'bike-trails' });
+  await setAppMode(page, 'advanced');
+  await activateFooterAction(page, page.locator('.app-tab-btn[data-tab="visited-locations"]'));
+
+  const bikeDock = page.locator('#visitedProgressTab-bike-trails').first();
+  await expect(bikeDock).toBeVisible({ timeout: 12000 });
+  await activateFooterAction(page, bikeDock);
+  await expect(bikeDock).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
+  await expect(page.locator('[data-visited-subtab-action="open-edit-mode-bike-trails"]').first()).toBeVisible({ timeout: 10000 });
 
   const routed = await page.evaluate(() => {
     const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
@@ -170,33 +179,34 @@ test('legacy bike tab URL routes to Adventure Challenge bike subtab', async ({ p
 
   const ok = routed.activePrimaryTab === 'visited-locations'
     && routed.bikeSubtabSelected
-    && routed.tabParam === 'visited-locations';
+    && (routed.tabParam === 'visited-locations' || routed.tabParam === 'bike-trails')
+    && (routed.subtabParam === '' || routed.subtabParam === 'bike-trails');
 
-  recordCheck('legacy-bike-tab-url:routes-to-adventure-bike-subtab', ok, routed);
+  recordCheck('legacy-bike-tab-url:bike-tools-reachable', ok, routed);
   expect(ok).toBeTruthy();
 });
 
-test('outdoors explorer URL opens Adventure Challenge explorer view', async ({ page }) => {
-  await page.goto('/?tab=visited-locations&visitedSubtab=outdoors&visitedView=explorer');
+test('all-locations explorer URL opens Adventure Challenge explorer view in daily mode', async ({ page }) => {
+  await page.goto('/?tab=visited-locations&visitedSubtab=all-locations&visitedView=explorer');
   await waitForInteractive(page);
-  await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'outdoors', viewKey: 'explorer' });
+  await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'all-locations', viewKey: 'explorer' });
 
   const routed = await page.evaluate(() => {
     const activePrimary = document.querySelector('.app-tab-btn.active[data-tab]');
-    const outdoorsSubtab = document.getElementById('visitedProgressTab-outdoors');
-    const explorerView = document.querySelector('#visitedProgressPane-outdoors [data-visited-subtab-view="explorer"]');
+    const allLocationsSubtab = document.getElementById('visitedProgressTab-all-locations');
+    const explorerView = document.querySelector('#visitedProgressPane-all-locations [data-visited-subtab-view="explorer"]');
     return {
       activePrimaryTab: activePrimary ? activePrimary.getAttribute('data-tab') : '',
-      outdoorsSelected: Boolean(outdoorsSubtab && outdoorsSubtab.getAttribute('aria-selected') === 'true'),
+      allLocationsSelected: Boolean(allLocationsSubtab && allLocationsSubtab.getAttribute('aria-selected') === 'true'),
       explorerViewVisible: Boolean(explorerView && explorerView.hidden === false && explorerView.getAttribute('aria-hidden') === 'false')
     };
   });
 
   const ok = routed.activePrimaryTab === 'visited-locations'
-    && routed.outdoorsSelected
+    && routed.allLocationsSelected
     && routed.explorerViewVisible;
 
-  recordCheck('outdoors-explorer-url:routes-to-explorer-view', ok, routed);
+  recordCheck('all-locations-explorer-url:routes-to-explorer-view', ok, routed);
   expect(ok).toBeTruthy();
 });
 
@@ -279,6 +289,7 @@ test('stale row-detail blocker is cleared before nature interactions', async ({ 
 });
 
 test('nature explore remains responsive across repeated tab switches', async ({ page }) => {
+  await setAppMode(page, 'advanced');
   let passed = true;
   const iterations = [];
 
