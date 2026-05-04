@@ -45,6 +45,7 @@
   var CONCERTS_LOCATION_MODE_STORAGE_KEY = 'householdConcertsLocationModeV1';
   var CONCERTS_SETTINGS_STORAGE_KEY = 'householdConcertsSettingsV1';
   var NOTES_STORAGE_KEY = 'householdConcertsNotesV1';
+  var HISTORIC_EDIT_META_STORAGE_KEY = 'householdConcertsHistoricEditMetaV1';
   var GEOCODE_STORAGE_KEY = 'householdConcertsGeocodeCacheV1';
   var DISCOVERY_STORAGE_KEY = 'householdConcertsDiscoveryCacheV1';
   var NOT_INTERESTED_RECOMMENDATIONS_STORAGE_KEY = 'householdConcertsNotInterestedRecommendationsV1';
@@ -201,6 +202,7 @@
      discoveryBusyKey: '',
      location: restoreLocation(),
      localNotes: readJsonStorage(NOTES_STORAGE_KEY, {}),
+      historicEditMeta: readJsonStorage(HISTORIC_EDIT_META_STORAGE_KEY, {}),
      geocodeCache: readJsonStorage(GEOCODE_STORAGE_KEY, {}),
      discoveryCache: readJsonStorage(DISCOVERY_STORAGE_KEY, {}),
       notInterestedRecommendations: readJsonStorage(NOT_INTERESTED_RECOMMENDATIONS_STORAGE_KEY, {}),
@@ -662,10 +664,28 @@
     return uniqueStrings(merged);
   }
 
+  function excelSerialToIsoDate(serialValue) {
+    var numeric = Number(serialValue);
+    if (!Number.isFinite(numeric)) return '';
+    var wholeDays = Math.floor(numeric);
+    // Prevent treating plain years (e.g. 2024) as serials.
+    if (wholeDays < 20000 || wholeDays > 80000) return '';
+    var excelEpochUtc = Date.UTC(1899, 11, 30);
+    var utcMs = excelEpochUtc + (wholeDays * 24 * 60 * 60 * 1000);
+    var date = new Date(utcMs);
+    if (Number.isNaN(date.getTime())) return '';
+    return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('-');
+  }
+
   function toIsoDate(value) {
-    if (!value) return '';
+    if (!value && value !== 0) return '';
     var str = String(value).trim();
+    if (!str) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    if (/^\d+(?:\.\d+)?$/.test(str)) {
+      var excelIso = excelSerialToIsoDate(str);
+      if (excelIso) return excelIso;
+    }
     var date = new Date(str);
     if (Number.isNaN(date.getTime())) return '';
     return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
@@ -1893,6 +1913,60 @@
     return [normalizeKey(bandName), toIsoDate(concertDate), normalizeKey(venue)].join('::');
   }
 
+  function normalizeHistoricEditMetaEntry(entry) {
+    var source = entry && typeof entry === 'object' ? entry : {};
+    var editedAtValue = Number(source.editedAt);
+    return {
+      editedAt: Number.isFinite(editedAtValue) ? editedAtValue : 0,
+      note: String(source.note || '').trim()
+    };
+  }
+
+  function readHistoricEditMetaByNoteKey(noteKey) {
+    var key = String(noteKey || '').trim();
+    if (!key) return { editedAt: 0, note: '' };
+    return normalizeHistoricEditMetaEntry(state.historicEditMeta[key]);
+  }
+
+  function writeHistoricEditMetaByNoteKey(noteKey, meta) {
+    var key = String(noteKey || '').trim();
+    if (!key) return;
+    var normalized = normalizeHistoricEditMetaEntry(meta);
+    if (!normalized.editedAt && !normalized.note) {
+      delete state.historicEditMeta[key];
+    } else {
+      state.historicEditMeta[key] = normalized;
+    }
+    writeJsonStorage(HISTORIC_EDIT_META_STORAGE_KEY, state.historicEditMeta);
+  }
+
+  function removeHistoricEditMetaByNoteKey(noteKey) {
+    var key = String(noteKey || '').trim();
+    if (!key) return;
+    if (!Object.prototype.hasOwnProperty.call(state.historicEditMeta, key)) return;
+    delete state.historicEditMeta[key];
+    writeJsonStorage(HISTORIC_EDIT_META_STORAGE_KEY, state.historicEditMeta);
+  }
+
+  function isHistoricImportNote(noteText) {
+    return /^\s*imported from\s+/i.test(String(noteText || ''));
+  }
+
+  function isHistoricImportedConcert(concertLike) {
+    var concert = concertLike && typeof concertLike === 'object' ? concertLike : {};
+    if (isHistoricImportNote(concert.notes || '')) return true;
+    var noteKey = concertNoteKey(concert.bandName, concert.concertDate, concert.venue);
+    var historicMeta = readHistoricEditMetaByNoteKey(noteKey);
+    return !!historicMeta.editedAt;
+  }
+
+  function formatHistoricEditBadgeLabel(metaLike) {
+    var meta = normalizeHistoricEditMetaEntry(metaLike);
+    if (!meta.editedAt) return '';
+    var timeLabel = formatDateTimeShort(new Date(meta.editedAt));
+    return timeLabel ? ('Historic import edited ' + timeLabel) : 'Historic import edited';
+  }
+
   function normalizeAttendedBy(value) {
     var raw = String(value || '').trim();
     if (!raw) return 'Both';
@@ -2479,6 +2553,8 @@
     if (!bandName) return null;
     var key = concertNoteKey(bandName, concertDate, venue);
     var photoUrls = parsePhotoUrlsField(readValue(record, ['Photo_URL', 'Photo URL']));
+    var notes = String(readValue(record, ['Notes']) || state.localNotes[key] || '').trim();
+    var historicMeta = readHistoricEditMetaByNoteKey(key);
     return {
       id: key || ('attended-' + Math.random().toString(36).slice(2, 8)),
       bandKey: normalizeKey(bandName),
@@ -2491,7 +2567,10 @@
       photoUrls: photoUrls,
       videoUrl: String(readValue(record, ['Video_URL', 'Video URL']) || '').trim(),
       setlistUrl: String(readValue(record, ['Setlist_URL', 'Setlist URL']) || '').trim(),
-      notes: String(readValue(record, ['Notes']) || state.localNotes[key] || '').trim()
+      notes: notes,
+      __rowIndex: Number.isInteger(Number(record && record.__rowIndex)) ? Number(record.__rowIndex) : -1,
+      isHistoricImported: isHistoricImportNote(notes),
+      historicEditMeta: historicMeta
     };
   }
 
@@ -3073,9 +3152,18 @@
           var photoUrls = Array.isArray(concert.photoUrls) && concert.photoUrls.length
             ? concert.photoUrls
             : (concert.photoUrl ? [concert.photoUrl] : []);
+          var historicMeta = normalizeHistoricEditMetaEntry(concert.historicEditMeta || {});
+          var editedHistoricLabel = formatHistoricEditBadgeLabel(historicMeta);
+          var editedHistoricBadge = editedHistoricLabel
+            ? '<span class="household-concerts-history-badge" title="' + escapeHtml(editedHistoricLabel) + '">Edited Historic Entry</span>'
+            : '';
+          var editedHistoricNote = editedHistoricLabel
+            ? '<p class="household-concerts-entry-history-note">📝 ' + escapeHtml(editedHistoricLabel) + '</p>'
+            : '';
           return '<article class="household-concerts-entry-card">'
-            + '<div class="household-concerts-entry-head"><div><h4>' + escapeHtml(concert.bandName) + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue not set') + '</p></div><div class="household-concerts-rating">' + escapeHtml(formatRatingStars(concert.rating)) + '</div></div>'
+            + '<div class="household-concerts-entry-head"><div><h4>' + escapeHtml(concert.bandName) + ' ' + editedHistoricBadge + '</h4><p>' + escapeHtml(formatDate(concert.concertDate)) + ' • ' + escapeHtml(concert.venue || 'Venue not set') + '</p></div><div class="household-concerts-rating">' + escapeHtml(formatRatingStars(concert.rating)) + '</div></div>'
             + '<p class="household-concerts-muted">Attended by ' + escapeHtml(getAttendedByLabel(concert.attendedBy)) + '</p>'
+            + editedHistoricNote
             + (concert.notes ? '<p class="household-concerts-entry-note">' + escapeHtml(concert.notes) + '</p>' : '')
             + '<div class="household-concerts-link-row">'
             + photoUrls.map(function (photoUrl, idx) {
@@ -3085,7 +3173,7 @@
             + (concert.videoUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.videoUrl)) + '" target="_blank" rel="noopener noreferrer">Video</a>' : '')
             + (concert.setlistUrl ? '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(concert.setlistUrl)) + '" target="_blank" rel="noopener noreferrer">Setlist</a>' : '')
             + '</div>'
-            + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="duplicate-attended-concert" data-attended-id="' + escapeHtml(concert.id) + '">Copy Log</button></div>'
+            + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="edit-attended-concert" data-attended-id="' + escapeHtml(concert.id) + '">Edit Log</button><button type="button" class="pill-button" data-concert-action="duplicate-attended-concert" data-attended-id="' + escapeHtml(concert.id) + '">Copy Log</button></div>'
             + '</article>';
         }).join('')
         + '</section>';
@@ -5357,17 +5445,34 @@
 
      showParsingStatus(statusHtml, 'success');
 
-     // Apply parsed data to the underlying form after a brief delay
-     setTimeout(function() {
-       var formId = formType === 'attended' ? 'householdConcertsAttendedForm' : 'householdConcertsUpcomingForm';
-       var form = document.getElementById(formId);
+     var matchedBand = getBandByKey(result.data.bandName);
+     var attendedPrefill = {
+       bandName: result.data.bandName || '',
+       concertDate: result.data.date || '',
+       venue: result.data.venue || '',
+       rating: Number(result.data.rating) || 0,
+       attendedBy: result.data.attendedBy || 'Both',
+       videoUrl: result.data.videoUrl || '',
+       setlistUrl: result.data.setlistUrl || '',
+       notes: result.data.notes || ''
+     };
+     var upcomingPrefill = {
+       bandName: result.data.bandName || '',
+       concertDate: result.data.date || '',
+       venue: result.data.venue || '',
+       city: result.data.city || '',
+       state: result.data.state || ''
+     };
 
-       if (form) {
-         window.ConcertTextParser.applyParsedDataToForm(form, result);
-         setStatus('Concert details parsed and applied! Review and save when ready.', 'success');
-         closeModal();
+     setTimeout(function() {
+       closeModal();
+       if (formType === 'attended') {
+         openAttendedConcertForm(matchedBand, attendedPrefill);
+       } else {
+         openUpcomingConcertForm(matchedBand, upcomingPrefill);
        }
-     }, 800);
+       setStatus('Concert details parsed and applied. Review and save when ready.', 'success');
+     }, 400);
    }
 
    function showParsingStatus(message, tone) {
@@ -5405,13 +5510,18 @@
       var videoUrl = String(safePrefill.videoUrl || '').trim();
      var setlistUrl = String(safePrefill.setlistUrl || '').trim();
      var notes = String(safePrefill.notes || '').trim();
+      var editConcertId = String(safePrefill.attendedConcertId || safePrefill.id || '').trim();
+      var editRowIndex = Number.isInteger(Number(safePrefill.attendedRowIndex)) ? Number(safePrefill.attendedRowIndex) : -1;
+      var isEditing = !!editConcertId || editRowIndex >= 0;
       var photoTextareaValue = seededPhotoUrls.join('\n');
      var attendedBy = normalizeAttendedBy(safePrefill.attendedBy || 'Both');
      var bandOptions = buildAttendedBandOptionsHtml(bandName, '');
       var venueListId = 'householdConcertsVenueOptionsAttended';
      openModal(
-       '<div class="household-concerts-modal-head"><div><h3>Log Attended Concert</h3><p>Track the band, date, venue, star rating, photos, notes, and setlist links for a show you have seen.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+       '<div class="household-concerts-modal-head"><div><h3>' + (isEditing ? 'Update Concert Log' : 'Log Attended Concert') + '</h3><p>Track the band, date, venue, star rating, photos, notes, and setlist links for a show you have seen.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
        + '<form id="householdConcertsAttendedForm" class="household-concerts-form">'
+       + '<input type="hidden" name="Attended_Concert_Id" value="' + escapeHtml(editConcertId) + '">'
+       + '<input type="hidden" name="Attended_Row_Index" value="' + escapeHtml(editRowIndex >= 0 ? String(editRowIndex) : '') + '">'
        + formRow('Find Favorite Band', '<input id="householdConcertsAttendedBandSearch" type="search" placeholder="Type to filter favorite bands…" aria-label="Filter favorite bands for attended concert">')
        + formRow('Band', '<select name="Band_Name" required>' + bandOptions + '</select>')
        + formRow('Concert Date', '<input type="date" name="Concert_Date" required value="' + escapeHtml(concertDate) + '">')
@@ -5425,13 +5535,19 @@
         + formRow('Video URL', '<input name="Video_URL" placeholder="https://…" value="' + escapeHtml(videoUrl) + '">')
        + formRow('Setlist URL', '<input name="Setlist_URL" placeholder="https://…" value="' + escapeHtml(setlistUrl) + '">')
        + formRow('Notes', '<textarea name="Notes" rows="4" placeholder="Favorite moments, opening acts, sound quality, crowd, etc.">' + escapeHtml(notes) + '</textarea>')
-       + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">Save Concert Log</button></div>'
+       + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="open-text-parser" data-parser-form-type="attended">Parse from Text</button><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">' + (isEditing ? 'Update Concert Log' : 'Save Concert Log') + '</button></div>'
        + '</form>'
      );
    }
 
-     function openUpcomingConcertForm(band) {
-    var bandName = band && band.bandName ? band.bandName : '';
+     function openUpcomingConcertForm(band, prefill) {
+    var safePrefill = prefill && typeof prefill === 'object' ? prefill : {};
+    var bandName = String(safePrefill.bandName || (band && band.bandName) || '').trim();
+    var concertDate = toIsoDate(safePrefill.concertDate || '');
+    var venue = String(safePrefill.venue || '').trim();
+    var city = String(safePrefill.city || '').trim();
+    var stateName = String(safePrefill.state || '').trim();
+    var hasTickets = /^(yes|true|1)$/i.test(String(safePrefill.ticketsPurchased || ''));
     var bandOptions = state.favoriteBands.map(function (item) {
       var selected = normalizeText(item.bandName) === normalizeText(bandName) ? ' selected' : '';
       return '<option value="' + escapeHtml(item.bandName) + '"' + selected + '>' + escapeHtml(item.bandName) + '</option>';
@@ -5441,13 +5557,13 @@
       '<div class="household-concerts-modal-head"><div><h3>Add Upcoming Concert</h3><p>Store future shows, then use your location and distance slider to keep nearby opportunities front and center.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
       + '<form id="householdConcertsUpcomingForm" class="household-concerts-form">'
       + formRow('Band', '<select name="Band_Name" required><option value="">Choose a favorite band</option>' + bandOptions + '</select>')
-      + formRow('Concert Date', '<input type="date" name="Concert_Date" required>')
-      + formRow('Venue', '<input name="Venue" list="' + venueListId + '" required placeholder="Venue name"><small class="household-concerts-muted">Choose from saved venues or type a new one.</small>')
+      + formRow('Concert Date', '<input type="date" name="Concert_Date" required value="' + escapeHtml(concertDate) + '">')
+      + formRow('Venue', '<input name="Venue" list="' + venueListId + '" required placeholder="Venue name" value="' + escapeHtml(venue) + '"><small class="household-concerts-muted">Choose from saved venues or type a new one.</small>')
       + renderVenueDatalistHtml(venueListId)
-      + formRow('City', '<input name="City" required placeholder="City">')
-      + formRow('State', '<input name="State" required placeholder="State / Region">')
-      + formRow('Tickets Purchased', '<label><input type="checkbox" name="Tickets_Purchased" value="Yes"> We already purchased tickets</label>')
-      + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">Save Upcoming Concert</button></div>'
+      + formRow('City', '<input name="City" required placeholder="City" value="' + escapeHtml(city) + '">')
+      + formRow('State', '<input name="State" required placeholder="State / Region" value="' + escapeHtml(stateName) + '">')
+      + formRow('Tickets Purchased', '<label><input type="checkbox" name="Tickets_Purchased" value="Yes"' + (hasTickets ? ' checked' : '') + '> We already purchased tickets</label>')
+      + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="open-text-parser" data-parser-form-type="upcoming">Parse from Text</button><button type="button" class="pill-button" data-concert-action="close-modal">Cancel</button><button type="submit" class="pill-button pill-button-primary">Save Upcoming Concert</button></div>'
       + '</form>'
     );
   }
@@ -6001,6 +6117,18 @@
       return;
     }
     var record = serializeForm(form);
+    var editConcertId = String(record.Attended_Concert_Id || '').trim();
+    var editRowIndex = Number.isInteger(Number(record.Attended_Row_Index)) ? Number(record.Attended_Row_Index) : -1;
+    var previousConcert = editConcertId ? getAttendedConcertById(editConcertId) : null;
+    if (!previousConcert && editRowIndex >= 0) {
+      previousConcert = state.attendedConcerts.find(function (item) {
+        return Number(item && item.__rowIndex) === editRowIndex;
+      }) || null;
+    }
+    var previousNoteKey = previousConcert ? concertNoteKey(previousConcert.bandName, previousConcert.concertDate, previousConcert.venue) : '';
+    var previousHistoricMeta = readHistoricEditMetaByNoteKey(previousNoteKey);
+    delete record.Attended_Concert_Id;
+    delete record.Attended_Row_Index;
     record.Concert_Date = toIsoDate(record.Concert_Date);
     record.Attended_By = normalizeAttendedBy(record.Attended_By);
     record.Rating = String(Math.max(0, Math.min(5, Number(record.Rating) || 0)));
@@ -6020,16 +6148,49 @@
       }
     }
     record.Photo_URL = serializePhotoUrlsForStorage(combinedPhotoUrls);
+    var nextNoteKey = concertNoteKey(record.Band_Name, record.Concert_Date, record.Venue);
     try {
       var workbookPath = await findWorkbookPath();
-      await appendRecordToTable(workbookPath, ATTENDED_TABLE, record);
+      var isEdit = editRowIndex >= 0;
+      if (isEdit) {
+        await updateRecordInTableByIndex(workbookPath, ATTENDED_TABLE, editRowIndex, record);
+      } else {
+        await appendRecordToTable(workbookPath, ATTENDED_TABLE, record);
+      }
       if (record.Notes) {
         state.localNotes[concertNoteKey(record.Band_Name, record.Concert_Date, record.Venue)] = record.Notes;
         writeJsonStorage(NOTES_STORAGE_KEY, state.localNotes);
       }
-      state.attendedConcerts.unshift(parseAttendedConcert(record));
+      if (previousNoteKey && previousNoteKey !== concertNoteKey(record.Band_Name, record.Concert_Date, record.Venue)) {
+        delete state.localNotes[previousNoteKey];
+        writeJsonStorage(NOTES_STORAGE_KEY, state.localNotes);
+      }
+      if (previousNoteKey && previousNoteKey !== nextNoteKey) {
+        removeHistoricEditMetaByNoteKey(previousNoteKey);
+      }
+      if (isEdit && (isHistoricImportedConcert(previousConcert) || previousHistoricMeta.editedAt)) {
+        writeHistoricEditMetaByNoteKey(nextNoteKey, {
+          editedAt: Date.now(),
+          note: 'Updated via Edit Log'
+        });
+      }
+      if (isEdit) {
+        var updatedConcert = parseAttendedConcert(Object.assign({}, record, { __rowIndex: editRowIndex }));
+        var existingIndex = state.attendedConcerts.findIndex(function (item) {
+          return (editConcertId && String(item.id || '') === editConcertId)
+            || Number(item.__rowIndex) === editRowIndex;
+        });
+        if (updatedConcert && existingIndex >= 0) {
+          state.attendedConcerts[existingIndex] = updatedConcert;
+        } else if (updatedConcert) {
+          state.attendedConcerts.unshift(updatedConcert);
+        }
+      } else {
+        var appendedConcert = parseAttendedConcert(Object.assign({}, record, { __rowIndex: state.attendedConcerts.length }));
+        if (appendedConcert) state.attendedConcerts.unshift(appendedConcert);
+      }
       closeModal();
-      setStatus('Concert log saved for ' + record.Band_Name + '.', 'success');
+      setStatus((editRowIndex >= 0 ? 'Concert log updated for ' : 'Concert log saved for ') + record.Band_Name + '.', 'success');
       renderAll();
     } catch (error) {
       console.error('❌ Could not save attended concert:', error);
@@ -6682,6 +6843,12 @@
         case 'open-historic-finder':
           openHistoricFinderModal(($('householdConcertsSearchInput') || {}).value || ((resolveActiveBand() || {}).bandName || ''));
           break;
+        case 'open-text-parser':
+          openTextParserModal(String(target.getAttribute('data-parser-form-type') || '').trim() || 'attended');
+          break;
+        case 'parse-concert-text':
+          handleConcertTextParsing(String(target.getAttribute('data-parser-form-type') || '').trim() || 'attended');
+          break;
         case 'open-add-band-prefill': {
           var prefillName = String(target.getAttribute('data-band-name') || '').trim();
           openBandForm(buildSearchPrefill(prefillName, '', '', 'Historic finder prefill'));
@@ -6806,6 +6973,25 @@
             notes: sourceConcert.notes
           });
           setStatus('Copied concert log. Update the band (or any field) and save as a new entry.', 'info');
+          break;
+        }
+        case 'edit-attended-concert': {
+          var editConcert = getAttendedConcertById(target.getAttribute('data-attended-id'));
+          if (!editConcert) break;
+          openAttendedConcertForm(getBandByKey(editConcert.bandKey), {
+            attendedConcertId: editConcert.id,
+            attendedRowIndex: editConcert.__rowIndex,
+            bandName: editConcert.bandName,
+            concertDate: editConcert.concertDate,
+            venue: editConcert.venue,
+            attendedBy: editConcert.attendedBy,
+            rating: editConcert.rating,
+            photoUrls: editConcert.photoUrls,
+            photoUrl: editConcert.photoUrl,
+            videoUrl: editConcert.videoUrl,
+            setlistUrl: editConcert.setlistUrl,
+            notes: editConcert.notes
+          });
           break;
         }
         case 'open-add-upcoming':

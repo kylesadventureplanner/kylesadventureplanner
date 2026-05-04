@@ -599,32 +599,32 @@
 }
 
 #householdConcertsPane .household-concerts-band-cover {
-  height: 110px;
+  height: 84px;
   background: linear-gradient(135deg, #1e293b 0%, #4338ca 70%, #7c3aed 100%);
   background-size: cover;
   background-position: center;
 }
 
 #householdConcertsPane .household-concerts-band-card-body {
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   height: 100%;
 }
 
 #householdConcertsPane .household-concerts-band-header {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
-  min-height: 64px;
+  min-height: 52px;
 }
 
 #householdConcertsPane .household-concerts-band-logo,
 #householdConcertsPane .household-concerts-band-profile-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   object-fit: cover;
   border: 2px solid rgba(255,255,255,0.72);
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
@@ -642,7 +642,7 @@
 
 #householdConcertsPane .household-concerts-band-header h3 {
   margin: 0 0 4px;
-  font-size: 19px;
+  font-size: 17px;
   color: #0f172a;
 }
 
@@ -662,29 +662,29 @@
 
 #householdConcertsPane .household-concerts-band-meta {
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 #householdConcertsPane .household-concerts-band-stats {
-  min-height: 40px;
+  min-height: 30px;
 }
 
 #householdConcertsPane .household-concerts-stat-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 10px;
+  padding: 5px 9px;
   border-radius: 999px;
   background: #eef2ff;
   color: #3730a3;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 #householdConcertsPane .household-concerts-detail-line {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 #householdConcertsPane .household-concerts-detail-line strong {
@@ -697,24 +697,24 @@
 
 #householdConcertsPane .household-concerts-detail-line span {
   color: #334155;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 #householdConcertsPane .household-concerts-band-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 190px;
+  gap: 8px;
+  min-height: 132px;
 }
 
 #householdConcertsPane .household-concerts-tag-row--band-card,
 #householdConcertsPane .household-concerts-tag-display {
-  min-height: 28px;
+  min-height: 22px;
 }
 
 #householdConcertsPane .household-concerts-band-links-block {
-  min-height: 66px;
+  min-height: 44px;
 }
 
 #householdConcertsPane .household-concerts-band-actions {
@@ -797,6 +797,29 @@
   margin: 0;
   color: #64748b;
   font-size: 13px;
+}
+
+#householdConcertsPane .household-concerts-history-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+#householdConcertsPane .household-concerts-entry-history-note {
+  margin-top: 6px;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 #householdConcertsPane .household-concerts-search-actions {
