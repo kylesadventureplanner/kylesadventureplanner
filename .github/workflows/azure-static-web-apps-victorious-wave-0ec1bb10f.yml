@@ -98,8 +98,18 @@ jobs:
 
           DEPLOYMENT_TAG="${DEPLOYMENT_TAG}" DEPLOYED_AT_ISO="${DEPLOYED_AT_ISO}" node scripts/stamp-deployment-metadata.js
 
+          # Write a unique per-deploy marker file so verification can avoid CDN cache ambiguity.
+          mkdir -p deploy-tags
+          {
+            echo "deployment_tag=${DEPLOYMENT_TAG}"
+            echo "deployed_at_utc=${DEPLOYED_AT_ISO}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "sha=${GITHUB_SHA}"
+          } > "deploy-tags/${DEPLOYMENT_TAG}.txt"
+
           grep -n "const DEPLOYMENT_TAG" index.html
           grep -n "const DEPLOYED_AT_ISO" index.html
+          ls -la deploy-tags | cat
 
           {
             echo "- **Deployment tag:** ${DEPLOYMENT_TAG}"
@@ -306,13 +316,24 @@ jobs:
           MAX_ATTEMPTS=20
           SLEEP_SECONDS=30
           TAG_FOUND=false
+          DEPLOY_MARKER_URL="${APP_URL%/}/deploy-tags/${DEPLOYMENT_TAG}.txt"
+
+          echo "Deploy marker URL: ${DEPLOY_MARKER_URL}"
 
           echo "Waiting 30s for deployment to register before first probe..."
           sleep 30
 
           for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
             TS="$(date +%s)"
-            LIVE_HTML="$(curl -fsS "${APP_URL}?nocache=${TS}")"
+            LIVE_HTML="$(curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "${APP_URL}?nocache=${TS}")"
+
+            if curl -fsS -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "${DEPLOY_MARKER_URL}?nocache=${TS}" | grep -F "deployment_tag=${DEPLOYMENT_TAG}" >/dev/null 2>&1; then
+              TAG_FOUND=true
+              echo "::notice::Live app contains current deployment marker file for ${DEPLOYMENT_TAG} (attempt ${attempt}/${MAX_ATTEMPTS})"
+              echo "- **Live deployment marker check:** found deploy-tags/${DEPLOYMENT_TAG}.txt (attempt ${attempt}/${MAX_ATTEMPTS})" >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+
             if echo "${LIVE_HTML}" | grep -F "${DEPLOYMENT_TAG}" >/dev/null 2>&1; then
               TAG_FOUND=true
               echo "::notice::Live app contains current deployment tag: ${DEPLOYMENT_TAG} (attempt ${attempt}/${MAX_ATTEMPTS})"
@@ -320,7 +341,8 @@ jobs:
               break
             fi
 
-            echo "Attempt ${attempt}/${MAX_ATTEMPTS}: deployment tag ${DEPLOYMENT_TAG} not visible yet."
+            LIVE_TAG="$(printf '%s' "${LIVE_HTML}" | sed -n "s/.*const DEPLOYMENT_TAG = '\([^']*\)'.*/\1/p" | head -n 1)"
+            echo "Attempt ${attempt}/${MAX_ATTEMPTS}: deployment tag ${DEPLOYMENT_TAG} not visible yet (live_tag=${LIVE_TAG:-unknown})."
             if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
               sleep "${SLEEP_SECONDS}"
             fi
