@@ -1,15 +1,61 @@
 {
-  "generatedAt": "2026-05-04T21:21:41.532Z",
-  "pass": false,
+  "generatedAt": "2026-05-05T00:03:01.085Z",
+  "pass": true,
   "startupSamplesMs": [
-    115,
-    65
+    127,
+    118,
+    128,
+    121,
+    1009,
+    133,
+    87,
+    127,
+    129,
+    135,
+    120
   ],
-  "startupMsP95": 115,
-  "firstClickChecks": 0,
-  "firstClickSuccesses": 0,
-  "firstClickSuccessRate": 0,
+  "startupMsP95": 1009,
+  "firstClickChecks": 3,
+  "firstClickSuccesses": 3,
+  "firstClickSuccessRate": 1,
   "checks": [
+    {
+      "name": "first-click:nature-explore",
+      "passed": true,
+      "detail": {
+        "explorerActive": true
+      },
+      "at": "2026-05-05T00:03:02.279Z"
+    },
+    {
+      "name": "first-click:nature-run",
+      "passed": true,
+      "detail": {
+        "runActive": true
+      },
+      "at": "2026-05-05T00:03:03.936Z"
+    },
+    {
+      "name": "first-click:bike-edit-mode",
+      "passed": true,
+      "detail": {
+        "lastActionKey": "",
+        "editModeViewActive": true,
+        "activeProgressSubTab": "bike-trails"
+      },
+      "at": "2026-05-05T00:03:06.275Z"
+    },
+    {
+      "name": "legacy-bike-tab-url:bike-tools-reachable",
+      "passed": true,
+      "detail": {
+        "activePrimaryTab": "visited-locations",
+        "bikeSubtabSelected": true,
+        "tabParam": "visited-locations",
+        "subtabParam": "bike-trails"
+      },
+      "at": "2026-05-05T00:03:09.404Z"
+    },
     {
       "name": "all-locations-explorer-url:routes-to-explorer-view",
       "passed": true,
@@ -18,7 +64,71 @@
         "allLocationsSelected": true,
         "explorerViewVisible": true
       },
-      "at": "2026-05-04T21:21:42.291Z"
+      "at": "2026-05-05T00:03:10.818Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": ""
+      },
+      "at": "2026-05-05T00:03:13.010Z"
+    },
+    {
+      "name": "overlay:stale-row-detail-cleared",
+      "passed": true,
+      "detail": {
+        "explorerActive": true,
+        "modalHidden": true
+      },
+      "at": "2026-05-05T00:03:14.351Z"
+    },
+    {
+      "name": "repeat:nature-explore-tab-switches",
+      "passed": true,
+      "detail": {
+        "iterations": [
+          {
+            "iteration": 1,
+            "explorerActive": true
+          },
+          {
+            "iteration": 2,
+            "explorerActive": true
+          },
+          {
+            "iteration": 3,
+            "explorerActive": true
+          },
+          {
+            "iteration": 4,
+            "explorerActive": true
+          },
+          {
+            "iteration": 5,
+            "explorerActive": true
+          }
+        ]
+      },
+      "at": "2026-05-05T00:03:20.257Z"
+    },
+    {
+      "name": "update-banner:version-and-telemetry",
+      "passed": true,
+      "detail": {
+        "reliabilityTelemetry": {
+          "shown": 1,
+          "reloadClicked": 1,
+          "dismissClicked": 1
+        },
+        "buttonTelemetry": {
+          "updateBannerShown": 1,
+          "updateBannerReloadClicked": 1,
+          "updateBannerDismissClicked": 1
+        }
+      },
+      "at": "2026-05-05T00:03:21.668Z"
     }
   ]
 }
