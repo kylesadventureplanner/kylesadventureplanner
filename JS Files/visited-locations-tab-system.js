@@ -136,7 +136,7 @@
   const CATALOG_INITIAL_LIMIT = 60;
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
-  const PROGRESS_SUBTAB_KEYS = ['all-locations', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
+  const PROGRESS_SUBTAB_KEYS = ['all-locations', 'concerts', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
   const DAILY_PROGRESS_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges'];
   const PROGRESS_SUBTAB_ROUTE_KEYS = Array.from(new Set([...PROGRESS_SUBTAB_KEYS, ...DAILY_PROGRESS_SUBTAB_KEYS]));
   const PROGRESS_SUBTAB_PANE_MAP = {
@@ -144,6 +144,7 @@
   };
   const PROGRESS_SUBTAB_STATUS_LABELS = {
     'all-locations': 'All Locations',
+    concerts: 'Concerts',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food & Drink',
@@ -156,6 +157,7 @@
     'all-locations': 'All Locations',
     'city-explorer': 'City Explorer',
     challenges: 'Challenges',
+    concerts: 'Concerts',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food & Drink',
@@ -166,6 +168,7 @@
   };
   const CITY_EXPLORER_PREFILTERS = {
     'all-locations': { tag: 'all-locations', label: 'All Locations' },
+    concerts: { tag: 'concert', label: 'Concerts' },
     outdoors: { tag: 'hiking', label: 'Outdoors' },
     entertainment: { tag: 'entertainment', label: 'Entertainment' },
     'food-drink': { tag: 'restaurant', label: 'Food & Drink' },
@@ -179,6 +182,7 @@
   const VISIT_LOG_MEDIA_ROOT_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/Visit_Photos';
   const VISIT_LOG_MEDIA_SUBTAB_FOLDERS = {
     'all-locations': 'All_Locations',
+    concerts: 'Concerts',
     outdoors: 'Outdoors',
     entertainment: 'Entertainment',
     'food-drink': 'Food_and_Drink',
@@ -392,6 +396,15 @@
     return getCurrentAppModeSafe() === 'advanced';
   }
 
+  function syncDailyAddLocationButtons(root) {
+    if (!root) return;
+    const show = !isAdvancedAppMode();
+    root.querySelectorAll('[data-visited-subtab-action="open-add-location-all-locations"]').forEach((button) => {
+      button.hidden = !show;
+      button.setAttribute('aria-hidden', show ? 'false' : 'true');
+    });
+  }
+
   function getExplorerPageSize() {
     // Daily mode defaults to paged explorer results to keep first paint and scrolling manageable.
     return isAdvancedAppMode() ? 0 : 24;
@@ -568,6 +581,13 @@
     window.addEventListener('pageshow', resync);
   }
 
+  function ensureConcertsSubtabInitialized(root) {
+    if (!root || state.activeProgressSubTab !== 'concerts') return;
+    if (window.HouseholdConcerts && typeof window.HouseholdConcerts.init === 'function') {
+      window.HouseholdConcerts.init(root);
+    }
+  }
+
    function syncProgressSubTabs(root) {
      if (!root) return;
      const availableKeys = getAvailableProgressSubtabKeys();
@@ -608,8 +628,10 @@
 
       updateVisitedChallengeTitle(root);
       updateVisitedJumpLinksVisibility(root);
+      syncDailyAddLocationButtons(root);
 
       syncVisitedSubTabDock(root);
+      ensureConcertsSubtabInitialized(root);
 
       // Run the canonical CTA order pass after pane/view sync updates.
       scheduleVisitedSubtabCtaOrderFinalization(root);
@@ -761,6 +783,7 @@
     const params = new URLSearchParams(window.location.search || '');
     const requestedTab = String(params.get('tab') || '').trim();
     const requestedSubtab = String(params.get('visitedSubtab') || '').trim();
+    const householdSubtab = String(params.get('householdSubtab') || params.get('subtab') || '').trim();
 
     if (PROGRESS_SUBTAB_ROUTE_KEYS.includes(requestedSubtab)) {
       return requestedSubtab;
@@ -771,6 +794,11 @@
       return 'bike-trails';
     }
 
+    // Legacy compatibility: household concerts route now maps to Adventure Challenge concerts.
+    if (requestedTab === 'household-tools' && householdSubtab === 'concerts') {
+      return 'concerts';
+    }
+
     return '';
   }
 
@@ -778,6 +806,13 @@
     if (!root) return;
     const requestedSubtab = getRequestedProgressSubtabFromUrl();
     if (!requestedSubtab) return;
+    if (requestedSubtab === 'concerts' && !isAdvancedAppMode()) {
+      if (typeof window.setAppMode === 'function') {
+        window.setAppMode('advanced');
+      } else {
+        document.documentElement.setAttribute('data-app-mode', 'advanced');
+      }
+    }
     if (state.activeProgressSubTab === requestedSubtab) return;
     setActiveProgressSubTab(root, requestedSubtab);
   }
@@ -1036,12 +1071,18 @@
       if (opts.batchTagSeed) editModeUrl.searchParams.set('batchTagSeed', String(opts.batchTagSeed));
       if (opts.batchTagCopySource) editModeUrl.searchParams.set('batchTagCopySource', String(opts.batchTagCopySource));
     }
+    if (opts.dailyAddLocation) {
+      editModeUrl.searchParams.set('dailyAddLocation', '1');
+    }
     const hashParams = new URLSearchParams({ sourceSubtab: key });
     if (embedded) hashParams.set('embedded', '1');
     if (opts.batchTagAction) {
       hashParams.set('batchTagAction', '1');
       if (opts.batchTagSeed) hashParams.set('batchTagSeed', String(opts.batchTagSeed));
       if (opts.batchTagCopySource) hashParams.set('batchTagCopySource', String(opts.batchTagCopySource));
+    }
+    if (opts.dailyAddLocation) {
+      hashParams.set('dailyAddLocation', '1');
     }
     editModeUrl.hash = hashParams.toString();
     editModeUrl.searchParams.set('ts', String(Date.now()));
@@ -9275,6 +9316,11 @@
               return;
             }
 
+            if (action === 'open-add-location-all-locations') {
+              openEditModeStandaloneForSubtab('all-locations', { dailyAddLocation: true });
+              return;
+            }
+
             if (action.startsWith('open-edit-mode-')) {
               const subtabKey = action.replace('open-edit-mode-', '');
               openEditModeForSubtab(subtabKey);
@@ -10070,8 +10116,25 @@
     }
   }
 
+  function openVisitedProgressSubtab(subtabKey, options = {}) {
+    const key = normalizeProgressSubtabKey(subtabKey);
+    const opts = options && typeof options === 'object' ? options : {};
+    if (opts.switchPrimaryTab && window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+      window.tabLoader.switchTab('visited-locations', {
+        syncUrl: opts.syncUrl !== false,
+        historyMode: opts.historyMode || 'push',
+        source: opts.source || 'open-visited-progress-subtab'
+      });
+    }
+    const root = document.getElementById('visitedLocationsRoot');
+    if (!root) return false;
+    setActiveProgressSubTab(root, key);
+    return true;
+  }
+
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
+  window.openVisitedProgressSubtab = openVisitedProgressSubtab;
   window.forceVisitedExplorerSync = forceVisitedExplorerSync;
   window.openVisitedVisitLogFromAchievements = openVisitedVisitLogFromAchievements;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;

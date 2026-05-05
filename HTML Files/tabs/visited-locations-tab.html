@@ -1,6 +1,8 @@
 <!-- ADVENTURE CHALLENGE TAB CONTENT -->
 <!-- Gamified tracker + smart recommendations -->
 
+<link rel="stylesheet" href="/CSS/household-tools-concerts.css">
+
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header tab-shell-header">
     <h1 id="visitedChallengeTitle">Adventure Challenge - All Locations</h1>
@@ -18,6 +20,7 @@
     <button id="visitedProgressTab-all-locations" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-all-locations" aria-selected="true" data-progress-subtab="all-locations" aria-label="Open All Locations section" title="Open All Locations section">🗺️ All Locations</button>
     <button id="visitedProgressTab-city-explorer" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-all-locations" aria-selected="false" data-progress-subtab="city-explorer" aria-label="Open City Explorer" title="Open City Explorer">🏙️ City Explorer</button>
     <button id="visitedProgressTab-challenges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-challenges" aria-selected="false" data-progress-subtab="challenges" aria-label="Open Challenges" title="Open Challenges">🏅 Challenges</button>
+    <button id="visitedProgressTab-concerts" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-concerts" aria-selected="false" data-progress-subtab="concerts" aria-label="Open Concerts" title="Open Concerts" data-advanced-only="true">🎸 Concerts</button>
     <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="false" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section" data-advanced-only="true">🌲 Outdoors</button>
     <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section" data-advanced-only="true">🎬 Entertainment</button>
     <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section" data-advanced-only="true">🍽️ Food &amp; Drink</button>
@@ -45,6 +48,7 @@
         <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-all-locations" title="Explore all saved locations" data-tooltip="Explore all saved locations">Explore Locations</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-explorer-newtab-all-locations" title="Open Explore Locations in a new tab" data-tooltip="Open Explore in new tab" aria-label="Open Explore Locations in a new tab">↗</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--city" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">Add location</button>
           <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-city-explorer-all-locations" title="Open City Explorer for all locations" data-tooltip="Open City Explorer for all locations">City Explorer</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-city-explorer-newtab-all-locations" title="Open City Explorer (All Locations) in a new tab" data-tooltip="Open City Explorer in new tab" aria-label="Open City Explorer (All Locations) in a new tab">↗</button>
         </div>
@@ -59,6 +63,7 @@
             <div class="card-title">🗺️ Explore All Locations</div>
             <div class="card-subtitle">Combined directory sourced from <code>Nature_Locations.xlsx</code>, <code>Entertainment_Locations.xlsx</code>, and <code>Retail_Food_and_Drink.xlsx</code> excluding Festivals and Bike Trails.</div>
           </div>
+          <button id="visitedAllLocationsAddLocationBtn" type="button" class="pill-button" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">＋ Add location</button>
         </div>
         <div class="visited-explorer-basic-filter">
           <input id="visitedExplorerSearch-all-locations" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search all locations" />
@@ -92,6 +97,105 @@
       </div>
     </div>
     <div id="achv-root-challenges" data-achv-container="challenges"></div>
+  </div>
+
+  <div id="visitedProgressPane-concerts" class="visited-progress-pane" data-progress-pane="concerts" role="tabpanel" aria-labelledby="visitedProgressTab-concerts" hidden>
+    <div id="householdConcertsPane">
+      <section class="household-concerts-hero">
+        <div class="household-concerts-hero-copy">
+          <div class="household-concerts-eyebrow">🎸 Adventure Challenge • Concerts</div>
+          <h2>Track favorite bands, concerts you have seen, and nearby shows you still want to catch.</h2>
+          <p>Search and add bands, log concerts with ratings/notes/photos, and monitor upcoming shows filtered by distance from your location.</p>
+        </div>
+        <div class="household-concerts-hero-actions">
+          <button type="button" class="pill-button pill-button-primary" data-concert-action="open-add-band">＋ Add Favorite Band</button>
+          <button type="button" class="pill-button" data-concert-action="open-log-concert">★ Log Concert</button>
+          <button type="button" class="pill-button" data-concert-action="open-historic-finder">🕰 Find Historic Shows</button>
+          <button type="button" class="pill-button" data-concert-action="open-add-upcoming">📅 Add Upcoming</button>
+          <button type="button" class="pill-button" data-concert-action="open-rockville-2026">🎸 Rockville 2026</button>
+          <button type="button" class="pill-button" data-concert-action="scan-unsynced-band-changes">🧪 Scan Unsynced Changes</button>
+          <button type="button" class="pill-button" data-concert-action="open-concert-settings">⚙ Concert Settings</button>
+          <button type="button" class="pill-button" data-concert-action="refresh-data">↻ Refresh</button>
+        </div>
+      </section>
+
+      <div id="householdConcertsRockvilleMount" hidden></div>
+
+      <div id="householdConcertsMainContent">
+      <div id="householdConcertsStatus" class="household-concerts-status household-concerts-status--info">Concerts loads from your Excel workbook and can also search the web for artists to add.</div>
+      <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
+      <div class="household-concerts-features-tabs" role="tablist">
+        <button type="button" class="household-concerts-feature-tab active" role="tab" data-view="default">Overview</button>
+        <button type="button" class="household-concerts-feature-tab" role="tab" data-view="stats">My Stats</button>
+        <button type="button" class="household-concerts-feature-tab" role="tab" data-view="analytics">Analytics</button>
+        <button type="button" class="household-concerts-feature-tab" role="tab" data-view="gallery">Gallery</button>
+      </div>
+      <div id="householdConcertsPersonalStats" class="household-concerts-panel" style="display:none;"></div>
+      <div id="householdConcertsAchievements" class="household-concerts-panel" style="display:none;"></div>
+      <div id="householdConcertsVenueReport" class="household-concerts-panel" style="display:none;"></div>
+      <div id="householdConcertsAnalyticsDash" class="household-concerts-panel" style="display:none;"></div>
+      <div id="householdConcertsPhotoGallery" class="household-concerts-panel" style="display:none;"></div>
+      <section class="household-concerts-search-card-shell">
+        <div class="household-concerts-search-row">
+          <input id="householdConcertsSearchInput" type="search" placeholder="Search artist catalog by band name..." aria-label="Search artist catalog">
+          <button type="button" class="pill-button" data-concert-action="search-web">Search Web</button>
+          <button type="button" class="pill-button" data-concert-action="open-add-band">Manual Add</button>
+        </div>
+      </section>
+      <div class="household-concerts-main-grid">
+        <section class="household-concerts-panel">
+          <div class="household-concerts-filter-row">
+            <input id="householdConcertsFilterInput" type="search" placeholder="Filter favorite bands by name, genre, label, songs, or members..." aria-label="Filter favorite bands">
+          </div>
+          <div id="householdConcertsGenreChips" class="household-concerts-tag-row"></div>
+          <div id="householdConcertsTierChips" class="household-concerts-tag-row"></div>
+          <div id="householdConcertsActiveFilters" class="household-concerts-active-filters" style="display:none;"></div>
+          <div id="householdConcertsFavoritesGrid" class="household-concerts-favorites-grid" data-testid="concerts-favorites-grid"></div>
+        </section>
+        <div class="household-concerts-side-column" style="display:flex;flex-direction:column;gap:18px;">
+          <section class="household-concerts-panel">
+            <div id="householdConcertsSearchResults" class="household-concerts-search-results" data-testid="concerts-search-results"></div>
+          </section>
+          <section class="household-concerts-panel">
+            <div id="householdConcertsDiscovery" data-testid="concerts-discovery"></div>
+          </section>
+        </div>
+      </div>
+      <div class="household-concerts-lower-grid">
+        <section class="household-concerts-panel"><div id="householdConcertsPriorityDashboard"></div></section>
+        <section class="household-concerts-panel"><div id="householdConcertsFestivalDashboard"></div></section>
+      </div>
+      <div class="household-concerts-lower-grid">
+        <section class="household-concerts-panel"><div id="householdConcertsTicketedCalendar"></div></section>
+      </div>
+      <div class="household-concerts-lower-grid">
+        <section class="household-concerts-panel">
+          <div class="household-concerts-panel-head">
+            <div><h3>Attended Concerts</h3></div>
+            <button type="button" class="pill-button" data-concert-action="open-log-concert">＋ Log Concert</button>
+          </div>
+          <div id="householdConcertsAttendedList" class="household-concerts-entry-list" data-testid="concerts-attended-list"></div>
+        </section>
+        <section class="household-concerts-panel">
+          <div class="household-concerts-panel-head">
+            <div><h3>Upcoming Concerts</h3></div>
+            <button type="button" class="pill-button" data-concert-action="open-add-upcoming">＋ Add Upcoming</button>
+          </div>
+          <div class="household-concerts-location-row">
+            <label for="householdConcertsDistanceSlider" class="household-concerts-muted">Distance filter: <strong id="householdConcertsDistanceValue">100 miles</strong></label>
+            <span id="householdConcertsLocationChip" class="household-concerts-location-chip" aria-live="polite">Using Hendersonville, NC USA</span>
+            <input id="householdConcertsDistanceSlider" class="household-concerts-distance-slider" type="range" min="0" max="5" step="1" value="3" aria-label="Concert distance filter slider">
+            <button type="button" class="pill-button" data-concert-action="use-location">📍 Use My Location</button>
+            <button type="button" id="householdConcertsResetLocationBtn" class="pill-button" data-concert-action="reset-location" hidden>↺ Reset to Hendersonville</button>
+          </div>
+          <p id="householdConcertsLocationText" class="household-concerts-muted">Save your location to filter upcoming concerts by distance.</p>
+          <div id="householdConcertsUpcomingList" class="household-concerts-entry-list" data-testid="concerts-upcoming-list"></div>
+        </section>
+      </div>
+      </div>
+      <div id="householdConcertsModalHost"></div>
+      <div id="householdConcertsToastHost" class="household-concerts-toast-host" aria-live="polite"></div>
+    </div>
   </div>
 
   <div id="visitedProgressPane-outdoors" class="visited-progress-pane" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors" hidden>
@@ -941,6 +1045,9 @@
     }
   }());
 </script>
+
+<script src="/JS%20Files/concert-text-parser.js"></script>
+<script src="/JS%20Files/household-tools-concerts-system.js"></script>
 
 <script>
   /* ═══════════════════════════════════════════════════════════════════════════

@@ -120,6 +120,149 @@
   border-color: #fca5a5;
 }
 
+#householdConcertsPane #householdConcertsRockvilleMount[hidden] {
+  display: none !important;
+}
+
+#householdConcertsPane .household-concerts-rockville-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+#householdConcertsPane .household-concerts-rockville-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#householdConcertsPane .household-concerts-rockville-header h3 {
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-rockville-day-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#householdConcertsPane .household-concerts-rockville-day-tab {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #fff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#householdConcertsPane .household-concerts-rockville-day-tab.active {
+  border-color: #1d4ed8;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #1d4ed8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.14);
+}
+
+#householdConcertsPane .household-concerts-rockville-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#householdConcertsPane .household-concerts-rockville-day-label {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+#householdConcertsPane .household-concerts-rockville-table-wrap {
+  overflow-x: auto;
+}
+
+#householdConcertsPane .household-concerts-rockville-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#householdConcertsPane .household-concerts-rockville-table th,
+#householdConcertsPane .household-concerts-rockville-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+#householdConcertsPane .household-concerts-rockville-table th {
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#householdConcertsPane .household-concerts-rockville-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+#householdConcertsPane .household-concerts-rockville-empty,
+#householdConcertsPane .household-concerts-rockville-empty-row {
+  color: #64748b;
+}
+
+#householdConcertsPane .household-concerts-rockville-empty-row {
+  text-align: center;
+  font-style: italic;
+}
+
+#householdConcertsPane .household-concerts-rockville-form {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+
+#householdConcertsPane .household-concerts-rockville-field {
+  display: grid;
+  gap: 8px;
+}
+
+#householdConcertsPane .household-concerts-rockville-field span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+#householdConcertsPane .household-concerts-rockville-field input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
+#householdConcertsPane .household-concerts-rockville-field input:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 2px;
+  border-color: #2563eb;
+}
+
 #householdConcertsPane .household-concerts-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

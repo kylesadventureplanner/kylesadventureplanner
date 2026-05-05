@@ -1385,20 +1385,20 @@
     <div class="card edit-critical-config-card" id="editModeTargetCard">
       <div class="card-title" id="editModeTargetCardTitle">🎯 Target Table</div>
       <div class="input-group" data-target-visible-tab="places">
-        <label for="actionTargetSelect">Add / Bulk Add target table</label>
+        <label id="actionTargetSelectLabel" for="actionTargetSelect">Add / Bulk Add target table</label>
         <select id="actionTargetSelect"></select>
         <div class="help-text">Used by: Add Single Place, Bulk Add Places, Bulk Add Chain Locations.</div>
       </div>
-      <div class="input-group" data-target-visible-tab="automation">
+      <div id="automationTargetSingleGroup" class="input-group" data-target-visible-tab="automation">
         <label for="automationTargetSelect">Automation default target table</label>
         <select id="automationTargetSelect"></select>
       </div>
-      <div class="input-group" data-target-visible-tab="legacy-hidden" hidden>
+      <div id="automationTargetMultiGroup" class="input-group" data-target-visible-tab="legacy-hidden" hidden>
         <label for="automationTargetMulti">Automation multi-target selection (Ctrl/Cmd + click for multiple)</label>
         <select id="automationTargetMulti" multiple size="8"></select>
         <div class="help-text">Used by: Refresh Place IDs, Auto-Tag All, Populate Missing Fields Only, Update Hours Only.</div>
       </div>
-      <div class="button-group" data-target-visible-tab="legacy-hidden" hidden>
+      <div id="automationTargetMultiActions" class="button-group" data-target-visible-tab="legacy-hidden" hidden>
         <button class="button button-secondary" type="button" onclick="selectAllAutomationTargets()">Select All Tables</button>
         <button class="button button-secondary" type="button" onclick="clearAutomationTargets()">Clear Multi-Selection</button>
       </div>
@@ -1412,7 +1412,7 @@
 
     <!-- Add Places Tab -->
     <div id="places-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-places" tabindex="0">
-      <div class="card">
+      <div id="addPlacesQuickActionsCard" class="card">
         <div class="card-title">⚡ Add Places Quick Actions</div>
         <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Jump to fast-add actions and Festival setup from the top of Add Places.</p>
         <div class="add-places-quick-actions">
@@ -1549,7 +1549,7 @@
       </div>
 
       <!-- Bulk Add Places -->
-      <div class="card">
+      <div id="bulkAddCard" class="card">
         <div class="card-title">📦 Bulk Add</div>
         <div id="bulkSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
@@ -1561,7 +1561,7 @@
         </div>
 
         <div class="input-group">
-          <label for="bulkInputType">Input Type (applies to all)</label>
+          <label id="bulkInputTypeLabel" for="bulkInputType">Input Type (applies to all)</label>
           <select id="bulkInputType">
             <option value="placeName">Place Name</option>
             <option value="address">Address</option>
@@ -1573,7 +1573,7 @@
         </div>
 
         <div class="input-group">
-          <label for="bulkInput">Values (one per line or comma-separated)</label>
+          <label id="bulkInputLabel" for="bulkInput">Values (one per line or comma-separated)</label>
           <textarea id="bulkInput" placeholder="Starbucks&#10;Coffee Bean & Tea Leaf&#10;Local Café"></textarea>
           <div id="bulkInputHelp" class="help-text">
             💡 Enter multiple places separated by new lines or commas
@@ -1584,7 +1584,7 @@
 
         <div class="button-group">
           <button id="bulkClearBtn" class="button button-secondary" onclick="clearBulkForm()">Clear</button>
-          <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
+          <button id="bulkSearchFiltersBtn" class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button id="bulkSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
           <button id="bulkOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedBulkCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
           <button id="bulkAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" disabled>✅ Add Selected Candidates</button>
@@ -1599,7 +1599,7 @@
       </div>
 
       <!-- Bulk Add Chain Locations -->
-      <div class="card">
+      <div id="chainAddCard" class="card">
         <div class="card-title">⛓️ Chain Locations</div>
         <div id="chainSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
@@ -3059,6 +3059,14 @@
       { id: 'ent_wildlife_animals', label: 'Wildlife_Animals (Entertainment_Locations.xlsx)', filePath: 'Entertainment_Locations.xlsx', tableName: 'Wildlife_Animals' },
       { id: 'ent_general', label: 'General_Entertainment (Entertainment_Locations.xlsx)', filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' }
     ];
+    const DAILY_ADD_LOCATION_TARGET_OPTIONS = [
+      { id: 'ent_general', uiLabel: 'Entertainment' },
+      { id: 'ent_wildlife_animals', uiLabel: 'Wildlife and Animals' },
+      { id: 'retail_restaurants', uiLabel: 'Restaurants' },
+      { id: 'retail_coffee', uiLabel: 'Coffee Shops' },
+      { id: 'nature_locations', uiLabel: 'Nature Sites' },
+      { id: 'retail_retail', uiLabel: 'Retail Stores' }
+    ];
     const EDIT_MODE_SUBTAB_DEFAULT_TARGETS = {
       outdoors: 'nature_locations',
       entertainment: 'ent_general',
@@ -3176,6 +3184,23 @@
       anchorResolved: false,
       anchorAttempted: false
     };
+
+    function isDailyAddLocationMode() {
+      return String(getEditModeLaunchParam('dailyAddLocation') || '').trim() === '1';
+    }
+
+    function getActiveEditModeTargets() {
+      if (!isDailyAddLocationMode()) return EDIT_MODE_TARGETS.slice();
+      return DAILY_ADD_LOCATION_TARGET_OPTIONS.map((entry) => {
+        const base = EDIT_MODE_TARGETS.find((target) => target.id === entry.id);
+        return base ? { ...base, uiLabel: entry.uiLabel } : null;
+      }).filter(Boolean);
+    }
+
+    function getTargetLabelText(target) {
+      const safeTarget = target && typeof target === 'object' ? target : {};
+      return String(safeTarget.uiLabel || safeTarget.label || safeTarget.tableName || '').trim() || 'Not selected';
+    }
 
     function getDefaultFestivalSourcesConfig() {
       return {
@@ -4007,6 +4032,64 @@
       return normalizeEditModeSubtabKey(getEditModeLaunchParam('sourceSubtab'));
     }
 
+    function applyDailyAddLocationModeUi() {
+      if (!isDailyAddLocationMode()) return;
+      document.body.classList.add('daily-add-location-mode');
+      switchTab('places', { focusTab: false });
+
+      document.querySelectorAll('.tab-btn[data-tab]').forEach((button) => {
+        const keepVisible = String(button.getAttribute('data-tab') || '').trim() === 'places';
+        button.hidden = !keepVisible;
+        button.setAttribute('aria-hidden', keepVisible ? 'false' : 'true');
+      });
+
+      ['addPlacesQuickActionsCard', 'candidateSearchFiltersCard', 'addSingleCard', 'chainAddCard', 'targetSelectionStatus', 'addPlacesTargetSnapshot', 'automationTargetSingleGroup', 'automationTargetMultiGroup', 'automationTargetMultiActions'].forEach((id) => {
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.hidden = true;
+        node.style.display = 'none';
+      });
+
+      const targetLabel = document.getElementById('actionTargetSelectLabel');
+      if (targetLabel) targetLabel.textContent = 'Choose which table to add these places to';
+
+      const inputTypeLabel = document.getElementById('bulkInputTypeLabel');
+      if (inputTypeLabel) inputTypeLabel.textContent = 'Input Type';
+      const inputType = document.getElementById('bulkInputType');
+      if (inputType) {
+        inputType.value = 'placeName';
+        inputType.disabled = true;
+      }
+
+      const bulkInputLabel = document.getElementById('bulkInputLabel');
+      if (bulkInputLabel) bulkInputLabel.textContent = 'Place Names';
+      const bulkInput = document.getElementById('bulkInput');
+      if (bulkInput) bulkInput.placeholder = 'Place Name\nPlace Name\nPlace Name';
+      const bulkInputHelp = document.getElementById('bulkInputHelp');
+      if (bulkInputHelp) bulkInputHelp.textContent = 'Enter one place name per line.';
+
+      const bulkSearchFiltersBtn = document.getElementById('bulkSearchFiltersBtn');
+      if (bulkSearchFiltersBtn) {
+        bulkSearchFiltersBtn.hidden = true;
+        bulkSearchFiltersBtn.style.display = 'none';
+      }
+
+      const bulkDryRunToggle = document.getElementById('bulkDryRunToggle');
+      if (bulkDryRunToggle) {
+        bulkDryRunToggle.hidden = true;
+        bulkDryRunToggle.style.display = 'none';
+      }
+
+      const bulkPreflightStatus = document.getElementById('bulkPreflightStatus');
+      if (bulkPreflightStatus) {
+        bulkPreflightStatus.hidden = true;
+        bulkPreflightStatus.textContent = '';
+      }
+
+      const bulkSubmitBtn = document.getElementById('bulkSubmitBtn');
+      if (bulkSubmitBtn) bulkSubmitBtn.textContent = 'Save Locations';
+    }
+
     async function runPostAddEnrichmentPipeline() {
       if (window.__editModePostAddEnrichmentRunning) return;
       if (window.__disableEditModePostAddEnrichment === true) return;
@@ -4170,8 +4253,8 @@
       const autoMulti = getSelectedAutomationTargets();
       const effective = getAutomationTargetsForRun();
       status.innerHTML = `
-        <div class="target-chip"><strong>Add/Bulk:</strong> ${addTarget ? addTarget.label : 'Not selected'}</div>
-        <div class="target-chip"><strong>Automation default:</strong> ${autoSingle ? autoSingle.label : 'Not selected'}</div>
+        <div class="target-chip"><strong>Add/Bulk:</strong> ${getTargetLabelText(addTarget)}</div>
+        <div class="target-chip"><strong>Automation default:</strong> ${getTargetLabelText(autoSingle)}</div>
         <div class="target-chip"><strong>Automation multi:</strong> ${autoMulti.length ? autoMulti.map((t) => t.tableName).join(', ') : 'None selected'}</div>
         <div class="target-chip"><strong>Automation run target(s):</strong> ${effective.length ? effective.map((t) => t.tableName).join(', ') : 'None selected'}</div>
       `;
@@ -4532,11 +4615,12 @@
 
     function resolveInitialEditModeTargetId() {
       const sourceSubtab = getEmbeddedSourceSubtabKey();
+      const availableTargets = getActiveEditModeTargets();
       const preferredId = String(EDIT_MODE_SUBTAB_DEFAULT_TARGETS[sourceSubtab] || '').trim();
-      if (preferredId && EDIT_MODE_TARGETS.some((target) => target.id === preferredId)) {
+      if (preferredId && availableTargets.some((target) => target.id === preferredId)) {
         return preferredId;
       }
-      return EDIT_MODE_TARGETS[0] ? EDIT_MODE_TARGETS[0].id : '';
+      return availableTargets[0] ? availableTargets[0].id : '';
     }
 
     function hasUserTouchedTargetSelectors() {
@@ -4813,7 +4897,7 @@
       const multiSel = document.getElementById('automationTargetMulti');
       if (!actionSel || !autoSel || !multiSel) return;
 
-      const options = EDIT_MODE_TARGETS.map((target) => `<option value="${target.id}">${target.label}</option>`).join('');
+      const options = getActiveEditModeTargets().map((target) => `<option value="${target.id}">${target.uiLabel || target.label}</option>`).join('');
       actionSel.innerHTML = options;
       autoSel.innerHTML = options;
       multiSel.innerHTML = options;
@@ -4867,7 +4951,8 @@
     function getSelectedTarget(selectId) {
       const select = document.getElementById(selectId);
       const targetId = select ? String(select.value || '').trim() : '';
-      return EDIT_MODE_TARGETS.find((item) => item.id === targetId) || null;
+      const activeTargets = getActiveEditModeTargets();
+      return activeTargets.find((item) => item.id === targetId) || EDIT_MODE_TARGETS.find((item) => item.id === targetId) || null;
     }
 
     function formatTargetDestination(target) {
@@ -4923,6 +5008,10 @@
       const el = document.getElementById(containerId);
       if (!el) return [];
       const values = (Array.isArray(inputs) ? inputs : [inputs]).map((value) => String(value || '').trim()).filter(Boolean);
+      if (isDailyAddLocationMode() && containerId === 'bulkPreflightStatus') {
+        el.hidden = true;
+        return values.length ? getTargetRowDuplicateMatches(values, inputType) : [];
+      }
       if (!values.length) {
         el.className = 'preflight-review';
         el.textContent = 'Preflight review will appear once you enter one or more values.';
@@ -5065,7 +5154,7 @@
       setText('bulkSearchCandidatesBtn', festivalMode ? '🎟️ Search Festival Events' : '🔎 Search Bulk Candidates');
       setText('chainSearchCandidatesBtn', festivalMode ? '🎟️ Search Festival Events' : '🔎 Search Chain Candidates');
       setText('singleSubmitBtn', festivalMode ? '➕ Add Festival' : '➕ Add Place');
-      setText('bulkSubmitBtn', festivalMode ? '📦 Add Festivals' : '📦 Add All');
+      setText('bulkSubmitBtn', isDailyAddLocationMode() ? 'Save Locations' : (festivalMode ? '📦 Add Festivals' : '📦 Add All'));
       setText('chainSubmitBtn', festivalMode ? '📦 Add Festival Matches' : '⛓️ Add Locations');
       setText('bulkOpenSelectedInGoogleBtn', festivalMode ? '🌐 Open Selected Sources' : '🌐 Open Selected in Google');
       setText('chainOpenSelectedInGoogleBtn', festivalMode ? '🌐 Open Selected Sources' : '🌐 Open Selected in Google');
@@ -5104,7 +5193,7 @@
       const multiSel = document.getElementById('automationTargetMulti');
       if (!multiSel) return [];
       const ids = Array.from(multiSel.selectedOptions || []).map((opt) => String(opt.value || '').trim()).filter(Boolean);
-      return EDIT_MODE_TARGETS.filter((item) => ids.includes(item.id));
+      return getActiveEditModeTargets().filter((item) => ids.includes(item.id));
     }
 
     function hasUserTouchedAutomationMultiSelector() {
@@ -9509,6 +9598,7 @@
       restoreAllDrafts();
       initDraftTracking();
       applyBatchTagLaunchContext();
+      applyDailyAddLocationModeUi();
 
       // Refresh shortcut help after page initialization
       if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
@@ -9544,6 +9634,7 @@
       restoreAllDrafts();
       initDraftTracking();
       applyBatchTagLaunchContext();
+      applyDailyAddLocationModeUi();
 
       // Refresh shortcut help after page initialization
       if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {

@@ -5,11 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tests/rockville-and-daily-add-location.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/household-tools-concerts.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/household-tools-concerts.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/household-tools-concerts-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,7 +108,8 @@
       <workItem from="1776695340610" duration="177459000" />
       <workItem from="1777064709892" duration="154473000" />
       <workItem from="1777494531732" duration="92762000" />
-      <workItem from="1777741223725" duration="91737000" />
+      <workItem from="1777741223725" duration="94208000" />
+      <workItem from="1778017353146" duration="1784000" />
     </task>
     <servers />
   </component>

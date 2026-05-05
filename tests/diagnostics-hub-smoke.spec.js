@@ -12,6 +12,16 @@ test.describe('Central diagnostics hub smoke', () => {
   test('header diagnostics button opens hub', async ({ page }) => {
     await page.goto('/');
 
+    await page.evaluate(() => {
+      if (typeof window.setAppMode === 'function') {
+        window.setAppMode('advanced');
+        return;
+      }
+      document.documentElement.setAttribute('data-app-mode', 'advanced');
+    });
+
+    await expect(page.locator('#diagnosticsHubBtn')).toBeVisible();
+
     await page.locator('#diagnosticsHubBtn').click();
 
     await expect(page.locator('#diagnosticsHubTab')).toHaveClass(/active/);
@@ -23,6 +33,15 @@ test.describe('Central diagnostics hub smoke', () => {
 
     await expect(page.locator('.app-tab-btn.active')).toHaveAttribute('data-tab', 'visited-locations');
     await expect(page).toHaveURL(/tab=visited-locations/);
+  });
+
+  test('legacy household concerts deep link resolves to Adventure Challenge tab', async ({ page }) => {
+    await page.goto('/?tab=household-tools&householdSubtab=concerts');
+
+    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+
+    await expect(page.locator('.app-tab-btn.active')).toHaveAttribute('data-tab', 'visited-locations');
+    await expect(page.locator('#appSubTabsSlot [data-progress-subtab="concerts"]').first()).toHaveAttribute('aria-selected', 'true');
   });
 });
 

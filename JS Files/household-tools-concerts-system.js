@@ -59,6 +59,13 @@
   var PRIORITY_BANDS_STORAGE_KEY = 'householdConcertsPriorityBandsV1';
   var UPCOMING_TICKETS_STORAGE_KEY = 'householdConcertsUpcomingTicketsV1';
   var BAND_CARD_COLS_STORAGE_KEY = 'householdConcertsBandCardColsV1';
+  var ROCKVILLE_2026_STORAGE_KEY = 'householdConcertsRockville2026V1';
+  var ROCKVILLE_2026_DAYS = [
+    { key: 'thursday', label: 'Thursday' },
+    { key: 'friday', label: 'Friday' },
+    { key: 'saturday', label: 'Saturday' },
+    { key: 'sunday', label: 'Sunday' }
+  ];
   var DEFAULT_CONCERTS_LOCATION = {
     latitude: 35.3187,
     longitude: -82.4609,
@@ -220,6 +227,14 @@
       priorityBands: readJsonStorage(PRIORITY_BANDS_STORAGE_KEY, {}),
        upcomingTickets: readJsonStorage(UPCOMING_TICKETS_STORAGE_KEY, {}),
       bandCardColumns: Math.max(1, Math.min(4, Number(readStringStorage(BAND_CARD_COLS_STORAGE_KEY, '2')) || 2)),
+      rockville2026: normalizeRockville2026Data(readJsonStorage(ROCKVILLE_2026_STORAGE_KEY, {})),
+      rockvilleView: {
+        open: false,
+        page: 'schedule',
+        activeDay: 'thursday',
+        formDay: 'thursday',
+        editingSetId: ''
+      },
       bulkProfileRefreshBusy: false,
       bulkProfileRefreshProgress: { current: 0, total: 0, bandName: '' },
       festivalDashboard: { busy: false, generatedAt: 0, festivals: [], message: '' },
@@ -539,6 +554,180 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-');
+  }
+
+  function getDefaultRockville2026Days() {
+    return ROCKVILLE_2026_DAYS.reduce(function (acc, day) {
+      acc[day.key] = [];
+      return acc;
+    }, {});
+  }
+
+  function generateRockvilleSetId() {
+    return 'rockville-set-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function normalizeRockvilleDayKey(value) {
+    var normalized = normalizeText(value).replace(/[^a-z]/g, '');
+    var match = ROCKVILLE_2026_DAYS.find(function (day) {
+      return normalizeText(day.key) === normalized || normalizeText(day.label) === normalized;
+    });
+    return match ? match.key : ROCKVILLE_2026_DAYS[0].key;
+  }
+
+  function getRockvilleDayMeta(dayKey) {
+    var key = normalizeRockvilleDayKey(dayKey);
+    return ROCKVILLE_2026_DAYS.find(function (day) { return day.key === key; }) || ROCKVILLE_2026_DAYS[0];
+  }
+
+  function normalizeRockvilleSet(entry) {
+    var source = entry && typeof entry === 'object' ? entry : {};
+    return {
+      id: String(source.id || source.setId || '').trim() || generateRockvilleSetId(),
+      band: String(source.band || source.Band || '').trim(),
+      stage: String(source.stage || source.Stage || '').trim(),
+      setStartTime: String(source.setStartTime || source.Set_Start_Time || source.SetStartTime || '').trim(),
+      createdAt: Number(source.createdAt) || Date.now(),
+      updatedAt: Number(source.updatedAt) || Date.now()
+    };
+  }
+
+  function normalizeRockville2026Data(raw) {
+    var source = raw && typeof raw === 'object' ? raw : {};
+    var baseDays = getDefaultRockville2026Days();
+    Object.keys(baseDays).forEach(function (dayKey) {
+      var inputList = source.days && Array.isArray(source.days[dayKey])
+        ? source.days[dayKey]
+        : (Array.isArray(source[dayKey]) ? source[dayKey] : []);
+      baseDays[dayKey] = inputList.map(normalizeRockvilleSet);
+    });
+    return { days: baseDays };
+  }
+
+  function persistRockville2026Data() {
+    writeJsonStorage(ROCKVILLE_2026_STORAGE_KEY, state.rockville2026);
+  }
+
+  function getRockvilleSetsForDay(dayKey) {
+    var key = normalizeRockvilleDayKey(dayKey);
+    var days = state.rockville2026 && state.rockville2026.days ? state.rockville2026.days : getDefaultRockville2026Days();
+    return Array.isArray(days[key]) ? days[key] : [];
+  }
+
+  function getRockvilleSetById(dayKey, setId) {
+    var targetId = String(setId || '').trim();
+    if (!targetId) return null;
+    var matches = getRockvilleSetsForDay(dayKey);
+    for (var i = 0; i < matches.length; i += 1) {
+      if (String(matches[i].id || '').trim() === targetId) return matches[i];
+    }
+    return null;
+  }
+
+  function formatRockvilleTableCell(value) {
+    var text = String(value || '').trim();
+    return text ? escapeHtml(text) : '<span class="household-concerts-rockville-empty">—</span>';
+  }
+
+  function renderRockville2026() {
+    var mount = document.getElementById('householdConcertsRockvilleMount');
+    var mainContent = document.getElementById('householdConcertsMainContent');
+    if (!mount) return;
+
+    var view = state.rockvilleView || {};
+    var isOpen = !!view.open;
+    if (mainContent) mainContent.hidden = isOpen;
+    mount.hidden = !isOpen;
+    if (!isOpen) {
+      mount.innerHTML = '';
+      return;
+    }
+
+    view.activeDay = normalizeRockvilleDayKey(view.activeDay);
+    view.formDay = normalizeRockvilleDayKey(view.formDay || view.activeDay);
+    state.rockvilleView = view;
+
+    if (view.page === 'form') {
+      var formDay = getRockvilleDayMeta(view.formDay);
+      var editingSet = getRockvilleSetById(formDay.key, view.editingSetId);
+      var isEdit = !!editingSet;
+      mount.innerHTML = '<section class="household-concerts-rockville-page">'
+        + '<div class="household-concerts-rockville-header">'
+        + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>' + escapeHtml(isEdit ? ('Edit ' + formDay.label + ' Set') : ('Add ' + formDay.label + ' Set')) + '</h3><p class="household-concerts-muted">All fields are optional. Save whenever you are ready.</p></div>'
+        + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="cancel-rockville-set-form">← Back to Rockville 2026</button></div>'
+        + '</div>'
+        + '<form id="householdConcertsRockvilleSetForm" class="household-concerts-rockville-form">'
+        + '<input type="hidden" name="Rockville_Day" value="' + escapeHtml(formDay.key) + '">'
+        + '<input type="hidden" name="Rockville_Set_Id" value="' + escapeHtml(editingSet ? editingSet.id : '') + '">'
+        + '<label class="household-concerts-rockville-field"><span>Band</span><input id="householdConcertsRockvilleSetBandInput" type="text" name="Band" value="' + escapeHtml(editingSet ? editingSet.band : '') + '" placeholder="Optional band name"></label>'
+        + '<label class="household-concerts-rockville-field"><span>Stage</span><input type="text" name="Stage" value="' + escapeHtml(editingSet ? editingSet.stage : '') + '" placeholder="Optional stage name"></label>'
+        + '<label class="household-concerts-rockville-field"><span>Set Start Time</span><input type="time" name="Set_Start_Time" value="' + escapeHtml(editingSet ? editingSet.setStartTime : '') + '"></label>'
+        + '<div class="household-concerts-form-actions"><button type="submit" class="pill-button pill-button-primary">' + escapeHtml(isEdit ? 'Save Changes' : 'Add Set') + '</button><button type="button" class="pill-button" data-concert-action="cancel-rockville-set-form">Cancel</button></div>'
+        + '</form>'
+        + '</section>';
+      return;
+    }
+
+    var activeDay = getRockvilleDayMeta(view.activeDay);
+    var daySets = getRockvilleSetsForDay(activeDay.key);
+    mount.innerHTML = '<section class="household-concerts-rockville-page">'
+      + '<div class="household-concerts-rockville-header">'
+      + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>Festival schedule planner</h3><p class="household-concerts-muted">Switch days, add sets, and edit anything later as the schedule changes.</p></div>'
+      + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-rockville-2026">← Back to Concerts</button></div>'
+      + '</div>'
+      + '<div class="household-concerts-rockville-day-tabs" role="tablist" aria-label="Rockville 2026 festival days">'
+      + ROCKVILLE_2026_DAYS.map(function (day) {
+        var isActive = day.key === activeDay.key;
+        return '<button type="button" class="household-concerts-rockville-day-tab' + (isActive ? ' active' : '') + '" role="tab" aria-selected="' + (isActive ? 'true' : 'false') + '" data-concert-action="select-rockville-day" data-rockville-day="' + escapeHtml(day.key) + '">' + escapeHtml(day.label) + '</button>';
+      }).join('')
+      + '</div>'
+      + '<div class="household-concerts-rockville-toolbar"><div class="household-concerts-rockville-day-label">' + escapeHtml(activeDay.label) + '</div><button type="button" class="pill-button pill-button-primary" data-concert-action="open-rockville-set-form" data-rockville-day="' + escapeHtml(activeDay.key) + '">＋ Add Set</button></div>'
+      + '<div class="household-concerts-rockville-table-wrap"><table class="household-concerts-rockville-table"><thead><tr><th>Band</th><th>Stage</th><th>Set Start Time</th><th>Edit</th></tr></thead><tbody>'
+      + (daySets.length
+        ? daySets.map(function (entry) {
+          return '<tr>'
+            + '<td>' + formatRockvilleTableCell(entry.band) + '</td>'
+            + '<td>' + formatRockvilleTableCell(entry.stage) + '</td>'
+            + '<td>' + formatRockvilleTableCell(entry.setStartTime) + '</td>'
+            + '<td><button type="button" class="pill-button" data-concert-action="edit-rockville-set" data-rockville-day="' + escapeHtml(activeDay.key) + '" data-rockville-set-id="' + escapeHtml(entry.id) + '">Edit</button></td>'
+            + '</tr>';
+        }).join('')
+        : '<tr><td colspan="4" class="household-concerts-rockville-empty-row">No sets added for ' + escapeHtml(activeDay.label) + ' yet.</td></tr>')
+      + '</tbody></table></div>'
+      + '</section>';
+  }
+
+  function saveRockvilleSet(form) {
+    var record = serializeForm(form);
+    var dayKey = normalizeRockvilleDayKey(record.Rockville_Day || (state.rockvilleView && state.rockvilleView.formDay) || 'thursday');
+    var setId = String(record.Rockville_Set_Id || '').trim();
+    var nextSet = normalizeRockvilleSet({
+      id: setId || generateRockvilleSetId(),
+      band: record.Band,
+      stage: record.Stage,
+      setStartTime: record.Set_Start_Time,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    var daySets = getRockvilleSetsForDay(dayKey).slice();
+    var existingIndex = daySets.findIndex(function (entry) {
+      return String((entry && entry.id) || '').trim() === nextSet.id;
+    });
+    if (existingIndex >= 0) {
+      nextSet.createdAt = Number(daySets[existingIndex].createdAt) || Date.now();
+      daySets[existingIndex] = nextSet;
+    } else {
+      daySets.push(nextSet);
+    }
+    state.rockville2026.days[dayKey] = daySets;
+    persistRockville2026Data();
+    state.rockvilleView.open = true;
+    state.rockvilleView.page = 'schedule';
+    state.rockvilleView.activeDay = dayKey;
+    state.rockvilleView.formDay = dayKey;
+    state.rockvilleView.editingSetId = '';
+    setStatus((existingIndex >= 0 ? 'Updated' : 'Added') + ' Rockville 2026 set for ' + getRockvilleDayMeta(dayKey).label + '.', 'success');
+    renderAll();
   }
 
   function normalizeColumnName(value) {
@@ -1779,6 +1968,11 @@
       // Fall through to final error.
     }
     throw new Error('Could not locate ' + WORKBOOK_NAME + '. Checked: ' + checked.join(', '));
+  }
+
+  function isConcertsWorkbookUnavailableError(error) {
+    var message = String(error && error.message || '').trim();
+    return message.indexOf('Could not locate ' + WORKBOOK_NAME + '.') === 0;
   }
 
   function mapRecordToRowByColumns(record, columns, options) {
@@ -3362,6 +3556,7 @@
      renderPhotoGallery();
      renderAnalyticsDashboard();
      renderRecommendationToast();
+      renderRockville2026();
    }
 
   async function readTableSafe(filePath, tableName) {
@@ -3400,7 +3595,11 @@
       maybeHydrateUpcomingDistances();
       if (resolveActiveBand()) loadDiscoveryForBand(resolveActiveBand(), false);
      } catch (error) {
-       console.error('❌ Concerts feature failed to load:', error);
+       if (isConcertsWorkbookUnavailableError(error)) {
+         console.warn('⚠️ Concerts workbook unavailable; loading local-only tools:', error && error.message ? error.message : error);
+       } else {
+         console.error('❌ Concerts feature failed to load:', error);
+       }
        state.attendedBySchemaWarning = '';
        state.favoriteBands = [];
        state.attendedConcerts = [];
@@ -6800,6 +6999,52 @@
         case 'open-concert-settings':
           openConcertSettingsModal();
           break;
+        case 'open-rockville-2026':
+          state.rockvilleView.open = true;
+          state.rockvilleView.page = 'schedule';
+          state.rockvilleView.activeDay = normalizeRockvilleDayKey(state.rockvilleView.activeDay || 'thursday');
+          state.rockvilleView.formDay = state.rockvilleView.activeDay;
+          state.rockvilleView.editingSetId = '';
+          renderAll();
+          break;
+        case 'close-rockville-2026':
+          state.rockvilleView.open = false;
+          state.rockvilleView.page = 'schedule';
+          state.rockvilleView.editingSetId = '';
+          renderAll();
+          break;
+        case 'select-rockville-day':
+          state.rockvilleView.open = true;
+          state.rockvilleView.page = 'schedule';
+          state.rockvilleView.activeDay = normalizeRockvilleDayKey(target.getAttribute('data-rockville-day'));
+          state.rockvilleView.formDay = state.rockvilleView.activeDay;
+          state.rockvilleView.editingSetId = '';
+          renderAll();
+          break;
+        case 'open-rockville-set-form':
+          state.rockvilleView.open = true;
+          state.rockvilleView.page = 'form';
+          state.rockvilleView.formDay = normalizeRockvilleDayKey(target.getAttribute('data-rockville-day') || state.rockvilleView.activeDay);
+          state.rockvilleView.activeDay = state.rockvilleView.formDay;
+          state.rockvilleView.editingSetId = '';
+          renderAll();
+          break;
+        case 'edit-rockville-set':
+          state.rockvilleView.open = true;
+          state.rockvilleView.page = 'form';
+          state.rockvilleView.formDay = normalizeRockvilleDayKey(target.getAttribute('data-rockville-day') || state.rockvilleView.activeDay);
+          state.rockvilleView.activeDay = state.rockvilleView.formDay;
+          state.rockvilleView.editingSetId = String(target.getAttribute('data-rockville-set-id') || '').trim();
+          renderAll();
+          break;
+        case 'cancel-rockville-set-form':
+          state.rockvilleView.open = true;
+          state.rockvilleView.page = 'schedule';
+          state.rockvilleView.activeDay = normalizeRockvilleDayKey(state.rockvilleView.formDay || state.rockvilleView.activeDay);
+          state.rockvilleView.formDay = state.rockvilleView.activeDay;
+          state.rockvilleView.editingSetId = '';
+          renderAll();
+          break;
         case 'open-workbook-path-diagnostics':
           openWorkbookPathDiagnosticsModal();
           break;
@@ -7426,6 +7671,7 @@
       if (form.id === 'householdConcertsBandForm') saveFavoriteBand(form);
       if (form.id === 'householdConcertsAttendedForm') saveAttendedConcert(form);
       if (form.id === 'householdConcertsUpcomingForm') saveUpcomingConcert(form);
+      if (form.id === 'householdConcertsRockvilleSetForm') saveRockvilleSet(form);
       if (form.id === 'householdConcertsSettingsForm') saveConcertSettingsFromForm(form);
       if (form.id === 'householdConcertsHistoricFinderForm') searchHistoricConcerts(form);
     });
