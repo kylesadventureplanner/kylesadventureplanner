@@ -137,7 +137,7 @@
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
   const PROGRESS_SUBTAB_KEYS = ['all-locations', 'concerts', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
-  const DAILY_PROGRESS_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges'];
+  const DAILY_PROGRESS_SUBTAB_KEYS = ['all-locations', 'concerts', 'city-explorer', 'challenges'];
   const PROGRESS_SUBTAB_ROUTE_KEYS = Array.from(new Set([...PROGRESS_SUBTAB_KEYS, ...DAILY_PROGRESS_SUBTAB_KEYS]));
   const PROGRESS_SUBTAB_PANE_MAP = {
     'city-explorer': 'all-locations'
@@ -806,13 +806,6 @@
     if (!root) return;
     const requestedSubtab = getRequestedProgressSubtabFromUrl();
     if (!requestedSubtab) return;
-    if (requestedSubtab === 'concerts' && !isAdvancedAppMode()) {
-      if (typeof window.setAppMode === 'function') {
-        window.setAppMode('advanced');
-      } else {
-        document.documentElement.setAttribute('data-app-mode', 'advanced');
-      }
-    }
     if (state.activeProgressSubTab === requestedSubtab) return;
     setActiveProgressSubTab(root, requestedSubtab);
   }

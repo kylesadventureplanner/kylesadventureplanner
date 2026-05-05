@@ -11,7 +11,7 @@ const {
   waitForAdventureJumpLinksState
 } = require('./playwright-helpers');
 
-const DAILY_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges'];
+const DAILY_SUBTAB_KEYS = ['all-locations', 'city-explorer', 'challenges', 'concerts'];
 const ALL_SUBTAB_KEYS = ['all-locations', 'concerts', 'outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
 
 const ADVENTURE_SUBTABS = [
