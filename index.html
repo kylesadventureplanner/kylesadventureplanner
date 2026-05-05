@@ -4054,6 +4054,37 @@
       box-shadow: 0 2px 8px rgba(30, 58, 138, 0.35);
     }
 
+    /* App Mode Button with Color Chip */
+    .auth-btn.app-mode-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-mode-chip {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .app-mode-chip--daily {
+      background-color: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+
+    .app-mode-chip--advanced {
+      background-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    }
+
+    /* Hover state for better visibility */
+    .auth-btn.app-mode-btn:hover .app-mode-chip {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+
     #signInBtn.is-needs-signin {
       background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
       color: #ffffff;
@@ -8995,7 +9026,7 @@
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode" data-advanced-only="true">📴 Offline Mode</button>
       <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup" data-advanced-only="true">💾 App Backup</button>
       <button id="diagnosticsHubBtn" class="auth-btn" title="Open Central Diagnostics Hub" data-tooltip="Open Central Diagnostics Hub" data-advanced-only="true">🩺 Diagnostics</button>
-      <button id="appModeToggleBtn" class="auth-btn" type="button" title="Switch between Daily Use Mode and Advanced Mode" aria-pressed="false">🛠 Advanced Mode</button>
+      <button id="appModeToggleBtn" class="auth-btn app-mode-btn" type="button" title="Switch between Daily Use Mode and Advanced Mode" aria-pressed="false"><span class="app-mode-chip app-mode-chip--daily"></span>🛠 Advanced Mode</button>
       <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
@@ -9012,7 +9043,7 @@
     function normalizeAppMode(mode) { return mode === "advanced" ? "advanced" : "daily"; }
     function readStoredMode() { try { var raw = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null; if (raw == null) return normalizeAppMode(window.__APP_MODE); return normalizeAppMode(JSON.parse(raw)); } catch (_error) { return normalizeAppMode(window.__APP_MODE); } }
     function persistMode(mode) { try { if (window.localStorage) { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeAppMode(mode))); } } catch (_error) {} }
-    function updateToggleButton(mode) { var btn = document.getElementById("appModeToggleBtn"); if (btn == null) return; var normalized = normalizeAppMode(mode); var isAdvanced = normalized === "advanced"; btn.dataset.mode = normalized; btn.setAttribute("aria-pressed", isAdvanced ? "true" : "false"); btn.textContent = isAdvanced ? "✨ Daily Use Mode" : "🛠 Advanced Mode"; btn.title = isAdvanced ? "Advanced Mode is active. Click to switch back to Daily Use Mode." : "Daily Use Mode is active. Click to reveal advanced tools."; }
+    function updateToggleButton(mode) { var btn = document.getElementById("appModeToggleBtn"); if (btn == null) return; var normalized = normalizeAppMode(mode); var isAdvanced = normalized === "advanced"; btn.dataset.mode = normalized; btn.setAttribute("aria-pressed", isAdvanced ? "true" : "false"); var textNode = Array.from(btn.childNodes).find(function(n) { return n.nodeType === 3; }); var newText = isAdvanced ? "✨ Daily Use Mode" : "🛠 Advanced Mode"; if (textNode) { textNode.textContent = newText; } else { btn.appendChild(document.createTextNode(newText)); } btn.title = isAdvanced ? "Advanced Mode is active. Click to switch back to Daily Use Mode." : "Daily Use Mode is active. Click to reveal advanced tools."; var chip = btn.querySelector(".app-mode-chip"); if (chip) { chip.classList.remove("app-mode-chip--daily", "app-mode-chip--advanced"); chip.classList.add(isAdvanced ? "app-mode-chip--advanced" : "app-mode-chip--daily"); } }
     function applyAppMode(mode) { var normalized = normalizeAppMode(mode); document.documentElement.setAttribute("data-app-mode", normalized); window.__APP_MODE = normalized; updateToggleButton(normalized); document.dispatchEvent(new CustomEvent("kap:app-mode-changed", { detail: { mode: normalized, isAdvanced: normalized === "advanced" } })); return normalized; }
     function bindToggle() { var btn = document.getElementById("appModeToggleBtn"); if (btn == null || btn.dataset.bound === "1") return; btn.dataset.bound = "1"; btn.addEventListener("click", function () { var nextMode = document.documentElement.getAttribute("data-app-mode") === "advanced" ? "daily" : "advanced"; persistMode(nextMode); applyAppMode(nextMode); }); }
     window.getAppMode = function () { return normalizeAppMode(document.documentElement.getAttribute("data-app-mode") || window.__APP_MODE); };

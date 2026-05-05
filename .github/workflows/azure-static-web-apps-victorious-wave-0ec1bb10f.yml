@@ -12,6 +12,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: swa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
@@ -311,6 +315,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post-Deploy Tag Verification (blocking)
+        id: postdeploytagverification
         if: ${{ github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
         env:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
@@ -392,9 +397,142 @@ jobs:
         if: ${{ github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
         env:
           APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+          POST_DEPLOY_RESULTS_DIR: ${{ runner.temp }}/post-deploy-playwright-${{ github.run_id }}
           RELIABILITY_SMOKE_SUMMARY_PATH: ${{ runner.temp }}/post-deploy-reliability-smoke-summary-${{ github.run_id }}.json
         run: |
-          POST_DEPLOY_RESULTS_DIR="${RUNNER_TEMP}/post-deploy-playwright-${GITHUB_RUN_ID}"
           mkdir -p "${POST_DEPLOY_RESULTS_DIR}"
           npx playwright test tests/reliability-smoke.spec.js --config=playwright.config.production.js --grep "first-click success: nature explore" --reporter=list --output="${POST_DEPLOY_RESULTS_DIR}"
+
+      - name: Upload Post-Deploy Playwright diagnostics
+        if: ${{ always() && github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-playwright-diagnostics-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/post-deploy-playwright-${{ github.run_id }}/**/*
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Post-Deploy Smoke Summary Gate
+        id: postdeploysmokesummarygate
+        if: ${{ always() && github.event_name == 'push' && (steps.builddeploy.outcome == 'success' || steps.deploycli.outcome == 'success') }}
+        env:
+          RELIABILITY_SMOKE_SUMMARY_PATH: ${{ runner.temp }}/post-deploy-reliability-smoke-summary-${{ github.run_id }}.json
+        run: |
+          if [ ! -s "${RELIABILITY_SMOKE_SUMMARY_PATH}" ]; then
+            echo "::error::Post-deploy smoke summary file missing: ${RELIABILITY_SMOKE_SUMMARY_PATH}"
+            {
+              echo "### Post-deploy smoke summary"
+              echo "- Missing summary JSON at \`${RELIABILITY_SMOKE_SUMMARY_PATH}\`"
+              echo "- Diagnostics artifact: \`post-deploy-playwright-diagnostics-${{ github.run_id }}\`"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+
+          const summaryPath = process.env.RELIABILITY_SMOKE_SUMMARY_PATH;
+          const stepSummaryPath = process.env.GITHUB_STEP_SUMMARY;
+
+          let payload;
+          try {
+            payload = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+          } catch (err) {
+            console.error(`::error::Invalid post-deploy smoke summary JSON: ${err.message}`);
+            process.exit(1);
+          }
+
+          const pass = Boolean(payload && payload.pass);
+          const p95 = Number(payload && payload.startupMsP95);
+          const firstClickRate = Number(payload && payload.firstClickSuccessRate);
+          const firstClickChecks = Number(payload && payload.firstClickChecks);
+          const firstClickSuccesses = Number(payload && payload.firstClickSuccesses);
+          const checksTotal = Array.isArray(payload && payload.checks) ? payload.checks.length : 0;
+          const checksPassed = Array.isArray(payload && payload.checks)
+            ? payload.checks.filter((row) => row && row.passed).length
+            : 0;
+
+          const lines = [
+            '### Post-deploy smoke summary',
+            '| Field | Value |',
+            '| --- | --- |',
+            `| Status | ${pass ? '✅ pass' : '⚠️ fail'} |`,
+            `| Startup p95 (ms) | ${Number.isFinite(p95) ? p95 : 'unknown'} |`,
+            `| First-click success rate | ${Number.isFinite(firstClickRate) ? (firstClickRate * 100).toFixed(2) + '%' : 'unknown'} (${Number.isFinite(firstClickSuccesses) ? firstClickSuccesses : 0}/${Number.isFinite(firstClickChecks) ? firstClickChecks : 0}) |`,
+            `| Checks passed | ${checksPassed}/${checksTotal} |`,
+            `| Summary path | \`${summaryPath}\` |`,
+            ''
+          ];
+
+          fs.appendFileSync(stepSummaryPath, lines.join('\n'));
+
+          if (!pass) {
+            console.error('::error::Post-deploy smoke summary marked the run as failed.');
+            process.exit(1);
+          }
+          NODE
+
+      - name: Final Release Verdict
+        if: ${{ always() && github.event_name == 'push' }}
+        run: |
+          DEPLOY_PATH_STATUS="red"
+          DEPLOY_PATH_LABEL="not attempted"
+
+          if [ "${{ steps.deployeligibility.outputs.should_deploy }}" != "true" ]; then
+            DEPLOY_PATH_LABEL="skipped (${{ steps.deployeligibility.outputs.reason }})"
+          elif [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
+            DEPLOY_PATH_STATUS="green"
+            DEPLOY_PATH_LABEL="primary"
+          elif [ "${{ steps.deploycli.outcome }}" = "success" ]; then
+            DEPLOY_PATH_STATUS="green"
+            DEPLOY_PATH_LABEL="fallback"
+          elif [ "${{ steps.builddeploy.outcome }}" = "failure" ] || [ "${{ steps.deploycli.outcome }}" = "failure" ]; then
+            DEPLOY_PATH_LABEL="failed"
+          fi
+
+          TAG_STATUS="red"
+          if [ "${{ steps.postdeploytagverification.outcome }}" = "success" ]; then
+            TAG_STATUS="green"
+          fi
+
+          SMOKE_STATUS="red"
+          if [ "${{ steps.postdeploysmokesummarygate.outcome }}" = "success" ]; then
+            SMOKE_STATUS="green"
+          fi
+
+          VERDICT_ICON="🔴"
+          VERDICT_LABEL="red"
+          if [ "${DEPLOY_PATH_STATUS}" = "green" ] && [ "${TAG_STATUS}" = "green" ] && [ "${SMOKE_STATUS}" = "green" ]; then
+            VERDICT_ICON="🟢"
+            VERDICT_LABEL="green"
+          fi
+
+          if [ "${VERDICT_LABEL}" = "green" ]; then
+            echo "::notice::Final release verdict: ${VERDICT_ICON} ${VERDICT_LABEL} (deploy=${DEPLOY_PATH_LABEL}, tag=${{ steps.postdeploytagverification.outcome }}, smoke=${{ steps.postdeploysmokesummarygate.outcome }})"
+          else
+            echo "::warning::Final release verdict: ${VERDICT_ICON} ${VERDICT_LABEL} (deploy=${DEPLOY_PATH_LABEL}, tag=${{ steps.postdeploytagverification.outcome }}, smoke=${{ steps.postdeploysmokesummarygate.outcome }})"
+          fi
+
+          {
+            echo "### Final release verdict"
+            echo "| Verdict | Deploy path | Tag verification | Smoke gate |"
+            echo "| --- | --- | --- | --- |"
+            echo "| ${VERDICT_ICON} ${VERDICT_LABEL} | ${DEPLOY_PATH_LABEL} (${{ steps.builddeploy.outcome }}/${{ steps.deploycli.outcome }}) | ${{ steps.postdeploytagverification.outcome }} | ${{ steps.postdeploysmokesummarygate.outcome }} |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request Environment
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
+          app_location: "/"
+          action: "close"
 
