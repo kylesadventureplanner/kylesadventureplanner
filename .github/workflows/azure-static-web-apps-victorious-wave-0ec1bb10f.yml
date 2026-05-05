@@ -134,30 +134,16 @@ jobs:
           fi
 
           echo "environment=${SWA_ENVIRONMENT}" >> "$GITHUB_OUTPUT"
-      # Primary deploy path uses Azure/static-web-apps-deploy@v1 (proven reliable).
-      - name: Build And Deploy (Azure action)
-        id: builddeploy
-        if: ${{ success() && steps.deployeligibility.outputs.should_deploy == 'true' }}
-        continue-on-error: true
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "/"
-          api_location: "api"
-          output_location: "."
-
-      # Fallback to SWA CLI if Azure action fails.
-      - name: Build And Deploy (SWA CLI fallback)
+      # Primary deploy path uses SWA CLI to avoid Docker/MCR fetch failures.
+      - name: Build And Deploy (SWA CLI primary)
         id: deploycli
-        if: ${{ steps.deployeligibility.outputs.should_deploy == 'true' && steps.builddeploy.outcome == 'failure' }}
+        if: ${{ success() && steps.deployeligibility.outputs.should_deploy == 'true' }}
         continue-on-error: true
         env:
           SWA_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
           SWA_ENVIRONMENT: ${{ steps.deployeligibility.outputs.environment }}
         run: |
-          echo "Deploying via SWA CLI fallback (${SWA_ENVIRONMENT})"
+          echo "Deploying via SWA CLI primary path (${SWA_ENVIRONMENT})"
           for attempt in 1 2 3; do
             if npx --yes @azure/static-web-apps-cli@2.0.7 deploy . \
               --deployment-token "${SWA_DEPLOYMENT_TOKEN}" \
@@ -173,6 +159,20 @@ jobs:
             fi
           done
           exit 1
+
+      # Fallback to Azure action only if CLI deploy fails.
+      - name: Build And Deploy (Azure action fallback)
+        id: builddeploy
+        if: ${{ steps.deployeligibility.outputs.should_deploy == 'true' && steps.deploycli.outcome == 'failure' }}
+        continue-on-error: true
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "/"
+          api_location: "api"
+          output_location: "."
 
 
       - name: Deploy Path Summary
@@ -247,15 +247,15 @@ jobs:
           if [ "${{ steps.deployeligibility.outputs.should_deploy }}" != "true" ]; then
             echo "::notice::Deploy skipped: ${{ steps.deployeligibility.outputs.reason }}"
             FINAL_DEPLOY_PATH="⏭️ skipped (${{ steps.deployeligibility.outputs.reason }})"
-          elif [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
-            echo "::notice::Deploy source: primary Azure/static-web-apps-deploy action"
-            FINAL_DEPLOY_PATH="✅ primary (Azure/static-web-apps-deploy)"
           elif [ "${{ steps.deploycli.outcome }}" = "success" ]; then
-            echo "::notice::Deploy source: fallback SWA CLI"
-            FINAL_DEPLOY_PATH="✅ fallback (SWA CLI)"
+            echo "::notice::Deploy source: primary SWA CLI"
+            FINAL_DEPLOY_PATH="✅ primary (SWA CLI)"
+          elif [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
+            echo "::notice::Deploy source: fallback Azure/static-web-apps-deploy action"
+            FINAL_DEPLOY_PATH="✅ fallback (Azure/static-web-apps-deploy)"
           elif [ "${{ steps.builddeploy.outcome }}" = "failure" ] || [ "${{ steps.deploycli.outcome }}" = "failure" ]; then
-            echo "::warning::Deploy source: attempted but failed (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
-            FINAL_DEPLOY_PATH="⚠️ failed (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+            echo "::warning::Deploy source: attempted but failed (cli=${{ steps.deploycli.outcome }}, azure_action=${{ steps.builddeploy.outcome }})"
+            FINAL_DEPLOY_PATH="⚠️ failed (cli=${{ steps.deploycli.outcome }}, azure_action=${{ steps.builddeploy.outcome }})"
             {
               echo "### Deploy status"
               echo "| Field | Value |"
@@ -270,10 +270,10 @@ jobs:
           else
             if [ -n "${FAILED_PREREQ_NAME}" ]; then
               echo "::notice::Deploy not attempted because prerequisite failed: ${FAILED_PREREQ_NAME}"
-              FINAL_DEPLOY_PATH="⏭️ not attempted (blocked by ${FAILED_PREREQ_NAME}; cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+              FINAL_DEPLOY_PATH="⏭️ not attempted (blocked by ${FAILED_PREREQ_NAME}; cli=${{ steps.deploycli.outcome }}, azure_action=${{ steps.builddeploy.outcome }})"
             else
-              echo "::notice::Deploy not attempted because an earlier step failed or the job was interrupted (cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
-              FINAL_DEPLOY_PATH="⏭️ not attempted (earlier step failure or interruption; cli=${{ steps.deploycli.outcome }}, fallback=${{ steps.builddeploy.outcome }})"
+              echo "::notice::Deploy not attempted because an earlier step failed or the job was interrupted (cli=${{ steps.deploycli.outcome }}, azure_action=${{ steps.builddeploy.outcome }})"
+              FINAL_DEPLOY_PATH="⏭️ not attempted (earlier step failure or interruption; cli=${{ steps.deploycli.outcome }}, azure_action=${{ steps.builddeploy.outcome }})"
             fi
           fi
 
