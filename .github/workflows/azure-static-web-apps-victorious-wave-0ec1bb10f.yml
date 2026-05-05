@@ -144,13 +144,22 @@ jobs:
           SWA_ENVIRONMENT: ${{ steps.deployeligibility.outputs.environment }}
         run: |
           echo "Deploying via SWA CLI primary path (${SWA_ENVIRONMENT})"
+          if [ "${SWA_ENVIRONMENT}" = "production" ]; then
+            # Production deploys are more reliable when env is omitted.
+            SWA_ENV_ARGS=()
+            echo "SWA CLI env mode: implicit production"
+          else
+            SWA_ENV_ARGS=(--env "${SWA_ENVIRONMENT}")
+            echo "SWA CLI env mode: explicit ${SWA_ENVIRONMENT}"
+          fi
+
           for attempt in 1 2 3; do
             if npx --yes @azure/static-web-apps-cli@2.0.7 deploy . \
               --deployment-token "${SWA_DEPLOYMENT_TOKEN}" \
               --api-location "api" \
               --api-language "node" \
               --api-version "20" \
-              --env "${SWA_ENVIRONMENT}"; then
+              "${SWA_ENV_ARGS[@]}"; then
               exit 0
             fi
             echo "SWA CLI deploy attempt ${attempt} failed"
