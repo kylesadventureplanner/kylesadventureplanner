@@ -392,6 +392,11 @@
     return getCurrentAppModeSafe() === 'advanced';
   }
 
+  function getExplorerPageSize() {
+    // Daily mode defaults to paged explorer results to keep first paint and scrolling manageable.
+    return isAdvancedAppMode() ? 0 : 24;
+  }
+
   function getAvailableProgressSubtabKeys() {
     return isAdvancedAppMode() ? PROGRESS_SUBTAB_KEYS.slice() : DAILY_PROGRESS_SUBTAB_KEYS.slice();
   }
@@ -697,6 +702,13 @@
         challengesRoot.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+  }
+
+  function applyExplorerModeAttributes(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-visited-subtab-action^="close-explorer-"]').forEach((button) => {
+      button.setAttribute('data-advanced-only', 'true');
+    });
   }
 
   function resolveInlinePageUrl(relativePath) {
@@ -4711,6 +4723,7 @@
         tagExclude: [],
         stateExclude: [],
         cityExclude: [],
+        page: 1,
         detailsNavigation: null,
         routeSelectionIds: [],
         lastRoutePlan: null
@@ -6056,7 +6069,7 @@
       view.innerHTML = `
         <div class="card visited-inline-tool-header-card" style="margin-top: 10px;">
           <div class="visited-view-header-row">
-            <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
+            <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" data-advanced-only="true" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
             <div class="visited-view-header-copy">
               <div class="card-title" id="visitedExplorerDetailsPageTitle-${escapeHtml(subtabKey)}">Location Details</div>
               <div class="card-subtitle">Planner-style details and actions for this location.</div>
@@ -6105,6 +6118,8 @@
       host.style.border = '1px solid #dbeafe';
       host.style.borderRadius = '10px';
       host.style.background = '#f8fbff';
+      host.setAttribute('data-visited-explorer-route-planner', subtabKey);
+      host.setAttribute('data-advanced-only', 'true');
       metaEl.insertAdjacentElement('afterend', host);
     }
 
@@ -6122,6 +6137,49 @@
         <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-share-route="${escapeHtml(subtabKey)}" ${(lastPlan && lastPlan.shareUrl) ? '' : 'disabled'}>Share Itinerary</button>
       </div>
       <div style="font-size:11px;color:#64748b;">Select at least 2 locations to build an optimized driving route.</div>
+    `;
+  }
+
+  function renderExplorerPaginationUi(subtabKey, pagination) {
+    const metaEl = document.getElementById(`visitedExplorerMeta-${subtabKey}`);
+    if (!metaEl) return;
+    const hostId = `visitedExplorerPagination-${subtabKey}`;
+    let host = document.getElementById(hostId);
+    if (!host) {
+      host = document.createElement('div');
+      host.id = hostId;
+      host.className = 'visited-explorer-pagination';
+      host.style.marginTop = '8px';
+      host.style.display = 'flex';
+      host.style.flexWrap = 'wrap';
+      host.style.alignItems = 'center';
+      host.style.gap = '8px';
+      metaEl.insertAdjacentElement('afterend', host);
+    }
+
+    const data = pagination && typeof pagination === 'object' ? pagination : {};
+    const enabled = Boolean(data.enabled);
+    const totalPages = Number(data.totalPages) > 0 ? Number(data.totalPages) : 1;
+    const page = Number(data.page) > 0 ? Number(data.page) : 1;
+    const filteredCount = Number(data.filteredCount) >= 0 ? Number(data.filteredCount) : 0;
+    const pageSize = Number(data.pageSize) > 0 ? Number(data.pageSize) : 0;
+
+    if (!enabled || totalPages <= 1 || pageSize <= 0 || filteredCount <= pageSize) {
+      host.hidden = true;
+      host.setAttribute('aria-hidden', 'true');
+      host.innerHTML = '';
+      return;
+    }
+
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(filteredCount, start + pageSize - 1);
+    host.hidden = false;
+    host.setAttribute('aria-hidden', 'false');
+    host.innerHTML = `
+      <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-page="prev" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+      <span style="font-size:12px;color:#475569;">Showing ${start}-${end} of ${filteredCount}</span>
+      <span style="font-size:12px;color:#475569;">Page ${page} of ${totalPages}</span>
+      <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-page="next" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
     `;
   }
 
@@ -6152,6 +6210,23 @@
     syncExplorerFilterOptions(subtabKey, explorerState);
     renderExplorerTagBar(root, subtabKey);
     const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    const pageSize = getExplorerPageSize();
+    const paginationEnabled = pageSize > 0;
+    const totalPages = paginationEnabled ? Math.max(1, Math.ceil(filtered.length / pageSize)) : 1;
+    const activePage = paginationEnabled
+      ? Math.min(Math.max(1, Number(explorerState.page) || 1), totalPages)
+      : 1;
+    explorerState.page = activePage;
+    const filteredForRender = paginationEnabled
+      ? filtered.slice((activePage - 1) * pageSize, activePage * pageSize)
+      : filtered;
+    renderExplorerPaginationUi(subtabKey, {
+      enabled: paginationEnabled,
+      page: activePage,
+      totalPages,
+      filteredCount: filtered.length,
+      pageSize
+    });
     renderExplorerRoutePlannerUi(root, subtabKey, filtered);
     const visitMap = state.latestVisitMap || getVisitMap();
     const activeFilterSummary = getExplorerActiveFilterSummary(explorerState);
@@ -6162,7 +6237,7 @@
       return;
     }
 
-    listEl.innerHTML = filtered.map((item) => {
+    listEl.innerHTML = filteredForRender.map((item) => {
       const routeSelection = getExplorerRouteSelectionSet(subtabKey);
       const isSelectedForRoute = routeSelection.has(String(item.id || '').trim());
       const isVisited = Boolean(visitMap[item.id]);
@@ -6671,6 +6746,7 @@
       searchEl.dataset.bound = '1';
       searchEl.addEventListener('input', () => {
         explorerState.query = searchEl.value || '';
+        explorerState.page = 1;
         renderExplorerList(root, subtabKey);
       });
     }
@@ -6678,6 +6754,7 @@
       sortEl.dataset.bound = '1';
       sortEl.addEventListener('change', () => {
         explorerState.sort = sortEl.value || 'name-asc';
+        explorerState.page = 1;
         renderExplorerList(root, subtabKey);
       });
     }
@@ -6685,6 +6762,7 @@
       stateEl.dataset.bound = '1';
       stateEl.addEventListener('change', () => {
         explorerState.stateFilter = stateEl.value || 'all';
+        explorerState.page = 1;
         renderExplorerList(root, subtabKey);
       });
     }
@@ -6692,6 +6770,7 @@
       cityEl.dataset.bound = '1';
       cityEl.addEventListener('change', () => {
         explorerState.cityFilter = cityEl.value || 'all';
+        explorerState.page = 1;
         renderExplorerList(root, subtabKey);
       });
     }
@@ -8764,6 +8843,7 @@
         document.addEventListener('kap:app-mode-changed', () => {
           const liveRoot = document.getElementById('visitedLocationsRoot');
           if (!liveRoot) return;
+          applyExplorerModeAttributes(liveRoot);
           syncProgressSubTabs(liveRoot);
           renderSubtabStatusBars();
           applyDailyProgressSubtabBehavior(liveRoot, state.activeProgressSubTab);
@@ -8776,6 +8856,7 @@
       scheduleVisitedSubtabCtaOrderFinalization(root);
       renderVisitedCtaInjectorStatus(root, ctaSyncReport);
       ensureVisitedStandaloneHeaderButtons(root);
+      applyExplorerModeAttributes(root);
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
       if (root.dataset.bound === '1' && root.__visitedClickHandler) {
@@ -9247,6 +9328,20 @@
             if (explorerRouteSelect.checked) selected.add(itemId);
             else selected.delete(itemId);
             setExplorerRouteSelectionSet(subtabKey, selected);
+            renderExplorerList(root, subtabKey);
+            return;
+          }
+
+          const explorerPageBtn = closest('[data-visited-explorer-page]');
+          if (explorerPageBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerPageBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const intent = String(explorerPageBtn.getAttribute('data-visited-explorer-page') || '').trim();
+            const totalPages = Math.max(1, Number(explorerPageBtn.getAttribute('data-visited-explorer-page-count') || 1));
+            const explorerState = getExplorerState(subtabKey);
+            const current = Math.min(Math.max(1, Number(explorerState.page) || 1), totalPages);
+            if (intent === 'prev') explorerState.page = Math.max(1, current - 1);
+            if (intent === 'next') explorerState.page = Math.min(totalPages, current + 1);
             renderExplorerList(root, subtabKey);
             return;
           }

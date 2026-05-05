@@ -77,6 +77,75 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
     await expect.poll(async () => readVisibleAdventureSubtabs(page), { timeout: 15000 }).toEqual(DAILY_SUBTAB_KEYS);
     await waitForAdventureSubtabView(page, 'all-locations', 'explorer', { timeout: 15000 });
   });
+
+  test('daily mode hides advanced explorer controls and shows pagination when results span multiple pages', async ({ page }) => {
+    await openAdventureChallenge(page, { mode: 'daily', subtabKey: 'all-locations' });
+    await waitForAdventureSubtabView(page, 'all-locations', 'explorer', { timeout: 15000 });
+
+    await page.evaluate(() => {
+      const subtabKey = 'all-locations';
+      const state = window.__visitedState;
+      if (!state || !state.subtabExplorer) throw new Error('visited state unavailable');
+
+      const syntheticItems = Array.from({ length: 55 }, (_, idx) => {
+        const n = idx + 1;
+        return {
+          id: `daily-test-${n}`,
+          title: `Daily Mode Item ${n}`,
+          city: n % 2 === 0 ? 'Seattle' : 'Portland',
+          state: n % 2 === 0 ? 'WA' : 'OR',
+          tags: ['Test'],
+          description: `Synthetic explorer row ${n}`,
+          address: `${n} Example Ave`,
+          driveTime: '15 min'
+        };
+      });
+
+      const current = state.subtabExplorer[subtabKey] || {};
+      state.subtabExplorer[subtabKey] = {
+        ...current,
+        view: 'explorer',
+        loading: false,
+        loaded: true,
+        error: '',
+        items: syntheticItems,
+        query: '',
+        sort: 'name-asc',
+        stateFilter: 'all',
+        cityFilter: 'all',
+        tagInclude: [],
+        tagExclude: [],
+        stateExclude: [],
+        cityExclude: [],
+        page: 1
+      };
+
+      const searchEl = document.getElementById('visitedExplorerSearch-all-locations');
+      if (!searchEl) throw new Error('all-locations explorer search input missing');
+      searchEl.value = '';
+      searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    const backBtn = page.locator('#visitedProgressPane-all-locations [data-visited-subtab-action="close-explorer-all-locations"]').first();
+    await expect(backBtn).toHaveAttribute('data-advanced-only', 'true');
+    await expect(backBtn).toBeHidden();
+
+    const routePlanner = page.locator('#visitedExplorerRoutePlanner-all-locations').first();
+    await expect(routePlanner).toHaveAttribute('data-advanced-only', 'true');
+    await expect(routePlanner).toBeHidden();
+
+    const pagination = page.locator('#visitedExplorerPagination-all-locations').first();
+    await expect(pagination).toBeVisible({ timeout: 10000 });
+    await expect(pagination).toContainText(/Page\s*1\s*of/i);
+    const nextPageBtn = page.locator('#visitedExplorerPagination-all-locations [data-visited-explorer-page="next"]').first();
+    await expect(nextPageBtn).toBeVisible();
+
+    await activateFooterAction(page, nextPageBtn);
+    await expect.poll(async () => {
+      const text = await pagination.innerText().catch(() => '');
+      return String(text || '').replace(/\s+/g, ' ').trim();
+    }, { timeout: 10000 }).toMatch(/Page\s*2\s*of/i);
+  });
 });
 
 test.describe('Adventure Challenge advanced subtabs smoke', () => {

@@ -1255,13 +1255,14 @@
       const bar = document.createElement('div');
       bar.id   = barId;
       bar.setAttribute('data-visited-move-select-bar', subtabKey);
+      bar.setAttribute('data-advanced-only', 'true');
       bar.className = 'visited-move-select-bar';
       bar.hidden = true;
       bar.innerHTML =
         '<span data-visited-move-count class="visited-move-select-count">0 selected</span>'
-        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" '
+        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-advanced-only="true" '
         + 'data-visited-move-run="' + esc(subtabKey) + '" style="white-space:nowrap;">📦 Move Selected</button>'
-        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" '
+        + '<button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-advanced-only="true" '
         + 'data-visited-move-clear="' + esc(subtabKey) + '" style="white-space:nowrap;">✕ Clear</button>';
       listEl.parentElement.insertBefore(bar, listEl);
     }
@@ -1272,6 +1273,7 @@
       cb.type      = 'checkbox';
       cb.className = 'visited-move-card-checkbox';
       cb.setAttribute('data-visited-move-select-checkbox', '1');
+      cb.setAttribute('data-advanced-only', 'true');
       cb.setAttribute('data-subtab-key', subtabKey);
       cb.setAttribute('data-item-id',    itemId);
       cb.title     = 'Select this location for a bulk move';
@@ -1302,6 +1304,7 @@
           btn.setAttribute('data-visited-explorer-move-table', itemId);
           btn.setAttribute('data-visited-explorer-subtab', subtabKey);
           btn.setAttribute('role', 'menuitem');
+          btn.setAttribute('data-advanced-only', 'true');
           btn.textContent = '📦 Move to Table';
           if (refBtn) refBtn.insertAdjacentElement('afterend', btn);
           else        menu.appendChild(btn);
