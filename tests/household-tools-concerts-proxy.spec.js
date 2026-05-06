@@ -252,10 +252,17 @@ test.describe('Household Tools Concerts - Bandsintown proxy', () => {
     });
 
     await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="household-tools"]').click();
-    await expect(page.locator('#householdToolsRoot')).toBeVisible();
-    await page.locator('#appSubTabsSlot [data-household-subtab="concerts"], #householdToolsRoot [data-household-subtab="concerts"]').first().click();
-    await expect(page.locator('#householdToolsPane-concerts')).toBeVisible();
+    await page.evaluate(() => {
+      if (typeof window.setAppMode === 'function') {
+        window.setAppMode('advanced');
+      } else {
+        document.documentElement.setAttribute('data-app-mode', 'advanced');
+      }
+    });
+    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+    await page.locator('#visitedProgressTab-concerts').click();
+    await expect(page.locator('#visitedProgressPane-concerts')).toBeVisible();
   });
 
   test('prefers same-origin proxy calls when proxy mode is enabled', async ({ page }) => {

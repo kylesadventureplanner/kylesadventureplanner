@@ -19,6 +19,8 @@
   var FAVORITE_TABLE = 'Favorite_Bands';
   var ATTENDED_TABLE = 'Attended_Concerts';
   var UPCOMING_TABLE = 'Upcoming_Concerts';
+  var ROCKVILLE_2026_TABLE = 'Rockville_2026_Sets';
+  var ROCKVILLE_2026_WORKSHEET = 'Rockville_2026';
   var WORKBOOK_NAME = 'Concerts_Bands.xlsx';
   var DISTANCE_STOPS = [25, 50, 75, 100, 250, 1000];
   var CONCERT_ATTENDEE_OPTIONS = ['Kyle', 'Heather', 'Both'];
@@ -66,6 +68,24 @@
     { key: 'saturday', label: 'Saturday' },
     { key: 'sunday', label: 'Sunday' }
   ];
+  var ROCKVILLE_2026_COLUMNS = [
+    'Rockville_Set_Id',
+    'Rockville_Day',
+    'Band',
+    'Stage',
+    'Set_Start_Time',
+    'Created_At',
+    'Updated_At'
+  ];
+  var ROCKVILLE_2026_FIELD_ALIASES = {
+    id: ['Rockville_Set_Id', 'Rockville Set Id', 'Set_Id', 'Set ID'],
+    day: ['Rockville_Day', 'Rockville Day', 'Day'],
+    band: ['Band', 'Band_Name', 'Band Name'],
+    stage: ['Stage'],
+    setStartTime: ['Set_Start_Time', 'Set Start Time', 'SetStartTime'],
+    createdAt: ['Created_At', 'Created At'],
+    updatedAt: ['Updated_At', 'Updated At']
+  };
   var DEFAULT_CONCERTS_LOCATION = {
     latitude: 35.3187,
     longitude: -82.4609,
@@ -234,6 +254,13 @@
         activeDay: 'thursday',
         formDay: 'thursday',
         editingSetId: ''
+      },
+      rockvilleSyncStatus: {
+        mode: 'local-only',
+        label: 'Local only',
+        detail: 'Rockville 2026 sets are currently stored locally until Excel sync succeeds.',
+        updatedAt: 0,
+        lastSyncedAt: 0
       },
       bulkProfileRefreshBusy: false,
       bulkProfileRefreshProgress: { current: 0, total: 0, bandName: '' },
@@ -580,16 +607,130 @@
     return ROCKVILLE_2026_DAYS.find(function (day) { return day.key === key; }) || ROCKVILLE_2026_DAYS[0];
   }
 
+  function normalizeRockvilleTimestamp(value, fallbackValue) {
+    var fallback = Number(fallbackValue) || Date.now();
+    if (Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+    var text = String(value || '').trim();
+    if (!text) return fallback;
+    var parsed = Date.parse(text);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
   function normalizeRockvilleSet(entry) {
     var source = entry && typeof entry === 'object' ? entry : {};
+    var createdAt = normalizeRockvilleTimestamp(source.createdAt || source.Created_At, Date.now());
+    var updatedAt = normalizeRockvilleTimestamp(source.updatedAt || source.Updated_At, createdAt);
     return {
       id: String(source.id || source.setId || '').trim() || generateRockvilleSetId(),
       band: String(source.band || source.Band || '').trim(),
       stage: String(source.stage || source.Stage || '').trim(),
       setStartTime: String(source.setStartTime || source.Set_Start_Time || source.SetStartTime || '').trim(),
-      createdAt: Number(source.createdAt) || Date.now(),
-      updatedAt: Number(source.updatedAt) || Date.now()
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      __rowIndex: Number.isInteger(Number(source.__rowIndex)) ? Number(source.__rowIndex) : -1,
+      __rowId: String(source.__rowId || '').trim()
     };
+  }
+
+  function parseRockvilleWorkbookSet(record) {
+    var source = record && typeof record === 'object' ? record : {};
+    return {
+      dayKey: normalizeRockvilleDayKey(readValue(source, ROCKVILLE_2026_FIELD_ALIASES.day)),
+      set: normalizeRockvilleSet({
+        id: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.id),
+        band: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.band),
+        stage: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.stage),
+        setStartTime: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.setStartTime),
+        createdAt: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.createdAt),
+        updatedAt: readValue(source, ROCKVILLE_2026_FIELD_ALIASES.updatedAt),
+        __rowIndex: source.__rowIndex,
+        __rowId: source.__rowId
+      })
+    };
+  }
+
+  function buildRockvilleWorkbookRecord(dayKey, setEntry) {
+    var set = normalizeRockvilleSet(setEntry);
+    return {
+      Rockville_Set_Id: set.id,
+      Rockville_Day: normalizeRockvilleDayKey(dayKey),
+      Band: set.band,
+      Stage: set.stage,
+      Set_Start_Time: set.setStartTime,
+      Created_At: set.createdAt,
+      Updated_At: set.updatedAt
+    };
+  }
+
+  function pickPreferredRockvilleSet(currentEntry, nextEntry) {
+    if (!currentEntry) return normalizeRockvilleSet(nextEntry);
+    if (!nextEntry) return normalizeRockvilleSet(currentEntry);
+    var current = normalizeRockvilleSet(currentEntry);
+    var next = normalizeRockvilleSet(nextEntry);
+    var winner = next.updatedAt >= current.updatedAt ? next : current;
+    if ((!winner.__rowId || winner.__rowIndex < 0) && (current.__rowId || current.__rowIndex >= 0)) {
+      winner.__rowId = current.__rowId;
+      winner.__rowIndex = current.__rowIndex;
+    }
+    if ((!winner.__rowId || winner.__rowIndex < 0) && (next.__rowId || next.__rowIndex >= 0)) {
+      winner.__rowId = next.__rowId;
+      winner.__rowIndex = next.__rowIndex;
+    }
+    return winner;
+  }
+
+  function mergeRockville2026Sources(localData, backendData) {
+    var mergedDays = getDefaultRockville2026Days();
+    var localDays = normalizeRockville2026Data(localData).days;
+    var backendDays = normalizeRockville2026Data(backendData).days;
+    Object.keys(mergedDays).forEach(function (dayKey) {
+      var mergedById = new Map();
+      localDays[dayKey].forEach(function (entry) {
+        var normalized = normalizeRockvilleSet(entry);
+        mergedById.set(normalized.id, normalized);
+      });
+      backendDays[dayKey].forEach(function (entry) {
+        var normalized = normalizeRockvilleSet(entry);
+        mergedById.set(normalized.id, pickPreferredRockvilleSet(mergedById.get(normalized.id), normalized));
+      });
+      mergedDays[dayKey] = Array.from(mergedById.values()).sort(function (a, b) {
+        var timeCompare = String(a.setStartTime || '').localeCompare(String(b.setStartTime || ''));
+        if (timeCompare !== 0) return timeCompare;
+        return String(a.band || '').localeCompare(String(b.band || ''));
+      });
+    });
+    return { days: mergedDays };
+  }
+
+  function upsertRockvilleSetForDay(dayKey, setEntry) {
+    var key = normalizeRockvilleDayKey(dayKey);
+    var nextSet = normalizeRockvilleSet(setEntry);
+    var daySets = getRockvilleSetsForDay(key).slice();
+    var existingIndex = daySets.findIndex(function (entry) {
+      return String((entry && entry.id) || '').trim() === nextSet.id;
+    });
+    if (existingIndex >= 0) {
+      nextSet.createdAt = Number(daySets[existingIndex].createdAt) || nextSet.createdAt;
+      daySets[existingIndex] = pickPreferredRockvilleSet(daySets[existingIndex], nextSet);
+    } else {
+      daySets.push(nextSet);
+    }
+    state.rockville2026.days[key] = daySets;
+    return { existingIndex: existingIndex, savedSet: getRockvilleSetById(key, nextSet.id) || nextSet };
+  }
+
+  function excelColumnNameFromIndex(index) {
+    var safeIndex = Math.max(0, Number(index) || 0);
+    var name = '';
+    while (safeIndex >= 0) {
+      name = String.fromCharCode((safeIndex % 26) + 65) + name;
+      safeIndex = Math.floor(safeIndex / 26) - 1;
+    }
+    return name;
+  }
+
+  function getRockville2026HeaderRange() {
+    return 'A1:' + excelColumnNameFromIndex(ROCKVILLE_2026_COLUMNS.length - 1) + '1';
   }
 
   function normalizeRockville2026Data(raw) {
@@ -606,6 +747,49 @@
 
   function persistRockville2026Data() {
     writeJsonStorage(ROCKVILLE_2026_STORAGE_KEY, state.rockville2026);
+  }
+
+  function setRockvilleSyncStatus(mode, detail, timestamp) {
+    var normalizedMode = String(mode || '').trim() === 'synced' ? 'synced' : 'local-only';
+    var fallbackDetail = normalizedMode === 'synced'
+      ? 'Rockville 2026 sets are syncing with your Excel backend.'
+      : 'Rockville 2026 sets are currently stored locally until Excel sync succeeds.';
+    var existing = state.rockvilleSyncStatus && typeof state.rockvilleSyncStatus === 'object'
+      ? state.rockvilleSyncStatus
+      : {};
+    var stamp = Number(timestamp) || Date.now();
+    var lastSyncedAt = normalizedMode === 'synced'
+      ? stamp
+      : (Number(existing.lastSyncedAt) || 0);
+    state.rockvilleSyncStatus = {
+      mode: normalizedMode,
+      label: normalizedMode === 'synced' ? 'Synced to Excel' : 'Local only',
+      detail: String(detail || '').trim() || fallbackDetail,
+      updatedAt: stamp,
+      lastSyncedAt: lastSyncedAt
+    };
+  }
+
+  function renderRockvilleSyncBadge() {
+    var sync = state.rockvilleSyncStatus && typeof state.rockvilleSyncStatus === 'object'
+      ? state.rockvilleSyncStatus
+      : { mode: 'local-only', label: 'Local only', detail: '', updatedAt: 0, lastSyncedAt: 0 };
+    var mode = String(sync.mode || '').trim() === 'synced' ? 'synced' : 'local-only';
+    var label = String(sync.label || (mode === 'synced' ? 'Synced to Excel' : 'Local only')).trim();
+    var detail = String(sync.detail || '').trim();
+    var icon = mode === 'synced' ? '✅' : '⚠️';
+    var lastSyncedAt = Number(sync.lastSyncedAt) || 0;
+    var updatedAt = Number(sync.updatedAt) || 0;
+    var metaText = mode === 'synced'
+      ? (lastSyncedAt ? ('Last synced ' + formatTimeShort(lastSyncedAt)) : '')
+      : ((lastSyncedAt ? ('Last synced ' + formatTimeShort(lastSyncedAt)) : '') || (updatedAt ? ('Updated ' + formatTimeShort(updatedAt)) : ''));
+    return '<div id="householdConcertsRockvilleSyncBadge" class="household-concerts-rockville-sync-badge household-concerts-rockville-sync-badge--' + mode + '"'
+      + ' data-sync-mode="' + mode + '"'
+      + (detail ? (' title="' + escapeHtml(detail) + '"') : '')
+      + '><span class="household-concerts-rockville-sync-icon" data-rockville-sync-icon="true" aria-hidden="true">' + escapeHtml(icon) + '</span>'
+      + '<span class="household-concerts-rockville-sync-label">' + escapeHtml(label) + '</span>'
+      + (metaText ? ('<span class="household-concerts-rockville-sync-meta">' + escapeHtml(metaText) + '</span>') : '')
+      + '</div>';
   }
 
   function getRockvilleSetsForDay(dayKey) {
@@ -653,7 +837,7 @@
       var isEdit = !!editingSet;
       mount.innerHTML = '<section class="household-concerts-rockville-page">'
         + '<div class="household-concerts-rockville-header">'
-        + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>' + escapeHtml(isEdit ? ('Edit ' + formDay.label + ' Set') : ('Add ' + formDay.label + ' Set')) + '</h3><p class="household-concerts-muted">All fields are optional. Save whenever you are ready.</p></div>'
+        + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>' + escapeHtml(isEdit ? ('Edit ' + formDay.label + ' Set') : ('Add ' + formDay.label + ' Set')) + '</h3><p class="household-concerts-muted">All fields are optional. Save whenever you are ready.</p>' + renderRockvilleSyncBadge() + '</div>'
         + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="cancel-rockville-set-form">← Back to Rockville 2026</button></div>'
         + '</div>'
         + '<form id="householdConcertsRockvilleSetForm" class="household-concerts-rockville-form">'
@@ -672,7 +856,7 @@
     var daySets = getRockvilleSetsForDay(activeDay.key);
     mount.innerHTML = '<section class="household-concerts-rockville-page">'
       + '<div class="household-concerts-rockville-header">'
-      + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>Festival schedule planner</h3><p class="household-concerts-muted">Switch days, add sets, and edit anything later as the schedule changes.</p></div>'
+      + '<div><div class="household-concerts-eyebrow">🎸 Rockville 2026</div><h3>Festival schedule planner</h3><p class="household-concerts-muted">Switch days, add sets, and edit anything later as the schedule changes.</p>' + renderRockvilleSyncBadge() + '</div>'
       + '<div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="close-rockville-2026">← Back to Concerts</button></div>'
       + '</div>'
       + '<div class="household-concerts-rockville-day-tabs" role="tablist" aria-label="Rockville 2026 festival days">'
@@ -697,36 +881,43 @@
       + '</section>';
   }
 
-  function saveRockvilleSet(form) {
+  async function saveRockvilleSet(form) {
     var record = serializeForm(form);
     var dayKey = normalizeRockvilleDayKey(record.Rockville_Day || (state.rockvilleView && state.rockvilleView.formDay) || 'thursday');
     var setId = String(record.Rockville_Set_Id || '').trim();
+    var existingSet = getRockvilleSetById(dayKey, setId);
     var nextSet = normalizeRockvilleSet({
       id: setId || generateRockvilleSetId(),
       band: record.Band,
       stage: record.Stage,
       setStartTime: record.Set_Start_Time,
-      createdAt: Date.now(),
+      createdAt: existingSet ? existingSet.createdAt : Date.now(),
       updatedAt: Date.now()
     });
-    var daySets = getRockvilleSetsForDay(dayKey).slice();
-    var existingIndex = daySets.findIndex(function (entry) {
-      return String((entry && entry.id) || '').trim() === nextSet.id;
-    });
-    if (existingIndex >= 0) {
-      nextSet.createdAt = Number(daySets[existingIndex].createdAt) || Date.now();
-      daySets[existingIndex] = nextSet;
-    } else {
-      daySets.push(nextSet);
+    if (existingSet) {
+      nextSet.__rowIndex = existingSet.__rowIndex;
+      nextSet.__rowId = existingSet.__rowId;
     }
-    state.rockville2026.days[dayKey] = daySets;
+    var saveResult = upsertRockvilleSetForDay(dayKey, nextSet);
     persistRockville2026Data();
+    setRockvilleSyncStatus('local-only', 'Rockville 2026 set saved locally. Waiting for Excel sync to finish.');
     state.rockvilleView.open = true;
     state.rockvilleView.page = 'schedule';
     state.rockvilleView.activeDay = dayKey;
     state.rockvilleView.formDay = dayKey;
     state.rockvilleView.editingSetId = '';
-    setStatus((existingIndex >= 0 ? 'Updated' : 'Added') + ' Rockville 2026 set for ' + getRockvilleDayMeta(dayKey).label + '.', 'success');
+    renderAll();
+    try {
+      var syncedSet = await syncRockvilleSetToWorkbook(dayKey, saveResult.savedSet || nextSet);
+      upsertRockvilleSetForDay(dayKey, syncedSet);
+      persistRockville2026Data();
+      setRockvilleSyncStatus('synced', 'Latest Rockville 2026 changes are synced to ' + WORKBOOK_NAME + '.');
+      setStatus((saveResult.existingIndex >= 0 ? 'Updated' : 'Added') + ' Rockville 2026 set for ' + getRockvilleDayMeta(dayKey).label + ' and synced it to ' + WORKBOOK_NAME + '.', 'success');
+    } catch (error) {
+      console.warn('⚠️ Rockville 2026 Excel sync pending:', error && error.message ? error.message : error);
+      setRockvilleSyncStatus('local-only', 'Latest Rockville 2026 changes are stored locally because Excel sync is pending.');
+      setStatus((saveResult.existingIndex >= 0 ? 'Updated' : 'Added') + ' Rockville 2026 set for ' + getRockvilleDayMeta(dayKey).label + ' locally. Excel sync is pending: ' + (error && error.message ? error.message : 'Unknown sync error') + '.', 'warning');
+    }
     renderAll();
   }
 
@@ -902,6 +1093,16 @@
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  function formatTimeShort(value) {
+    if (!value) return '';
+    var date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString(undefined, {
       hour: 'numeric',
       minute: '2-digit'
     });
@@ -3568,6 +3769,109 @@
     }
   }
 
+  async function fetchConcertWorkbookWorksheets(filePath) {
+    var encodedPath = encodeGraphPath(filePath);
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/worksheets?$select=id,name,position';
+    var payload = await fetchJson(url);
+    return Array.isArray(payload.value) ? payload.value : [];
+  }
+
+  async function createConcertWorkbookWorksheet(filePath, worksheetName) {
+    var encodedPath = encodeGraphPath(filePath);
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/worksheets/add';
+    return fetchJson(url, { method: 'POST', body: { name: worksheetName } });
+  }
+
+  async function writeRockville2026HeaderRow(filePath, worksheetIdentifier) {
+    var encodedPath = encodeGraphPath(filePath);
+    var worksheetRef = encodeURIComponent(String(worksheetIdentifier || ROCKVILLE_2026_WORKSHEET).trim());
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/worksheets/' + worksheetRef + '/range(address=\'' + getRockville2026HeaderRange() + '\')';
+    await fetchJson(url, { method: 'PATCH', body: { values: [ROCKVILLE_2026_COLUMNS.slice()] } });
+  }
+
+  async function createRockville2026Table(filePath, worksheetIdentifier) {
+    var encodedPath = encodeGraphPath(filePath);
+    var worksheetRef = encodeURIComponent(String(worksheetIdentifier || ROCKVILLE_2026_WORKSHEET).trim());
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/worksheets/' + worksheetRef + '/tables/add';
+    await fetchJson(url, {
+      method: 'POST',
+      body: {
+        address: getRockville2026HeaderRange(),
+        hasHeaders: true,
+        name: ROCKVILLE_2026_TABLE
+      }
+    });
+    clearResolvedTableSchema(filePath, ROCKVILLE_2026_TABLE);
+  }
+
+  async function ensureRockville2026TableReady(filePath) {
+    try {
+      await fetchTableColumns(filePath, ROCKVILLE_2026_TABLE);
+      return { available: true, created: false };
+    } catch (error) {
+      if (!isGraphItemNotFoundError(error)) throw error;
+    }
+
+    var worksheets = await fetchConcertWorkbookWorksheets(filePath);
+    var worksheet = worksheets.find(function (entry) {
+      return normalizeText(entry && entry.name) === normalizeText(ROCKVILLE_2026_WORKSHEET);
+    });
+    if (!worksheet) {
+      worksheet = await createConcertWorkbookWorksheet(filePath, ROCKVILLE_2026_WORKSHEET);
+    }
+    await writeRockville2026HeaderRow(filePath, worksheet && (worksheet.id || worksheet.name || ROCKVILLE_2026_WORKSHEET));
+    await createRockville2026Table(filePath, worksheet && (worksheet.id || worksheet.name || ROCKVILLE_2026_WORKSHEET));
+    await fetchTableColumns(filePath, ROCKVILLE_2026_TABLE);
+    rememberResolvedWorkbookPath(filePath);
+    return { available: true, created: true };
+  }
+
+  async function readRockville2026WorkbookData(filePath) {
+    var payload = await fetchTableColumnsAndRows(filePath, ROCKVILLE_2026_TABLE, 1000);
+    var rows = toRowObjects(payload.columns, payload.rows);
+    var days = getDefaultRockville2026Days();
+    rows.forEach(function (record) {
+      var parsed = parseRockvilleWorkbookSet(record);
+      days[parsed.dayKey].push(parsed.set);
+    });
+    return { days: days };
+  }
+
+  async function findRockville2026WorkbookSet(filePath, setId) {
+    var targetId = String(setId || '').trim();
+    if (!targetId) return null;
+    var rows = await readTableSafe(filePath, ROCKVILLE_2026_TABLE);
+    for (var i = 0; i < rows.length; i += 1) {
+      var parsed = parseRockvilleWorkbookSet(rows[i]);
+      if (parsed.set.id === targetId) {
+        return { dayKey: parsed.dayKey, set: parsed.set };
+      }
+    }
+    return null;
+  }
+
+  async function syncRockvilleSetToWorkbook(dayKey, setEntry) {
+    var workbookPath = await findWorkbookPath();
+    await ensureRockville2026TableReady(workbookPath);
+    var nextSet = normalizeRockvilleSet(setEntry);
+    var backendMatch = (nextSet.__rowIndex >= 0 || nextSet.__rowId)
+      ? { dayKey: normalizeRockvilleDayKey(dayKey), set: nextSet }
+      : await findRockville2026WorkbookSet(workbookPath, nextSet.id);
+    var targetRowIndex = backendMatch && backendMatch.set && Number.isInteger(Number(backendMatch.set.__rowIndex))
+      ? Number(backendMatch.set.__rowIndex)
+      : -1;
+    var record = buildRockvilleWorkbookRecord(dayKey, Object.assign({}, backendMatch && backendMatch.set ? backendMatch.set : {}, nextSet));
+    if (targetRowIndex >= 0) {
+      await updateRecordInTableByIndex(workbookPath, ROCKVILLE_2026_TABLE, targetRowIndex, record);
+    } else {
+      await appendRecordToTable(workbookPath, ROCKVILLE_2026_TABLE, record);
+    }
+    var persisted = await findRockville2026WorkbookSet(workbookPath, nextSet.id);
+    return persisted
+      ? normalizeRockvilleSet(Object.assign({}, persisted.set, nextSet, { __rowIndex: persisted.set.__rowIndex, __rowId: persisted.set.__rowId }))
+      : nextSet;
+  }
+
   async function refreshData() {
     if (state.loading) return;
     state.loading = true;
@@ -3587,6 +3891,17 @@
       });
       state.attendedConcerts = payloads[1].map(parseAttendedConcert).filter(Boolean);
       state.upcomingConcerts = payloads[2].map(parseUpcomingConcert).filter(Boolean);
+      try {
+        var backendRockville = await readRockville2026WorkbookData(workbookPath);
+        state.rockville2026 = mergeRockville2026Sources(state.rockville2026, backendRockville);
+        persistRockville2026Data();
+        setRockvilleSyncStatus('synced', 'Rockville 2026 sets are loading from and saving to ' + WORKBOOK_NAME + '.');
+      } catch (rockvilleError) {
+        setRockvilleSyncStatus('local-only', 'Rockville 2026 is using local storage because Excel sync is currently unavailable.');
+        if (!isGraphItemNotFoundError(rockvilleError)) {
+          console.warn('⚠️ Rockville 2026 workbook sync unavailable:', rockvilleError && rockvilleError.message ? rockvilleError.message : rockvilleError);
+        }
+      }
       if (!getBandByKey(state.activeBandKey)) {
         state.activeBandKey = state.favoriteBands[0] ? state.favoriteBands[0].id : '';
       }

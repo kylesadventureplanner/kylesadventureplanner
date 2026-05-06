@@ -148,6 +148,48 @@
   color: #0f172a;
 }
 
+#householdConcertsPane .household-concerts-rockville-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  flex-wrap: wrap;
+}
+
+#householdConcertsPane .household-concerts-rockville-sync-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+#householdConcertsPane .household-concerts-rockville-sync-label {
+  line-height: 1.2;
+}
+
+#householdConcertsPane .household-concerts-rockville-sync-meta {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.9;
+  line-height: 1.2;
+}
+
+#householdConcertsPane .household-concerts-rockville-sync-badge--synced {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+#householdConcertsPane .household-concerts-rockville-sync-badge--local-only {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
 #householdConcertsPane .household-concerts-rockville-day-tabs {
   display: flex;
   flex-wrap: wrap;
