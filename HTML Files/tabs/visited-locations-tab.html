@@ -48,7 +48,7 @@
         <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-all-locations" title="Explore all saved locations" data-tooltip="Explore all saved locations">Explore Locations</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-explorer-newtab-all-locations" title="Open Explore Locations in a new tab" data-tooltip="Open Explore in new tab" aria-label="Open Explore Locations in a new tab">↗</button>
-          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--city" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">Add location</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--city visited-daily-primary-cta" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">Add location</button>
           <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-city-explorer-all-locations" title="Open City Explorer for all locations" data-tooltip="Open City Explorer for all locations">City Explorer</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--newtab" data-visited-subtab-action="open-city-explorer-newtab-all-locations" title="Open City Explorer (All Locations) in a new tab" data-tooltip="Open City Explorer in new tab" aria-label="Open City Explorer (All Locations) in a new tab">↗</button>
         </div>
@@ -63,7 +63,7 @@
             <div class="card-title">🗺️ Explore All Locations</div>
             <div class="card-subtitle">Combined directory sourced from <code>Nature_Locations.xlsx</code>, <code>Entertainment_Locations.xlsx</code>, and <code>Retail_Food_and_Drink.xlsx</code> excluding Festivals and Bike Trails.</div>
           </div>
-          <button id="visitedAllLocationsAddLocationBtn" type="button" class="pill-button" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">＋ Add location</button>
+          <button id="visitedAllLocationsAddLocationBtn" type="button" class="pill-button visited-daily-primary-cta" data-visited-subtab-action="open-add-location-all-locations" title="Open simplified Bulk Add for All Locations" data-tooltip="Add locations with simplified Bulk Add">＋ Add location</button>
         </div>
         <div class="visited-explorer-basic-filter">
           <input id="visitedExplorerSearch-all-locations" class="filter-input visited-explorer-basic-search" type="text" placeholder="Search by name, description or tags…" aria-label="Search all locations" />
@@ -1400,9 +1400,15 @@
         }
         const itemId = String(menu.getAttribute('data-visited-explorer-quick-actions-menu') || '').trim();
         if (!subtabKey || !itemId) return;
+        const appMode = (typeof window.getAppMode === 'function')
+          ? window.getAppMode()
+          : (document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily');
+        const isDailyAllLocations = appMode !== 'advanced' && subtabKey === 'all-locations';
 
         /* Inject "📦 Move to Table" item if not already present */
-        if (!menu.querySelector('[data-visited-explorer-move-table]')) {
+        if (isDailyAllLocations) {
+          menu.querySelectorAll('[data-visited-explorer-move-table]').forEach(function(btn) { btn.remove(); });
+        } else if (!menu.querySelector('[data-visited-explorer-move-table]')) {
           const refBtn = menu.querySelector('[data-visited-explorer-bulk-refresh]')
                       || menu.querySelector('[data-visited-explorer-find-urls]');
           const btn = document.createElement('button');

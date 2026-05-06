@@ -397,6 +397,29 @@
       transition: border-color .15s, background .15s;
     }
     .detail-bulk-refresh-field-label:hover { border-color: #93c5fd; background: #eff6ff; }
+
+    /* Daily-mode simplification for in-pane details */
+    body.detail-daily-mode #abEnrichBtn,
+    body.detail-daily-mode #abBulkRefreshBtn,
+    body.detail-daily-mode #abInlineEditBtn,
+    body.detail-daily-mode #abLinksBtn,
+    body.detail-daily-mode #abBatchTagsBtn,
+    body.detail-daily-mode #refreshCostBtn,
+    body.detail-daily-mode #refreshDescriptionBtn,
+    body.detail-daily-mode #refreshHoursBtn,
+    body.detail-daily-mode #refreshPlaceIdBtn,
+    body.detail-daily-mode #openBatchTagsFromCardBtn,
+    body.detail-daily-mode #diagSectionWrap,
+    body.detail-daily-mode #debugBar,
+    body.detail-daily-mode #pageShortcutHelpToggle,
+    body.detail-daily-mode #pageShortcutHelpBackdrop,
+    body.detail-daily-mode #pageShortcutHelpDrawer,
+    body.detail-daily-mode #tvModeGlobalToggle,
+    body.detail-daily-mode #diagnosticsFloatingPanel,
+    body.detail-daily-mode #diagnosticsPanel,
+    body.detail-daily-mode #diagnosticsDock {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -899,6 +922,7 @@
     window.PAGE_SHORTCUTS_HELP = {
       title: 'Adventure Details Shortcuts',
       buttonLabel: '⌨️ Shortcuts',
+      disabled: isDailyDetailMode(),
       sections: [
         {
           title: 'Location Navigation',
@@ -2359,6 +2383,72 @@
     } catch (_errB) {}
 
     return null;
+  }
+
+  function getDetailAppMode() {
+    var params = getParams();
+    var requestedMode = String(params.get('appMode') || '').trim().toLowerCase();
+    if (requestedMode === 'daily' || requestedMode === 'advanced') return requestedMode;
+
+    var hostWin = getOpenerWindow();
+    try {
+      if (hostWin && typeof hostWin.getAppMode === 'function') {
+        return hostWin.getAppMode() === 'advanced' ? 'advanced' : 'daily';
+      }
+    } catch (_errA) {}
+
+    try {
+      if (hostWin && hostWin.document && hostWin.document.documentElement) {
+        return hostWin.document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily';
+      }
+    } catch (_errB) {}
+
+    return 'advanced';
+  }
+
+  function isDailyDetailMode() {
+    return getDetailAppMode() !== 'advanced';
+  }
+
+  function applyDailyDetailModeUi() {
+    var dailyMode = isDailyDetailMode();
+    document.body.classList.toggle('detail-daily-mode', dailyMode);
+    if (!dailyMode) return;
+
+    var hideIds = [
+      'abEnrichBtn',
+      'abBulkRefreshBtn',
+      'abInlineEditBtn',
+      'abLinksBtn',
+      'abBatchTagsBtn',
+      'refreshCostBtn',
+      'refreshDescriptionBtn',
+      'refreshHoursBtn',
+      'refreshPlaceIdBtn',
+      'openBatchTagsFromCardBtn',
+      'diagSectionWrap',
+      'diagSectionBody',
+      'diagSectionToggle',
+      'debugBar',
+      'pageShortcutHelpToggle',
+      'pageShortcutHelpBackdrop',
+      'pageShortcutHelpDrawer',
+      'tvModeGlobalToggle',
+      'diagnosticsFloatingPanel',
+      'diagnosticsPanel',
+      'diagnosticsDock'
+    ];
+    hideIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+      el.style.display = 'none';
+    });
+
+    if (window.PAGE_SHORTCUTS_HELP && typeof window.PAGE_SHORTCUTS_HELP === 'object') {
+      window.PAGE_SHORTCUTS_HELP.disabled = true;
+    }
   }
 
   function openNearbyDiagnosticsFromDetail() {
@@ -6100,6 +6190,9 @@
     if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
       try { window.ButtonReliability.refreshShortcutHelp(); } catch (_shortcutErr2) {}
     }
+    applyDailyDetailModeUi();
+    window.setTimeout(applyDailyDetailModeUi, 0);
+    window.setTimeout(applyDailyDetailModeUi, 200);
     renderDebugMarker(payload);
     initActionBar(data, directionsUrl, payload);
 
@@ -6172,6 +6265,7 @@
     renderDetailMap(data);
     hydrateNearbyFromCacheForDetail(data);
     renderDetailInlineEditPanel();
+    applyDailyDetailModeUi();
   }
 
   function getLocationKey(data) {

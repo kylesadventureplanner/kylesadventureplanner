@@ -919,7 +919,7 @@
     view.innerHTML = `
       <div class="card visited-inline-tool-header-card" style="margin-top: 10px;">
         <div class="visited-view-header-row ui-section-header-row">
-          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="${escapeHtml(closeAction)}" title="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}" data-tooltip="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}">← Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}</button>
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="${escapeHtml(closeAction)}" ${isEdit || isVisitLog ? '' : 'data-daily-hide-city-explorer-back="true"'} title="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}" data-tooltip="Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}">← Back to ${escapeHtml(PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure')}</button>
           <div class="visited-view-header-copy ui-section-header-copy">
             <div class="card-title">${title}</div>
             <div class="card-subtitle">${escapeHtml(subtitle)}</div>
@@ -988,7 +988,8 @@
       preparedUrl = await window.prepareCityViewerInlineUrl({
         prefilterTag: filter.tag,
         prefilterLabel: filter.label,
-        sourceSubtab: paneKey
+        sourceSubtab: paneKey,
+        appMode: getCurrentAppModeSafe()
       });
     }
     if (!preparedUrl) {
@@ -998,6 +999,7 @@
       if (filter.tag) fallbackUrl.searchParams.set('prefilterTag', filter.tag);
       if (filter.label) fallbackUrl.searchParams.set('prefilterLabel', filter.label);
       fallbackUrl.searchParams.set('sourceSubtab', paneKey);
+      fallbackUrl.searchParams.set('appMode', getCurrentAppModeSafe());
       fallbackUrl.searchParams.set('ts', String(Date.now()));
       preparedUrl = fallbackUrl.toString();
     }
@@ -1006,6 +1008,7 @@
       const prepared = new URL(preparedUrl, window.location.href);
       prepared.searchParams.set('embedded', '1');
       prepared.searchParams.set('sourceSubtab', paneKey);
+      prepared.searchParams.set('appMode', getCurrentAppModeSafe());
       preparedUrl = prepared.toString();
     } catch (_error) {
       // Keep prepared URL as-is if it cannot be normalized.
@@ -1022,14 +1025,16 @@
       return window.openCityViewerInNewTab({
         prefilterTag: filter.tag,
         prefilterLabel: filter.label,
-        sourceSubtab: key
+        sourceSubtab: key,
+        appMode: getCurrentAppModeSafe()
       });
     }
     if (typeof window.openCityViewerWindow === 'function') {
       return window.openCityViewerWindow({
         prefilterTag: filter.tag,
         prefilterLabel: filter.label,
-        sourceSubtab: key
+        sourceSubtab: key,
+        appMode: getCurrentAppModeSafe()
       });
     }
     let preparedUrl = '';
@@ -1037,7 +1042,8 @@
       preparedUrl = await window.prepareCityViewerInlineUrl({
         prefilterTag: filter.tag,
         prefilterLabel: filter.label,
-        sourceSubtab: key
+        sourceSubtab: key,
+        appMode: getCurrentAppModeSafe()
       });
     }
     if (!preparedUrl) {
@@ -1045,6 +1051,7 @@
       if (filter.tag) fallbackUrl.searchParams.set('prefilterTag', filter.tag);
       if (filter.label) fallbackUrl.searchParams.set('prefilterLabel', filter.label);
       fallbackUrl.searchParams.set('sourceSubtab', key);
+      fallbackUrl.searchParams.set('appMode', getCurrentAppModeSafe());
       fallbackUrl.searchParams.set('ts', String(Date.now()));
       preparedUrl = fallbackUrl.toString();
     }
@@ -4778,7 +4785,38 @@
       node.hidden = !show;
       node.setAttribute('aria-hidden', show ? 'false' : 'true');
     });
+    syncDailyCityExplorerChrome(root, subtabKey, explorerState.view);
     updateVisitedJumpLinksVisibility(root);
+  }
+
+  function syncDailyCityExplorerChrome(root, subtabKey, view) {
+    if (!root) return;
+    const isDailyMode = getCurrentAppModeSafe() !== 'advanced';
+    const isDailyCityExplorer = isDailyMode
+      && subtabKey === 'all-locations'
+      && view === 'city-explorer'
+      && state.activeProgressSubTab === 'city-explorer';
+
+    root.querySelectorAll('[data-daily-hide-city-explorer-back="true"]').forEach((button) => {
+      button.hidden = isDailyCityExplorer;
+      button.setAttribute('aria-hidden', isDailyCityExplorer ? 'true' : 'false');
+      button.style.display = isDailyCityExplorer ? 'none' : '';
+    });
+
+    [
+      'pageShortcutHelpToggle',
+      'tvModeHeaderBtn',
+      'tvModeGlobalToggle',
+      'diagSectionWrap',
+      'debugBar',
+      'visitedDiagnosticsDetails'
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.hidden = isDailyCityExplorer;
+      el.setAttribute('aria-hidden', isDailyCityExplorer ? 'true' : 'false');
+      el.style.display = isDailyCityExplorer ? 'none' : '';
+    });
   }
 
   function workbookPathCandidates(workbook) {
@@ -6210,10 +6248,10 @@
     host.hidden = false;
     host.setAttribute('aria-hidden', 'false');
     host.innerHTML = `
-      <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-page="prev" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+      <button type="button" class="visited-explorer-detail-btn visited-explorer-pagination-btn visited-explorer-pagination-btn--prev" data-visited-explorer-page="prev" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page <= 1 ? 'disabled' : ''}>Previous</button>
       <span style="font-size:12px;color:#475569;">Showing ${start}-${end} of ${filteredCount}</span>
       <span style="font-size:12px;color:#475569;">Page ${page} of ${totalPages}</span>
-      <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-page="next" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+      <button type="button" class="visited-explorer-detail-btn visited-explorer-pagination-btn visited-explorer-pagination-btn--next" data-visited-explorer-page="next" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-page-count="${totalPages}" ${page >= totalPages ? 'disabled' : ''}>Next</button>
     `;
   }
 
@@ -6291,6 +6329,26 @@
       const notesPreview = String(item.notes || '').trim();
       const photoCount = getLocationPhotoCount(item.id);
       const coverPhoto = getLocationCoverPhoto(item.id);
+      const isDailyAllLocationsQuickActions = getCurrentAppModeSafe() !== 'advanced' && subtabKey === 'all-locations';
+      const quickActionsMenuMarkup = isDailyAllLocationsQuickActions
+        ? `
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Directions</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Google URL</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Log a Visit</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Add a Note</button>
+          `
+        : `
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Directions</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Google URL</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Log Visit</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Tag Manager</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-batch-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🏷️ Batch Tag Actions</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔗 Find / Add URLs</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔮 Enrich Data</button>
+            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📝 Paste &amp; Parse Text</button>
+          `;
       const cityValue = String(item.city || '').trim();
       const stateValue = String(item.state || '').trim();
       const addressLabel = formatExplorerAddressLine(item);
@@ -6337,16 +6395,7 @@
             </div>
           </div>
           <div class="visited-card-mini-menu visited-explorer-quick-actions-menu" data-visited-explorer-quick-actions-menu="${escapeHtml(item.id)}" data-visited-card-menu-type="quick-actions" role="menu" hidden>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Directions</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Google URL</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Log Visit</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">Tag Manager</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-batch-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🏷️ Batch Tag Actions</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔗 Find / Add URLs</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">🔮 Enrich Data</button>
-            <button type="button" class="visited-card-mini-menu-item visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" role="menuitem">📝 Paste &amp; Parse Text</button>
+            ${quickActionsMenuMarkup}
           </div>
           <div class="visited-explorer-card-controls">
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
@@ -6401,17 +6450,39 @@
     if (!topTags.length) { barEl.innerHTML = ''; return; }
 
     const activeIncludes = new Set(normalizeExplorerFilterTokenList(explorerState.tagInclude));
+    const isDailyAllLocations = getCurrentAppModeSafe() !== 'advanced' && subtabKey === 'all-locations';
 
-    barEl.innerHTML = topTags.map(({ tag, count }) => {
-      const isActive = activeIncludes.has(normalizeExplorerFilterToken(tag));
-      return `<button type="button"
-        class="visited-explorer-tag-bar-chip${isActive ? ' visited-explorer-tag-bar-chip--active' : ''}"
-        data-explorer-tag-bar-chip="${escapeHtml(subtabKey)}"
-        data-explorer-tag-bar-value="${escapeHtml(tag)}"
-        aria-pressed="${isActive}"
-        title="${isActive ? 'Remove' : 'Add'} tag filter: ${escapeHtml(tag)}"
-      >${escapeHtml(tag)}<span class="chip-count">${count}</span></button>`;
-    }).join('');
+    if (!isDailyAllLocations) {
+      barEl.innerHTML = topTags.map(({ tag, count }) => {
+        const isActive = activeIncludes.has(normalizeExplorerFilterToken(tag));
+        return buildExplorerTagBarChipHtml(subtabKey, tag, count, isActive, '');
+      }).join('');
+    } else {
+      const grouped = new Map(EXPLORER_TAG_GROUPS.map((group) => [group.key, []]));
+      const others = [];
+
+      topTags.forEach(({ tag, count }) => {
+        const isActive = activeIncludes.has(normalizeExplorerFilterToken(tag));
+        const group = classifyExplorerTagGroup(tag);
+        const chipHtml = buildExplorerTagBarChipHtml(subtabKey, tag, count, isActive, group ? group.className : '');
+        if (group && grouped.has(group.key)) grouped.get(group.key).push(chipHtml);
+        else others.push(chipHtml);
+      });
+
+      const sections = EXPLORER_TAG_GROUPS
+        .map((group) => {
+          const chips = grouped.get(group.key) || [];
+          if (!chips.length) return '';
+          return `<div class="visited-explorer-tag-group" data-explorer-tag-group="${escapeHtml(group.key)}"><span class="visited-explorer-tag-group-label">${escapeHtml(group.label)}</span><div class="visited-explorer-tag-group-chips">${chips.join('')}</div></div>`;
+        })
+        .filter(Boolean);
+
+      if (others.length) {
+        sections.push('<div class="visited-explorer-tag-group" data-explorer-tag-group="other"><span class="visited-explorer-tag-group-label">More</span><div class="visited-explorer-tag-group-chips">' + others.join('') + '</div></div>');
+      }
+
+      barEl.innerHTML = sections.join('');
+    }
 
     // Bind click handlers if not already bound.
     if (!barEl.dataset.barBound) {
@@ -6437,10 +6508,39 @@
   function normalizeExplorerFilterTokenList(values) {
     const unique = new Set();
     (Array.isArray(values) ? values : []).forEach((value) => {
-      const token = normalizeExplorerFilterToken(value);
-      if (token) unique.add(token);
+    const token = normalizeExplorerFilterToken(value);
+    if (token) unique.add(token);
     });
     return Array.from(unique);
+  }
+
+  const EXPLORER_TAG_GROUPS = [
+    { key: 'outdoors', label: 'Outdoors', className: 'visited-explorer-tag-group--outdoors', keywords: ['hike', 'trail', 'park', 'waterfall', 'nature', 'lake', 'mountain', 'camp', 'river', 'bike', 'outdoor'] },
+    { key: 'food', label: 'Food & Drink', className: 'visited-explorer-tag-group--food', keywords: ['food', 'drink', 'coffee', 'cafe', 'restaurant', 'bbq', 'brew', 'bakery', 'brunch', 'dining'] },
+    { key: 'family', label: 'Family & Kids', className: 'visited-explorer-tag-group--family', keywords: ['family', 'kid', 'kids', 'child', 'children', 'pet', 'dog', 'playground', 'zoo', 'aquarium'] },
+    { key: 'entertainment', label: 'Entertainment', className: 'visited-explorer-tag-group--entertainment', keywords: ['entertain', 'music', 'movie', 'theater', 'show', 'concert', 'festival', 'museum', 'arcade'] },
+    { key: 'shopping', label: 'Shopping & Stops', className: 'visited-explorer-tag-group--shopping', keywords: ['retail', 'shop', 'market', 'mall', 'boutique', 'store', 'antique'] }
+  ];
+
+  function classifyExplorerTagGroup(rawTag) {
+    const tag = normalizeExplorerFilterToken(rawTag);
+    if (!tag) return null;
+    return EXPLORER_TAG_GROUPS.find((group) => group.keywords.some((word) => tag.includes(word))) || null;
+  }
+
+  function buildExplorerTagBarChipHtml(subtabKey, tag, count, isActive, groupClassName) {
+    const classNames = [
+    'visited-explorer-tag-bar-chip',
+    isActive ? 'visited-explorer-tag-bar-chip--active' : '',
+    groupClassName || ''
+    ].filter(Boolean).join(' ');
+    return `<button type="button"
+    class="${classNames}"
+    data-explorer-tag-bar-chip="${escapeHtml(subtabKey)}"
+    data-explorer-tag-bar-value="${escapeHtml(tag)}"
+    aria-pressed="${isActive}"
+    title="${isActive ? 'Remove' : 'Add'} tag filter: ${escapeHtml(tag)}"
+    >${escapeHtml(tag)}<span class="chip-count">${count}</span></button>`;
   }
 
   function closeExplorerCardMiniMenus(root, menuSelector, toggleSelector) {

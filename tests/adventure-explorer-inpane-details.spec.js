@@ -321,6 +321,46 @@ async function readTagSaveDebug(detailsFrame) {
 }
 
 test.describe('Adventure explorer in-pane details flow', () => {
+  test('daily mode hides advanced-only controls in details view', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await openAdventureChallenge(page, { mode: 'daily', subtabKey: 'all-locations' });
+
+    const list = page.locator('#visitedExplorerList-all-locations');
+    await expect(list).toBeVisible();
+    await expect(list).not.toContainText('Loading explorer cards...', { timeout: 20000 });
+
+    const detailsBtn = list.locator('[data-visited-explorer-details]').first();
+    await expect(detailsBtn).toBeVisible();
+    await detailsBtn.click();
+
+    const detailsFrame = page.locator('#visitedExplorerDetailsFrame-all-locations');
+    await expect(detailsFrame).toHaveAttribute('src', /adventure-details-window\.html/i, { timeout: 15000 });
+    await expect.poll(async () => withLiveDetailsFrame(detailsFrame, (liveFrame) => liveFrame.evaluate(() => {
+      if (!document.getElementById('tabs')) return false;
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) return true;
+      if (window.__detailCurrentPayload && window.__detailCurrentPayload.data && typeof window.render === 'function') {
+        window.render(window.__detailCurrentPayload);
+      }
+      return !!(window.__detailInlineEditState && window.__detailInlineEditState.data);
+    })).catch(() => false), { timeout: 15000 }).toBe(true);
+
+    const details = page.frameLocator('#visitedExplorerDetailsFrame-all-locations');
+    await expect(details.locator('#abEnrichBtn')).toBeHidden();
+    await expect(details.locator('#abBulkRefreshBtn')).toBeHidden();
+    await expect(details.locator('#abInlineEditBtn')).toBeHidden();
+    await expect(details.locator('#abLinksBtn')).toBeHidden();
+    await expect(details.locator('#abBatchTagsBtn')).toBeHidden();
+    await expect(details.locator('#refreshCostBtn')).toBeHidden();
+    await expect(details.locator('#refreshDescriptionBtn')).toBeHidden();
+    await expect(details.locator('#openBatchTagsFromCardBtn')).toBeHidden();
+    await expect(details.locator('#refreshHoursBtn')).toBeHidden();
+    await expect(details.locator('#refreshPlaceIdBtn')).toBeHidden();
+    await expect(details.locator('#pageShortcutHelpToggle')).toBeHidden();
+    await expect(details.locator('#tvModeGlobalToggle')).toBeHidden();
+    await expect(details.locator('#diagSectionWrap')).toBeHidden();
+    await expect(details.locator('#debugBar')).toBeHidden();
+  });
+
   test('opens details in-pane, shows richer fields, and returns to list', async ({ page }) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);

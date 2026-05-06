@@ -89,12 +89,19 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
 
       const syntheticItems = Array.from({ length: 55 }, (_, idx) => {
         const n = idx + 1;
+        const groupedTags = [
+          'Hiking',
+          'Coffee',
+          'Kids',
+          'Concert',
+          'Market'
+        ];
         return {
           id: `daily-test-${n}`,
           title: `Daily Mode Item ${n}`,
           city: n % 2 === 0 ? 'Seattle' : 'Portland',
           state: n % 2 === 0 ? 'WA' : 'OR',
-          tags: ['Test'],
+          tags: [groupedTags[idx % groupedTags.length], 'Test'],
           description: `Synthetic explorer row ${n}`,
           address: `${n} Example Ave`,
           driveTime: '15 min'
@@ -134,11 +141,37 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
     await expect(routePlanner).toHaveAttribute('data-advanced-only', 'true');
     await expect(routePlanner).toBeHidden();
 
+    const quickActionsToggle = page.locator('#visitedProgressPane-all-locations [data-visited-explorer-quick-actions-toggle]').first();
+    await expect(quickActionsToggle).toBeVisible();
+    await activateFooterAction(page, quickActionsToggle);
+    const quickActionsMenu = page.locator('#visitedProgressPane-all-locations [data-visited-card-menu-type="quick-actions"]:not([hidden])').first();
+    await expect(quickActionsMenu).toBeVisible();
+    const quickActionTexts = await quickActionsMenu.locator('.visited-card-mini-menu-item:visible').allTextContents();
+    expect(quickActionTexts.map((text) => text.replace(/\s+/g, ' ').trim())).toEqual([
+      'Directions',
+      'Google URL',
+      'Log a Visit',
+      'Add a Note'
+    ]);
+
     const pagination = page.locator('#visitedExplorerPagination-all-locations').first();
     await expect(pagination).toBeVisible({ timeout: 10000 });
+    await expect(pagination.locator('.visited-explorer-pagination-btn')).toHaveCount(2);
     await expect(pagination).toContainText(/Page\s*1\s*of/i);
     const nextPageBtn = page.locator('#visitedExplorerPagination-all-locations [data-visited-explorer-page="next"]').first();
     await expect(nextPageBtn).toBeVisible();
+    await expect(nextPageBtn).toHaveClass(/visited-explorer-pagination-btn/);
+
+    const groupedTagBar = page.locator('#visitedExplorerTagBar-all-locations').first();
+    await expect(groupedTagBar.locator('.visited-explorer-tag-group')).toHaveCount(5);
+    await expect(groupedTagBar).toContainText('Food & Drink');
+    await expect(groupedTagBar).toContainText('Family & Kids');
+    await expect(groupedTagBar).toContainText('Entertainment');
+    await expect(groupedTagBar).toContainText('Shopping & Stops');
+    await expect(groupedTagBar).toContainText('More');
+
+    const addLocationCtas = page.locator('#visitedProgressPane-all-locations .visited-daily-primary-cta');
+    await expect(addLocationCtas).toHaveCount(2);
 
     await activateFooterAction(page, nextPageBtn);
     await expect.poll(async () => {
