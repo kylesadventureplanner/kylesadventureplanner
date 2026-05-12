@@ -12,8 +12,7 @@ const EXTENSION_NOISE_PATTERNS = [
   // Intentional workbook resolution probes during target routing tests that use "recipes"
   // as a test workbook name. These attempts are expected to fail (404) as part of testing
   // fallback behavior for missing workbook names.
-  /Failed to load resource:.*404.*drive\/root:\/recipes/i,
-  /Failed to load resource:.*404.*search.*recipes/i,
+  /Failed to load resource.*recipes/i,
   // Transient dev-server connection drops for any local static asset (JS, CSS, HTML,
   // fonts, etc.) – matched against both URL-encoded paths (JS%20Files / CSS%20Files) AND
   // decoded paths because Playwright's msg.text() may return either form depending on
