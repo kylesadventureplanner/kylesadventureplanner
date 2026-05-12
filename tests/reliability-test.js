@@ -11,9 +11,10 @@ const EXTENSION_NOISE_PATTERNS = [
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/worksheets\?\$select=id,name,position\)/i,
   // Intentional workbook resolution probes during target routing tests that use "recipes"
   // as a test workbook name. These attempts are expected to fail (404) as part of testing
-  // fallback behavior for missing workbook names.
-  /404.*recipes\.(xlsx|xlsm)?/i,
-  /search.*recipes/i,
+  // fallback behavior for missing workbook names. These include direct file probes
+  // and Microsoft Graph search calls - all expected to return 404 in test environment.
+  /root:\/recipes/i,
+  /search\(q=.*recipes/i,
   // Transient dev-server connection drops for any local static asset (JS, CSS, HTML,
   // fonts, etc.) – matched against both URL-encoded paths (JS%20Files / CSS%20Files) AND
   // decoded paths because Playwright's msg.text() may return either form depending on
