@@ -90,13 +90,13 @@
        ';
      });
 
-     var syncWarning = localOnlyCount > 0 ? '\
-       <div class="recipe-sync-warning">\
-         <span class="sync-warning-icon">⚠️</span>\
-         <span class="sync-warning-text">' + localOnlyCount + ' recipe(s) not synced with Excel backend</span>\
-         <button class="sync-warning-btn" onclick="alert(\'To sync recipes: Please export from the Recipes tab or use the app\\'s sync menu.\')">ℹ️ Learn More</button>\
-       </div>\
-     ' : '';
+      var syncWarning = localOnlyCount > 0 ? '\
+        <div class="recipe-sync-warning">\
+          <span class="sync-warning-icon">⚠️</span>\
+          <span class="sync-warning-text">' + localOnlyCount + ' recipe(s) not synced with Excel backend</span>\
+          <button class="sync-warning-btn" onclick="alert(\'To sync recipes: Please export from the Recipes tab or use the app\\\'s sync menu.\')">ℹ️ Learn More</button>\
+        </div>\
+      ' : '';
 
      return '\
        <div class="recipes-section">\
