@@ -2506,11 +2506,41 @@
   }
 
   function updateAttendedBySchemaWarning(columns) {
+    var helper = window.ExcelSchemaCheckHelper;
     if (hasAttendedByColumn(columns)) {
       state.attendedBySchemaWarning = '';
+      if (helper && typeof helper.reportSchemaStatus === 'function') {
+        helper.reportSchemaStatus('concerts', {
+          feature: 'Concerts',
+          table: 'Attended_Concerts',
+          missingRequired: [],
+          missingRecommended: [],
+          tone: 'success',
+          checkedAt: Date.now()
+        });
+      }
+      if (helper && typeof helper.clearGlobalBanner === 'function') helper.clearGlobalBanner('concerts');
       return;
     }
     state.attendedBySchemaWarning = 'Workbook note: "Attended_By" column is missing in Attended_Concerts. New attendee selections default to Both after reload until that column exists.';
+    if (helper && typeof helper.reportSchemaStatus === 'function') {
+      helper.reportSchemaStatus('concerts', {
+        feature: 'Concerts',
+        table: 'Attended_Concerts',
+        missingRequired: [],
+        missingRecommended: ['attended_by'],
+        tone: 'warning',
+        checkedAt: Date.now()
+      });
+    }
+    if (helper && typeof helper.upsertGlobalBanner === 'function') {
+      helper.upsertGlobalBanner('concerts', {
+        title: 'Concerts Excel schema check',
+        message: 'Your Attended_Concerts table is missing a recommended attendee column.',
+        details: 'Missing: attended_by',
+        tone: 'warning'
+      });
+    }
   }
 
   function getBandProfileMeta(bandNameOrKey) {

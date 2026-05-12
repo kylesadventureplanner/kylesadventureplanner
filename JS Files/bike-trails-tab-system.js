@@ -1352,6 +1352,28 @@
       updateBikeDebugDetailsLine({ filePath, tableName: window.bikeTableConfig?.tableName || BIKE_TABLE_NAME, tableRef });
 
       const schemaStatus = getBikeSchemaStatus(columnNames);
+      if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.reportSchemaStatus === 'function') {
+        window.ExcelSchemaCheckHelper.reportSchemaStatus('bike-trails', {
+          feature: 'Bike Trails',
+          table: window.bikeTableConfig?.tableName || BIKE_TABLE_NAME,
+          missingRequired: [],
+          missingRecommended: schemaStatus.missing,
+          tone: schemaStatus.missing.length ? 'warning' : 'success',
+          checkedAt: Date.now()
+        });
+      }
+      if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.upsertGlobalBanner === 'function') {
+        if (schemaStatus.missing.length) {
+          window.ExcelSchemaCheckHelper.upsertGlobalBanner('bike-trails', {
+            title: 'Bike Trails Excel schema check',
+            message: 'Your bike trails table is missing recommended columns.',
+            details: 'Missing: ' + schemaStatus.missing.join(', '),
+            tone: 'warning'
+          });
+        } else if (typeof window.ExcelSchemaCheckHelper.clearGlobalBanner === 'function') {
+          window.ExcelSchemaCheckHelper.clearGlobalBanner('bike-trails');
+        }
+      }
       if (schemaStatus.missing.length === 0) {
         updateBikeMetadataStatusLine('success', {
           text: 'Excel metadata columns: My Rating / Favorite Status ready',

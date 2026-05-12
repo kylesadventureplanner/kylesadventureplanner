@@ -2,18 +2,282 @@
 <!-- This file is loaded dynamically by tab-content-loader.js -->
 <!-- All CSS, JS, and functions are available from the main index -->
 
-<div class="tab-placeholder">
-  <div class="tab-placeholder-icon">👨‍🍳</div>
-  <div class="tab-placeholder-text">Recipes</div>
-  <div class="tab-placeholder-subtext">Browse and manage your favorite recipes</div>
+<div id="recipesRoot" class="recipes-root">
+  <link rel="stylesheet" href="/CSS/recipes-tab.css">
+
+  <div class="recipes-header">
+    <div>
+      <h1>Recipes</h1>
+      <p>Save, filter, and quickly edit your recipe library.</p>
+    </div>
+    <div class="recipes-header-actions">
+      <button id="recipesExportBtn" class="pill-button" type="button">Export JSON</button>
+      <button id="recipesImportBtn" class="pill-button" type="button">Import JSON</button>
+      <button id="recipesAddBtn" class="pill-button recipes-add-btn" type="button">+ Add recipe</button>
+      <input id="recipesImportFileInput" type="file" accept="application/json" hidden>
+    </div>
+  </div>
+
+  <section class="recipes-excel-sync" aria-label="Recipes Excel sync">
+    <div class="recipes-inline-input-row">
+      <button id="recipesSyncFromExcelBtn" class="pill-button" type="button">Sync from Excel</button>
+      <button id="recipesSyncToExcelBtn" class="pill-button" type="button">Sync to Excel</button>
+      <span id="recipesExcelStatus" class="recipes-status" aria-live="polite"></span>
+    </div>
+    <div id="recipesSchemaBanner" style="margin-top:8px;"></div>
+  </section>
+
+  <section id="recipesIntakePanel" class="recipes-intake" hidden>
+    <div class="recipes-intake-tabs" role="tablist" aria-label="Add recipe methods">
+      <button type="button" class="recipes-intake-tab active" data-recipes-intake-tab="manual">Manual</button>
+      <button type="button" class="recipes-intake-tab" data-recipes-intake-tab="url">Recipe URL</button>
+      <button type="button" class="recipes-intake-tab" data-recipes-intake-tab="paste">Paste text</button>
+    </div>
+
+    <div class="recipes-intake-pane" data-recipes-intake-pane="manual">
+      <p>Start with a blank recipe and fill in details.</p>
+      <button type="button" class="pill-button" data-recipes-intake-action="start-manual">Start manual recipe</button>
+    </div>
+
+    <div class="recipes-intake-pane" data-recipes-intake-pane="url" hidden>
+      <label for="recipesUrlInput">Recipe URL</label>
+      <div class="recipes-inline-input-row">
+        <input id="recipesUrlInput" type="url" placeholder="https://example.com/my-recipe" autocomplete="off">
+        <button type="button" class="pill-button" data-recipes-intake-action="parse-url">Parse URL</button>
+      </div>
+      <p class="recipes-help-text">URL parsing attempts to infer details and opens the editor so you can confirm everything.</p>
+    </div>
+
+    <div class="recipes-intake-pane" data-recipes-intake-pane="paste" hidden>
+      <label for="recipesPasteInput">Paste recipe text</label>
+      <textarea id="recipesPasteInput" rows="6" placeholder="Paste ingredient list and steps..."></textarea>
+      <button type="button" class="pill-button" data-recipes-intake-action="parse-text">Parse pasted text</button>
+    </div>
+
+    <div id="recipesIntakeStatus" class="recipes-status" aria-live="polite"></div>
+  </section>
+
+  <section class="recipes-filters" aria-label="Recipe filters">
+    <div class="recipes-filter-chip-group" data-chip-group="filter-proteins">
+      <label>Proteins</label>
+      <div class="recipes-inline-input-row">
+        <input id="recipesFilterProteinInput" list="recipesProteinList" placeholder="Type protein and press Enter">
+      </div>
+      <div id="recipesFilterProteinChips" class="recipes-chip-editor"></div>
+    </div>
+
+    <div class="recipes-filter-chip-group" data-chip-group="filter-cuisines">
+      <label>Cuisines</label>
+      <div class="recipes-inline-input-row">
+        <input id="recipesFilterCuisineInput" list="recipesCuisineList" placeholder="Type cuisine and press Enter">
+      </div>
+      <div id="recipesFilterCuisineChips" class="recipes-chip-editor"></div>
+    </div>
+
+    <div class="recipes-filter-chip-group" data-chip-group="filter-methods">
+      <label>Cooking methods</label>
+      <div class="recipes-inline-input-row">
+        <input id="recipesFilterMethodInput" list="recipesMethodList" placeholder="Type method and press Enter">
+      </div>
+      <div id="recipesFilterMethodChips" class="recipes-chip-editor"></div>
+    </div>
+
+    <label>Max prep (min)
+      <input id="recipesFilterPrep" type="number" min="0" placeholder="Any">
+    </label>
+    <label>Max cook (min)
+      <input id="recipesFilterCook" type="number" min="0" placeholder="Any">
+    </label>
+    <label>Course category
+      <select id="recipesFilterCourseCategory">
+        <option value="">Any</option>
+        <option value="appetizer">Appetizer</option>
+        <option value="entree">Entree</option>
+        <option value="side_dish">Side dish</option>
+        <option value="dessert">Dessert</option>
+      </select>
+    </label>
+    <label>Healthiness
+      <select id="recipesFilterHealthiness">
+        <option value="">Any</option>
+        <option value="more_healthy">More healthy</option>
+        <option value="neutral">Neutral</option>
+        <option value="less_healthy">Less healthy</option>
+      </select>
+    </label>
+    <button id="recipesFilterReset" type="button" class="pill-button">Reset</button>
+  </section>
+
+  <section class="recipes-pantry" aria-label="Pantry spice tracker">
+    <div class="recipes-editor-subheader">
+      <h3>Pantry spice tracker</h3>
+    </div>
+    <div class="recipes-inline-input-row">
+      <input id="recipesPantrySpiceInput" type="text" placeholder="Add spice (e.g., cumin)">
+      <button id="recipesAddPantrySpiceBtn" type="button" class="pill-button">Add spice</button>
+    </div>
+    <div id="recipesPantrySpiceStatus" class="recipes-help-text"></div>
+    <div class="recipes-pantry-grid">
+      <div>
+        <strong>Currently in pantry</strong>
+        <div id="recipesPantrySpiceList" class="recipes-chip-editor" style="margin-top:6px;"></div>
+      </div>
+      <div>
+        <strong>Recommended to consider</strong>
+        <div id="recipesPantryMissingList" class="recipes-chip-editor" style="margin-top:6px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div id="recipesCardsSummary" class="recipes-summary" aria-live="polite"></div>
+    <div id="recipesCards" class="recipes-cards" data-testid="recipes-cards"></div>
+  </section>
+
+  <aside id="recipesDetails" class="recipes-details" hidden>
+    <div class="recipes-details-header">
+      <h2 id="recipesDetailsTitle">Recipe details</h2>
+      <button type="button" class="pill-button" id="recipesDetailsClose">Close</button>
+    </div>
+    <div id="recipesDetailsBody"></div>
+  </aside>
+
+  <div id="recipesEditorOverlay" class="recipes-editor-overlay" hidden>
+    <div class="recipes-editor" role="dialog" aria-modal="true" aria-labelledby="recipesEditorTitle">
+      <div class="recipes-editor-header">
+        <h2 id="recipesEditorTitle">Add recipe</h2>
+        <button type="button" class="pill-button" id="recipesEditorCancel">Cancel</button>
+      </div>
+      <form id="recipesEditorForm">
+        <label>Recipe name
+          <input name="title" required maxlength="120" placeholder="Weeknight tacos">
+        </label>
+        <label>Description
+          <textarea name="description" rows="2" placeholder="Optional description"></textarea>
+        </label>
+
+        <div class="recipes-grid-two">
+          <div class="recipes-filter-chip-group" data-chip-group="editor-proteins">
+            <label>Proteins</label>
+            <div class="recipes-inline-input-row">
+              <input id="recipesEditorProteinInput" list="recipesProteinList" placeholder="Type protein and press Enter">
+            </div>
+            <div id="recipesEditorProteinChips" class="recipes-chip-editor"></div>
+          </div>
+
+          <div class="recipes-filter-chip-group" data-chip-group="editor-cuisines">
+            <label>Cuisines</label>
+            <div class="recipes-inline-input-row">
+              <input id="recipesEditorCuisineInput" list="recipesCuisineList" placeholder="Type cuisine and press Enter">
+            </div>
+            <div id="recipesEditorCuisineChips" class="recipes-chip-editor"></div>
+          </div>
+
+          <div class="recipes-filter-chip-group" data-chip-group="editor-methods">
+            <label>Cooking methods</label>
+            <div class="recipes-inline-input-row">
+              <input id="recipesEditorMethodInput" list="recipesMethodList" placeholder="Type method and press Enter">
+            </div>
+            <div id="recipesEditorMethodChips" class="recipes-chip-editor"></div>
+          </div>
+
+          <label>Prep minutes
+            <input name="prepMinutes" type="number" min="0" placeholder="15">
+          </label>
+          <label>Cook minutes
+            <input name="cookMinutes" type="number" min="0" placeholder="25">
+          </label>
+          <label>Course category
+            <select name="courseCategory">
+              <option value="">Not set</option>
+              <option value="appetizer">Appetizer</option>
+              <option value="entree">Entree</option>
+              <option value="side_dish">Side dish</option>
+              <option value="dessert">Dessert</option>
+            </select>
+          </label>
+          <label>Healthiness
+            <select name="healthiness">
+              <option value="">Not set</option>
+              <option value="more_healthy">More healthy</option>
+              <option value="neutral">Neutral</option>
+              <option value="less_healthy">Less healthy</option>
+            </select>
+          </label>
+        </div>
+
+        <section>
+          <div class="recipes-editor-subheader">
+            <h3>Photos</h3>
+          </div>
+          <div class="recipes-inline-input-row">
+            <label>Photo URL
+              <input id="recipesPhotoUrlInput" type="url" placeholder="https://...">
+            </label>
+            <button type="button" class="pill-button" id="recipesAddPhotoUrlBtn">Add photo URL</button>
+          </div>
+          <div class="recipes-inline-input-row">
+            <label for="recipesPhotoFileInput">Upload photos</label>
+            <input id="recipesPhotoFileInput" type="file" accept="image/*" multiple>
+          </div>
+          <div id="recipesPhotoPreview" class="recipes-photo-preview"></div>
+        </section>
+
+        <section>
+          <div class="recipes-editor-subheader">
+            <h3>Ingredients</h3>
+            <button type="button" class="pill-button" id="recipesAddIngredientBtn">+ Ingredient</button>
+          </div>
+          <p class="recipes-help-text">Specify quantity for each ingredient and choose from suggestions or free type.</p>
+          <div id="recipesIngredientsList"></div>
+        </section>
+
+        <section>
+          <div class="recipes-editor-subheader">
+            <h3>Steps</h3>
+            <button type="button" class="pill-button" id="recipesAddStepBtn">+ Step</button>
+          </div>
+          <p class="recipes-help-text">Type your own step or select a suggestion to speed up entry.</p>
+          <div id="recipesStepsList"></div>
+        </section>
+
+        <div class="recipes-editor-actions">
+          <button type="submit" class="pill-button recipes-save-btn">Save recipe</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <datalist id="recipesProteinList"></datalist>
+  <datalist id="recipesCuisineList"></datalist>
+  <datalist id="recipesMethodList"></datalist>
+  <datalist id="recipesIngredientSuggestions"></datalist>
+  <datalist id="recipesStepSuggestions"></datalist>
 </div>
 
 <script>
-  // Initialize Recipes tab
-  window.initRecipesTab = function() {
-    console.log('✅ Recipes tab initialized');
-    // Add your recipes-specific initialization here
-    // All JS functions are available from main index
-  };
+  (function () {
+    function loadRecipesScript() {
+      if (window.__recipesTabScriptPromise) return window.__recipesTabScriptPromise;
+      window.__recipesTabScriptPromise = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = '/JS%20Files/recipes-tab-system.js';
+        script.onload = function () { resolve(); };
+        script.onerror = function () { reject(new Error('Failed to load recipes-tab-system.js')); };
+        document.body.appendChild(script);
+      });
+      return window.__recipesTabScriptPromise;
+    }
+
+    window.initRecipesTab = function () {
+      return loadRecipesScript().then(function () {
+        if (window.RecipesTabSystem && typeof window.RecipesTabSystem.init === 'function') {
+          window.RecipesTabSystem.init();
+        }
+      }).catch(function (error) {
+        console.error('❌ Recipes tab init failed', error);
+      });
+    };
+  })();
 </script>
 

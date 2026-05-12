@@ -28,6 +28,28 @@ test.describe('Central diagnostics hub smoke', () => {
     await expect(page.locator('#diagnosticsHubMount .diagnostics-hub-shell')).toBeVisible();
   });
 
+  test('schema section renders helper-reported schema entries', async ({ page }) => {
+    await page.goto('/?tab=diagnostics-hub&diagSection=schema');
+    await page.evaluate(() => {
+      if (typeof window.setAppMode === 'function') window.setAppMode('advanced');
+      if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.reportSchemaStatus === 'function') {
+        window.ExcelSchemaCheckHelper.reportSchemaStatus('recipes-test', {
+          feature: 'Recipes',
+          table: 'recipes',
+          missingRequired: [],
+          missingRecommended: ['course_category', 'healthiness'],
+          tone: 'warning',
+          checkedAt: Date.now()
+        });
+      }
+    });
+
+    await expect(page.locator('#diagnosticsHubMount .diagnostics-hub-tab.active')).toContainText('Excel schema health');
+    await expect(page.locator('#diagnosticsHubMount')).toContainText('Excel Schema Health');
+    await expect(page.locator('#diagnosticsHubMount')).toContainText('Recipes');
+    await expect(page.locator('#diagnosticsHubMount')).toContainText('Recommended: course_category, healthiness');
+  });
+
   test('legacy adventure-planner deep links redirect to Adventure Challenge', async ({ page }) => {
     await page.goto('/?tab=adventure-planner');
 

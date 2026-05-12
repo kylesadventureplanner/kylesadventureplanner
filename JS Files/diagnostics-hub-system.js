@@ -2,7 +2,7 @@
   'use strict';
 
   var TAB_ID = 'diagnostics-hub';
-  var SECTION_KEYS = ['overview', 'storage', 'sync', 'setup', 'nearby', 'places'];
+  var SECTION_KEYS = ['overview', 'schema', 'storage', 'sync', 'setup', 'nearby', 'places'];
   var STORAGE_REASON_CATALOG = [
     {
       test: function (key) { return /^cityViewer:edits:/i.test(key); },
@@ -497,12 +497,60 @@
     var adventurePending = Number(snapshot && snapshot.adventure && snapshot.adventure.pendingLocalOnlyCount || 0);
     var naturePending = Number(snapshot && snapshot.nature && snapshot.nature.pendingQueueCount || 0);
     var inventory = snapshot && snapshot.storageInventory ? snapshot.storageInventory : [];
+    var schemaStatuses = snapshot && Array.isArray(snapshot.schemaStatuses) ? snapshot.schemaStatuses : [];
+    var schemaIssues = schemaStatuses.filter(function (entry) {
+      return (entry.missingRequired || []).length || (entry.missingRecommended || []).length;
+    }).length;
     return {
       pendingSyncRecords: offlinePending + adventurePending + naturePending,
       deviceOnlyEntries: inventory.length,
       authReady: Boolean(window.accessToken),
-      hasSetupIssues: buildSetupGuide(snapshot).some(function (item) { return item.tone === 'warn' || item.tone === 'error'; })
+      hasSetupIssues: buildSetupGuide(snapshot).some(function (item) { return item.tone === 'warn' || item.tone === 'error'; }),
+      schemaTrackedFeatures: schemaStatuses.length,
+      schemaIssues: schemaIssues
     };
+  }
+
+  function getSchemaHealthSnapshot() {
+    var helper = window.ExcelSchemaCheckHelper;
+    if (!helper || typeof helper.getSchemaStatusSnapshot !== 'function') return [];
+    try {
+      return helper.getSchemaStatusSnapshot() || [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function renderSchemaSection(snapshot) {
+    var statuses = Array.isArray(snapshot && snapshot.schemaStatuses) ? snapshot.schemaStatuses : [];
+    var appMode = String(snapshot && snapshot.appMode || '').trim().toLowerCase();
+    if (appMode !== 'advanced') {
+      return '<section class="diagnostics-hub-card diagnostics-hub-card--wide"><div class="diagnostics-hub-card-title">Excel Schema Health</div><div class="diagnostics-hub-empty">Schema diagnostics are shown in Advanced Mode only.</div></section>';
+    }
+    if (!statuses.length) {
+      return '<section class="diagnostics-hub-card diagnostics-hub-card--wide"><div class="diagnostics-hub-card-title">Excel Schema Health</div><div class="diagnostics-hub-empty">No schema checks have been reported yet. Run a sync action in an Excel-backed feature.</div></section>';
+    }
+    var rows = statuses.map(function (entry) {
+      var required = Array.isArray(entry.missingRequired) ? entry.missingRequired : [];
+      var recommended = Array.isArray(entry.missingRecommended) ? entry.missingRecommended : [];
+      var hasRequired = required.length > 0;
+      var hasRecommended = recommended.length > 0;
+      var toneClass = hasRequired ? 'diagnostics-tone-error' : (hasRecommended ? 'diagnostics-tone-warn' : 'diagnostics-tone-ok');
+      var statusText = hasRequired ? 'Required missing' : (hasRecommended ? 'Recommended missing' : 'OK');
+      var details = [];
+      if (required.length) details.push('Required: ' + required.join(', '));
+      if (recommended.length) details.push('Recommended: ' + recommended.join(', '));
+      if (entry.details) details.push(String(entry.details));
+      return [
+        '<div class="diagnostics-hub-list-item ' + toneClass + '">',
+        '<div class="diagnostics-hub-list-head"><strong>' + escHtml(entry.feature || entry.key || 'Feature') + '</strong><span class="diagnostics-hub-badge">' + escHtml(statusText) + '</span></div>',
+        '<div class="diagnostics-hub-note">Table: ' + escHtml(entry.table || 'n/a') + '</div>',
+        '<div class="diagnostics-hub-note">Checked: ' + escHtml(formatTime(entry.checkedAt || '')) + '</div>',
+        '<div class="diagnostics-hub-note">' + escHtml(details.join(' | ') || 'Schema aligned.') + '</div>',
+        '</div>'
+      ].join('');
+    }).join('');
+    return '<section class="diagnostics-hub-card diagnostics-hub-card--wide"><div class="diagnostics-hub-card-title">Excel Schema Health</div>' + rows + '</section>';
   }
 
   function buildStorageInventory() {
@@ -606,6 +654,11 @@
        '<div class="diagnostics-hub-card-title">Backend readiness</div>',
        '<div class="diagnostics-hub-kpi ' + (summary.hasSetupIssues ? 'is-warn' : 'is-good') + '">' + escHtml(summary.hasSetupIssues ? 'Needs review' : 'Ready') + '</div>',
        '<div class="diagnostics-hub-note">Flags missing auth, workbook routing issues, and schema mismatches that can force data to remain local-only.</div>',
+       '</section>',
+       '<section class="diagnostics-hub-card">',
+       '<div class="diagnostics-hub-card-title">Excel schema checks</div>',
+       '<div class="diagnostics-hub-kpi ' + (summary.schemaIssues > 0 ? 'is-warn' : 'is-good') + '">' + escHtml(String(summary.schemaTrackedFeatures)) + '</div>',
+       '<div class="diagnostics-hub-note">Tracked features: ' + escHtml(String(summary.schemaTrackedFeatures)) + ' · Issues: ' + escHtml(String(summary.schemaIssues)) + '.</div>',
        '</section>',
        '<section class="diagnostics-hub-card">',
        '<div class="diagnostics-hub-card-title">Reliability snapshot</div>',
@@ -863,6 +916,7 @@
   function renderNav(state) {
     var labels = {
       overview: 'Overview',
+      schema: 'Excel schema health',
       storage: 'Local-only data',
       sync: 'Sync recovery',
       setup: 'Setup guide',
@@ -880,7 +934,8 @@
     if (!host) return;
     var summary = createSyncSummary(snapshot);
     var sectionHtml = '';
-    if (state.currentSection === 'storage') sectionHtml = renderStorageSection(snapshot);
+    if (state.currentSection === 'schema') sectionHtml = renderSchemaSection(snapshot);
+    else if (state.currentSection === 'storage') sectionHtml = renderStorageSection(snapshot);
     else if (state.currentSection === 'sync') sectionHtml = renderSyncSection(snapshot);
     else if (state.currentSection === 'setup') sectionHtml = renderSetupSection(snapshot);
     else if (state.currentSection === 'nearby') sectionHtml = renderNearbySection(snapshot);
@@ -956,6 +1011,10 @@
           storageInventory: buildStorageInventory(),
           reliability: readReliabilitySnapshot(),
           knownGood: readKnownGoodInfo(),
+          schemaStatuses: getSchemaHealthSnapshot(),
+          appMode: typeof window.getAppMode === 'function'
+            ? window.getAppMode()
+            : (document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily'),
           source: state.source
         };
       });
@@ -1137,5 +1196,11 @@
     var initState = getState();
     initState.currentSection = readSectionFromUrl();
   }
+
+  document.addEventListener('kap:excel-schema-status-changed', function () {
+    var activeTab = document.querySelector('.app-tab-btn.active');
+    var tabId = activeTab && typeof activeTab.getAttribute === 'function' ? activeTab.getAttribute('data-tab') : '';
+    if (tabId === TAB_ID) refreshDiagnosticsHub();
+  });
 })();
 

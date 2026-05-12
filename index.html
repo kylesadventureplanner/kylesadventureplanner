@@ -8825,7 +8825,15 @@
   <!-- Debug & Error System - Error management and debugging -->
   <script src="JS Files/consolidated-debug-error-system-v7-0-141.js"></script>
 
-  <!-- Legacy archived error-management script removed (covered by consolidated debug/error system). -->
+   <!-- Legacy archived error-management script removed (covered by consolidated debug/error system). -->
+
+   <!-- ============================================================ -->
+   <!-- RECIPES & SHOPPING LIST SYSTEM -->
+   <!-- ============================================================ -->
+   <!-- Recipes, shopping lists, pantry management, and ingredients library -->
+   <script src="JS Files/recipes-shopping-system.js"></script>
+   <script src="JS Files/recipes-shopping-ui-system.js"></script>
+
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -9184,10 +9192,8 @@
 
     <!-- Household Tools Tab -->
     <div class="app-tab-pane" data-tab="household-tools" id="householdToolsTab">
-      <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">🧰</div>
-        <div class="tab-placeholder-text">Household Tools</div>
-        <div class="tab-placeholder-subtext">Recipes, garden planning, and budget tools in one place</div>
+      <div id="recipesShoppingPane" class="recipes-shopping-pane" style="padding: 16px;">
+        <div style="text-align: center; padding: 40px;">Loading recipes & shopping management...</div>
       </div>
     </div>
 
@@ -24479,6 +24485,7 @@ COMMON ISSUES:
 <!-- Bike Trails Tab System -->
 <script src="JS Files/button-action-guard.js"></script>
 <script src="JS Files/reliability-ops.js"></script>
+<script src="JS Files/excel-schema-check-helper.js"></script>
 
 <!-- Bike Trails Tab System -->
 <script src="JS Files/bike-trails-tab-system.js"></script>
@@ -27628,6 +27635,550 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   transition: background .15s;
 }
 .qa-cancel-btn:hover { background: #e5e7eb; }
+
+/* ========================================================
+   RECIPES & SHOPPING LIST SYSTEM STYLES
+   ======================================================== */
+
+.recipes-shopping-header {
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.recipes-shopping-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.recipes-shopping-subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.recipes-shopping-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+
+.recipes-tab-btn {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.recipes-tab-btn:hover {
+  color: #374151;
+}
+
+.recipes-tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.recipes-tab-pane {
+  display: none;
+}
+
+.recipes-tab-pane.active {
+  display: block;
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.recipes-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.section-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Recipe Cards */
+.recipe-cards-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.recipe-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.2s;
+}
+
+.recipe-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.recipe-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.recipe-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.recipe-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.recipe-action-btn {
+  padding: 6px 10px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.recipe-action-btn:hover {
+  background: #e5e7eb;
+  border-color: #bfdbfe;
+}
+
+.recipe-action-btn.recipe-action-delete:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.recipe-card-content {
+  padding: 10px 0;
+  border-top: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 10px;
+}
+
+.recipe-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.recipe-ingredients-summary {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* Recipe Sync Status */
+.recipe-sync-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.recipe-sync-badge--local {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.recipe-sync-badge--synced {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.recipe-sync-badge--pending {
+  background: #cce5ff;
+  color: #0c5460;
+  border: 1px solid #0066cc;
+}
+
+.recipe-sync-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  color: #856404;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sync-warning-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.sync-warning-text {
+  flex: 1;
+}
+
+.sync-warning-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #ffc107;
+  background: white;
+  color: #856404;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.sync-warning-btn:hover {
+  background: #ffc107;
+  color: white;
+}
+
+/* Recipe Import Modal */
+.recipe-import-modal,
+.recipe-import-preview-modal,
+.recipe-edit-modal {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.recipe-import-dialog,
+.recipe-import-preview-dialog,
+.recipe-edit-dialog {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ingredient-name-input {
+  padding: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+}
+
+.ingredient-name-input:focus {
+  outline: none;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Shopping Lists */
+.shopping-list-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.shopping-list-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  transition: all 0.2s;
+}
+
+.shopping-list-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.shopping-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.shopping-list-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.shopping-list-meta {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.shopping-list-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Pantry Management */
+.filter-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.filter-toggle-btn {
+  padding: 8px 14px;
+  background: white;
+  border: 1.5px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #374151;
+}
+
+.filter-toggle-btn:hover {
+  border-color: #bfdbfe;
+  background: #f0f9ff;
+}
+
+.filter-toggle-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.pantry-inventory {
+  display: grid;
+  gap: 20px;
+}
+
+.pantry-category {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.pantry-category-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pantry-items-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pantry-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.pantry-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pantry-item-name {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.pantry-item-qty {
+  font-size: 12px;
+  color: #6b7280;
+  background: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pantry-item-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #0c4a6e;
+}
+
+.pantry-item-badge.recommended {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pantry-item-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.pantry-action-btn {
+  padding: 4px 8px;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #15803d;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pantry-action-btn:hover {
+  background: #bbf7d0;
+}
+
+.pantry-item-empty {
+  font-size: 11px;
+  color: #d1d5db;
+  font-weight: 600;
+}
+
+/* Ingredients Library */
+.ingredients-library {
+  display: grid;
+  gap: 20px;
+}
+
+.ingredient-category {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.ingredient-category-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ingredient-items-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.ingredient-item {
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #0c4a6e;
+  font-weight: 500;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .recipe-cards-list {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ingredient-items-list {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .filter-toggle {
+    flex-direction: column;
+  }
+
+  .shopping-list-header {
+    flex-direction: column;
+    align-items: start;
+  }
+}
 </style>
 
 <!-- Quick Add FAB & Sheet -->
@@ -27659,6 +28210,70 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     </div>
   </form>
 </div>
+
+<!-- Initialize Recipes & Shopping System -->
+<script>
+(function initRecipesShoppingOnTabSwitch() {
+  'use strict';
+
+  var INITIALIZATION_LOCK = 'kap_recipes_tab_initialized';
+  var isInitialized = false;
+
+  /**
+   * Initialize the recipes & shopping system UI
+   */
+  function initializeRecipesTab() {
+    // Prevent multiple initializations
+    if (isInitialized) return;
+    isInitialized = true;
+
+    // Wait for RecipesShoppingUI to be available
+    if (typeof RecipesShoppingUI === 'undefined') {
+      console.warn('RecipesShoppingUI not available, retrying...');
+      setTimeout(initializeRecipesTab, 100);
+      return;
+    }
+
+    // Initialize the UI
+    try {
+      RecipesShoppingUI.init();
+      console.log('✅ Recipes & Shopping System initialized');
+    } catch (e) {
+      console.error('Failed to initialize Recipes & Shopping System:', e);
+    }
+  }
+
+  /**
+   * Listen for tab switches and initialize when household-tools tab is clicked
+   */
+  function setupHouseholdToolsTabListener() {
+    document.addEventListener('click', function(e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.app-tab-btn') : null;
+      if (btn && btn.getAttribute('data-tab') === 'household-tools') {
+        // Delay to let DOM be ready
+        setTimeout(initializeRecipesTab, 50);
+      }
+    });
+
+    // Also check if we're already on the household tools tab on page load
+    setTimeout(function() {
+      var activeTab = document.querySelector('.app-tab-btn.active');
+      if (activeTab && activeTab.getAttribute('data-tab') === 'household-tools') {
+        initializeRecipesTab();
+      }
+    }, 500);
+  }
+
+  // Setup the listener when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupHouseholdToolsTabListener);
+  } else {
+    setupHouseholdToolsTabListener();
+  }
+
+  console.log('✅ Recipes & Shopping System tab listener registered');
+})();
+</script>
 
 </body>
 </html>

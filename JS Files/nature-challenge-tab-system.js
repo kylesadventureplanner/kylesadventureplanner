@@ -2987,10 +2987,49 @@
       .filter((name) => name && !available.has(name));
   }
 
+  function updateNatureSchemaBanner(sightingsMissing, userStateMissing, sightingsOptionalMissing) {
+    const helper = window.ExcelSchemaCheckHelper;
+    if (!helper || typeof helper.upsertGlobalBanner !== 'function') return;
+
+    const requiredMissing = [].concat(sightingsMissing || [], userStateMissing || []);
+    const optionalMissing = sightingsOptionalMissing || [];
+
+    if (typeof helper.reportSchemaStatus === 'function') {
+      helper.reportSchemaStatus('nature-challenge', {
+        feature: 'Nature Challenge',
+        table: 'birds_sightings + birds_user_state',
+        missingRequired: requiredMissing,
+        missingRecommended: optionalMissing,
+        tone: requiredMissing.length ? 'error' : (optionalMissing.length ? 'warning' : 'success'),
+        checkedAt: Date.now()
+      });
+    }
+
+    if (!requiredMissing.length && !optionalMissing.length) {
+      if (typeof helper.clearGlobalBanner === 'function') helper.clearGlobalBanner('nature-challenge');
+      return;
+    }
+
+    const details = [];
+    if ((sightingsMissing || []).length) details.push('birds_sightings required missing: ' + sightingsMissing.join(', '));
+    if ((userStateMissing || []).length) details.push('birds_user_state required missing: ' + userStateMissing.join(', '));
+    if (optionalMissing.length) details.push('Recommended evidence columns missing: ' + optionalMissing.join(', '));
+
+    helper.upsertGlobalBanner('nature-challenge', {
+      title: 'Nature Challenge Excel schema check',
+      message: requiredMissing.length
+        ? 'Your Nature sync tables are missing required columns.'
+        : 'Your Nature sightings table is missing recommended evidence URL columns.',
+      details: details.join(' | '),
+      tone: requiredMissing.length ? 'error' : 'warning'
+    });
+  }
+
   function setSyncSchemaDiagnosticsFromColumns(sightingsColumns, userStateColumns) {
     const sightingsMissing = getMissingRequiredColumns(sightingsColumns, BIRD_SIGHTINGS_REQUIRED_COLUMNS);
     const userStateMissing = getMissingRequiredColumns(userStateColumns, BIRD_USER_STATE_REQUIRED_COLUMNS);
     const sightingsOptionalMissing = getMissingRequiredColumns(sightingsColumns, BIRD_SIGHTINGS_EVIDENCE_COLUMNS);
+    updateNatureSchemaBanner(sightingsMissing, userStateMissing, sightingsOptionalMissing);
     const hasRequiredMissing = sightingsMissing.length || userStateMissing.length;
     const hasOptionalMissing = sightingsOptionalMissing.length > 0;
     const status = hasRequiredMissing ? 'missing-columns' : (hasOptionalMissing ? 'optional-columns-missing' : 'ok');
@@ -3005,6 +3044,20 @@
   }
 
   function setSyncSchemaDiagnosticsUnknown(details) {
+    if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.clearGlobalBanner === 'function') {
+      window.ExcelSchemaCheckHelper.clearGlobalBanner('nature-challenge');
+    }
+    if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.reportSchemaStatus === 'function') {
+      window.ExcelSchemaCheckHelper.reportSchemaStatus('nature-challenge', {
+        feature: 'Nature Challenge',
+        table: 'birds_sightings + birds_user_state',
+        missingRequired: [],
+        missingRecommended: [],
+        tone: 'warning',
+        details: String(details || '').trim() || 'Schema check unavailable.',
+        checkedAt: Date.now()
+      });
+    }
     state.syncSchemaDiagnostics = {
       status: 'unknown',
       checkedAt: toIsoNow(),

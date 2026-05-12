@@ -3937,6 +3937,21 @@
     return resolvePersistenceColumnIndex(columns, [expectedName]) >= 0;
   }
 
+  function reportVisitedPersistenceSchemaStatus(options = {}) {
+    const helper = window.ExcelSchemaCheckHelper;
+    if (!helper || typeof helper.reportSchemaStatus !== 'function') return;
+    const target = getVisitedPersistenceTarget();
+    helper.reportSchemaStatus('visited-locations', {
+      feature: 'Visited Locations',
+      table: String(target && (target.tableName || target.table) ? (target.tableName || target.table) : VISITED_PERSISTENCE_DEFAULT_TABLE),
+      missingRequired: Array.isArray(options.missingRequired) ? options.missingRequired : [],
+      missingRecommended: Array.isArray(options.missingRecommended) ? options.missingRecommended : [],
+      tone: String(options.tone || ''),
+      details: String(options.details || ''),
+      checkedAt: Date.now()
+    });
+  }
+
   async function fetchVisitedPersistenceTableNames(target) {
     const source = target && typeof target === 'object' ? target : getVisitedPersistenceTarget();
     const workbookPath = String(source.workbookPath || '').trim();
@@ -4116,6 +4131,10 @@
 
   async function ensureVisitedPersistenceBootstrapReady(options = {}) {
     if (!window.accessToken) {
+      reportVisitedPersistenceSchemaStatus({
+        tone: 'warning',
+        details: 'Sign in required to check persistence table schema.'
+      });
       setVisitedPersistenceBootstrapStatus({
         tone: 'warning',
         text: 'Persistence backend: sign in required for Excel bootstrap',
@@ -4167,6 +4186,11 @@
         return VISITED_PERSISTENCE_SCHEMA_COLUMNS.map((name, index) => ({ name, index }));
       });
       const missingColumns = VISITED_PERSISTENCE_SCHEMA_COLUMNS.filter((name) => !doesVisitedPersistenceColumnExist(columns, name));
+      reportVisitedPersistenceSchemaStatus({
+        missingRequired: missingColumns,
+        tone: missingColumns.length ? 'warning' : 'success',
+        details: missingColumns.length ? ('Missing required columns: ' + missingColumns.join(', ')) : 'Workbook schema aligned.'
+      });
       if (missingColumns.length) {
         const rowCount = await fetchVisitedPersistenceRowCount(target).catch(() => 0);
         for (const columnName of missingColumns) {
@@ -4174,6 +4198,11 @@
         }
         columns = await fetchVisitedPersistenceColumns(target, { forceRefresh: true }).catch(() => columns);
         updated = true;
+        reportVisitedPersistenceSchemaStatus({
+          missingRequired: [],
+          tone: 'success',
+          details: 'Added missing required columns and refreshed schema.'
+        });
       }
 
       state.visitedPersistenceBootstrapReady = true;
@@ -4193,6 +4222,10 @@
     const tracked = run.catch((error) => {
       state.visitedPersistenceBootstrapReady = false;
       state.visitedPersistenceBootstrapPromise = null;
+      reportVisitedPersistenceSchemaStatus({
+        tone: 'error',
+        details: String(error && error.message ? error.message : error || 'visited-persistence-schema-check-failed')
+      });
       return describeVisitedPersistenceBootstrapError(getVisitedPersistenceTarget(), error).then((status) => {
         setVisitedPersistenceBootstrapStatus(status);
         throw error;
