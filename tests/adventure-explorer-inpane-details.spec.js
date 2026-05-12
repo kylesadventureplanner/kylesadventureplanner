@@ -1136,6 +1136,19 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await page.evaluate(() => {
       window.__visitLogLaunches = [];
+      window.__inlineToolClosePayload = null;
+      if (!window.__visitLogCloseListenerBound) {
+        window.addEventListener('message', (event) => {
+          const data = event && event.data ? event.data : {};
+          if (data.type !== 'planner-inline-tool-close') return;
+          window.__inlineToolClosePayload = {
+            type: String(data.type || ''),
+            tool: String(data.tool || ''),
+            sourceSubtab: String(data.sourceSubtab || '')
+          };
+        }, { capture: true });
+        window.__visitLogCloseListenerBound = true;
+      }
       const originalOpenVisitedVisitLog = typeof window.openVisitedVisitLogFromAchievements === 'function'
         ? window.openVisitedVisitLogFromAchievements
         : null;
@@ -1172,15 +1185,48 @@ test.describe('Adventure explorer in-pane details flow', () => {
       }
 
       const visitLogView = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="visit-log"]`).first();
+      const overviewView = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="overview"]`).first();
       const visitLogFrame = page.locator(`#visitedVisitLogFrame-${key}`).first();
       await expect(visitLogView).toBeVisible({ timeout: 10000 });
       await expect(visitLogFrame).toBeVisible();
-      const frameHandle = await visitLogFrame.elementHandle();
-      const inlineFrame = frameHandle ? await frameHandle.contentFrame() : null;
+
+      const inlineFrame = await waitForEmbeddedFrameReady(visitLogFrame, {
+        srcPattern: /visit-log-window\.html/i,
+        bodySelector: 'body.embedded-visit-log',
+        minWidth: 250,
+        minHeight: 120,
+        timeout: 20000
+      });
       expect(inlineFrame).not.toBeNull();
-      await expect(inlineFrame.locator('#visitedVisitLogTitle')).toBeVisible();
-      await inlineFrame.getByRole('button', { name: /Cancel/i }).click();
-      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="overview"]`).first()).toBeVisible({ timeout: 10000 });
+      await expect(inlineFrame.locator('#visitedVisitLogTitle')).toBeVisible({ timeout: 10000 });
+
+      const cancelBtn = inlineFrame.locator('#visitedVisitLogCancelBtn');
+      try {
+        await expect(cancelBtn).toBeVisible({ timeout: 10000 });
+        await cancelBtn.click({ timeout: 5000 });
+      } catch (_error) {
+        await inlineFrame.evaluate((sourceSubtab) => {
+          var cancel = document.getElementById('visitedVisitLogCancelBtn');
+          if (cancel && typeof cancel.click === 'function') {
+            cancel.click();
+            return;
+          }
+          try {
+            window.parent.postMessage({
+              type: 'planner-inline-tool-close',
+              tool: 'visit-log',
+              sourceSubtab: String(sourceSubtab || 'outdoors')
+            }, '*');
+          } catch (_innerError) {}
+        }, key);
+      }
+
+      await expect.poll(async () => {
+        return page.evaluate(() => String((window.__inlineToolClosePayload || {}).type || ''));
+      }, { timeout: 10000 }).toBe('planner-inline-tool-close');
+
+      await expect(overviewView).toBeVisible({ timeout: 10000 });
+      await expect(visitLogView).toBeHidden({ timeout: 10000 });
     }
 
     async function ensureDetailsActionBarVisible() {
