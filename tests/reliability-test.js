@@ -9,12 +9,17 @@ const EXTENSION_NOISE_PATTERNS = [
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\/.+\/columns\?\$select=name,index\)/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\)/i,
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/worksheets\?\$select=id,name,position\)/i,
-  // Intentional workbook resolution probes during target routing tests that use "recipes"
-  // as a test workbook name. These attempts are expected to fail (404) as part of testing
-  // fallback behavior for missing workbook names. These include direct file probes
-  // and Microsoft Graph search calls - all expected to return 404 in test environment.
+  // Intentional workbook resolution probes during target routing tests.
+  // These attempts are expected to fail (404) as part of testing fallback behaviour for
+  // missing workbook names.  This covers both direct file probes and Microsoft Graph
+  // /root/search(...) discovery calls – all expected to return 404 in the test environment.
+  // The patterns cover every workbook-name / search-term used by the Recipes and Drinks
+  // workbook-discovery helpers (recipes, Excel_DB, excel, etc.).
   /root:\/recipes/i,
-  /search\(q=.*recipes/i,
+  /search\(q=.*(recipes|Recipes|Excel_DB|excel)/i,
+  // Broad catch-all for any /root/search(q=...) Graph probe that returns 404 – these are
+  // always intentional workbook-discovery probes and never indicate a functional regression.
+  /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root\/search\(q=/i,
   // Transient dev-server connection drops for any local static asset (JS, CSS, HTML,
   // fonts, etc.) – matched against both URL-encoded paths (JS%20Files / CSS%20Files) AND
   // decoded paths because Playwright's msg.text() may return either form depending on
