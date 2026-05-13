@@ -20,6 +20,14 @@
     if (modal) modal.remove();
   }
 
+  function getModalPrimaryButtonStyle() {
+    return 'background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);border:1px solid #7c3aed;color:#fff;font-weight:700;opacity:1;box-shadow:0 2px 8px rgba(139,92,246,.35);';
+  }
+
+  function buildPrimaryModalButton(action, label) {
+    return '<button type="button" class="pill-button recipes-primary-modal-cta" data-modal-action="' + escapeHtml(action) + '" style="' + getModalPrimaryButtonStyle() + '">' + escapeHtml(label) + '</button>';
+  }
+
   function showModalDialog(options) {
     options = options || {};
     var modal = document.createElement('div');
@@ -406,7 +414,7 @@
       title: 'Create shopping list',
       bodyHtml: bodyHtml,
       footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
-        + '<button type="button" class="pill-button planner-top-btn--success" data-modal-action="create-list">Create</button>'
+        + buildPrimaryModalButton('create-list', 'Create')
     });
 
     modal.addEventListener('click', function (event) {
@@ -447,7 +455,7 @@
         + '<label style="display:block;margin-bottom:8px;">Quantity<input id="pantry-item-qty" type="number" min="1" value="1" style="width:100%;margin-top:4px;"></label>'
         + '<label style="display:block;">Unit<input id="pantry-item-unit" type="text" placeholder="cup, tsp, lb" style="width:100%;margin-top:4px;"></label>',
       footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
-        + '<button type="button" class="pill-button planner-top-btn--accent" data-modal-action="save-pantry">Save item</button>'
+        + buildPrimaryModalButton('save-pantry', 'Save item')
     });
 
     modal.addEventListener('click', function (event) {
@@ -562,7 +570,7 @@
          + '<label style="display:block;margin-bottom:8px;">Cook instructions (required)<textarea id="quick-recipe-instructions" rows="5" placeholder="Step-by-step instructions" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;">Description<textarea id="quick-recipe-description" rows="3" placeholder="Optional notes" style="width:100%;margin-top:4px;"></textarea></label>',
        footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
-         + '<button type="button" class="pill-button planner-top-btn--accent" data-modal-action="save-recipe">Save recipe</button>'
+         + buildPrimaryModalButton('save-recipe', 'Save recipe')
      });
 
      modal.addEventListener('click', function (event) {

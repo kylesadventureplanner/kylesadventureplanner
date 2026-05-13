@@ -255,8 +255,46 @@
     return response.json();
   }
 
+  function clearWorkbookPath() {
+    state.excel.workbookPath = '';
+  }
+
+  function isGraphItemNotFoundError(error) {
+    var message = String(error && error.message ? error.message : '').trim();
+    return /graph request failed \(404\)/i.test(message)
+      || /itemnotfound/i.test(message)
+      || /resource could not be found/i.test(message);
+  }
+
+  function getDrinksWorkbookErrorMessage(error, fallback) {
+    if (isGraphItemNotFoundError(error)) {
+      return 'Could not find your Recipes workbook in OneDrive. Open the Recipes tab once to re-establish workbook path, then retry Drinks sync.';
+    }
+    return String(error && error.message ? error.message : (fallback || 'Excel sync failed.')).trim();
+  }
+
+  async function withWorkbookPathRetry(operation) {
+    var firstPath = await resolveWorkbookPath();
+    try {
+      return await operation(firstPath);
+    } catch (firstError) {
+      if (!isGraphItemNotFoundError(firstError)) throw firstError;
+      clearWorkbookPath();
+      var secondPath = await resolveWorkbookPath();
+      return operation(secondPath);
+    }
+  }
+
   async function resolveWorkbookPath() {
-    if (state.excel.workbookPath) return state.excel.workbookPath;
+    if (state.excel.workbookPath) {
+      try {
+        await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodeGraphPath(state.excel.workbookPath));
+        return state.excel.workbookPath;
+      } catch (cachedPathError) {
+        if (isGraphItemNotFoundError(cachedPathError)) clearWorkbookPath();
+        else throw cachedPathError;
+      }
+    }
 
     for (var i = 0; i < WORKBOOK_CANDIDATES.length; i += 1) {
       var candidate = WORKBOOK_CANDIDATES[i];
@@ -438,54 +476,54 @@
     var def = TRACKERS[trackerKey];
     if (!def) return [];
 
-    var path = await resolveWorkbookPath();
-    var encodedPath = encodeGraphPath(path);
-    var tableRef = encodeURIComponent(def.table);
+    return withWorkbookPathRetry(async function (path) {
+      var encodedPath = encodeGraphPath(path);
+      var tableRef = encodeURIComponent(def.table);
 
-    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
-    var rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
+      var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+      var rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
 
-    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
-    var normalizedColumns = columns.map(function (col) { return normalizeColumnName(col.name); });
+      var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+      var normalizedColumns = columns.map(function (col) { return normalizeColumnName(col.name); });
 
-    // Surface missing tag columns via in-pane schema banner.
-    checkTrackerSchema(trackerKey, normalizedColumns);
+      // Surface missing tag columns via in-pane schema banner.
+      checkTrackerSchema(trackerKey, normalizedColumns);
 
-    return (rowsResp.value || []).map(function (row) {
-      var values = (row.values && row.values[0]) ? row.values[0] : [];
-      var mapped = {};
-      normalizedColumns.forEach(function (name, index) {
-        mapped[name] = values[index];
-      });
-      return mapExcelRowToItem(trackerKey, mapped);
-    }).filter(Boolean);
+      return (rowsResp.value || []).map(function (row) {
+        var values = (row.values && row.values[0]) ? row.values[0] : [];
+        var mapped = {};
+        normalizedColumns.forEach(function (name, index) {
+          mapped[name] = values[index];
+        });
+        return mapExcelRowToItem(trackerKey, mapped);
+      }).filter(Boolean);
+    });
   }
 
   async function writeTrackerToExcel(trackerKey) {
     var def = TRACKERS[trackerKey];
     if (!def) return;
 
-    var path = await resolveWorkbookPath();
-    var encodedPath = encodeGraphPath(path);
-    var tableRef = encodeURIComponent(def.table);
-    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
-    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
-    var normalizedColumns = columns.map(function (col) { return normalizeColumnName(col.name); });
+    await withWorkbookPathRetry(async function (path) {
+      var encodedPath = encodeGraphPath(path);
+      var tableRef = encodeURIComponent(def.table);
+      var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+      var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+      var normalizedColumns = columns.map(function (col) { return normalizeColumnName(col.name); });
 
-    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/clear', { method: 'POST' });
+      await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/clear', { method: 'POST' });
 
-    var values = (state.data[trackerKey] || []).map(function (item) {
-      var excelObject = mapItemToExcelObject(trackerKey, item);
-      return normalizedColumns.map(function (name) {
-        return Object.prototype.hasOwnProperty.call(excelObject, name) ? excelObject[name] : '';
+      var values = (state.data[trackerKey] || []).map(function (item) {
+        var excelObject = mapItemToExcelObject(trackerKey, item);
+        return normalizedColumns.map(function (name) {
+          return Object.prototype.hasOwnProperty.call(excelObject, name) ? excelObject[name] : '';
+        });
       });
-    });
-
-    if (!values.length) return;
-
-    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/add', {
-      method: 'POST',
-      body: JSON.stringify({ values: values })
+      if (!values.length) return;
+      await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/add', {
+        method: 'POST',
+        body: JSON.stringify({ values: values })
+      });
     });
   }
 
@@ -767,41 +805,85 @@
     if (ratingInput) ratingInput.value = String(rating || 0);
   }
 
+  function showDcModal(options) {
+    var modal = document.createElement('div');
+    modal.className = 'dc-modal-backdrop';
+    modal.innerHTML = '<div class="dc-modal" role="dialog" aria-modal="true">'
+      + '<div class="dc-modal-head">'
+      + '<h3 class="dc-modal-title">' + safeText(options && options.title ? options.title : 'Add item') + '</h3>'
+      + '<button type="button" class="dc-modal-close" data-dc-modal-action="close" aria-label="Close">×</button>'
+      + '</div>'
+      + '<div class="dc-modal-body">' + String(options && options.bodyHtml ? options.bodyHtml : '') + '</div>'
+      + '<div class="dc-modal-footer">' + String(options && options.footerHtml ? options.footerHtml : '') + '</div>'
+      + '</div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === 1 ? event.target : null;
+      if (!target) return;
+      if (target === modal || target.getAttribute('data-dc-modal-action') === 'close') {
+        modal.remove();
+      }
+    });
+    return modal;
+  }
+
   function addItem(trackerKey) {
     var def = TRACKERS[trackerKey];
     if (!def) return;
-    var brand = prompt('Brand:');
-    if (!brand) return;
-    var flavor = prompt('Flavor:', '');
-    var type = '';
-    var strengthMg = '';
-
-    if (def.hasType) {
-      type = prompt('Type:', (def.typeOptions && def.typeOptions[0]) || '');
-    }
-    if (def.hasStrength) {
-      strengthMg = prompt('Strength mg:', '');
-    }
-
-    state.data[trackerKey].unshift(normalizeTrackerItem(trackerKey, {
-      id: uid(trackerKey),
-      brand: brand,
-      flavor: flavor,
-      type: type,
-      strengthMg: strengthMg,
-      myRating: 0,
-      tasteNotes: '',
-      tasteTags: [],
-      effectsNotes: '',
-      effectsTags: [],
-      purchaseLocation: '',
-      city: '',
-      state: ''
-    }));
-
-    saveState();
-    renderTrackerPane(trackerKey);
-    setStatus('Added new item to ' + def.title + '.', false);
+    var typeHtml = def.hasType
+      ? '<label class="dc-field">Type<select data-dc-modal-field="type">'
+        + (def.typeOptions || []).map(function (option, idx) {
+          return '<option value="' + safeText(option) + '"' + (idx === 0 ? ' selected' : '') + '>' + safeText(option) + '</option>';
+        }).join('')
+        + '</select></label>'
+      : '';
+    var strengthHtml = def.hasStrength
+      ? '<label class="dc-field">Strength mg<input type="text" data-dc-modal-field="strengthMg" placeholder="e.g. 10"></label>'
+      : '';
+    var modal = showDcModal({
+      title: 'Add ' + def.title + ' item',
+      bodyHtml: '<div class="dc-item-grid">'
+        + typeHtml
+        + '<label class="dc-field">Brand<input type="text" data-dc-modal-field="brand" placeholder="Brand" required></label>'
+        + '<label class="dc-field">Flavor<input type="text" data-dc-modal-field="flavor" placeholder="Flavor"></label>'
+        + strengthHtml
+        + '</div>',
+      footerHtml: '<button type="button" class="pill-button" data-dc-modal-action="close">Cancel</button>'
+        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">Add item</button>'
+    });
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === 1 ? event.target : null;
+      if (!target || target.getAttribute('data-dc-modal-action') !== 'save') return;
+      var brandField = modal.querySelector('[data-dc-modal-field="brand"]');
+      var brand = String(brandField && brandField.value ? brandField.value : '').trim();
+      if (!brand) {
+        if (brandField && typeof brandField.focus === 'function') brandField.focus();
+        setStatus('Brand is required before adding a new item.', true);
+        return;
+      }
+      var type = def.hasType ? String((modal.querySelector('[data-dc-modal-field="type"]') || {}).value || '').trim() : '';
+      var flavor = String((modal.querySelector('[data-dc-modal-field="flavor"]') || {}).value || '').trim();
+      var strengthMg = def.hasStrength ? String((modal.querySelector('[data-dc-modal-field="strengthMg"]') || {}).value || '').trim() : '';
+      state.data[trackerKey].unshift(normalizeTrackerItem(trackerKey, {
+        id: uid(trackerKey),
+        brand: brand,
+        flavor: flavor,
+        type: type,
+        strengthMg: strengthMg,
+        myRating: 0,
+        tasteNotes: '',
+        tasteTags: [],
+        effectsNotes: '',
+        effectsTags: [],
+        purchaseLocation: '',
+        city: '',
+        state: ''
+      }));
+      modal.remove();
+      saveState();
+      renderTrackerPane(trackerKey);
+      setStatus('Added new item to ' + def.title + '.', false);
+    });
   }
 
   function saveTrackerItem(card, trackerKey) {
@@ -846,19 +928,39 @@
   }
 
   function addCocktailRecipe() {
-    var name = prompt('Cocktail recipe name:');
-    if (!name) return;
-    var ingredients = prompt('Ingredients:', '');
-    var instructions = prompt('Instructions:', '');
-    state.data['thc-cocktail-recipes'].unshift({
-      id: uid('thc-cocktail-recipe'),
-      name: name,
-      ingredients: ingredients,
-      instructions: instructions
+    var modal = showDcModal({
+      title: 'Add THC cocktail recipe',
+      bodyHtml: '<div class="dc-item-grid">'
+        + '<label class="dc-field dc-field-wide">Recipe Name<input type="text" data-dc-modal-field="name" placeholder="Recipe name" required></label>'
+        + '<label class="dc-field dc-field-wide">Ingredients<textarea rows="4" data-dc-modal-field="ingredients" placeholder="Ingredients"></textarea></label>'
+        + '<label class="dc-field dc-field-wide">Instructions<textarea rows="5" data-dc-modal-field="instructions" placeholder="Instructions"></textarea></label>'
+        + '</div>',
+      footerHtml: '<button type="button" class="pill-button" data-dc-modal-action="close">Cancel</button>'
+        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">Add recipe</button>'
     });
-    saveState();
-    renderCocktailRecipesPane();
-    setStatus('Added THC cocktail recipe.', false);
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === 1 ? event.target : null;
+      if (!target || target.getAttribute('data-dc-modal-action') !== 'save') return;
+      var nameField = modal.querySelector('[data-dc-modal-field="name"]');
+      var name = String(nameField && nameField.value ? nameField.value : '').trim();
+      if (!name) {
+        if (nameField && typeof nameField.focus === 'function') nameField.focus();
+        setStatus('Recipe name is required.', true);
+        return;
+      }
+      var ingredients = String((modal.querySelector('[data-dc-modal-field="ingredients"]') || {}).value || '').trim();
+      var instructions = String((modal.querySelector('[data-dc-modal-field="instructions"]') || {}).value || '').trim();
+      state.data['thc-cocktail-recipes'].unshift({
+        id: uid('thc-cocktail-recipe'),
+        name: name,
+        ingredients: ingredients,
+        instructions: instructions
+      });
+      modal.remove();
+      saveState();
+      renderCocktailRecipesPane();
+      setStatus('Added THC cocktail recipe.', false);
+    });
   }
 
   function saveCocktailRecipe(card) {
@@ -898,7 +1000,7 @@
       renderTrackerPane(trackerKey);
       setStatus((options.autoSync ? 'Auto-sync complete. ' : '') + 'Loaded ' + rows.length + ' row(s) from ' + def.table + '.', false);
     } catch (error) {
-      setStatus((error && error.message) ? error.message : 'Excel sync failed.', true);
+      setStatus(getDrinksWorkbookErrorMessage(error, 'Excel sync failed.'), true);
     }
   }
 
@@ -910,7 +1012,7 @@
       await writeTrackerToExcel(trackerKey);
       setStatus('Saved ' + (state.data[trackerKey] || []).length + ' row(s) to ' + def.table + '.', false);
     } catch (error) {
-      setStatus((error && error.message) ? error.message : 'Excel write failed.', true);
+      setStatus(getDrinksWorkbookErrorMessage(error, 'Excel write failed.'), true);
     }
   }
 
@@ -1080,6 +1182,15 @@
       + '#drinksCocktailsRoot .dc-schema-banner-message{flex:1;line-height:1.5;}'
       + '#drinksCocktailsRoot .dc-schema-banner-message code{background:#fef3c7;border:1px solid #fde68a;border-radius:3px;padding:1px 4px;font-family:monospace;font-size:11px;}'
       + '#drinksCocktailsRoot .dc-schema-banner-close{flex-shrink:0;border:0;background:transparent;font-size:16px;cursor:pointer;color:#92400e;padding:0 2px;line-height:1;}';
+      + '.dc-modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.5);z-index:10040;padding:16px;}'
+      + '.dc-modal{width:min(760px,96vw);max-height:86vh;overflow:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);}'
+      + '.dc-modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}'
+      + '.dc-modal-title{margin:0;font-size:20px;color:#111827;}'
+      + '.dc-modal-close{border:0;background:transparent;font-size:24px;line-height:1;cursor:pointer;color:#334155;}'
+      + '.dc-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}'
+      + '.dc-modal-primary{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);border:1px solid #7c3aed;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(139,92,246,.35);}'
+      + '.dc-modal-primary:hover{filter:brightness(.98);}'
+      + '.dc-modal .dc-field textarea{min-height:84px;}'
     document.head.appendChild(style);
   }
 
