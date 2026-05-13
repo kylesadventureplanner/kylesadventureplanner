@@ -14,6 +14,13 @@
  */
 
 const { test, expect } = require('./reliability-test');
+const {
+  buildDrinksStorage,
+  openDrinksTab: openDrinksTabBase,
+  drinksSubtab,
+  countVisibleCards,
+  readDrinksStorage
+} = require('./drinks-cocktails-test-helpers');
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -41,67 +48,8 @@ function makeItem(overrides = {}) {
   );
 }
 
-function buildDrinksStorage(overrides = {}) {
-  return {
-    'na-brew': [],
-    'thc-bev': [],
-    'thc-edible': [],
-    'thc-cocktail-recipes': [],
-    ...overrides
-  };
-}
-
-/**
- * Seeds localStorage and navigates to the drinks-cocktails tab.
- * Returns the root locator once it is visible.
- *
- * @param {import('@playwright/test').Page} page
- * @param {object} storageData
- */
 async function openDrinksTab(page, storageData = buildDrinksStorage()) {
-  await page.addInitScript((data) => {
-    try {
-      window.localStorage.setItem('kap_drinks_cocktails_v1', JSON.stringify(data));
-      // Prevent auto-sync from attempting real Graph calls in tests.
-      window.accessToken = '';
-    } catch (_err) {}
-  }, storageData);
-
-  await page.goto('/');
-
-  await page.evaluate(() => {
-    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-      window.tabLoader.switchTab('drinks-cocktails', {
-        syncUrl: true,
-        historyMode: 'replace',
-        source: 'drinks-filter-spec'
-      });
-    }
-  });
-
-  const root = page.locator('#drinksCocktailsRoot');
-  await expect(root).toBeVisible({ timeout: 15000 });
-
-  // Wait for the system to finish binding events / initial render.
-  await page.waitForFunction(() => {
-    const r = document.getElementById('drinksCocktailsRoot');
-    return r && r.dataset.drinksCocktailsBound === '1';
-  }, { timeout: 10000 });
-
-  return root;
-}
-
-// ---------------------------------------------------------------------------
-// Helper: count visible item-cards inside the active pane
-// ---------------------------------------------------------------------------
-async function countVisibleCards(page) {
-  return page.evaluate(() => {
-    const activePane = document.querySelector(
-      '#drinksCocktailsRoot [data-dc-pane]:not([hidden])'
-    );
-    if (!activePane) return 0;
-    return activePane.querySelectorAll('.dc-item-card').length;
-  });
+  return openDrinksTabBase(page, expect, storageData);
 }
 
 // ---------------------------------------------------------------------------
@@ -117,23 +65,23 @@ test.describe('Drinks Cocktails – subtab switching', () => {
     const root = await openDrinksTab(page, storage);
 
     // NA Brew is active by default
-    await expect(root.locator('[data-dc-subtab="na-brew"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(drinksSubtab(page, 'na-brew')).toHaveAttribute('aria-selected', 'true');
     await expect(root.locator('[data-dc-pane="na-brew"]')).toBeVisible();
 
     // Switch to THC Bev
-    await root.locator('[data-dc-subtab="thc-bev"]').click();
-    await expect(root.locator('[data-dc-subtab="thc-bev"]')).toHaveAttribute('aria-selected', 'true');
+    await drinksSubtab(page, 'thc-bev').click();
+    await expect(drinksSubtab(page, 'thc-bev')).toHaveAttribute('aria-selected', 'true');
     await expect(root.locator('[data-dc-pane="thc-bev"]')).toBeVisible();
     await expect(root.locator('[data-dc-pane="na-brew"]')).toBeHidden();
 
     // Switch to THC Edible
-    await root.locator('[data-dc-subtab="thc-edible"]').click();
-    await expect(root.locator('[data-dc-subtab="thc-edible"]')).toHaveAttribute('aria-selected', 'true');
+    await drinksSubtab(page, 'thc-edible').click();
+    await expect(drinksSubtab(page, 'thc-edible')).toHaveAttribute('aria-selected', 'true');
     await expect(root.locator('[data-dc-pane="thc-edible"]')).toBeVisible();
 
     // Switch to THC Cocktail Recipes
-    await root.locator('[data-dc-subtab="thc-cocktail-recipes"]').click();
-    await expect(root.locator('[data-dc-subtab="thc-cocktail-recipes"]')).toHaveAttribute('aria-selected', 'true');
+    await drinksSubtab(page, 'thc-cocktail-recipes').click();
+    await expect(drinksSubtab(page, 'thc-cocktail-recipes')).toHaveAttribute('aria-selected', 'true');
     await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"]')).toBeVisible();
   });
 });
@@ -267,7 +215,7 @@ test.describe('Drinks Cocktails – tags filter', () => {
     const root = await openDrinksTab(page, storage);
 
     // Switch to THC Bev
-    await root.locator('[data-dc-subtab="thc-bev"]').click();
+    await drinksSubtab(page, 'thc-bev').click();
     await expect(root.locator('[data-dc-pane="thc-bev"]')).toBeVisible();
 
     const allCards = await page.evaluate(() => {
@@ -311,36 +259,36 @@ test.describe('Drinks Cocktails – sort order (na-brew)', () => {
     const firstBrandDesc = await root
       .locator('[data-dc-pane="na-brew"] .dc-item-card')
       .first()
-      .locator('[data-field="brand"]')
-      .inputValue();
-    expect(firstBrandDesc).toBe('Top');
+      .locator('[data-dc-card-brand="1"]')
+      .textContent();
+    expect(String(firstBrandDesc || '')).toContain('Top');
 
     // Sort rating low → high; first card should be the 1-star item
     await sortSelect.selectOption('rating-asc');
     const firstBrandAsc = await root
       .locator('[data-dc-pane="na-brew"] .dc-item-card')
       .first()
-      .locator('[data-field="brand"]')
-      .inputValue();
-    expect(firstBrandAsc).toBe('Low');
+      .locator('[data-dc-card-brand="1"]')
+      .textContent();
+    expect(String(firstBrandAsc || '')).toContain('Low');
 
     // Sort brand A-Z; first card should be 'Low' alphabetically
     await sortSelect.selectOption('brand-asc');
     const firstBrandAlpha = await root
       .locator('[data-dc-pane="na-brew"] .dc-item-card')
       .first()
-      .locator('[data-field="brand"]')
-      .inputValue();
-    expect(firstBrandAlpha).toBe('Low');
+      .locator('[data-dc-card-brand="1"]')
+      .textContent();
+    expect(String(firstBrandAlpha || '')).toContain('Low');
 
     // Sort brand Z-A; first card should be 'Top'
     await sortSelect.selectOption('brand-desc');
     const firstBrandZA = await root
       .locator('[data-dc-pane="na-brew"] .dc-item-card')
       .first()
-      .locator('[data-field="brand"]')
-      .inputValue();
-    expect(firstBrandZA).toBe('Top');
+      .locator('[data-dc-card-brand="1"]')
+      .textContent();
+    expect(String(firstBrandZA || '')).toContain('Top');
   });
 });
 
@@ -357,7 +305,7 @@ test.describe('Drinks Cocktails – type filter (thc-bev)', () => {
     const root = await openDrinksTab(page, storage);
 
     // Switch to THC Bev subtab
-    await root.locator('[data-dc-subtab="thc-bev"]').click();
+    await drinksSubtab(page, 'thc-bev').click();
     await expect(root.locator('[data-dc-pane="thc-bev"]')).toBeVisible();
 
     const countThcCards = () =>
@@ -419,40 +367,50 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
       window.accessToken = 'test-schema-token';
     });
 
-    // Mock workbook discovery + columns (all trackers) – omit taste_tags and potency_effect_tags
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/columns/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          value: [
-            { name: 'Brand', index: 0 },
-            { name: 'Flavor', index: 1 },
-            { name: 'My Rating', index: 2 },
-            { name: 'Taste Notes', index: 3 },
-            { name: 'Purchase Locations', index: 4 },
-            { name: 'City', index: 5 },
-            { name: 'State', index: 6 }
-            // taste_tags and potency_effect_tags intentionally absent
-          ]
-        })
-      });
-    });
+    await page.route(/https:\/\/graph\.microsoft\.com.*/, async (route) => {
+      const url = route.request().url();
 
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/rows/, async (route) => {
+      if (/\/columns/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            value: [
+              { name: 'Brand', index: 0 },
+              { name: 'Flavor', index: 1 },
+              { name: 'My Rating', index: 2 },
+              { name: 'Taste Notes', index: 3 },
+              { name: 'Purchase Locations', index: 4 },
+              { name: 'City', index: 5 },
+              { name: 'State', index: 6 }
+            ]
+          })
+        });
+        return;
+      }
+
+      if (/\/rows/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ value: [] })
+        });
+        return;
+      }
+
+      if (/\/root:\/Recipes/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ name: 'Recipes.xlsx', id: 'wb-1' })
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ value: [] })
-      });
-    });
-
-    // Workbook resolution probe
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/root:\/Recipes/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ name: 'Recipes.xlsx', id: 'wb-1' })
       });
     });
 
@@ -465,7 +423,7 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
     // Trigger a sync from Excel (the mocked Graph returns columns without taste_tags)
     await page.evaluate(() => {
       if (window.DrinksCocktailsTabSystem && typeof window.DrinksCocktailsTabSystem.syncFromExcel === 'function') {
-        window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
+        return window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
       }
     });
 
@@ -484,7 +442,7 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
 
     await page.evaluate(() => {
       if (window.DrinksCocktailsTabSystem && typeof window.DrinksCocktailsTabSystem.syncFromExcel === 'function') {
-        window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
+        return window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
       }
     });
 
@@ -506,12 +464,12 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
     const root = await setupSchemaBannerTest(page);
 
     // Switch to THC Bev and sync
-    await root.locator('[data-dc-subtab="thc-bev"]').click();
+    await drinksSubtab(page, 'thc-bev').click();
     await expect(root.locator('[data-dc-pane="thc-bev"]')).toBeVisible();
 
     await page.evaluate(() => {
       if (window.DrinksCocktailsTabSystem && typeof window.DrinksCocktailsTabSystem.syncFromExcel === 'function') {
-        window.DrinksCocktailsTabSystem.syncFromExcel('thc-bev');
+        return window.DrinksCocktailsTabSystem.syncFromExcel('thc-bev');
       }
     });
 
@@ -530,28 +488,48 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
       window.accessToken = 'test-schema-full-token';
     });
 
-    // Mock full column list including taste_tags and potency_effect_tags
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/columns/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          value: [
-            { name: 'Brand', index: 0 },
-            { name: 'Flavor', index: 1 },
-            { name: 'My Rating', index: 2 },
-            { name: 'Taste Notes', index: 3 },
-            { name: 'taste_tags', index: 4 },
-            { name: 'potency_effect_tags', index: 5 },
-            { name: 'Purchase Locations', index: 6 },
-            { name: 'City', index: 7 },
-            { name: 'State', index: 8 }
-          ]
-        })
-      });
-    });
+    await page.route(/https:\/\/graph\.microsoft\.com.*/, async (route) => {
+      const url = route.request().url();
 
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/rows/, async (route) => {
+      if (/\/columns/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            value: [
+              { name: 'Brand', index: 0 },
+              { name: 'Flavor', index: 1 },
+              { name: 'My Rating', index: 2 },
+              { name: 'Taste Notes', index: 3 },
+              { name: 'taste_tags', index: 4 },
+              { name: 'potency_effect_tags', index: 5 },
+              { name: 'Purchase Locations', index: 6 },
+              { name: 'City', index: 7 },
+              { name: 'State', index: 8 }
+            ]
+          })
+        });
+        return;
+      }
+
+      if (/\/rows/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ value: [] })
+        });
+        return;
+      }
+
+      if (/\/root:\/Recipes/.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ name: 'Recipes.xlsx', id: 'wb-1' })
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -559,27 +537,91 @@ test.describe('Drinks Cocktails – schema-check banner', () => {
       });
     });
 
-    await page.route(/https:\/\/graph\.microsoft\.com.*\/root:\/Recipes/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ name: 'Recipes.xlsx', id: 'wb-1' })
-      });
-    });
-
     const root = await openDrinksTab(page, buildDrinksStorage());
 
     await page.evaluate(() => {
       if (window.DrinksCocktailsTabSystem && typeof window.DrinksCocktailsTabSystem.syncFromExcel === 'function') {
-        window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
+        return window.DrinksCocktailsTabSystem.syncFromExcel('na-brew');
       }
     });
-
-    // Wait briefly, then assert no banner is shown
-    await page.waitForTimeout(800);
     await expect(
       root.locator('[data-dc-schema-banner="na-brew"]')
     ).toHaveCount(0);
   });
 });
+
+test.describe('Drinks Cocktails – modal flows', () => {
+  test('adds a new NA brew item through the modal and persists it to localStorage', async ({ page }) => {
+    const root = await openDrinksTab(page);
+
+    await expect(drinksSubtab(page, 'na-brew')).toHaveAttribute('aria-selected', 'true');
+    await root.locator('[data-dc-action="add-item"][data-tracker="na-brew"]').click();
+
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Add NA Brew Tracker item');
+
+    await modal.locator('[data-dc-modal-field="brand"]').fill('Athletic Brewing');
+    await modal.locator('[data-dc-modal-field="flavor"]').fill('Run Wild IPA');
+    await modal.locator('[data-dc-modal-action="save"]').click();
+
+    await expect(modal).toBeHidden();
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(1);
+    await expect(root.locator('[data-dc-pane="na-brew"] [data-dc-card-brand="1"]')).toContainText('Athletic Brewing');
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Added new item to NA Brew Tracker.');
+
+    const stored = await readDrinksStorage(page);
+    expect(Array.isArray(stored['na-brew'])).toBe(true);
+    expect(stored['na-brew']).toHaveLength(1);
+    expect(stored['na-brew'][0].brand).toBe('Athletic Brewing');
+    expect(stored['na-brew'][0].flavor).toBe('Run Wild IPA');
+  });
+
+  test('requires a brand before adding a new tracker item', async ({ page }) => {
+    const root = await openDrinksTab(page);
+
+    await root.locator('[data-dc-action="add-item"][data-tracker="na-brew"]').click();
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+
+    await modal.locator('[data-dc-modal-action="save"]').click();
+
+    await expect(modal).toBeVisible();
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Brand is required before saving this item.');
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(0);
+  });
+
+  test('adds a THC cocktail recipe through the modal and persists it to localStorage', async ({ page }) => {
+    const root = await openDrinksTab(page);
+
+    await drinksSubtab(page, 'thc-cocktail-recipes').click();
+    await expect(drinksSubtab(page, 'thc-cocktail-recipes')).toHaveAttribute('aria-selected', 'true');
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"]')).toBeVisible();
+
+    await root.locator('[data-dc-action="add-cocktail-recipe"]').click();
+
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Add THC cocktail recipe');
+
+    await modal.locator('[data-dc-modal-field="name"]').fill('Purple Nightcap');
+    await modal.locator('[data-dc-modal-field="ingredients"]').fill('THC seltzer\nblackberry syrup\nlime juice');
+    await modal.locator('[data-dc-modal-field="instructions"]').fill('Shake with ice, then strain into a chilled glass.');
+    await modal.locator('[data-dc-modal-action="save"]').click();
+
+    await expect(modal).toBeHidden();
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"] .dc-item-card')).toHaveCount(1);
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"] [data-dc-recipe-name="1"]')).toContainText('Purple Nightcap');
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Added THC cocktail recipe.');
+
+    const stored = await readDrinksStorage(page);
+    expect(Array.isArray(stored['thc-cocktail-recipes'])).toBe(true);
+    expect(stored['thc-cocktail-recipes']).toHaveLength(1);
+    expect(stored['thc-cocktail-recipes'][0].name).toBe('Purple Nightcap');
+    expect(stored['thc-cocktail-recipes'][0].ingredients).toContain('THC seltzer');
+  });
+});
+
+
+
 

@@ -11,7 +11,6 @@
     <button id="householdToolsTab-recipes" type="button" class="household-tools-subtab active" role="tab" aria-controls="householdToolsPane-recipes" aria-selected="true" data-household-subtab="recipes">👨‍🍳 Recipes</button>
     <button id="householdToolsTab-garden" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-garden" aria-selected="false" data-household-subtab="garden">🌱 Garden Planner</button>
     <button id="householdToolsTab-budget" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-budget" aria-selected="false" data-household-subtab="budget">💰 Budget</button>
-    <button id="householdToolsTab-concerts" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-concerts" aria-selected="false" data-household-subtab="concerts">🎸 Concerts (Moved)</button>
   </div>
 
   <div id="householdToolsPane-recipes" class="household-tools-pane is-active" data-household-pane="recipes" role="tabpanel" aria-labelledby="householdToolsTab-recipes">
@@ -41,16 +40,6 @@
     </div>
   </div>
 
-  <div id="householdToolsPane-concerts" class="household-tools-pane" data-household-pane="concerts" role="tabpanel" aria-labelledby="householdToolsTab-concerts" hidden>
-    <div class="tab-placeholder">
-      <div class="tab-placeholder-icon">🎸</div>
-      <div class="tab-placeholder-text">Concerts moved to Adventure Challenge</div>
-      <div class="tab-placeholder-subtext">Open Adventure Challenge and use the Concerts subtab.</div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-        <button type="button" class="pill-button" id="householdConcertsOpenAdventureBtn">Open Concerts in Adventure Challenge</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
@@ -102,7 +91,7 @@
 
 <script>
   (function () {
-    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget', 'concerts'];
+    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget'];
     const state = { activeSubTab: 'recipes' };
 
     function isHouseholdToolsTabMountedAndActive(root) {
@@ -112,33 +101,6 @@
       const tabId = String(pane.getAttribute('data-tab') || '').trim();
       if (tabId !== 'household-tools') return false;
       return pane.classList.contains('active');
-    }
-
-    function openAdventureConcertsSubtab() {
-      if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-        window.tabLoader.switchTab('visited-locations', { syncUrl: true, historyMode: 'push', source: 'household-concerts-move' });
-      }
-
-      // Retry briefly while visited-locations lazy-loads, so redirects are reliable.
-      let attempts = 0;
-      const maxAttempts = 12;
-      const timer = window.setInterval(function () {
-        attempts += 1;
-        if (typeof window.openVisitedProgressSubtab === 'function') {
-          window.openVisitedProgressSubtab('concerts', { switchPrimaryTab: true });
-          window.clearInterval(timer);
-          return;
-        }
-        const fallbackBtn = document.querySelector('#appSubTabsSlot [data-progress-subtab="concerts"]');
-        if (fallbackBtn && typeof fallbackBtn.click === 'function') {
-          fallbackBtn.click();
-          window.clearInterval(timer);
-          return;
-        }
-        if (attempts >= maxAttempts) {
-          window.clearInterval(timer);
-        }
-      }, 80);
     }
 
     function getHouseholdSubTabDockElements() {
@@ -348,9 +310,6 @@
       if (state.activeSubTab === 'recipes') {
         renderHouseholdRecipesPane(root);
       }
-      if (state.activeSubTab === 'concerts') {
-        openAdventureConcertsSubtab();
-      }
     }
 
     function renderHouseholdRecipesPane(root) {
@@ -411,15 +370,6 @@
         });
       }
 
-      if (!root.dataset.householdConcertsMoveBound) {
-        root.dataset.householdConcertsMoveBound = '1';
-        const movedBtn = root.querySelector('#householdConcertsOpenAdventureBtn');
-        if (movedBtn) {
-          movedBtn.addEventListener('click', function () {
-            openAdventureConcertsSubtab();
-          });
-        }
-      }
 
       bindHouseholdPrimaryTabFallbackSync(root);
       setActiveHouseholdSubTab(root, 'recipes');

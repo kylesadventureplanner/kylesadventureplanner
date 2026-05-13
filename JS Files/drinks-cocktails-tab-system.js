@@ -4,7 +4,9 @@
   var ROOT_ID = 'drinksCocktailsRoot';
   var STATUS_ID = 'drinksCocktailsStatus';
   var STORAGE_KEY = 'kap_drinks_cocktails_v1';
-  var WORKBOOK_CANDIDATES = ['Recipes.xlsx', 'recipes.xlsx', 'Recipes.xlsm', 'recipes.xlsm', 'recipes'];
+  var WORKBOOK_CANDIDATES = ['Recipes.xlsx', 'recipes.xlsx', 'Recipes.xlsm', 'recipes.xlsm', 'recipes', 'Excel_DB.xlsx', 'excel_db.xlsx'];
+  var WORKBOOK_SEARCH_TERMS = ['Recipes', 'recipes', 'Excel_DB', 'excel'];
+  var WORKBOOK_PATH_STORAGE_KEY = 'kap_drinks_workbook_path_v1';
   var AUTO_SYNC_COOLDOWN_MS = 45000;
 
   var TASTE_TAGS = [
@@ -64,7 +66,7 @@
       'thc-edible': { type: 'all', brand: '', minRating: '', location: '', tags: '', sortBy: 'updated-desc' }
     },
     excel: {
-      workbookPath: ''
+      workbookPath: readStringStorage(WORKBOOK_PATH_STORAGE_KEY, '')
     },
     autoSync: {
       lastRunAtByTracker: {}
@@ -75,6 +77,22 @@
 
   function getRoot() {
     return document.getElementById(ROOT_ID);
+  }
+
+  function readStringStorage(key, fallback) {
+    try {
+      var value = localStorage.getItem(String(key || ''));
+      if (value == null) return String(fallback || '');
+      return String(value || '');
+    } catch (_error) {
+      return String(fallback || '');
+    }
+  }
+
+  function writeStringStorage(key, value) {
+    try {
+      localStorage.setItem(String(key || ''), String(value || ''));
+    } catch (_error) {}
   }
 
   function getDrinksSubTabDockElements() {
@@ -257,6 +275,68 @@
 
   function clearWorkbookPath() {
     state.excel.workbookPath = '';
+    writeStringStorage(WORKBOOK_PATH_STORAGE_KEY, '');
+  }
+
+  function rememberWorkbookPath(path) {
+    var normalized = String(path || '').trim();
+    if (!normalized) return;
+    state.excel.workbookPath = normalized;
+    writeStringStorage(WORKBOOK_PATH_STORAGE_KEY, normalized);
+  }
+
+  function buildWorkbookPathFromDriveItem(item) {
+    var safeItem = item && typeof item === 'object' ? item : {};
+    var itemName = String(safeItem.name || '').trim();
+    if (!itemName) return '';
+    var parentPath = String((safeItem.parentReference && safeItem.parentReference.path) || '').trim();
+    if (parentPath.indexOf('/drive/root:') === 0) {
+      parentPath = parentPath.slice('/drive/root:'.length);
+    }
+    parentPath = parentPath.replace(/^\/+|\/+$/g, '');
+    return parentPath ? (parentPath + '/' + itemName) : itemName;
+  }
+
+  async function probeWorkbookForTable(filePath, tableName) {
+    var normalizedPath = String(filePath || '').trim();
+    var normalizedTable = String(tableName || '').trim();
+    if (!normalizedPath || !normalizedTable) return false;
+    var encodedPath = encodeGraphPath(normalizedPath);
+    var tableRef = encodeURIComponent(normalizedTable);
+    try {
+      await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+      return true;
+    } catch (error) {
+      if (isGraphItemNotFoundError(error)) return false;
+      throw error;
+    }
+  }
+
+  async function discoverWorkbookPathCandidates() {
+    var discovered = [];
+    var seen = {};
+    for (var i = 0; i < WORKBOOK_SEARCH_TERMS.length; i += 1) {
+      var term = String(WORKBOOK_SEARCH_TERMS[i] || '').trim();
+      if (!term) continue;
+      try {
+        var searchUrl = 'https://graph.microsoft.com/v1.0/me/drive/root/search(q=%27' + encodeURIComponent(term) + '%27)?$select=name,parentReference';
+        var payload = await graphFetchJson(searchUrl);
+        (Array.isArray(payload.value) ? payload.value : []).forEach(function (item) {
+          var name = String(item && item.name ? item.name : '').trim();
+          if (!name) return;
+          var lower = name.toLowerCase();
+          if (!/\.(xlsx|xlsm)$/i.test(name) && lower.indexOf('recipes') < 0 && lower.indexOf('excel') < 0) return;
+          var path = buildWorkbookPathFromDriveItem(item);
+          var key = String(path || '').toLowerCase();
+          if (!path || seen[key]) return;
+          seen[key] = true;
+          discovered.push(path);
+        });
+      } catch (_searchError) {
+        // Ignore discovery issues and continue probing.
+      }
+    }
+    return discovered;
   }
 
   function isGraphItemNotFoundError(error) {
@@ -267,56 +347,68 @@
   }
 
   function getDrinksWorkbookErrorMessage(error, fallback) {
-    if (isGraphItemNotFoundError(error)) {
-      return 'Could not find your Recipes workbook in OneDrive. Open the Recipes tab once to re-establish workbook path, then retry Drinks sync.';
+    var message = String(error && error.message ? error.message : '').trim();
+    if (isGraphItemNotFoundError(error) || /^Could not locate a workbook containing table/i.test(message)) {
+      return 'Could not find a OneDrive workbook containing Drinks tables (NA_Bev / THC_Bev / THC_Edibles). Verify workbook availability, then retry sync.';
     }
-    return String(error && error.message ? error.message : (fallback || 'Excel sync failed.')).trim();
+    return message || String(fallback || 'Excel sync failed.').trim();
   }
 
-  async function withWorkbookPathRetry(operation) {
-    var firstPath = await resolveWorkbookPath();
+  async function withWorkbookPathRetry(operation, trackerKey) {
+    var tableName = TRACKERS[trackerKey] ? TRACKERS[trackerKey].table : TRACKERS['na-brew'].table;
+    var firstPath = await resolveWorkbookPath(tableName);
     try {
       return await operation(firstPath);
     } catch (firstError) {
       if (!isGraphItemNotFoundError(firstError)) throw firstError;
       clearWorkbookPath();
-      var secondPath = await resolveWorkbookPath();
+      var secondPath = await resolveWorkbookPath(tableName);
       return operation(secondPath);
     }
   }
 
-  async function resolveWorkbookPath() {
-    if (state.excel.workbookPath) {
-      try {
-        await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodeGraphPath(state.excel.workbookPath));
-        return state.excel.workbookPath;
-      } catch (cachedPathError) {
-        if (isGraphItemNotFoundError(cachedPathError)) clearWorkbookPath();
-        else throw cachedPathError;
-      }
+  async function resolveWorkbookPath(preferredTableName) {
+    var probeTable = String(preferredTableName || TRACKERS['na-brew'].table || '').trim();
+    var checked = [];
+    var seen = {};
+
+    function appendCandidate(list, path) {
+      var normalized = String(path || '').trim();
+      if (!normalized) return;
+      var key = normalized.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      list.push(normalized);
     }
 
-    for (var i = 0; i < WORKBOOK_CANDIDATES.length; i += 1) {
-      var candidate = WORKBOOK_CANDIDATES[i];
-      try {
-        await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodeGraphPath(candidate));
-        state.excel.workbookPath = candidate;
-        return state.excel.workbookPath;
-      } catch (_error) {
-        // Try next candidate.
-      }
-    }
-
-    var search = await graphFetchJson("https://graph.microsoft.com/v1.0/me/drive/root/search(q='Recipes')?$select=name,parentReference");
-    var list = Array.isArray(search.value) ? search.value : [];
-    var match = list.find(function (item) {
-      return String(item.name || '').toLowerCase().indexOf('recipes') >= 0;
+    var candidates = [];
+    appendCandidate(candidates, state.excel.workbookPath);
+    appendCandidate(candidates, readStringStorage(WORKBOOK_PATH_STORAGE_KEY, ''));
+    WORKBOOK_CANDIDATES.forEach(function (candidate) {
+      appendCandidate(candidates, candidate);
     });
-    if (!match || !match.parentReference) throw new Error('Could not find workbook named Recipes.');
 
-    var parentPath = String(match.parentReference.path || '').replace('/drive/root:', '').replace(/^\/+/, '');
-    state.excel.workbookPath = parentPath ? (parentPath + '/' + match.name) : match.name;
-    return state.excel.workbookPath;
+    for (var i = 0; i < candidates.length; i += 1) {
+      var candidate = candidates[i];
+      checked.push(candidate);
+      if (await probeWorkbookForTable(candidate, probeTable)) {
+        rememberWorkbookPath(candidate);
+        return candidate;
+      }
+    }
+
+    var discovered = await discoverWorkbookPathCandidates();
+    for (var j = 0; j < discovered.length; j += 1) {
+      var path = discovered[j];
+      if (seen[String(path || '').toLowerCase()]) continue;
+      checked.push(path);
+      if (await probeWorkbookForTable(path, probeTable)) {
+        rememberWorkbookPath(path);
+        return path;
+      }
+    }
+
+    throw new Error('Could not locate a workbook containing table ' + probeTable + '. Checked: ' + checked.join(', '));
   }
 
   function normalizeTrackerItem(trackerKey, item) {
@@ -497,7 +589,7 @@
         });
         return mapExcelRowToItem(trackerKey, mapped);
       }).filter(Boolean);
-    });
+    }, trackerKey);
   }
 
   async function writeTrackerToExcel(trackerKey) {
@@ -524,7 +616,7 @@
         method: 'POST',
         body: JSON.stringify({ values: values })
       });
-    });
+    }, trackerKey);
   }
 
   function getAllLocationOptions() {
@@ -551,73 +643,28 @@
     return merged;
   }
 
-  function renderRatingStars(rating) {
-    var numeric = Number(rating || 0) || 0;
-    var html = '<div class="dc-rating-stars">';
-    for (var i = 1; i <= 5; i += 1) {
-      var activeClass = i <= numeric ? ' is-active' : '';
-      html += '<button type="button" class="dc-star' + activeClass + '" data-dc-rating-value="' + i + '" title="Rate ' + i + ' out of 5">' + (i <= numeric ? '★' : '☆') + '</button>';
-    }
-    html += '</div>';
-    return html;
+  function renderRatingText(rating) {
+    var numeric = Math.max(0, Math.min(5, Number(rating || 0) || 0));
+    return '★★★★★'.slice(0, numeric) + '☆☆☆☆☆'.slice(0, 5 - numeric);
   }
 
-  function renderTagGroup(tags, selected, groupName) {
-    var selectedSet = {};
-    (Array.isArray(selected) ? selected : []).forEach(function (tag) {
-      selectedSet[String(tag || '').toLowerCase()] = true;
-    });
-
-    return '<div class="dc-tag-group" data-tag-group="' + safeText(groupName) + '">'
-      + tags.map(function (tag) {
-        var key = String(tag || '').toLowerCase();
-        var activeClass = selectedSet[key] ? ' is-active' : '';
-        return '<button type="button" class="dc-tag-chip' + activeClass + '" data-dc-tag-toggle="1" data-tag-value="' + safeText(tag) + '">' + safeText(tag) + '</button>';
-      }).join('')
-      + '</div>';
+  function renderStaticTagChips(tags) {
+    var list = (Array.isArray(tags) ? tags : []).map(function (tag) { return String(tag || '').trim(); }).filter(Boolean);
+    if (!list.length) return '';
+    return '<div class="dc-static-chip-row">' + list.map(function (tag) {
+      return '<span class="dc-static-chip">' + safeText(tag) + '</span>';
+    }).join('') + '</div>';
   }
 
-  function renderTypeSelect(def, value, trackerKey) {
-    if (!def.hasType) return '';
-    var options = (def.typeOptions || []).slice();
+  function getTrackerTypeOptions(def, trackerKey, selectedValue) {
+    var options = (def && Array.isArray(def.typeOptions) ? def.typeOptions.slice() : []);
     (state.data[trackerKey] || []).forEach(function (item) {
       var typeName = String(item.type || '').trim();
       if (typeName && options.indexOf(typeName) < 0) options.push(typeName);
     });
-
-    var selected = String(value || '').trim();
-    return '<label class="dc-field">Type'
-      + '<select data-field="type">'
-      + '<option value="">Select type</option>'
-      + options.map(function (option) {
-        var isSelected = option === selected ? ' selected' : '';
-        return '<option value="' + safeText(option) + '"' + isSelected + '>' + safeText(option) + '</option>';
-      }).join('')
-      + '</select>'
-      + '</label>';
-  }
-
-  function renderLocationSelect(value) {
-    var options = getAllLocationOptions();
-    var selected = String(value || '').trim();
-    var hasPreset = options.indexOf(selected) >= 0;
-
-    var html = '<label class="dc-field">Purchase Location'
-      + '<select data-field="purchaseLocationSelect">'
-      + '<option value="">Select location</option>'
-      + options.map(function (name) {
-        var isSelected = name === selected ? ' selected' : '';
-        return '<option value="' + safeText(name) + '"' + isSelected + '>' + safeText(name) + '</option>';
-      }).join('')
-      + '<option value="__custom__"' + (!hasPreset && selected ? ' selected' : '') + '>Custom...</option>'
-      + '</select>'
-      + '</label>';
-
-    html += '<label class="dc-field dc-custom-location"' + (!hasPreset && selected ? '' : ' hidden') + '>Custom Store'
-      + '<input type="text" data-field="purchaseLocationCustom" value="' + safeText(!hasPreset ? selected : '') + '" placeholder="Store name" />'
-      + '</label>';
-
-    return html;
+    var selected = String(selectedValue || '').trim();
+    if (selected && options.indexOf(selected) < 0) options.unshift(selected);
+    return options;
   }
 
   function renderTrackerPane(trackerKey) {
@@ -680,40 +727,27 @@
     toolbar += '</div>';
 
     var cards = list.map(function (item) {
-      var ratingValue = Number(item.myRating || 0) || 0;
-      var card = '<article class="dc-item-card" data-item-id="' + safeText(item.id) + '" data-tracker="' + trackerKey + '">'
-        + '<div class="dc-item-grid">'
-        + renderTypeSelect(def, item.type, trackerKey)
-        + '<label class="dc-field">Brand<input type="text" data-field="brand" value="' + safeText(item.brand) + '" /></label>'
-        + '<label class="dc-field">Flavor<input type="text" data-field="flavor" value="' + safeText(item.flavor) + '" /></label>';
-
-      if (def.hasStrength) {
-        card += '<label class="dc-field">Strength mg<input type="number" step="0.1" min="0" data-field="strengthMg" value="' + safeText(item.strengthMg) + '" /></label>';
+      var title = [String(item.brand || '').trim(), String(item.flavor || '').trim()].filter(Boolean).join(' - ') || 'Untitled item';
+      var meta = [];
+      if (def.hasType && item.type) meta.push('Type: ' + String(item.type));
+      if (def.hasStrength && item.strengthMg) meta.push('Strength: ' + String(item.strengthMg) + ' mg');
+      if (item.purchaseLocation || item.city || item.state) {
+        meta.push('Location: ' + [item.purchaseLocation, item.city, item.state].filter(Boolean).join(', '));
       }
-
-      card += '<label class="dc-field dc-field-wide">My Rating'
-        + '<input type="hidden" data-field="myRating" value="' + ratingValue + '" />'
-        + renderRatingStars(ratingValue)
-        + '</label>'
-        + '<label class="dc-field dc-field-wide">Taste Notes<textarea rows="2" data-field="tasteNotes">' + safeText(item.tasteNotes) + '</textarea></label>'
-        + '<div class="dc-field dc-field-wide"><div class="dc-field-label">Taste Tags</div>' + renderTagGroup(TASTE_TAGS, item.tasteTags, 'taste') + '</div>';
-
-      if (def.hasEffects) {
-        card += '<label class="dc-field dc-field-wide">Potency / Effects Notes<textarea rows="2" data-field="effectsNotes">' + safeText(item.effectsNotes) + '</textarea></label>'
-          + '<div class="dc-field dc-field-wide"><div class="dc-field-label">Potency / Effects Tags</div>' + renderTagGroup(EFFECT_TAGS, item.effectsTags, 'effects') + '</div>';
-      }
-
-      card += renderLocationSelect(item.purchaseLocation)
-        + '<label class="dc-field">City<input type="text" data-field="city" value="' + safeText(item.city) + '" /></label>'
-        + '<label class="dc-field">State<input type="text" maxlength="32" data-field="state" value="' + safeText(item.state) + '" /></label>'
+      return '<article class="dc-item-card" data-item-id="' + safeText(item.id) + '" data-tracker="' + trackerKey + '">'
+        + '<div class="dc-item-head">'
+        + '<div class="dc-item-title" data-dc-card-brand="1">' + safeText(title) + '</div>'
+        + '<div class="dc-item-rating" data-dc-card-rating="1">' + safeText(renderRatingText(item.myRating || 0)) + '</div>'
         + '</div>'
+        + (meta.length ? ('<div class="dc-item-meta">' + safeText(meta.join(' | ')) + '</div>') : '')
+        + (item.tasteNotes ? ('<div class="dc-item-notes"><strong>Taste:</strong> ' + safeText(item.tasteNotes) + '</div>') : '')
+        + (def.hasEffects && item.effectsNotes ? ('<div class="dc-item-notes"><strong>Effects:</strong> ' + safeText(item.effectsNotes) + '</div>') : '')
+        + renderStaticTagChips([].concat(item.tasteTags || [], item.effectsTags || []))
         + '<div class="dc-card-actions">'
-        + '<button type="button" class="pill-button" data-dc-action="save-item" data-tracker="' + trackerKey + '">Save item</button>'
+        + '<button type="button" class="pill-button" data-dc-action="edit-item" data-tracker="' + trackerKey + '">Edit item</button>'
         + '<button type="button" class="pill-button pill-button--danger" data-dc-action="delete-item" data-tracker="' + trackerKey + '">Delete</button>'
         + '</div>'
         + '</article>';
-
-      return card;
     }).join('');
 
     pane.innerHTML = renderSchemaBanner(trackerKey) + toolbar + (cards || '<div class="empty-state">No items yet. Click "Add item" to begin.</div>');
@@ -744,13 +778,11 @@
     var recipes = state.data['thc-cocktail-recipes'] || [];
     var cards = recipes.map(function (entry) {
       return '<article class="dc-item-card" data-item-id="' + safeText(entry.id) + '" data-tracker="thc-cocktail-recipes">'
-        + '<div class="dc-item-grid">'
-        + '<label class="dc-field dc-field-wide">Recipe Name<input type="text" data-field="name" value="' + safeText(entry.name || '') + '" /></label>'
-        + '<label class="dc-field dc-field-wide">Ingredients<textarea rows="3" data-field="ingredients">' + safeText(entry.ingredients || '') + '</textarea></label>'
-        + '<label class="dc-field dc-field-wide">Instructions<textarea rows="4" data-field="instructions">' + safeText(entry.instructions || '') + '</textarea></label>'
-        + '</div>'
+        + '<div class="dc-item-title" data-dc-recipe-name="1">' + safeText(entry.name || 'Untitled recipe') + '</div>'
+        + (entry.ingredients ? ('<div class="dc-item-notes"><strong>Ingredients:</strong> ' + safeText(entry.ingredients) + '</div>') : '')
+        + (entry.instructions ? ('<div class="dc-item-notes"><strong>Instructions:</strong> ' + safeText(entry.instructions) + '</div>') : '')
         + '<div class="dc-card-actions">'
-        + '<button type="button" class="pill-button" data-dc-action="save-cocktail-recipe">Save recipe</button>'
+        + '<button type="button" class="pill-button" data-dc-action="edit-cocktail-recipe">Edit recipe</button>'
         + '<button type="button" class="pill-button pill-button--danger" data-dc-action="delete-cocktail-recipe">Delete</button>'
         + '</div>'
         + '</article>';
@@ -793,18 +825,6 @@
     renderCocktailRecipesPane();
   }
 
-  function updateStarVisuals(card, rating) {
-    var stars = card.querySelectorAll('[data-dc-rating-value]');
-    stars.forEach(function (star) {
-      var value = Number(star.getAttribute('data-dc-rating-value') || 0);
-      var active = value <= rating;
-      star.classList.toggle('is-active', active);
-      star.textContent = active ? '★' : '☆';
-    });
-    var ratingInput = card.querySelector('input[data-field="myRating"]');
-    if (ratingInput) ratingInput.value = String(rating || 0);
-  }
-
   function showDcModal(options) {
     var modal = document.createElement('div');
     modal.className = 'dc-modal-backdrop';
@@ -827,30 +847,50 @@
     return modal;
   }
 
-  function addItem(trackerKey) {
+  function openTrackerItemModal(trackerKey, existingItem) {
     var def = TRACKERS[trackerKey];
     if (!def) return;
-    var typeHtml = def.hasType
-      ? '<label class="dc-field">Type<select data-dc-modal-field="type">'
-        + (def.typeOptions || []).map(function (option, idx) {
-          return '<option value="' + safeText(option) + '"' + (idx === 0 ? ' selected' : '') + '>' + safeText(option) + '</option>';
+    var isEdit = !!(existingItem && existingItem.id);
+    var seed = normalizeTrackerItem(trackerKey, existingItem || {});
+    var typeField = '';
+    if (def.hasType) {
+      var typeOptions = getTrackerTypeOptions(def, trackerKey, seed.type);
+      typeField = '<label class="dc-field">Type<select data-dc-modal-field="type">'
+        + '<option value="">Select type</option>'
+        + typeOptions.map(function (option) {
+          return '<option value="' + safeText(option) + '"' + (option === seed.type ? ' selected' : '') + '>' + safeText(option) + '</option>';
         }).join('')
-        + '</select></label>'
-      : '';
-    var strengthHtml = def.hasStrength
-      ? '<label class="dc-field">Strength mg<input type="text" data-dc-modal-field="strengthMg" placeholder="e.g. 10"></label>'
-      : '';
+        + '</select></label>';
+    }
+    var bodyHtml = '<div class="dc-item-grid">'
+      + typeField
+      + '<label class="dc-field">Brand<input type="text" data-dc-modal-field="brand" value="' + safeText(seed.brand) + '" placeholder="Brand" required></label>'
+      + '<label class="dc-field">Flavor<input type="text" data-dc-modal-field="flavor" value="' + safeText(seed.flavor) + '" placeholder="Flavor"></label>'
+      + (def.hasStrength ? '<label class="dc-field">Strength mg<input type="text" data-dc-modal-field="strengthMg" value="' + safeText(seed.strengthMg) + '" placeholder="e.g. 10"></label>' : '')
+      + '<label class="dc-field">My Rating<select data-dc-modal-field="myRating">'
+      + '<option value="0"' + (Number(seed.myRating || 0) === 0 ? ' selected' : '') + '>No rating</option>'
+      + '<option value="1"' + (Number(seed.myRating || 0) === 1 ? ' selected' : '') + '>1</option>'
+      + '<option value="2"' + (Number(seed.myRating || 0) === 2 ? ' selected' : '') + '>2</option>'
+      + '<option value="3"' + (Number(seed.myRating || 0) === 3 ? ' selected' : '') + '>3</option>'
+      + '<option value="4"' + (Number(seed.myRating || 0) === 4 ? ' selected' : '') + '>4</option>'
+      + '<option value="5"' + (Number(seed.myRating || 0) === 5 ? ' selected' : '') + '>5</option>'
+      + '</select></label>'
+      + '<label class="dc-field">Purchase Location<input type="text" data-dc-modal-field="purchaseLocation" value="' + safeText(seed.purchaseLocation) + '" placeholder="Store"></label>'
+      + '<label class="dc-field">City<input type="text" data-dc-modal-field="city" value="' + safeText(seed.city) + '" placeholder="City"></label>'
+      + '<label class="dc-field">State<input type="text" maxlength="32" data-dc-modal-field="state" value="' + safeText(seed.state) + '" placeholder="State"></label>'
+      + '<label class="dc-field dc-field-wide">Taste Notes<textarea rows="3" data-dc-modal-field="tasteNotes">' + safeText(seed.tasteNotes) + '</textarea></label>'
+      + '<label class="dc-field dc-field-wide">Taste Tags (comma separated)<input type="text" data-dc-modal-field="tasteTags" value="' + safeText((seed.tasteTags || []).join(', ')) + '" placeholder="refreshing, smooth"></label>'
+      + (def.hasEffects ? '<label class="dc-field dc-field-wide">Potency / Effects Notes<textarea rows="3" data-dc-modal-field="effectsNotes">' + safeText(seed.effectsNotes) + '</textarea></label>' : '')
+      + (def.hasEffects ? '<label class="dc-field dc-field-wide">Potency / Effects Tags (comma separated)<input type="text" data-dc-modal-field="effectsTags" value="' + safeText((seed.effectsTags || []).join(', ')) + '" placeholder="fast-acting, energetic"></label>' : '')
+      + '</div>';
+
     var modal = showDcModal({
-      title: 'Add ' + def.title + ' item',
-      bodyHtml: '<div class="dc-item-grid">'
-        + typeHtml
-        + '<label class="dc-field">Brand<input type="text" data-dc-modal-field="brand" placeholder="Brand" required></label>'
-        + '<label class="dc-field">Flavor<input type="text" data-dc-modal-field="flavor" placeholder="Flavor"></label>'
-        + strengthHtml
-        + '</div>',
+      title: (isEdit ? 'Edit ' : 'Add ') + def.title + ' item',
+      bodyHtml: bodyHtml,
       footerHtml: '<button type="button" class="pill-button" data-dc-modal-action="close">Cancel</button>'
-        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">Add item</button>'
+        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">' + (isEdit ? 'Save changes' : 'Add item') + '</button>'
     });
+
     modal.addEventListener('click', function (event) {
       var target = event.target && event.target.nodeType === 1 ? event.target : null;
       if (!target || target.getAttribute('data-dc-modal-action') !== 'save') return;
@@ -858,64 +898,50 @@
       var brand = String(brandField && brandField.value ? brandField.value : '').trim();
       if (!brand) {
         if (brandField && typeof brandField.focus === 'function') brandField.focus();
-        setStatus('Brand is required before adding a new item.', true);
+        setStatus('Brand is required before saving this item.', true);
         return;
       }
-      var type = def.hasType ? String((modal.querySelector('[data-dc-modal-field="type"]') || {}).value || '').trim() : '';
-      var flavor = String((modal.querySelector('[data-dc-modal-field="flavor"]') || {}).value || '').trim();
-      var strengthMg = def.hasStrength ? String((modal.querySelector('[data-dc-modal-field="strengthMg"]') || {}).value || '').trim() : '';
-      state.data[trackerKey].unshift(normalizeTrackerItem(trackerKey, {
-        id: uid(trackerKey),
+      var nextItem = normalizeTrackerItem(trackerKey, {
+        id: isEdit ? seed.id : uid(trackerKey),
+        type: def.hasType ? String((modal.querySelector('[data-dc-modal-field="type"]') || {}).value || '').trim() : '',
         brand: brand,
-        flavor: flavor,
-        type: type,
-        strengthMg: strengthMg,
-        myRating: 0,
-        tasteNotes: '',
-        tasteTags: [],
-        effectsNotes: '',
-        effectsTags: [],
-        purchaseLocation: '',
-        city: '',
-        state: ''
-      }));
+        flavor: String((modal.querySelector('[data-dc-modal-field="flavor"]') || {}).value || '').trim(),
+        strengthMg: def.hasStrength ? String((modal.querySelector('[data-dc-modal-field="strengthMg"]') || {}).value || '').trim() : '',
+        myRating: Number((modal.querySelector('[data-dc-modal-field="myRating"]') || {}).value || 0) || 0,
+        tasteNotes: String((modal.querySelector('[data-dc-modal-field="tasteNotes"]') || {}).value || '').trim(),
+        tasteTags: splitTags((modal.querySelector('[data-dc-modal-field="tasteTags"]') || {}).value || ''),
+        effectsNotes: def.hasEffects ? String((modal.querySelector('[data-dc-modal-field="effectsNotes"]') || {}).value || '').trim() : '',
+        effectsTags: def.hasEffects ? splitTags((modal.querySelector('[data-dc-modal-field="effectsTags"]') || {}).value || '') : [],
+        purchaseLocation: String((modal.querySelector('[data-dc-modal-field="purchaseLocation"]') || {}).value || '').trim(),
+        city: String((modal.querySelector('[data-dc-modal-field="city"]') || {}).value || '').trim(),
+        state: String((modal.querySelector('[data-dc-modal-field="state"]') || {}).value || '').trim()
+      });
+      var list = state.data[trackerKey] || [];
+      if (isEdit) {
+        var idx = list.findIndex(function (entry) { return String(entry.id) === String(seed.id); });
+        if (idx >= 0) list[idx] = nextItem;
+        else list.unshift(nextItem);
+      } else {
+        list.unshift(nextItem);
+      }
+      state.data[trackerKey] = list;
       modal.remove();
       saveState();
       renderTrackerPane(trackerKey);
-      setStatus('Added new item to ' + def.title + '.', false);
+      setStatus((isEdit ? 'Saved changes in ' : 'Added new item to ') + def.title + '.', false);
     });
   }
 
-  function saveTrackerItem(card, trackerKey) {
+  function addItem(trackerKey) {
+    openTrackerItemModal(trackerKey, null);
+  }
+
+  function editTrackerItem(card, trackerKey) {
     var list = state.data[trackerKey] || [];
     var itemId = String(card.getAttribute('data-item-id') || '');
-    var index = list.findIndex(function (entry) { return String(entry.id) === itemId; });
-    if (index < 0) return;
-
-    list[index] = normalizeTrackerItem(trackerKey, {
-      id: itemId,
-      type: card.querySelector('[data-field="type"]') ? card.querySelector('[data-field="type"]').value : '',
-      brand: card.querySelector('[data-field="brand"]') ? card.querySelector('[data-field="brand"]').value : '',
-      flavor: card.querySelector('[data-field="flavor"]') ? card.querySelector('[data-field="flavor"]').value : '',
-      strengthMg: card.querySelector('[data-field="strengthMg"]') ? card.querySelector('[data-field="strengthMg"]').value : '',
-      myRating: card.querySelector('[data-field="myRating"]') ? Number(card.querySelector('[data-field="myRating"]').value || 0) : 0,
-      tasteNotes: card.querySelector('[data-field="tasteNotes"]') ? card.querySelector('[data-field="tasteNotes"]').value : '',
-      tasteTags: Array.from(card.querySelectorAll('[data-tag-group="taste"] .dc-tag-chip.is-active')).map(function (node) { return String(node.getAttribute('data-tag-value') || '').trim(); }).filter(Boolean),
-      effectsNotes: card.querySelector('[data-field="effectsNotes"]') ? card.querySelector('[data-field="effectsNotes"]').value : '',
-      effectsTags: Array.from(card.querySelectorAll('[data-tag-group="effects"] .dc-tag-chip.is-active')).map(function (node) { return String(node.getAttribute('data-tag-value') || '').trim(); }).filter(Boolean),
-      purchaseLocation: (function () {
-        var select = card.querySelector('[data-field="purchaseLocationSelect"]');
-        if (!select) return '';
-        if (select.value !== '__custom__') return select.value;
-        var custom = card.querySelector('[data-field="purchaseLocationCustom"]');
-        return custom ? String(custom.value || '').trim() : '';
-      })(),
-      city: card.querySelector('[data-field="city"]') ? card.querySelector('[data-field="city"]').value : '',
-      state: card.querySelector('[data-field="state"]') ? card.querySelector('[data-field="state"]').value : ''
-    });
-    saveState();
-    setStatus('Saved item locally. Sync to Excel when ready.', false);
-    renderTrackerPane(trackerKey);
+    var current = list.find(function (entry) { return String(entry.id) === itemId; });
+    if (!current) return;
+    openTrackerItemModal(trackerKey, current);
   }
 
   function deleteTrackerItem(card, trackerKey) {
@@ -927,16 +953,23 @@
     setStatus('Item removed.', false);
   }
 
-  function addCocktailRecipe() {
+  function openCocktailRecipeModal(existingRecipe) {
+    var isEdit = !!(existingRecipe && existingRecipe.id);
+    var seed = {
+      id: String(existingRecipe && existingRecipe.id ? existingRecipe.id : ''),
+      name: String(existingRecipe && existingRecipe.name ? existingRecipe.name : ''),
+      ingredients: String(existingRecipe && existingRecipe.ingredients ? existingRecipe.ingredients : ''),
+      instructions: String(existingRecipe && existingRecipe.instructions ? existingRecipe.instructions : '')
+    };
     var modal = showDcModal({
-      title: 'Add THC cocktail recipe',
+      title: isEdit ? 'Edit THC cocktail recipe' : 'Add THC cocktail recipe',
       bodyHtml: '<div class="dc-item-grid">'
-        + '<label class="dc-field dc-field-wide">Recipe Name<input type="text" data-dc-modal-field="name" placeholder="Recipe name" required></label>'
-        + '<label class="dc-field dc-field-wide">Ingredients<textarea rows="4" data-dc-modal-field="ingredients" placeholder="Ingredients"></textarea></label>'
-        + '<label class="dc-field dc-field-wide">Instructions<textarea rows="5" data-dc-modal-field="instructions" placeholder="Instructions"></textarea></label>'
+        + '<label class="dc-field dc-field-wide">Recipe Name<input type="text" data-dc-modal-field="name" value="' + safeText(seed.name) + '" placeholder="Recipe name" required></label>'
+        + '<label class="dc-field dc-field-wide">Ingredients<textarea rows="4" data-dc-modal-field="ingredients" placeholder="Ingredients">' + safeText(seed.ingredients) + '</textarea></label>'
+        + '<label class="dc-field dc-field-wide">Instructions<textarea rows="5" data-dc-modal-field="instructions" placeholder="Instructions">' + safeText(seed.instructions) + '</textarea></label>'
         + '</div>',
       footerHtml: '<button type="button" class="pill-button" data-dc-modal-action="close">Cancel</button>'
-        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">Add recipe</button>'
+        + '<button type="button" class="pill-button dc-modal-primary" data-dc-modal-action="save">' + (isEdit ? 'Save changes' : 'Add recipe') + '</button>'
     });
     modal.addEventListener('click', function (event) {
       var target = event.target && event.target.nodeType === 1 ? event.target : null;
@@ -950,32 +983,38 @@
       }
       var ingredients = String((modal.querySelector('[data-dc-modal-field="ingredients"]') || {}).value || '').trim();
       var instructions = String((modal.querySelector('[data-dc-modal-field="instructions"]') || {}).value || '').trim();
-      state.data['thc-cocktail-recipes'].unshift({
-        id: uid('thc-cocktail-recipe'),
+      var list = state.data['thc-cocktail-recipes'] || [];
+      var nextRecipe = {
+        id: isEdit ? seed.id : uid('thc-cocktail-recipe'),
         name: name,
         ingredients: ingredients,
         instructions: instructions
-      });
+      };
+      if (isEdit) {
+        var idx = list.findIndex(function (entry) { return String(entry.id) === seed.id; });
+        if (idx >= 0) list[idx] = nextRecipe;
+        else list.unshift(nextRecipe);
+      } else {
+        list.unshift(nextRecipe);
+      }
+      state.data['thc-cocktail-recipes'] = list;
       modal.remove();
       saveState();
       renderCocktailRecipesPane();
-      setStatus('Added THC cocktail recipe.', false);
+      setStatus(isEdit ? 'Saved THC cocktail recipe.' : 'Added THC cocktail recipe.', false);
     });
   }
 
-  function saveCocktailRecipe(card) {
+  function addCocktailRecipe() {
+    openCocktailRecipeModal(null);
+  }
+
+  function editCocktailRecipe(card) {
     var id = String(card.getAttribute('data-item-id') || '');
     var list = state.data['thc-cocktail-recipes'] || [];
-    var idx = list.findIndex(function (entry) { return String(entry.id) === id; });
-    if (idx < 0) return;
-    list[idx] = {
-      id: id,
-      name: card.querySelector('[data-field="name"]') ? card.querySelector('[data-field="name"]').value : '',
-      ingredients: card.querySelector('[data-field="ingredients"]') ? card.querySelector('[data-field="ingredients"]').value : '',
-      instructions: card.querySelector('[data-field="instructions"]') ? card.querySelector('[data-field="instructions"]').value : ''
-    };
-    saveState();
-    setStatus('Saved cocktail recipe.', false);
+    var current = list.find(function (entry) { return String(entry.id) === id; });
+    if (!current) return;
+    openCocktailRecipeModal(current);
   }
 
   function deleteCocktailRecipe(card) {
@@ -1056,8 +1095,8 @@
       syncToExcel(trackerKey);
       return;
     }
-    if (action === 'save-item' && card) {
-      saveTrackerItem(card, trackerKey);
+    if (action === 'edit-item' && card) {
+      editTrackerItem(card, trackerKey);
       return;
     }
     if (action === 'delete-item' && card) {
@@ -1068,25 +1107,12 @@
       addCocktailRecipe();
       return;
     }
-    if (action === 'save-cocktail-recipe' && card) {
-      saveCocktailRecipe(card);
+    if (action === 'edit-cocktail-recipe' && card) {
+      editCocktailRecipe(card);
       return;
     }
     if (action === 'delete-cocktail-recipe' && card) {
       deleteCocktailRecipe(card);
-      return;
-    }
-
-    var tagNode = target.closest('[data-dc-tag-toggle="1"]');
-    if (tagNode && card && root.contains(tagNode)) {
-      tagNode.classList.toggle('is-active');
-      return;
-    }
-
-    var star = target.closest('[data-dc-rating-value]');
-    if (star && card && root.contains(star)) {
-      var value = Number(star.getAttribute('data-dc-rating-value') || 0) || 0;
-      updateStarVisuals(card, value);
       return;
     }
   }
@@ -1140,18 +1166,6 @@
       renderTrackerPane(String(sortFilter.getAttribute('data-tracker') || state.activeSubtab));
       return;
     }
-
-    if (target.matches('[data-field="purchaseLocationSelect"]')) {
-      var card = target.closest('.dc-item-card');
-      if (!card) return;
-      var customWrap = card.querySelector('.dc-custom-location');
-      if (!customWrap) return;
-      customWrap.hidden = target.value !== '__custom__';
-      if (target.value !== '__custom__') {
-        var customInput = card.querySelector('[data-field="purchaseLocationCustom"]');
-        if (customInput) customInput.value = '';
-      }
-    }
   }
 
   function ensureStyles() {
@@ -1163,25 +1177,25 @@
       + '#drinksCocktailsRoot .dc-help{font-size:12px;color:#6b7280;font-weight:600;}'
       + '#drinksCocktailsRoot .dc-filter{display:flex;gap:6px;align-items:center;font-size:12px;color:#334155;font-weight:700;}'
       + '#drinksCocktailsRoot .dc-filter select,#drinksCocktailsRoot .dc-filter input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;}'
-      + '#drinksCocktailsRoot .dc-item-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;background:#f8fafc;}'
+      + '#drinksCocktailsRoot .dc-item-card{border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;background:#f8fafc;}'
+      + '#drinksCocktailsRoot .dc-item-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;}'
+      + '#drinksCocktailsRoot .dc-item-title{font-weight:800;color:#0f172a;font-size:15px;line-height:1.3;}'
+      + '#drinksCocktailsRoot .dc-item-rating{font-size:14px;color:#d97706;letter-spacing:1px;white-space:nowrap;}'
+      + '#drinksCocktailsRoot .dc-item-meta{font-size:12px;color:#475569;font-weight:700;margin-bottom:6px;line-height:1.4;}'
+      + '#drinksCocktailsRoot .dc-item-notes{font-size:12px;color:#334155;line-height:1.45;white-space:pre-line;margin-bottom:6px;}'
+      + '#drinksCocktailsRoot .dc-static-chip-row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px;}'
+      + '#drinksCocktailsRoot .dc-static-chip{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;color:#334155;}'
       + '#drinksCocktailsRoot .dc-item-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}'
       + '#drinksCocktailsRoot .dc-field{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#334155;}'
       + '#drinksCocktailsRoot .dc-field input,#drinksCocktailsRoot .dc-field select,#drinksCocktailsRoot .dc-field textarea{border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;font-size:13px;font-weight:500;background:#fff;color:#0f172a;}'
       + '#drinksCocktailsRoot .dc-field-wide{grid-column:1 / -1;}'
       + '#drinksCocktailsRoot .dc-card-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}'
-      + '#drinksCocktailsRoot .dc-rating-stars{display:flex;gap:4px;flex-wrap:wrap;}'
-      + '#drinksCocktailsRoot .dc-star{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:14px;line-height:1;color:#64748b;}'
-      + '#drinksCocktailsRoot .dc-star.is-active{border-color:#f59e0b;color:#d97706;background:#fffbeb;}'
-      + '#drinksCocktailsRoot .dc-tag-group{display:flex;gap:6px;flex-wrap:wrap;}'
-      + '#drinksCocktailsRoot .dc-tag-chip{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;color:#334155;cursor:pointer;}'
-      + '#drinksCocktailsRoot .dc-tag-chip.is-active{border-color:#2563eb;background:#dbeafe;color:#1e3a8a;}'
-      + '#drinksCocktailsRoot .dc-field-label{font-size:12px;font-weight:700;color:#334155;margin-bottom:3px;}'
       + '#drinksCocktailsRoot .pill-button--danger{border-color:#fecaca;background:#fef2f2;color:#b91c1c;}'
       + '#drinksCocktailsRoot .dc-schema-banner{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;margin-bottom:10px;border:1px solid #fcd34d;background:#fffbeb;border-radius:8px;font-size:12px;color:#92400e;}'
       + '#drinksCocktailsRoot .dc-schema-banner-icon{flex-shrink:0;font-size:14px;line-height:1.4;}'
       + '#drinksCocktailsRoot .dc-schema-banner-message{flex:1;line-height:1.5;}'
       + '#drinksCocktailsRoot .dc-schema-banner-message code{background:#fef3c7;border:1px solid #fde68a;border-radius:3px;padding:1px 4px;font-family:monospace;font-size:11px;}'
-      + '#drinksCocktailsRoot .dc-schema-banner-close{flex-shrink:0;border:0;background:transparent;font-size:16px;cursor:pointer;color:#92400e;padding:0 2px;line-height:1;}';
+      + '#drinksCocktailsRoot .dc-schema-banner-close{flex-shrink:0;border:0;background:transparent;font-size:16px;cursor:pointer;color:#92400e;padding:0 2px;line-height:1;}'
       + '.dc-modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.5);z-index:10040;padding:16px;}'
       + '.dc-modal{width:min(760px,96vw);max-height:86vh;overflow:auto;background:#fff;border-radius:14px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);}'
       + '.dc-modal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}'
@@ -1215,17 +1229,7 @@
     });
   }
 
-  function ensureSeedData() {
-    if (!state.data['thc-bev'].length) {
-      state.data['thc-bev'].push(normalizeTrackerItem('thc-bev', { type: 'Seltzer (THC infused)' }));
-      state.data['thc-bev'].push(normalizeTrackerItem('thc-bev', { type: 'Soda (THC infused)' }));
-      state.data['thc-bev'].push(normalizeTrackerItem('thc-bev', { type: 'Juice (THC infused)' }));
-    }
-    if (!state.data['thc-edible'].length) {
-      state.data['thc-edible'].push(normalizeTrackerItem('thc-edible', { type: 'Chocolate (THC infused)' }));
-      state.data['thc-edible'].push(normalizeTrackerItem('thc-edible', { type: 'Gummies (THC infused)' }));
-    }
-  }
+  function ensureSeedData() {}
 
   function init() {
     var root = getRoot();
