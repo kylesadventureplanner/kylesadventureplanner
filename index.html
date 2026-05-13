@@ -28223,22 +28223,30 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
    * Initialize the recipes & shopping system UI
    */
   function initializeRecipesTab() {
-    // Prevent multiple initializations
+    // Prevent repeated init attempts after a successful mount.
     if (isInitialized) return;
-    isInitialized = true;
 
     // Wait for RecipesShoppingUI to be available
-    if (typeof RecipesShoppingUI === 'undefined') {
+    if (typeof window.RecipesShoppingUI === 'undefined') {
       console.warn('RecipesShoppingUI not available, retrying...');
+      setTimeout(initializeRecipesTab, 100);
+      return;
+    }
+
+    // Household Tools content is lazy-loaded; wait until mount exists.
+    var mount = document.getElementById('recipesShoppingPane');
+    if (!mount) {
       setTimeout(initializeRecipesTab, 100);
       return;
     }
 
     // Initialize the UI
     try {
-      RecipesShoppingUI.init();
+      window.RecipesShoppingUI.init();
+      isInitialized = true;
       console.log('✅ Recipes & Shopping System initialized');
     } catch (e) {
+      isInitialized = false;
       console.error('Failed to initialize Recipes & Shopping System:', e);
     }
   }

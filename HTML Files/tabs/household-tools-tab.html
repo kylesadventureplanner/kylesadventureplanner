@@ -15,11 +15,14 @@
   </div>
 
   <div id="householdToolsPane-recipes" class="household-tools-pane is-active" data-household-pane="recipes" role="tabpanel" aria-labelledby="householdToolsTab-recipes">
-    <div class="tab-placeholder">
-      <div class="tab-placeholder-icon">👨‍🍳</div>
-      <div class="tab-placeholder-text">Recipes</div>
-      <div class="tab-placeholder-subtext">Browse and manage your favorite recipes.</div>
-    </div>
+    <div id="recipesShoppingPane" class="recipes-shopping-pane" aria-live="polite"></div>
+    <noscript>
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">👨‍🍳</div>
+        <div class="tab-placeholder-text">Recipes</div>
+        <div class="tab-placeholder-subtext">Enable JavaScript to use Recipes & Shopping tools.</div>
+      </div>
+    </noscript>
   </div>
 
   <div id="householdToolsPane-garden" class="household-tools-pane" data-household-pane="garden" role="tabpanel" aria-labelledby="householdToolsTab-garden" hidden>
@@ -342,8 +345,42 @@
       });
 
       syncHouseholdSubTabDock(root);
+      if (state.activeSubTab === 'recipes') {
+        renderHouseholdRecipesPane(root);
+      }
       if (state.activeSubTab === 'concerts') {
         openAdventureConcertsSubtab();
+      }
+    }
+
+    function renderHouseholdRecipesPane(root) {
+      if (!root || state.activeSubTab !== 'recipes') return;
+      const pane = root.querySelector('#householdToolsPane-recipes');
+      if (!pane) return;
+      var mount = pane.querySelector('#recipesShoppingPane');
+      if (!mount) {
+        pane.innerHTML = '<div id="recipesShoppingPane" class="recipes-shopping-pane" aria-live="polite"></div>';
+        mount = pane.querySelector('#recipesShoppingPane');
+      }
+      if (!mount) return;
+
+      if (!window.RecipesShoppingUI || typeof window.RecipesShoppingUI.init !== 'function') {
+        window.setTimeout(function () {
+          const liveRoot = document.getElementById('householdToolsRoot');
+          if (!liveRoot || state.activeSubTab !== 'recipes') return;
+          renderHouseholdRecipesPane(liveRoot);
+        }, 120);
+        return;
+      }
+
+      try {
+        if (typeof window.RecipesShoppingUI.renderMainView === 'function') {
+          window.RecipesShoppingUI.renderMainView();
+        } else {
+          window.RecipesShoppingUI.init();
+        }
+      } catch (error) {
+        console.error('Failed to render Recipes & Shopping UI in Household Tools:', error);
       }
     }
 
