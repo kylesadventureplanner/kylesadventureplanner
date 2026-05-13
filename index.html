@@ -173,6 +173,11 @@
           arrowShadowColor: '#fbbf24',  // Darker amber for depth
           tabColor: 'amber'
         },
+        'drinks-cocktails': {
+          borderColor: '#c4b5fd',
+          arrowShadowColor: '#a78bfa',
+          tabColor: 'purple'
+        },
 
         // Recipes & Garden - Green theme (related to household)
         'recipes': {
@@ -9124,6 +9129,7 @@
     <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Adventure Challenge</button>
     <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
     <button class="app-tab-btn" data-tab="household-tools" title="Open household tools" data-tooltip="Open household tools">🧰 Household Tools</button>
+    <button class="app-tab-btn" data-tab="drinks-cocktails" title="Track drinks and cocktails" data-tooltip="Track drinks and cocktails">🍹 Drinks / Cocktails</button>
     <button class="app-tab-btn" data-tab="birding" title="View birding locations" data-tooltip="View birding locations">🐦 Birding Locations</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="recipes" aria-hidden="true" tabindex="-1">Recipes</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="garden" aria-hidden="true" tabindex="-1">Garden Planner</button>
@@ -9192,8 +9198,19 @@
 
     <!-- Household Tools Tab -->
     <div class="app-tab-pane" data-tab="household-tools" id="householdToolsTab">
-      <div id="recipesShoppingPane" class="recipes-shopping-pane" style="padding: 16px;">
-        <div style="text-align: center; padding: 40px;">Loading recipes & shopping management...</div>
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">🧰</div>
+        <div class="tab-placeholder-text">Household Tools</div>
+        <div class="tab-placeholder-subtext">Loading household tools...</div>
+      </div>
+    </div>
+
+    <!-- Drinks / Cocktails Tab -->
+    <div class="app-tab-pane" data-tab="drinks-cocktails" id="drinksCocktailsTab">
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">🍹</div>
+        <div class="tab-placeholder-text">Drinks / Cocktails</div>
+        <div class="tab-placeholder-subtext">Track NA brews, THC beverages, edibles, and recipes</div>
       </div>
     </div>
 
@@ -24511,6 +24528,9 @@ COMMON ISSUES:
 
 <!-- Nature Challenge Tab System -->
 <script src="JS Files/nature-challenge-tab-system.js"></script>
+
+<!-- Drinks / Cocktails Tab System -->
+<script src="JS Files/drinks-cocktails-tab-system.js"></script>
 
 <!-- Sighting Map — Phase 5 (interactive Leaflet map overlay for logged bird locations) -->
 <script src="sighting-map-phase5.js"></script>

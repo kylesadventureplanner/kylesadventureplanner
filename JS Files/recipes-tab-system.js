@@ -5,6 +5,7 @@
   var ROOT_ID = 'recipesRoot';
   var EXCEL_WORKBOOK_CANDIDATES = ['recipes.xlsx', 'recipes.xlsm', 'recipes'];
   var EXCEL_TABLE_NAME = 'recipes';
+  var AUTO_SYNC_COOLDOWN_MS = 45000;
 
   var METHOD_OPTIONS = ['Oven', 'Air Fryer', 'Skillet', 'Sous Vide', 'Instant Pot', 'Grill', 'Smoker', 'Slow Cooker', 'Stovetop', 'No Cook'];
   var PROTEIN_OPTIONS = ['Chicken', 'Beef', 'Pork', 'Seafood', 'Turkey', 'Tofu', 'Beans', 'Eggs', 'Vegetarian'];
@@ -379,6 +380,8 @@
       proteins: [],
       cuisines: [],
       methods: [],
+      searchQuery: '',
+      sortBy: 'updated_desc',
       prepMax: '',
       cookMax: '',
       courseCategory: '',
@@ -397,6 +400,7 @@
     excel: {
       workbookPath: '',
       lastSyncAt: 0,
+      lastAutoSyncAt: 0,
       lastError: '',
       schemaColumnNames: []
     }
@@ -901,16 +905,57 @@
     return activeTags.some(function (tag) { return recipeTags.indexOf(tag) >= 0; });
   }
 
+  function normalizeSearchValue(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function toSortableMinutes(value) {
+    var num = Number(value || 0);
+    return Number.isFinite(num) && num > 0 ? num : Number.MAX_SAFE_INTEGER;
+  }
+
   function getFilteredRecipes() {
-    return state.recipes.filter(function (recipe) {
+    var filtered = state.recipes.filter(function (recipe) {
       if (!intersects(recipe.proteins || [], state.filters.proteins)) return false;
       if (!intersects(recipe.cuisines || [], state.filters.cuisines)) return false;
       if (!intersects(recipe.methods || [], state.filters.methods)) return false;
       if (state.filters.courseCategory && normalizeCourseCategory(recipe.courseCategory) !== state.filters.courseCategory) return false;
       if (state.filters.healthiness && normalizeHealthiness(recipe.healthiness) !== state.filters.healthiness) return false;
       if (state.filters.prepMax !== '' && Number(recipe.prepMinutes || 0) > Number(state.filters.prepMax)) return false;
-      return !(state.filters.cookMax !== '' && Number(recipe.cookMinutes || 0) > Number(state.filters.cookMax));
+      if (state.filters.cookMax !== '' && Number(recipe.cookMinutes || 0) > Number(state.filters.cookMax)) return false;
+
+      var searchQuery = normalizeSearchValue(state.filters.searchQuery);
+      if (!searchQuery) return true;
+
+      var searchCorpus = [
+        recipe.title,
+        recipe.description,
+        (recipe.proteins || []).join(' '),
+        (recipe.cuisines || []).join(' '),
+        (recipe.methods || []).join(' '),
+        (recipe.ingredients || []).map(function (row) { return row.item; }).join(' '),
+        (recipe.steps || []).join(' ')
+      ].join(' ').toLowerCase();
+
+      return searchCorpus.indexOf(searchQuery) >= 0;
     });
+
+    var sortBy = String(state.filters.sortBy || 'updated_desc');
+    return filtered.sort(function (a, b) {
+      if (sortBy === 'title_asc') return String(a.title || '').localeCompare(String(b.title || ''));
+      if (sortBy === 'prep_asc') return toSortableMinutes(a.prepMinutes) - toSortableMinutes(b.prepMinutes);
+      if (sortBy === 'cook_asc') return toSortableMinutes(a.cookMinutes) - toSortableMinutes(b.cookMinutes);
+      return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+    });
+  }
+
+  function setEditorStatus(message, isError) {
+    var root = getRoot();
+    if (!root) return;
+    var status = root.querySelector('#recipesEditorStatus');
+    if (!status) return;
+    status.textContent = String(message || '');
+    status.classList.toggle('is-error', Boolean(isError));
   }
 
   function uniqueSorted(values) {
@@ -1376,6 +1421,7 @@
 
     setEditorTags(model);
     renderEditorPhotos();
+    setEditorStatus('', false);
     overlay.hidden = false;
   }
 
@@ -1389,6 +1435,7 @@
     overwriteArray(state.editorTags.proteins, []);
     overwriteArray(state.editorTags.cuisines, []);
     overwriteArray(state.editorTags.methods, []);
+    setEditorStatus('', false);
   }
 
   function pushUniqueTag(targetArray, value) {
@@ -1671,7 +1718,7 @@
   async function syncFromExcel(options) {
     options = options || {};
     try {
-      setExcelStatus('Syncing from Excel...', false);
+      setExcelStatus(options.autoSync ? 'Auto-syncing from Excel...' : 'Syncing from Excel...', false);
       var excelRecipes = await readRecipesFromExcel();
       if (excelRecipes.length) {
         state.recipes = excelRecipes.map(normalizeRecipe);
@@ -1680,7 +1727,10 @@
         renderCards();
       }
       state.excel.lastSyncAt = Date.now();
-      setExcelStatus('Loaded ' + excelRecipes.length + ' recipe(s) from Excel.', false);
+      if (options.autoSync) {
+        state.excel.lastAutoSyncAt = Date.now();
+      }
+      setExcelStatus((options.autoSync ? 'Auto-sync complete. ' : '') + 'Loaded ' + excelRecipes.length + ' recipe(s) from Excel.', false);
     } catch (error) {
       state.excel.lastError = error && error.message ? error.message : 'Excel sync failed.';
       if (!options.silent) {
@@ -1737,6 +1787,16 @@
       return String(input.value || '').trim();
     }).filter(Boolean);
 
+    var missing = [];
+    if (!String(form.elements.title.value || '').trim()) missing.push('Recipe name');
+    if (!state.editorTags.methods.length) missing.push('At least one cooking method');
+    if (!ingredients.length) missing.push('At least one ingredient');
+    if (!steps.length) missing.push('At least one cook instruction step');
+    if (missing.length) {
+      setEditorStatus('Please complete: ' + missing.join(', ') + '.', true);
+      return;
+    }
+
     var model = normalizeRecipe({
       id: state.editingRecipeId || undefined,
       title: form.elements.title.value,
@@ -1770,8 +1830,19 @@
     saveRecipes();
     updateSuggestionLists();
     renderCards();
+    setEditorStatus('Recipe saved.', false);
     closeEditor();
     renderDetails(model.id);
+  }
+
+  function shouldAutoSyncOnTabOpen() {
+    if (!getGraphAccessToken()) return false;
+    return Date.now() - Number(state.excel.lastAutoSyncAt || 0) > AUTO_SYNC_COOLDOWN_MS;
+  }
+
+  function autoSyncOnTabOpen() {
+    if (!shouldAutoSyncOnTabOpen()) return;
+    syncFromExcel({ silent: false, autoSync: true });
   }
 
   function addNoteToActiveRecipe() {
@@ -1878,8 +1949,6 @@
         if (fileInput) fileInput.click();
         return;
       }
-      if (target.closest('#recipesSyncFromExcelBtn')) { syncFromExcel(); return; }
-      if (target.closest('#recipesSyncToExcelBtn')) { syncToExcel(); return; }
       if (target.closest('#recipesAddPantrySpiceBtn')) {
         var pantryInput = root.querySelector('#recipesPantrySpiceInput');
         addPantrySpice(pantryInput ? pantryInput.value : '');
@@ -2050,6 +2119,8 @@
 
       if (target.id === 'recipesFilterPrep') { state.filters.prepMax = target.value; renderCards(); return; }
       if (target.id === 'recipesFilterCook') { state.filters.cookMax = target.value; renderCards(); }
+      if (target.id === 'recipesFilterSearch') { state.filters.searchQuery = target.value; renderCards(); return; }
+      if (target.id === 'recipesFilterSort') { state.filters.sortBy = target.value || 'updated_desc'; renderCards(); return; }
       if (target.id === 'recipesFilterCourseCategory') { state.filters.courseCategory = normalizeCourseCategory(target.value); renderCards(); return; }
       if (target.id === 'recipesFilterHealthiness') { state.filters.healthiness = normalizeHealthiness(target.value); renderCards(); }
       if (target.id === 'recipesSafeTempStrictMode') { state.safeTempStrictMode = target.checked !== false; showSafeCookTemperatureForSelection(); return; }
@@ -2058,17 +2129,28 @@
       if (target.id === 'recipesCookTimeDonenessSelect') { showCommonCookTimeForSelection(); }
     });
 
+    root.addEventListener('input', function (event) {
+      var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+      if (!target) return;
+      if (target.id === 'recipesFilterSearch') {
+        state.filters.searchQuery = target.value;
+        renderCards();
+      }
+    });
+
     var form = root.querySelector('#recipesEditorForm');
     if (form) form.addEventListener('submit', saveEditorForm);
 
     var resetBtn = root.querySelector('#recipesFilterReset');
     if (resetBtn) {
       resetBtn.addEventListener('click', function () {
-        state.filters = { proteins: [], cuisines: [], methods: [], prepMax: '', cookMax: '', courseCategory: '', healthiness: '' };
-        ['recipesFilterPrep', 'recipesFilterCook', 'recipesFilterCourseCategory', 'recipesFilterHealthiness', 'recipesFilterProteinInput', 'recipesFilterCuisineInput', 'recipesFilterMethodInput'].forEach(function (id) {
+        state.filters = { proteins: [], cuisines: [], methods: [], searchQuery: '', sortBy: 'updated_desc', prepMax: '', cookMax: '', courseCategory: '', healthiness: '' };
+        ['recipesFilterPrep', 'recipesFilterCook', 'recipesFilterSearch', 'recipesFilterSort', 'recipesFilterCourseCategory', 'recipesFilterHealthiness', 'recipesFilterProteinInput', 'recipesFilterCuisineInput', 'recipesFilterMethodInput'].forEach(function (id) {
           var field = root.querySelector('#' + id);
           if (field) field.value = '';
         });
+        var sortField = root.querySelector('#recipesFilterSort');
+        if (sortField) sortField.value = 'updated_desc';
         renderCards();
       });
     }
@@ -2091,8 +2173,13 @@
       document.addEventListener('kap:app-mode-changed', function () {
         updateRecipesSchemaBanner(state.excel.schemaColumnNames || []);
       });
+      window.addEventListener('app:tab-switched', function (event) {
+        var tabId = event && event.detail ? event.detail.tabId : '';
+        if (tabId !== 'recipes') return;
+        autoSyncOnTabOpen();
+      });
       if (getGraphAccessToken()) {
-        syncFromExcel({ silent: true });
+        syncFromExcel({ silent: true, autoSync: true });
       }
       console.log('✅ Recipes tab initialized');
     }

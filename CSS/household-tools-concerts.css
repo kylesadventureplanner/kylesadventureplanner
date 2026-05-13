@@ -1113,7 +1113,9 @@
 #householdConcertsPane .household-concerts-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  /* Must beat visited-locations-tab.css elements at z-index 12000, components.css
+     at 10000, and any other page chrome. Use 100000 so the backdrop always wins. */
+  z-index: 100000;
   background: rgba(15, 23, 42, 0.55);
   display: flex;
   align-items: center;

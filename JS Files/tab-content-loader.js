@@ -204,10 +204,17 @@ class TabContentLoader {
         preload: false,
         isInlineContent: false
       },
+      'drinks-cocktails': {
+        file: 'drinks-cocktails-tab.html',
+        element: 'drinksCocktailsTab',
+        priority: 3,
+        preload: false,
+        isInlineContent: false
+      },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
-        priority: 3,
+        priority: 4,
         preload: false,
         isInlineContent: false
       },
@@ -835,6 +842,11 @@ class TabContentLoader {
       case 'household-tools':
         if (typeof window.initHouseholdToolsTab === 'function') {
           window.initHouseholdToolsTab();
+        }
+        break;
+      case 'drinks-cocktails':
+        if (typeof window.initDrinksCocktailsTab === 'function') {
+          window.initDrinksCocktailsTab();
         }
         break;
       case 'recipes':

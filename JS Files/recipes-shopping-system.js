@@ -722,7 +722,7 @@
        window.ExcelSchemaCheckHelper.upsertGlobalBanner('recipe-sync-warning', {
          title: '📋 Recipe Not Synced',
          message: 'The recipe " ' + name + ' " is saved locally only and not synced with Excel backend.',
-         details: 'To sync: Export this recipe from the app menu or use manual sync.',
+          details: 'Open the main Recipes tab to auto-sync with Excel.',
          tone: 'warning'
        });
      }

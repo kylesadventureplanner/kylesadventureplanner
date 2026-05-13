@@ -15,6 +15,78 @@
   var ROOT_ID = 'recipesShoppingPane';
   var MAIN_VIEW_ID = 'recipesMainView';
 
+  function closeModalByClass(className) {
+    var modal = document.querySelector('.' + className);
+    if (modal) modal.remove();
+  }
+
+  function showModalDialog(options) {
+    options = options || {};
+    var modal = document.createElement('div');
+    modal.className = options.modalClass || 'recipes-shopping-modal';
+    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 10020; padding: 20px;';
+
+    var dialog = document.createElement('div');
+    dialog.className = options.dialogClass || 'recipes-shopping-dialog';
+    dialog.style.cssText = 'background: #fff; border-radius: 12px; padding: 20px; width: min(680px, 96vw); max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);';
+
+    var title = options.title ? '<h2 style="margin:0;font-size:20px;color:#111827;">' + escapeHtml(options.title) + '</h2>' : '';
+    dialog.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">'
+      + title
+      + '<button type="button" data-modal-action="close" style="border:0;background:transparent;font-size:22px;cursor:pointer;line-height:1;">×</button>'
+      + '</div>'
+      + '<div class="recipes-shopping-modal-body">' + (options.bodyHtml || '') + '</div>'
+      + '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">'
+      + (options.footerHtml || '<button type="button" class="pill-button" data-modal-action="close">Close</button>')
+      + '</div>';
+
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+      if (!target) return;
+      if (target === modal || target.getAttribute('data-modal-action') === 'close') {
+        modal.remove();
+      }
+    });
+
+    return modal;
+  }
+
+  function showNoticeModal(title, message) {
+    showModalDialog({
+      modalClass: 'recipes-shopping-notice-modal',
+      title: title,
+      bodyHtml: '<p style="margin:0;color:#334155;line-height:1.5;">' + escapeHtml(message) + '</p>'
+    });
+  }
+
+  function confirmModal(title, message) {
+    return new Promise(function (resolve) {
+      var modal = showModalDialog({
+        modalClass: 'recipes-shopping-confirm-modal',
+        title: title,
+        bodyHtml: '<p style="margin:0;color:#334155;line-height:1.5;">' + escapeHtml(message) + '</p>',
+        footerHtml: '<button type="button" class="pill-button" data-confirm-action="cancel">Cancel</button>'
+          + '<button type="button" class="pill-button pill-button--danger" data-confirm-action="confirm">Delete</button>'
+      });
+      modal.addEventListener('click', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (!target) return;
+        var action = target.getAttribute('data-confirm-action');
+        if (action === 'confirm') {
+          modal.remove();
+          resolve(true);
+        }
+        if (action === 'cancel') {
+          modal.remove();
+          resolve(false);
+        }
+      });
+    });
+  }
+
   // ========================================================
   // RENDERING - MAIN INTERFACE
   // ========================================================
@@ -77,7 +149,7 @@
              <div class="recipe-card-actions">\
                ' + (recipe.source === 'imported' ? '<button class="recipe-action-btn" title="Edit imported recipe" onclick="(window.RecipesShoppingUI || {}).showEditImportedRecipeForm && window.RecipesShoppingUI.showEditImportedRecipeForm(\'' + escapeHtml(id) + '\')">✏️ Edit</button>' : '') + '\
                <button class="recipe-action-btn" title="Create shopping list from this recipe" onclick="(window.RecipesShoppingUI || {}).createShoppingListFromRecipe && window.RecipesShoppingUI.createShoppingListFromRecipe(\'' + escapeHtml(id) + '\')">🛒 Add to Shopping List</button>\
-               <button class="recipe-action-btn recipe-action-delete" title="Delete recipe" onclick="if(confirm(\'Delete this recipe?\')) (window.RecipesShoppingUI || {}).deleteRecipe && window.RecipesShoppingUI.deleteRecipe(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
+               <button class="recipe-action-btn recipe-action-delete" title="Delete recipe" onclick="(window.RecipesShoppingUI || {}).deleteRecipe && window.RecipesShoppingUI.deleteRecipe(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
              </div>\
            </div>\
            <div class="recipe-card-content">\
@@ -94,7 +166,7 @@
         <div class="recipe-sync-warning">\
           <span class="sync-warning-icon">⚠️</span>\
           <span class="sync-warning-text">' + localOnlyCount + ' recipe(s) not synced with Excel backend</span>\
-          <button class="sync-warning-btn" onclick="alert(\'To sync recipes: Please export from the Recipes tab or use the app\\\'s sync menu.\')">ℹ️ Learn More</button>\
+          <button class="sync-warning-btn" onclick="(window.RecipesShoppingUI || {}).showSyncHelpModal && window.RecipesShoppingUI.showSyncHelpModal()">ℹ️ Learn More</button>\
         </div>\
       ' : '';
 
@@ -135,7 +207,7 @@
             </div>\
             <div class="shopping-list-actions">\
               <button class="pill-button" onclick="(window.RecipesShoppingUI || {}).viewShoppingList && window.RecipesShoppingUI.viewShoppingList(\'' + escapeHtml(id) + '\')">📋 View</button>\
-              <button class="pill-button pill-button--danger" onclick="if(confirm(\'Delete this shopping list?\')) (window.RecipesShoppingUI || {}).deleteShoppingList && window.RecipesShoppingUI.deleteShoppingList(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
+              <button class="pill-button pill-button--danger" onclick="(window.RecipesShoppingUI || {}).deleteShoppingList && window.RecipesShoppingUI.deleteShoppingList(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
             </div>\
           </div>\
         </div>\
@@ -305,7 +377,7 @@
     sys.saveShoppingList(shoppingList.id, shoppingList);
 
     // Show success and switch to shopping lists view
-    alert('Shopping list created for this recipe!');
+    showNoticeModal('Shopping list created', 'Your shopping list was created from this recipe.');
     switchTab('shopping-lists');
   }
 
@@ -315,20 +387,44 @@
   function createMultiRecipeShoppingList() {
     var recipes = sys.getSavedRecipes();
     if (Object.keys(recipes).length === 0) {
-      alert('No recipes found. Create some recipes first!');
+      showNoticeModal('No recipes yet', 'Create or import recipes first, then build a shopping list.');
       return;
     }
 
-    // For now, create a simple dialog
-    var selectedIds = prompt('Enter recipe IDs (comma-separated) to include in shopping list:', '');
-    if (!selectedIds) return;
+    var bodyHtml = '<div style="display:grid;gap:8px;">'
+      + Object.keys(recipes).map(function (id) {
+        var recipe = recipes[id] || {};
+        return '<label style="display:flex;gap:8px;align-items:center;border:1px solid #e5e7eb;border-radius:8px;padding:8px;">'
+          + '<input type="checkbox" data-list-recipe-id="' + escapeHtml(id) + '">'
+          + '<span>' + escapeHtml(recipe.name || recipe.title || 'Untitled recipe') + '</span>'
+          + '</label>';
+      }).join('')
+      + '</div>';
 
-    var ids = selectedIds.split(',').map(function(s) { return s.trim(); });
-    var shoppingList = sys.generateShoppingListFromRecipes(ids);
-    sys.saveShoppingList(shoppingList.id, shoppingList);
+    var modal = showModalDialog({
+      modalClass: 'recipes-shopping-multi-list-modal',
+      title: 'Create shopping list',
+      bodyHtml: bodyHtml,
+      footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
+        + '<button type="button" class="pill-button planner-top-btn--success" data-modal-action="create-list">Create</button>'
+    });
 
-    alert('Shopping list created!');
-    switchTab('shopping-lists');
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+      if (!target || target.getAttribute('data-modal-action') !== 'create-list') return;
+      var selected = Array.from(modal.querySelectorAll('[data-list-recipe-id]:checked')).map(function (node) {
+        return String(node.getAttribute('data-list-recipe-id') || '').trim();
+      }).filter(Boolean);
+      if (!selected.length) {
+        showNoticeModal('Choose recipes', 'Select at least one recipe for this shopping list.');
+        return;
+      }
+      var shoppingList = sys.generateShoppingListFromRecipes(selected);
+      sys.saveShoppingList(shoppingList.id, shoppingList);
+      modal.remove();
+      showNoticeModal('Shopping list created', 'Your shopping list has been created.');
+      switchTab('shopping-lists');
+    });
   }
 
   /**
@@ -343,42 +439,84 @@
    * Show add pantry item form
    */
   function showAddPantryItemForm() {
-    var name = prompt('Item name:');
-    if (!name) return;
+    var modal = showModalDialog({
+      modalClass: 'recipes-shopping-pantry-modal',
+      title: 'Add pantry item',
+      bodyHtml: '<label style="display:block;margin-bottom:8px;">Item name<input id="pantry-item-name" type="text" style="width:100%;margin-top:4px;"></label>'
+        + '<label style="display:block;margin-bottom:8px;">Category<input id="pantry-item-category" type="text" value="other" style="width:100%;margin-top:4px;"></label>'
+        + '<label style="display:block;margin-bottom:8px;">Quantity<input id="pantry-item-qty" type="number" min="1" value="1" style="width:100%;margin-top:4px;"></label>'
+        + '<label style="display:block;">Unit<input id="pantry-item-unit" type="text" placeholder="cup, tsp, lb" style="width:100%;margin-top:4px;"></label>',
+      footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
+        + '<button type="button" class="pill-button planner-top-btn--accent" data-modal-action="save-pantry">Save item</button>'
+    });
 
-    var category = prompt('Category (e.g., spices, proteins, dairy):', 'other');
-    var quantity = prompt('Quantity:', '1');
-    var unit = prompt('Unit (e.g., cup, tsp, lb):', '');
-
-    sys.addPantryItem(name, category, parseInt(quantity) || 1, unit);
-    switchTab('pantry');
+    modal.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+      if (!target || target.getAttribute('data-modal-action') !== 'save-pantry') return;
+      var nameInput = modal.querySelector('#pantry-item-name');
+      var categoryInput = modal.querySelector('#pantry-item-category');
+      var qtyInput = modal.querySelector('#pantry-item-qty');
+      var unitInput = modal.querySelector('#pantry-item-unit');
+      var name = String(nameInput ? nameInput.value : '').trim();
+      if (!name) {
+        showNoticeModal('Missing item name', 'Please enter a pantry item name.');
+        return;
+      }
+      sys.addPantryItem(name, String(categoryInput ? categoryInput.value : 'other').trim() || 'other', parseInt(String(qtyInput ? qtyInput.value : '1'), 10) || 1, String(unitInput ? unitInput.value : '').trim());
+      modal.remove();
+      switchTab('pantry');
+    });
   }
 
    /**
     * Show recipe form
     */
    function showRecipeForm() {
-     // Simple implementation - in a full system, you'd have a detailed form
-     var name = prompt('Recipe name:');
-     if (!name) return;
-
-     var ingredients = prompt('Ingredients (comma-separated):', '');
-     var ingredientList = ingredients.split(',').map(function(ing) {
-       return { name: ing.trim(), category: 'other', quantity: 1 };
+     var modal = showModalDialog({
+       modalClass: 'recipes-shopping-create-recipe-modal',
+       title: 'Create new recipe',
+       bodyHtml: '<label style="display:block;margin-bottom:8px;">Recipe name<input id="quick-recipe-name" type="text" style="width:100%;margin-top:4px;"></label>'
+         + '<label style="display:block;margin-bottom:8px;">Ingredients (required)<textarea id="quick-recipe-ingredients" rows="5" placeholder="One ingredient per line" style="width:100%;margin-top:4px;"></textarea></label>'
+         + '<label style="display:block;margin-bottom:8px;">Cook instructions (required)<textarea id="quick-recipe-instructions" rows="5" placeholder="Step-by-step instructions" style="width:100%;margin-top:4px;"></textarea></label>'
+         + '<label style="display:block;">Description<textarea id="quick-recipe-description" rows="3" placeholder="Optional notes" style="width:100%;margin-top:4px;"></textarea></label>',
+       footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
+         + '<button type="button" class="pill-button planner-top-btn--accent" data-modal-action="save-recipe">Save recipe</button>'
      });
 
-     var recipeId = 'recipe-' + Date.now();
-     sys.saveRecipe(recipeId, {
-       name: name,
-       description: '',
-       ingredients: ingredientList,
-       syncStatus: 'local-only'
+     modal.addEventListener('click', function (event) {
+       var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+       if (!target || target.getAttribute('data-modal-action') !== 'save-recipe') return;
+       var name = String((modal.querySelector('#quick-recipe-name') || {}).value || '').trim();
+       var ingredientsRaw = String((modal.querySelector('#quick-recipe-ingredients') || {}).value || '').trim();
+       var instructionsRaw = String((modal.querySelector('#quick-recipe-instructions') || {}).value || '').trim();
+       var description = String((modal.querySelector('#quick-recipe-description') || {}).value || '').trim();
+
+       if (!name || !ingredientsRaw || !instructionsRaw) {
+         showNoticeModal('Missing required fields', 'Recipe name, ingredients, and cook instructions are required.');
+         return;
+       }
+
+       var ingredientList = ingredientsRaw.split(/\r?\n|,/).map(function (ing) {
+         return String(ing || '').trim();
+       }).filter(Boolean).map(function (nameValue) {
+         return { name: nameValue, category: 'other', quantity: 1 };
+       });
+
+       var recipeId = 'recipe-' + Date.now();
+       sys.saveRecipe(recipeId, {
+         name: name,
+         description: description,
+         ingredients: ingredientList,
+         instructions: instructionsRaw,
+         syncStatus: 'local-only',
+         source: 'manual'
+       });
+       sys.updateRecipeSyncStatus(recipeId, 'local-only');
+
+       modal.remove();
+       showNoticeModal('Recipe saved', 'Recipe saved locally. Open the Recipes tab to sync with Excel if needed.');
+       renderMainView();
      });
-
-     sys.updateRecipeSyncStatus(recipeId, 'local-only');
-
-     alert('Recipe saved!');
-     renderMainView();
    }
 
    /**
@@ -470,12 +608,12 @@
      var text = textInput.value.trim();
 
      if (!name) {
-       alert('Please enter a recipe name');
+       showNoticeModal('Recipe name required', 'Please enter a recipe name before importing.');
        return;
      }
 
      if (!text) {
-       alert('Please paste recipe text or ingredients');
+       showNoticeModal('Recipe text required', 'Please paste recipe text or ingredients to import.');
        return;
      }
 
@@ -592,7 +730,7 @@
      var modal = document.querySelector('.recipe-import-preview-modal');
      if (modal) modal.remove();
 
-     alert('Recipe "' + name + '" has been imported and saved locally.\n\nNote: This recipe is not yet synced with your Excel backend. Synced recipes are marked with a ✓ badge.');
+     showNoticeModal('Recipe imported', 'Recipe "' + name + '" is saved locally. Open the Recipes tab to auto-sync with Excel.');
      renderMainView();
    }
 
@@ -723,14 +861,16 @@
      var modal = document.querySelector('.recipe-edit-modal');
      if (modal) modal.remove();
 
-     alert('Recipe updated!');
+     showNoticeModal('Recipe updated', 'Your recipe changes were saved.');
      renderMainView();
    }
 
    /**
     * Delete recipe
     */
-   function deleteRecipe(recipeId) {
+   async function deleteRecipe(recipeId) {
+     var confirmed = await confirmModal('Delete recipe?', 'This recipe will be removed from local storage.');
+     if (!confirmed) return;
      var recipes = sys.getSavedRecipes();
      delete recipes[recipeId];
      if (window.localStorage) {
@@ -748,7 +888,9 @@
   /**
    * Delete shopping list
    */
-  function deleteShoppingList(listId) {
+  async function deleteShoppingList(listId) {
+    var confirmed = await confirmModal('Delete shopping list?', 'This shopping list will be permanently removed.');
+    if (!confirmed) return;
     var lists = sys.getShoppingLists();
     delete lists[listId];
     if (window.localStorage) {
@@ -761,8 +903,31 @@
    * View shopping list details
    */
   function viewShoppingList(listId) {
-    alert('Viewing shopping list: ' + listId);
-    // Implementation for viewing detailed shopping list
+    var lists = sys.getShoppingLists();
+    var list = lists[listId];
+    if (!list) {
+      showNoticeModal('List not found', 'Unable to locate this shopping list.');
+      return;
+    }
+    var items = Object.keys(list.items || {}).map(function (key) {
+      var entry = list.items[key] || {};
+      return '<li>' + escapeHtml(entry.name || key) + '</li>';
+    }).join('');
+    showModalDialog({
+      modalClass: 'recipes-shopping-list-view-modal',
+      title: list.name || 'Shopping list details',
+      bodyHtml: '<p style="margin-top:0;color:#475569;">' + escapeHtml(String(Object.keys(list.items || {}).length)) + ' total item(s)</p>'
+        + '<ul style="margin:0;padding-left:20px;">' + (items || '<li>No items</li>') + '</ul>'
+    });
+  }
+
+  function showSyncHelpModal() {
+    showModalDialog({
+      modalClass: 'recipes-shopping-sync-help-modal',
+      title: 'How recipe sync works',
+      bodyHtml: '<p style="margin:0 0 10px;color:#334155;line-height:1.5;">Recipes in this manager save locally first.</p>'
+        + '<p style="margin:0;color:#334155;line-height:1.5;">To sync with Excel, open the main <strong>Recipes</strong> tab. It now auto-syncs on tab open (and can still be refreshed from that tab if needed).</p>'
+    });
   }
 
   /**
@@ -797,6 +962,7 @@
      finalizeImportRecipe: finalizeImportRecipe,
      showEditImportedRecipeForm: showEditImportedRecipeForm,
      saveEditedRecipe: saveEditedRecipe,
+     showSyncHelpModal: showSyncHelpModal,
      deleteRecipe: deleteRecipe,
      deleteShoppingList: deleteShoppingList,
      viewShoppingList: viewShoppingList

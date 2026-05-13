@@ -6282,11 +6282,14 @@
         return;
       }
       const tone = normalizeStatusTone(kind);
+      // When the message is a plain string it already carries a leading status
+      // emoji (e.g. "⚠️ No matches found…").  Do NOT inject a second icon so
+      // the rendered output doesn't show "❌ ⚠️ …" double-icon sequences.
       const payload = message && typeof message === 'object'
         ? { ...message, tone }
         : {
           tone,
-          icon: tone === 'error' ? '❌' : (tone === 'success' ? '✅' : (tone === 'warning' ? '⚠️' : 'ℹ️')),
+          icon: '',
           text: toStatusAnnouncementText(message)
         };
 

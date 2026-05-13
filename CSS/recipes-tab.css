@@ -80,6 +80,14 @@
   color: #1d4ed8;
 }
 
+.recipes-status.is-error {
+  color: #b91c1c;
+}
+
+.recipes-excel-sync .recipes-help-text {
+  margin: 0;
+}
+
 .recipes-help-text {
   margin: 6px 0;
   color: #6b7280;

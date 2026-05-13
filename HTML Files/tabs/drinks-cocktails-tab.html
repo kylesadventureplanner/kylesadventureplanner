@@ -1,0 +1,87 @@
+<!-- DRINKS / COCKTAILS TAB CONTENT -->
+<div id="drinksCocktailsRoot" class="drinks-cocktails-root">
+  <div class="drinks-cocktails-header">
+    <h1>Drinks / Cocktails</h1>
+    <p>Track NA brews, THC beverages, THC edibles, and THC cocktail recipes.</p>
+    <div id="drinksCocktailsStatus" class="drinks-cocktails-status" aria-live="polite"></div>
+  </div>
+
+  <div class="drinks-cocktails-subtabs" role="tablist" aria-label="Drinks and cocktails sections">
+    <button type="button" class="drinks-cocktails-subtab active" data-dc-subtab="na-brew" role="tab" aria-selected="true">NA Brew Tracker</button>
+    <button type="button" class="drinks-cocktails-subtab" data-dc-subtab="thc-bev" role="tab" aria-selected="false">THC Bev Tracker</button>
+    <button type="button" class="drinks-cocktails-subtab" data-dc-subtab="thc-edible" role="tab" aria-selected="false">THC Edible Tracker</button>
+    <button type="button" class="drinks-cocktails-subtab" data-dc-subtab="thc-cocktail-recipes" role="tab" aria-selected="false">THC Cocktail Recipes</button>
+  </div>
+
+  <section class="drinks-cocktails-pane active" data-dc-pane="na-brew" role="tabpanel"></section>
+  <section class="drinks-cocktails-pane" data-dc-pane="thc-bev" role="tabpanel" hidden></section>
+  <section class="drinks-cocktails-pane" data-dc-pane="thc-edible" role="tabpanel" hidden></section>
+  <section class="drinks-cocktails-pane" data-dc-pane="thc-cocktail-recipes" role="tabpanel" hidden></section>
+</div>
+
+<style>
+  #drinksCocktailsRoot {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-header h1 {
+    margin: 0 0 4px;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-header p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-status {
+    margin-top: 6px;
+    min-height: 18px;
+    font-size: 12px;
+    color: #0f766e;
+    font-weight: 600;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-subtab {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #1f2937;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-subtab.active {
+    border-color: #2563eb;
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-pane {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px;
+  }
+
+  #drinksCocktailsRoot .drinks-cocktails-pane[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  if (typeof window.initDrinksCocktailsTab === 'function') {
+    window.initDrinksCocktailsTab();
+  }
+</script>
+

@@ -6662,7 +6662,11 @@
     }
     var record = serializeForm(form);
     var editConcertId = String(record.Attended_Concert_Id || '').trim();
-    var editRowIndex = Number.isInteger(Number(record.Attended_Row_Index)) ? Number(record.Attended_Row_Index) : -1;
+    // IMPORTANT: Number('') === 0 in JS, so we must guard against the empty-string
+    // case explicitly.  An empty Attended_Row_Index means "new concert" (index = -1),
+    // not "row 0".  Without this guard every new concert silently overwrites row 0.
+    var rawRowIndex = String(record.Attended_Row_Index || '').trim();
+    var editRowIndex = rawRowIndex !== '' && Number.isInteger(Number(rawRowIndex)) ? Number(rawRowIndex) : -1;
     var previousConcert = editConcertId ? getAttendedConcertById(editConcertId) : null;
     if (!previousConcert && editRowIndex >= 0) {
       previousConcert = state.attendedConcerts.find(function (item) {

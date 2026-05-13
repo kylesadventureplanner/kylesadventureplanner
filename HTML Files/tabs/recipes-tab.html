@@ -20,8 +20,7 @@
 
   <section class="recipes-excel-sync" aria-label="Recipes Excel sync">
     <div class="recipes-inline-input-row">
-      <button id="recipesSyncFromExcelBtn" class="pill-button" type="button">Sync from Excel</button>
-      <button id="recipesSyncToExcelBtn" class="pill-button" type="button">Sync to Excel</button>
+      <span class="recipes-help-text">Recipes now auto-sync from Excel when this tab opens.</span>
       <span id="recipesExcelStatus" class="recipes-status" aria-live="polite"></span>
     </div>
     <div id="recipesSchemaBanner" style="margin-top:8px;"></div>
@@ -58,6 +57,17 @@
   </section>
 
   <section class="recipes-filters" aria-label="Recipe filters">
+    <label>Search recipes
+      <input id="recipesFilterSearch" type="search" placeholder="Title, ingredient, or step">
+    </label>
+    <label>Sort
+      <select id="recipesFilterSort">
+        <option value="updated_desc">Recently updated</option>
+        <option value="title_asc">Title A-Z</option>
+        <option value="prep_asc">Prep time low-high</option>
+        <option value="cook_asc">Cook time low-high</option>
+      </select>
+    </label>
     <div class="recipes-filter-chip-group" data-chip-group="filter-proteins">
       <label>Proteins</label>
       <div class="recipes-inline-input-row">
@@ -225,7 +235,7 @@
 
         <section>
           <div class="recipes-editor-subheader">
-            <h3>Ingredients</h3>
+            <h3>Ingredients (required)</h3>
             <button type="button" class="pill-button" id="recipesAddIngredientBtn">+ Ingredient</button>
           </div>
           <p class="recipes-help-text">Specify quantity for each ingredient and choose from suggestions or free type.</p>
@@ -234,12 +244,14 @@
 
         <section>
           <div class="recipes-editor-subheader">
-            <h3>Steps</h3>
+            <h3>Cook instructions (required)</h3>
             <button type="button" class="pill-button" id="recipesAddStepBtn">+ Step</button>
           </div>
           <p class="recipes-help-text">Type your own step or select a suggestion to speed up entry.</p>
           <div id="recipesStepsList"></div>
         </section>
+
+        <div id="recipesEditorStatus" class="recipes-status" aria-live="polite"></div>
 
         <div class="recipes-editor-actions">
           <button type="submit" class="pill-button recipes-save-btn">Save recipe</button>
