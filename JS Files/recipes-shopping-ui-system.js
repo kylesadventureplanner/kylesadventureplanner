@@ -471,11 +471,93 @@
    /**
     * Show recipe form
     */
+     function getRecipeIngredientPresetGroups() {
+       var library = null;
+       if (sys && typeof sys.getIngredientsLibrary === 'function') {
+         library = sys.getIngredientsLibrary();
+       }
+       if (!library || typeof library !== 'object') {
+         library = (sys && sys.DEFAULT_INGREDIENTS_LIBRARY) || {};
+       }
+       var categoryOrder = [
+         { key: 'proteins', label: 'Proteins' },
+         { key: 'produce', label: 'Produce' },
+         { key: 'grains', label: 'Grains' },
+         { key: 'dairy', label: 'Dairy' },
+         { key: 'sauces', label: 'Sauces' },
+         { key: 'spices', label: 'Spices' },
+         { key: 'frozen', label: 'Frozen' },
+         { key: 'canned-goods', label: 'Canned Goods' },
+         { key: 'other', label: 'Other' }
+       ];
+       return categoryOrder.map(function (entry) {
+         var items = Array.isArray(library[entry.key]) ? library[entry.key] : [];
+         var deduped = Array.from(new Set(items.map(function (item) { return String(item || '').trim(); }).filter(Boolean)));
+         return { key: entry.key, label: entry.label, items: deduped.slice(0, 30) };
+       }).filter(function (entry) {
+         return entry.items.length > 0;
+       });
+     }
+
+     function renderRecipeIngredientPresetPickerHtml() {
+       var groups = getRecipeIngredientPresetGroups();
+       if (!groups.length) return '';
+       return '<div style="margin-bottom:10px;">'
+         + '<div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;">Quick select common ingredients & spices</div>'
+         + '<div style="max-height:220px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#f8fafc;">'
+         + groups.map(function (group) {
+           return '<div style="margin-bottom:8px;">'
+             + '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;margin:0 0 4px;">' + escapeHtml(group.label) + '</div>'
+             + '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+             + group.items.map(function (item) {
+               return '<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;font-size:12px;color:#1f2937;">'
+                 + '<input type="checkbox" data-preset-ingredient="1" value="' + escapeHtml(item) + '">'
+                 + '<span>' + escapeHtml(item) + '</span>'
+                 + '</label>';
+             }).join('')
+             + '</div>'
+             + '</div>';
+         }).join('')
+         + '</div>'
+         + '<div style="margin-top:6px;display:flex;justify-content:flex-end;">'
+         + '<button type="button" class="pill-button" data-modal-action="copy-selected-ingredients">Add selected to ingredients box</button>'
+         + '</div>'
+         + '</div>';
+     }
+
+     function parseRecipeIngredientNames(rawText) {
+       return String(rawText || '')
+         .split(/\r?\n|,|;/)
+         .map(function (item) { return String(item || '').trim(); })
+         .filter(Boolean);
+     }
+
+     function getSelectedPresetIngredients(modal) {
+       if (!modal || typeof modal.querySelectorAll !== 'function') return [];
+       return Array.from(modal.querySelectorAll('input[data-preset-ingredient="1"]:checked')).map(function (input) {
+         return String(input.value || '').trim();
+       }).filter(Boolean);
+     }
+
+     function mergeUniqueIngredients(primaryList, secondaryList) {
+       var seen = Object.create(null);
+       return primaryList.concat(secondaryList).map(function (name) {
+         return String(name || '').trim();
+       }).filter(function (name) {
+         if (!name) return false;
+         var key = name.toLowerCase();
+         if (seen[key]) return false;
+         seen[key] = true;
+         return true;
+       });
+     }
+
    function showRecipeForm() {
      var modal = showModalDialog({
        modalClass: 'recipes-shopping-create-recipe-modal',
        title: 'Create new recipe',
        bodyHtml: '<label style="display:block;margin-bottom:8px;">Recipe name<input id="quick-recipe-name" type="text" style="width:100%;margin-top:4px;"></label>'
+           + renderRecipeIngredientPresetPickerHtml()
          + '<label style="display:block;margin-bottom:8px;">Ingredients (required)<textarea id="quick-recipe-ingredients" rows="5" placeholder="One ingredient per line" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;margin-bottom:8px;">Cook instructions (required)<textarea id="quick-recipe-instructions" rows="5" placeholder="Step-by-step instructions" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;">Description<textarea id="quick-recipe-description" rows="3" placeholder="Optional notes" style="width:100%;margin-top:4px;"></textarea></label>',
@@ -485,20 +567,29 @@
 
      modal.addEventListener('click', function (event) {
        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
-       if (!target || target.getAttribute('data-modal-action') !== 'save-recipe') return;
+         if (!target) return;
+         var modalAction = String(target.getAttribute('data-modal-action') || '').trim();
+         if (modalAction === 'copy-selected-ingredients') {
+           var ingredientsField = modal.querySelector('#quick-recipe-ingredients');
+           if (!ingredientsField) return;
+           var mergedText = mergeUniqueIngredients(getSelectedPresetIngredients(modal), parseRecipeIngredientNames(ingredientsField.value)).join('\n');
+           ingredientsField.value = mergedText;
+           return;
+         }
+         if (modalAction !== 'save-recipe') return;
        var name = String((modal.querySelector('#quick-recipe-name') || {}).value || '').trim();
-       var ingredientsRaw = String((modal.querySelector('#quick-recipe-ingredients') || {}).value || '').trim();
+         var ingredientsRaw = String((modal.querySelector('#quick-recipe-ingredients') || {}).value || '').trim();
        var instructionsRaw = String((modal.querySelector('#quick-recipe-instructions') || {}).value || '').trim();
        var description = String((modal.querySelector('#quick-recipe-description') || {}).value || '').trim();
+         var selectedIngredients = getSelectedPresetIngredients(modal);
+         var mergedIngredients = mergeUniqueIngredients(selectedIngredients, parseRecipeIngredientNames(ingredientsRaw));
 
-       if (!name || !ingredientsRaw || !instructionsRaw) {
+         if (!name || !mergedIngredients.length || !instructionsRaw) {
          showNoticeModal('Missing required fields', 'Recipe name, ingredients, and cook instructions are required.');
          return;
        }
 
-       var ingredientList = ingredientsRaw.split(/\r?\n|,/).map(function (ing) {
-         return String(ing || '').trim();
-       }).filter(Boolean).map(function (nameValue) {
+         var ingredientList = mergedIngredients.map(function (nameValue) {
          return { name: nameValue, category: 'other', quantity: 1 };
        });
 

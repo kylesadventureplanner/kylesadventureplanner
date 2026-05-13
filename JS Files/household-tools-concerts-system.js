@@ -2138,7 +2138,18 @@
   }
 
   async function findWorkbookPath() {
-    if (state.workbookPath) return state.workbookPath;
+    if (state.workbookPath) {
+      try {
+        await fetchTableColumns(state.workbookPath, FAVORITE_TABLE);
+        return state.workbookPath;
+      } catch (cachedPathError) {
+        if (isGraphItemNotFoundError(cachedPathError)) {
+          clearResolvedWorkbookPath(state.workbookPath);
+        } else {
+          throw cachedPathError;
+        }
+      }
+    }
     var candidates = getWorkbookPathCandidates();
     var checked = candidates.slice();
     for (var i = 0; i < candidates.length; i += 1) {
@@ -2171,9 +2182,30 @@
     throw new Error('Could not locate ' + WORKBOOK_NAME + '. Checked: ' + checked.join(', '));
   }
 
+  async function runWithWorkbookPathRetry(tableName, operation) {
+    var safeTableName = String(tableName || '').trim();
+    var firstPath = await findWorkbookPath();
+    try {
+      return await operation(firstPath);
+    } catch (firstError) {
+      if (!isGraphItemNotFoundError(firstError)) throw firstError;
+      clearResolvedWorkbookPath(firstPath);
+      if (safeTableName) clearResolvedTableSchema(firstPath, safeTableName);
+      var retryPath = await findWorkbookPath();
+      return operation(retryPath);
+    }
+  }
+
   function isConcertsWorkbookUnavailableError(error) {
     var message = String(error && error.message || '').trim();
     return message.indexOf('Could not locate ' + WORKBOOK_NAME + '.') === 0;
+  }
+
+  function toConcertsWorkbookUserMessage(error, fallbackText) {
+    if (isConcertsWorkbookUnavailableError(error) || isGraphItemNotFoundError(error)) {
+      return 'Concerts workbook could not be found in OneDrive right now. Open Workbook Path Diagnostics to re-detect "' + WORKBOOK_NAME + '" and try again.';
+    }
+    return String(error && error.message ? error.message : (fallbackText || 'Concerts workbook request failed.')).trim();
   }
 
   function mapRecordToRowByColumns(record, columns, options) {
@@ -2232,28 +2264,30 @@
   }
 
   async function appendRecordToTable(filePath, tableName, record) {
-    var encodedPath = encodeGraphPath(filePath);
-    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/add';
-    var attemptedSchemaRefresh = false;
-    for (;;) {
-      try {
-        var columns = await fetchTableColumns(filePath, tableName);
-        var row = mapRecordToRowByColumns(record, columns || [], {
-          audit: true,
-          tableName: tableName,
-          context: 'appendRecordToTable'
-        });
-        await fetchJson(url, { method: 'POST', body: { values: [row] } });
-        return;
-      } catch (error) {
-        if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
-          attemptedSchemaRefresh = true;
-          clearResolvedTableSchema(filePath, tableName);
-          continue;
+    await runWithWorkbookPathRetry(tableName, async function attempt(pathToUse) {
+      var encodedPath = encodeGraphPath(pathToUse || filePath);
+      var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/add';
+      var attemptedSchemaRefresh = false;
+      for (;;) {
+        try {
+          var columns = await fetchTableColumns(pathToUse || filePath, tableName);
+          var row = mapRecordToRowByColumns(record, columns || [], {
+            audit: true,
+            tableName: tableName,
+            context: 'appendRecordToTable'
+          });
+          await fetchJson(url, { method: 'POST', body: { values: [row] } });
+          return;
+        } catch (error) {
+          if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
+            attemptedSchemaRefresh = true;
+            clearResolvedTableSchema(pathToUse || filePath, tableName);
+            continue;
+          }
+          throw error;
         }
-        throw error;
       }
-    }
+    });
   }
 
   async function updateRecordInTableByIndex(filePath, tableName, rowIndex, record) {
@@ -2261,28 +2295,30 @@
     if (!Number.isInteger(safeRowIndex) || safeRowIndex < 0) {
       throw new Error('Could not determine the target row index for this Favorite Band update.');
     }
-    var encodedPath = encodeGraphPath(filePath);
-    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/itemAt(index=' + safeRowIndex + ')';
-    var attemptedSchemaRefresh = false;
-    for (;;) {
-      try {
-        var columns = await fetchTableColumns(filePath, tableName);
-        var row = mapRecordToRowByColumns(record, columns || [], {
-          audit: true,
-          tableName: tableName,
-          context: 'updateRecordInTableByIndex'
-        });
-        await fetchJson(url, { method: 'PATCH', body: { values: [row] } });
-        return;
-      } catch (error) {
-        if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
-          attemptedSchemaRefresh = true;
-          clearResolvedTableSchema(filePath, tableName);
-          continue;
+    await runWithWorkbookPathRetry(tableName, async function attempt(pathToUse) {
+      var encodedPath = encodeGraphPath(pathToUse || filePath);
+      var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows/itemAt(index=' + safeRowIndex + ')';
+      var attemptedSchemaRefresh = false;
+      for (;;) {
+        try {
+          var columns = await fetchTableColumns(pathToUse || filePath, tableName);
+          var row = mapRecordToRowByColumns(record, columns || [], {
+            audit: true,
+            tableName: tableName,
+            context: 'updateRecordInTableByIndex'
+          });
+          await fetchJson(url, { method: 'PATCH', body: { values: [row] } });
+          return;
+        } catch (error) {
+          if (!attemptedSchemaRefresh && isGraphDimensionMismatchError(error)) {
+            attemptedSchemaRefresh = true;
+            clearResolvedTableSchema(pathToUse || filePath, tableName);
+            continue;
+          }
+          throw error;
         }
-        throw error;
       }
-    }
+    });
   }
 
   function readValue(record, aliases) {
@@ -3949,7 +3985,7 @@
        state.favoriteBands = [];
        state.attendedConcerts = [];
        state.upcomingConcerts = [];
-       setStatus(error && error.message ? error.message : 'Concerts data could not be loaded.', 'error');
+       setStatus(toConcertsWorkbookUserMessage(error, 'Concerts data could not be loaded.'), 'error');
        renderAll();
      } finally {
        state.loading = false;
@@ -6374,7 +6410,7 @@
       loadDiscoveryForBand(resolveActiveBand(), true);
     } catch (error) {
       console.error('❌ Could not save favorite band:', error);
-      setStatus(error && error.message ? error.message : 'Could not save favorite band.', 'error');
+      setStatus(toConcertsWorkbookUserMessage(error, 'Could not save favorite band.'), 'error');
     }
   }
 
@@ -6742,7 +6778,7 @@
       renderAll();
     } catch (error) {
       console.error('❌ Could not save attended concert:', error);
-      setStatus(error && error.message ? error.message : 'Could not save attended concert.', 'error');
+      setStatus(toConcertsWorkbookUserMessage(error, 'Could not save attended concert.'), 'error');
     }
   }
 
@@ -6779,7 +6815,7 @@
       maybeHydrateUpcomingDistances();
     } catch (error) {
       console.error('❌ Could not save upcoming concert:', error);
-      setStatus(error && error.message ? error.message : 'Could not save upcoming concert.', 'error');
+      setStatus(toConcertsWorkbookUserMessage(error, 'Could not save upcoming concert.'), 'error');
     }
   }
 

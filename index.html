@@ -6815,7 +6815,8 @@
 
     .app-subtabs-row .nature-challenge-subtabs,
     .app-subtabs-row .visited-progress-subtabs,
-    .app-subtabs-row .household-tools-subtabs {
+    .app-subtabs-row .household-tools-subtabs,
+    .app-subtabs-row .drinks-cocktails-subtabs {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -6829,7 +6830,8 @@
 
     .app-subtabs-row .nature-challenge-subtab,
     .app-subtabs-row .visited-progress-subtab,
-    .app-subtabs-row .household-tools-subtab {
+    .app-subtabs-row .household-tools-subtab,
+    .app-subtabs-row .drinks-cocktails-subtab {
       /* Fluid sizing: all three dimensions scale smoothly with viewport width */
       font-size: clamp(11px, 1.1vw, 15px);   /* 11px mobile → 15px ultrawide */
       font-weight: 700;
@@ -6869,6 +6871,12 @@
       color: #92400e;
     }
 
+    .app-subtabs-row .drinks-cocktails-subtab {
+      border: 1px solid #a5b4fc;
+      background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+      color: #3730a3;
+    }
+
     .app-subtabs-row .nature-challenge-subtab:hover {
       border-color: #22c55e;
       color: #14532d;
@@ -6891,6 +6899,14 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 10px rgba(217, 119, 6, 0.24);
       background: #fde68a;
+    }
+
+    .app-subtabs-row .drinks-cocktails-subtab:hover {
+      border-color: #6366f1;
+      color: #312e81;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(99, 102, 241, 0.24);
+      background: #e0e7ff;
     }
 
     .app-subtabs-row .nature-challenge-subtab.active {
@@ -6923,6 +6939,16 @@
       animation: activeSubTabPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    .app-subtabs-row .drinks-cocktails-subtab.active {
+      border-color: #4338ca;
+      background: linear-gradient(180deg, #e0e7ff 0%, #c7d2fe 100%);
+      color: #312e81;
+      font-weight: 700;
+      transform: scale(1.05);
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+      animation: activeSubTabPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
     @keyframes activeSubTabPulse {
       0% {
         transform: scale(0.95);
@@ -6936,7 +6962,8 @@
 
     .app-subtabs-row .nature-challenge-subtab:focus-visible,
     .app-subtabs-row .visited-progress-subtab:focus-visible,
-    .app-subtabs-row .household-tools-subtab:focus-visible {
+    .app-subtabs-row .household-tools-subtab:focus-visible,
+    .app-subtabs-row .drinks-cocktails-subtab:focus-visible {
       outline-offset: 3px;
     }
 
@@ -6950,6 +6977,10 @@
 
     .app-subtabs-row .household-tools-subtab:focus-visible {
       outline: 3px solid #b45309;
+    }
+
+    .app-subtabs-row .drinks-cocktails-subtab:focus-visible {
+      outline: 3px solid #4338ca;
     }
 
     @media (max-width: 640px) {

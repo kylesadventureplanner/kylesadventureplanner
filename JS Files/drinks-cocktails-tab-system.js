@@ -77,6 +77,86 @@
     return document.getElementById(ROOT_ID);
   }
 
+  function getDrinksSubTabDockElements() {
+    return {
+      row: document.getElementById('appSubTabsRow'),
+      cutout: document.getElementById('appSubTabsCutout'),
+      slot: document.getElementById('appSubTabsSlot')
+    };
+  }
+
+  function getDrinksSubTabsElement(root) {
+    var docked = document.querySelector('#appSubTabsSlot .drinks-cocktails-subtabs');
+    if (docked) return docked;
+    return root ? root.querySelector('.drinks-cocktails-subtabs') : null;
+  }
+
+  function updateDrinksSubTabRowVisibility(row, slot) {
+    if (!row || !slot) return;
+    var hasVisibleChild = Array.from(slot.children || []).some(function (child) {
+      return !child.hidden && child.getAttribute('aria-hidden') !== 'true';
+    });
+    row.hidden = !hasVisibleChild;
+    row.setAttribute('aria-hidden', hasVisibleChild ? 'false' : 'true');
+  }
+
+  function positionDrinksSubTabDock() {
+    var dock = getDrinksSubTabDockElements();
+    if (!dock.row || !dock.cutout || dock.row.hidden) return;
+    var activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab="drinks-cocktails"]');
+    if (!activePrimaryTab) return;
+    var rowRect = dock.row.getBoundingClientRect();
+    var activeRect = activePrimaryTab.getBoundingClientRect();
+    var cutoutWidth = Math.min(dock.cutout.offsetWidth || 0, Math.max(rowRect.width - 8, 0));
+    if (!rowRect.width || !cutoutWidth) {
+      dock.cutout.style.left = '50%';
+      dock.cutout.style.setProperty('--app-subtabs-pointer-left', '50%');
+      return;
+    }
+    var preferredCenter = (activeRect.left - rowRect.left) + (activeRect.width / 2);
+    var padding = 8;
+    var minCenter = cutoutWidth / 2 + padding;
+    var maxCenter = Math.max(rowRect.width - (cutoutWidth / 2) - padding, minCenter);
+    var clampedCenter = Math.min(Math.max(preferredCenter, minCenter), maxCenter);
+    dock.cutout.style.left = clampedCenter + 'px';
+    var pointerMin = 14;
+    var pointerMax = Math.max(cutoutWidth - 14, pointerMin);
+    var pointerLeft = Math.min(Math.max((preferredCenter - clampedCenter) + (cutoutWidth / 2), pointerMin), pointerMax);
+    dock.cutout.style.setProperty('--app-subtabs-pointer-left', pointerLeft + 'px');
+  }
+
+  function syncDrinksSubTabDock(root) {
+    var dock = getDrinksSubTabDockElements();
+    if (!dock.row || !dock.slot || !root) return;
+    var subTabs = getDrinksSubTabsElement(root);
+    if (!subTabs) {
+      updateDrinksSubTabRowVisibility(dock.row, dock.slot);
+      return;
+    }
+    var activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+    var activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+    var shouldShow = activeTabId === 'drinks-cocktails';
+
+    if (shouldShow && !dock.slot.contains(subTabs)) {
+      dock.slot.appendChild(subTabs);
+    }
+
+    if (shouldShow) {
+      Array.from(dock.slot.children || []).forEach(function (child) {
+        var isCurrent = child === subTabs;
+        child.hidden = !isCurrent;
+        child.setAttribute('aria-hidden', isCurrent ? 'false' : 'true');
+      });
+    } else {
+      subTabs.hidden = true;
+      subTabs.setAttribute('aria-hidden', 'true');
+    }
+
+    updateDrinksSubTabRowVisibility(dock.row, dock.slot);
+    if (!shouldShow) return;
+    requestAnimationFrame(function () { positionDrinksSubTabDock(); });
+  }
+
   function uid(prefix) {
     return String(prefix || 'id') + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   }
@@ -649,7 +729,9 @@
     var root = getRoot();
     if (!root) return;
 
-    root.querySelectorAll('[data-dc-subtab]').forEach(function (button) {
+    var subTabs = getDrinksSubTabsElement(root);
+    if (!subTabs) return;
+    subTabs.querySelectorAll('[data-dc-subtab]').forEach(function (button) {
       var key = String(button.getAttribute('data-dc-subtab') || '');
       var isActive = key === state.activeSubtab;
       button.classList.toggle('active', isActive);
@@ -838,9 +920,11 @@
     var target = event.target;
 
     var subtab = target.closest('[data-dc-subtab]');
-    if (subtab && root.contains(subtab)) {
+    var subTabsEl = getDrinksSubTabsElement(root);
+    if (subtab && subTabsEl && subTabsEl.contains(subtab)) {
       state.activeSubtab = String(subtab.getAttribute('data-dc-subtab') || 'na-brew');
       render();
+      syncDrinksSubTabDock(root);
       if (TRACKERS[state.activeSubtab]) {
         autoSyncTracker(state.activeSubtab, 'subtab-open');
       }
@@ -1005,6 +1089,19 @@
     root.dataset.drinksCocktailsBound = '1';
     root.addEventListener('click', handleClick);
     root.addEventListener('change', handleChange);
+    document.addEventListener('click', function (event) {
+      var target = event.target && event.target.nodeType === 1 ? event.target : null;
+      if (!target) return;
+      var subtab = target.closest ? target.closest('[data-dc-subtab]') : null;
+      if (!subtab) return;
+      if (root.contains(subtab)) return;
+      var subTabs = getDrinksSubTabsElement(getRoot());
+      if (!subTabs || !subTabs.contains(subtab)) return;
+      handleClick(event);
+    });
+    window.addEventListener('resize', function () {
+      positionDrinksSubTabDock();
+    });
   }
 
   function ensureSeedData() {
@@ -1031,12 +1128,14 @@
       state._tabOpenSyncBound = true;
       window.addEventListener('app:tab-switched', function (event) {
         var tabId = event && event.detail ? event.detail.tabId : '';
+        syncDrinksSubTabDock(root);
         if (tabId !== 'drinks-cocktails') return;
         autoSyncTracker(state.activeSubtab, 'tab-open');
       });
     }
 
     render();
+    syncDrinksSubTabDock(root);
     setStatus('Drinks / Cocktails tracker ready. Auto-sync runs when this tab opens.', false);
 
     autoSyncTracker(state.activeSubtab, 'init');
