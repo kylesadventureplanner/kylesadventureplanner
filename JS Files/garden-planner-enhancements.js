@@ -24,6 +24,7 @@
  *  I. Freeze/Frost Alerts            (Open-Meteo forecast min temps, 🧊 badge on frost-sensitive plants)
  *  J. QR Code Plant Labels           (printable 3-up labels per plant + batch all-plants label sheet)
  *  K. Species Interaction Network    (D3.js v7 force graph of plants ↔ butterfly/bee/bird species)
+ *  L. Mobile Field-Use Mode          (big-button quick logger for bloom, watering, and sightings)
  */
 (function () {
   'use strict';
@@ -38,12 +39,37 @@
     excelSnapshot: {},   // { [plantId]: plant }  last known Excel state
     photoCaptions: {},   // { [plantId]: { [url]: caption } }
     phenology:     {},   // { [plantId]: { [year]: 'YYYY-MM-DD' } }  first-bloom dates
+    fieldRecentPlants: [], // recent plant ids used in mobile field mode
+    fieldFavorites: [], // pinned favorites for patrols / repeated checks
+    fieldPatrolPlants: [], // route-specific plants checked often
+    fieldOfflineQueue: [], // local-only field actions recorded while offline
+    fieldMediaLog:   {}, // { [plantId]: [{id,date,url,caption,kind,ts}] }
+    locationCoords:  {}, // { [locationName]: { lat, lon, ts } }
+    fieldTheme:      'default',
     weatherCache:  null, // { fetchedAt, totalMm, days }  Open-Meteo cache
     bulkSelected:  [],
     bulkMode:      false,
     lightboxPlantId: null,
     lightboxIndex:   0,
     calMonth: new Date().getMonth()
+  };
+
+  var fieldModeState = {
+    selectedPlantId: '',
+    search: '',
+    date: new Date().toISOString().slice(0, 10),
+    sightingType: 'bee',
+    showSightingExtras: false,
+    sightingSpecies: '',
+    sightingCount: '1',
+    sightingNotes: '',
+    lastActionText: '',
+    voiceListening: false,
+    voiceTranscript: '',
+    voiceDraft: null,
+    currentPosition: null,
+    geoStatus: '',
+    locationRequestedAt: 0
   };
 
   // ── Undo history (in-memory only, not persisted) ─────────────────────────
@@ -117,7 +143,14 @@
         customTags:    enhState.customTags,
         excelSnapshot: enhState.excelSnapshot,
         photoCaptions: enhState.photoCaptions,
-        phenology:     enhState.phenology
+        phenology:     enhState.phenology,
+        fieldRecentPlants: enhState.fieldRecentPlants,
+        fieldFavorites: enhState.fieldFavorites,
+        fieldPatrolPlants: enhState.fieldPatrolPlants,
+        fieldOfflineQueue: enhState.fieldOfflineQueue,
+        fieldMediaLog: enhState.fieldMediaLog,
+        locationCoords: enhState.locationCoords,
+        fieldTheme: enhState.fieldTheme
       }));
     } catch (_) {}
   }
@@ -131,6 +164,13 @@
       enhState.excelSnapshot = d.excelSnapshot || {};
       enhState.photoCaptions = d.photoCaptions || {};
       enhState.phenology     = d.phenology     || {};
+      enhState.fieldRecentPlants = d.fieldRecentPlants || [];
+      enhState.fieldFavorites = d.fieldFavorites || [];
+      enhState.fieldPatrolPlants = d.fieldPatrolPlants || [];
+      enhState.fieldOfflineQueue = d.fieldOfflineQueue || [];
+      enhState.fieldMediaLog = d.fieldMediaLog || {};
+      enhState.locationCoords = d.locationCoords || {};
+      enhState.fieldTheme = d.fieldTheme || 'default';
     } catch (_) {}
   }
 
@@ -149,6 +189,419 @@
 
   function cloneJson(v) {
     return JSON.parse(JSON.stringify(v));
+  }
+
+  function todayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function getPlantById(plantId) {
+    var kapG = G();
+    if (!kapG || !kapG.state || !kapG.state.plants) return null;
+    return kapG.state.plants.find(function (p) { return p.id === plantId; }) || null;
+  }
+
+  function touchFieldRecentPlant(plantId) {
+    if (!plantId) return;
+    enhState.fieldRecentPlants = (enhState.fieldRecentPlants || []).filter(function (id) { return id !== plantId; });
+    enhState.fieldRecentPlants.unshift(plantId);
+    if (enhState.fieldRecentPlants.length > 8) enhState.fieldRecentPlants.length = 8;
+    saveEnh();
+  }
+
+  function toggleIdInEnhList(key, plantId, maxLen) {
+    if (!plantId) return false;
+    var exists = (enhState[key] || []).indexOf(plantId) >= 0;
+    enhState[key] = (enhState[key] || []).filter(function (id) { return id !== plantId; });
+    var enabled = !exists;
+    if (enabled) enhState[key].unshift(plantId);
+    if (maxLen && enhState[key].length > maxLen) enhState[key].length = maxLen;
+    saveEnh();
+    return enabled;
+  }
+
+  function hasEnhListId(key, plantId) {
+    return (enhState[key] || []).indexOf(plantId) >= 0;
+  }
+
+  function getPlantLocationKey(plant) {
+    return String(plant && plant.locationPlanted || '').trim();
+  }
+
+  function isFieldModeOpen() {
+    var modal = document.getElementById('gardenFieldModeModal');
+    return !!(modal && modal.classList.contains('open'));
+  }
+
+  function isBrowserOnline() {
+    return navigator.onLine !== false;
+  }
+
+  function enqueueOfflineFieldAction(kind, plantId, label, extra) {
+    if (isBrowserOnline()) return;
+    enhState.fieldOfflineQueue = enhState.fieldOfflineQueue || [];
+    enhState.fieldOfflineQueue.unshift({
+      id: uid(),
+      kind: kind || 'field',
+      plantId: plantId || '',
+      label: label || 'Field action saved locally',
+      ts: Date.now(),
+      date: todayIso(),
+      extra: extra || {}
+    });
+    if (enhState.fieldOfflineQueue.length > 30) enhState.fieldOfflineQueue.length = 30;
+    saveEnh();
+  }
+
+  function clearOfflineFieldQueue() {
+    enhState.fieldOfflineQueue = [];
+    saveEnh();
+  }
+
+  function renderFieldQueueBanner() {
+    var queue = enhState.fieldOfflineQueue || [];
+    if (isBrowserOnline() && !queue.length) return '';
+    var labels = queue.slice(0, 3).map(function (item) { return '• ' + item.label; }).join('<br>');
+    if (!isBrowserOnline()) {
+      return '<div class="garden-field-queue-banner is-offline">'
+        + '<strong>📡 Offline — field notes are saving locally.</strong>'
+        + '<span>' + (queue.length ? queue.length + ' queued local note' + (queue.length !== 1 ? 's' : '') + ' ready to review later.' : 'You can keep logging bloom, watering, sightings, and photos without signal.') + '</span>'
+        + (labels ? '<div class="garden-field-queue-list">' + labels + '</div>' : '')
+        + '</div>';
+    }
+    return '<div class="garden-field-queue-banner is-online">'
+      + '<strong>✅ Back online.</strong>'
+      + '<span>' + queue.length + ' field note' + (queue.length !== 1 ? 's were' : ' was') + ' saved locally while offline. They are safe here and can be synced to Excel later.</span>'
+      + (labels ? '<div class="garden-field-queue-list">' + labels + '</div>' : '')
+      + '<div><button type="button" class="garden-btn" id="gardenFieldQueueClearBtn">Clear queue banner</button></div>'
+      + '</div>';
+  }
+
+  function haversineMiles(aLat, aLon, bLat, bLon) {
+    var toRad = Math.PI / 180;
+    var dLat = (bLat - aLat) * toRad;
+    var dLon = (bLon - aLon) * toRad;
+    var aa = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+      + Math.cos(aLat * toRad) * Math.cos(bLat * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 3958.8 * (2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa)));
+  }
+
+  function getNearbyPlants(position, plants) {
+    if (!position || !plants || !plants.length) return [];
+    return plants.map(function (plant) {
+      var locKey = getPlantLocationKey(plant);
+      var coords = locKey && enhState.locationCoords ? enhState.locationCoords[locKey] : null;
+      if (!coords) return null;
+      return {
+        plant: plant,
+        distanceMiles: haversineMiles(position.lat, position.lon, coords.lat, coords.lon),
+        location: locKey
+      };
+    }).filter(Boolean).sort(function (a, b) {
+      var favDelta = (hasEnhListId('fieldFavorites', a.plant.id) ? -1 : 0) - (hasEnhListId('fieldFavorites', b.plant.id) ? -1 : 0);
+      if (favDelta) return favDelta;
+      return a.distanceMiles - b.distanceMiles;
+    });
+  }
+
+  function requestFieldPosition(onSuccess) {
+    if (!navigator.geolocation) {
+      fieldModeState.geoStatus = 'Geolocation is not supported on this device/browser.';
+      if (isFieldModeOpen()) renderFieldMode();
+      return;
+    }
+    fieldModeState.geoStatus = 'Finding your current location…';
+    fieldModeState.locationRequestedAt = Date.now();
+    if (isFieldModeOpen()) renderFieldMode();
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      fieldModeState.currentPosition = {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        ts: Date.now()
+      };
+      fieldModeState.geoStatus = 'Using your current location' + (pos.coords.accuracy ? ' (±' + Math.round(pos.coords.accuracy) + ' m)' : '') + '.';
+      if (typeof onSuccess === 'function') onSuccess(fieldModeState.currentPosition);
+      if (isFieldModeOpen()) renderFieldMode();
+    }, function (err) {
+      fieldModeState.geoStatus = err && err.message ? err.message : 'Could not get your location.';
+      if (isFieldModeOpen()) renderFieldMode();
+    }, { enableHighAccuracy: true, maximumAge: 60000, timeout: 12000 });
+  }
+
+  function saveCurrentSpotForPlantLocation(plant) {
+    if (!plant) return;
+    var locKey = getPlantLocationKey(plant);
+    if (!locKey) {
+      gardenToast('Set a plant location before saving a rough bed spot.', 'error', 2200);
+      return;
+    }
+    var doSave = function (pos) {
+      enhState.locationCoords = enhState.locationCoords || {};
+      enhState.locationCoords[locKey] = { lat: pos.lat, lon: pos.lon, ts: Date.now() };
+      saveEnh();
+      fieldModeState.lastActionText = '📍 Saved a rough location for ' + locKey + '.';
+      if (isFieldModeOpen()) renderFieldMode();
+      gardenToast('Saved rough map spot for ' + locKey, 'success', 2000);
+    };
+    if (fieldModeState.currentPosition) doSave(fieldModeState.currentPosition);
+    else requestFieldPosition(doSave);
+  }
+
+  function getSpeechRecognitionCtor() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  }
+
+  function parseSpokenFieldTranscript(transcript, plant) {
+    var raw = String(transcript || '').trim();
+    if (!raw) return null;
+    var lower = raw.toLowerCase();
+    var numWords = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, a:1, an:1 };
+    var count = '1';
+    var numMatch = lower.match(/\b(\d+)\b/);
+    if (numMatch) count = numMatch[1];
+    else Object.keys(numWords).some(function (word) {
+      if (new RegExp('\\b' + word + '\\b').test(lower)) { count = String(numWords[word]); return true; }
+      return false;
+    });
+
+    var action = 'sighting';
+    if (/\b(water|watered|watering|soaked|hose|irrigat)/.test(lower)) action = 'watered';
+    else if (/\b(bloom|blooming|flowered|flowering|first bloom|opened up)/.test(lower)) action = 'bloom';
+
+    var type = 'other';
+    if (/\b(swallowtail|monarch|skipper|butterfl)/.test(lower)) type = 'butterfly';
+    else if (/\b(bee|bumble|carpenter bee|mason bee|sweat bee)/.test(lower)) type = 'bee';
+    else if (/\b(bird|robin|finch|cardinal|wren|hummingbird)/.test(lower)) type = 'bird';
+    else if (/\b(deer)/.test(lower)) type = 'deer';
+    else if (/\b(rabbit|bunny)/.test(lower)) type = 'rabbit';
+    else if (/\b(insect|beetle|moth|dragonfly|hoverfly)/.test(lower)) type = 'insect';
+
+    var species = raw
+      .replace(/^\s*(i\s+)?(saw|seen|noticed|found|spotted|there\s+(?:was|were)|logged?)\s+/i, '')
+      .replace(/\b(on|at|near|by)\b.*$/i, '')
+      .replace(/\b(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/ig, '')
+      .replace(/\b(?:watering|watered|water|bloom|blooming|flowered|flowering|first)\b/ig, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (plant && plant.commonName) {
+      var plantRe = new RegExp(String(plant.commonName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+      species = species.replace(plantRe, '').replace(/\s+/g, ' ').trim();
+    }
+    if (action !== 'sighting') species = '';
+    return {
+      transcript: raw,
+      action: action,
+      type: type,
+      count: count,
+      species: species,
+      notes: action === 'sighting' ? '' : raw
+    };
+  }
+
+  function applyVoiceDraftToFieldMode(draft) {
+    if (!draft) return;
+    fieldModeState.voiceDraft = draft;
+    fieldModeState.voiceTranscript = draft.transcript || '';
+    if (draft.action === 'sighting') {
+      fieldModeState.sightingType = draft.type || 'other';
+      fieldModeState.sightingCount = draft.count || '1';
+      fieldModeState.sightingSpecies = draft.species || '';
+      fieldModeState.sightingNotes = draft.notes || '';
+      fieldModeState.showSightingExtras = true;
+      fieldModeState.lastActionText = '🎙 Voice note drafted a ' + fieldModeState.sightingType + ' sighting. Review and tap log.';
+    } else {
+      fieldModeState.lastActionText = '🎙 Voice draft ready: ' + draft.action + '. Review below and apply when ready.';
+    }
+  }
+
+  function startFieldVoiceCapture() {
+    var Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      gardenToast('Speech recognition is not supported in this browser.', 'error', 2500);
+      return;
+    }
+    if (fieldModeState.voiceListening && fieldModeState._recognition) {
+      fieldModeState._recognition.stop();
+      return;
+    }
+    var recognition = new Ctor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    fieldModeState._recognition = recognition;
+    fieldModeState.voiceListening = true;
+    fieldModeState.lastActionText = '🎙 Listening… say something like “Saw two swallowtails on coneflower.”';
+    if (isFieldModeOpen()) renderFieldMode();
+    recognition.onresult = function (event) {
+      var transcript = event.results && event.results[0] && event.results[0][0] ? event.results[0][0].transcript : '';
+      var draft = parseSpokenFieldTranscript(transcript, getPlantById(fieldModeState.selectedPlantId));
+      applyVoiceDraftToFieldMode(draft);
+      fieldModeState.voiceListening = false;
+      if (isFieldModeOpen()) renderFieldMode();
+    };
+    recognition.onerror = function (event) {
+      fieldModeState.voiceListening = false;
+      fieldModeState.lastActionText = '🎙 Voice capture failed: ' + (event && event.error ? event.error : 'unknown error') + '.';
+      if (isFieldModeOpen()) renderFieldMode();
+    };
+    recognition.onend = function () {
+      fieldModeState.voiceListening = false;
+      if (isFieldModeOpen()) renderFieldMode();
+    };
+    recognition.start();
+  }
+
+  function addFieldMediaEntry(plantId, data, options) {
+    options = options || {};
+    if (!plantId || !data || !data.url) return null;
+    var beforeLog = cloneJson(enhState.fieldMediaLog[plantId] || []);
+    var entry = {
+      id: uid(),
+      date: data.date || todayIso(),
+      url: data.url,
+      caption: data.caption || '',
+      kind: data.kind || 'field-photo',
+      ts: Date.now()
+    };
+    if (!enhState.fieldMediaLog[plantId]) enhState.fieldMediaLog[plantId] = [];
+    enhState.fieldMediaLog[plantId].unshift(entry);
+    if (enhState.fieldMediaLog[plantId].length > 10) enhState.fieldMediaLog[plantId].length = 10;
+    saveEnh();
+    touchFieldRecentPlant(plantId);
+    enqueueOfflineFieldAction('photo', plantId, options.queueLabel || '📸 Field snapshot saved locally', { date: entry.date, caption: entry.caption });
+    if (options.undoLabel) {
+      showUndoToast(options.undoLabel, function () {
+        enhState.fieldMediaLog[plantId] = beforeLog;
+        saveEnh();
+        if (typeof options.onAfterUndo === 'function') options.onAfterUndo(entry);
+      });
+    }
+    if (typeof options.onAfterSave === 'function') options.onAfterSave(entry);
+    return entry;
+  }
+
+  function compressImageFile(file, callback) {
+    if (!file) { callback(null); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var maxDim = 1200;
+        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        var ctx = canvas.getContext('2d');
+        if (!ctx) { callback(reader.result); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        callback(canvas.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = function () { callback(reader.result); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { callback(null); };
+    reader.readAsDataURL(file);
+  }
+
+  function renderFieldMediaStrip(plantId) {
+    var entries = (enhState.fieldMediaLog[plantId] || []).slice(0, 4);
+    if (!entries.length) return '';
+    return '<div class="garden-field-photo-strip">'
+      + entries.map(function (entry) {
+          return '<button type="button" class="garden-field-photo-thumb" data-field-photo-view="' + esc(entry.url) + '" title="' + esc(entry.caption || entry.date) + '">'
+            + '<img src="' + esc(entry.url) + '" alt="Field snapshot ' + esc(entry.date) + '">'
+            + '<span>' + esc(entry.date) + '</span>'
+            + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  function renderFieldMediaDetailSection(plantId) {
+    var entries = (enhState.fieldMediaLog[plantId] || []).slice(0, 8);
+    if (!entries.length) return '';
+    return '<div id="gardenFieldSnapshotSection">'
+      + '<h4 style="margin:14px 0 6px;font-size:14px;color:#0f766e;">📸 Field snapshots</h4>'
+      + '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Quick photos captured in Field Mode.</p>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">'
+      + entries.map(function (entry) {
+          return '<button type="button" class="garden-field-detail-photo" data-field-photo-view="' + esc(entry.url) + '" style="padding:0;background:#fff;border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid #d1d5db;text-align:left;">'
+            + '<img src="' + esc(entry.url) + '" alt="Field snapshot ' + esc(entry.date) + '" style="display:block;width:100%;height:90px;object-fit:cover;">'
+            + '<span style="display:block;padding:6px 8px;font-size:11px;color:#475569;">' + esc(entry.caption || entry.date) + '</span>'
+            + '</button>';
+        }).join('')
+      + '</div>'
+      + '</div>';
+  }
+
+  function addObservationEntry(plantId, data, options) {
+    options = options || {};
+    if (!plantId) return null;
+    var beforeLog = cloneJson(enhState.obsLog[plantId] || []);
+    var beforePhenology = cloneJson(enhState.phenology[plantId] || {});
+    var entry = {
+      id: uid(),
+      date: data && data.date ? data.date : todayIso(),
+      type: data && data.type ? data.type : 'other',
+      species: data && data.species ? String(data.species).trim() : '',
+      count: data && data.count ? String(data.count) : '1',
+      notes: data && data.notes ? String(data.notes).trim() : ''
+    };
+    if (!enhState.obsLog[plantId]) enhState.obsLog[plantId] = [];
+    enhState.obsLog[plantId].push(entry);
+    saveEnh();
+    touchFieldRecentPlant(plantId);
+    enqueueOfflineFieldAction('observation', plantId, options.queueLabel || ((OBS_ICONS[entry.type] || '👁️') + ' ' + entry.type + ' logged locally'), { type: entry.type, date: entry.date });
+    if (entry.type === 'bloom') {
+      var isFirst = maybeCaptureFirstBloom(plantId, entry.date);
+      if (isFirst && options.showFirstBloomToast !== false) {
+        gardenToast('🌸 First bloom date recorded for ' + entry.date.slice(0, 4) + '!', 'success', 2200);
+      }
+    }
+    if (typeof options.onAfterSave === 'function') options.onAfterSave(entry);
+    if (options.refreshCards !== false && G() && typeof G().renderCards === 'function') G().renderCards();
+    if (options.undoLabel) {
+      showUndoToast(options.undoLabel, function () {
+        enhState.obsLog[plantId] = beforeLog;
+        enhState.phenology[plantId] = beforePhenology;
+        saveEnh();
+        if (typeof options.onAfterUndo === 'function') options.onAfterUndo(entry);
+        if (options.refreshCards !== false && G() && typeof G().renderCards === 'function') G().renderCards();
+      });
+    } else if (options.toastMessage) {
+      gardenToast(options.toastMessage, options.toastType || 'success', options.toastDuration || 1800);
+    }
+    return entry;
+  }
+
+  function addTaskEntry(plantId, data, options) {
+    options = options || {};
+    if (!plantId) return null;
+    var beforeLog = cloneJson(enhState.taskLog[plantId] || []);
+    var entry = {
+      id: uid(),
+      date: data && data.date ? data.date : todayIso(),
+      type: data && data.type ? data.type : 'other',
+      notes: data && data.notes ? String(data.notes).trim() : ''
+    };
+    if (!enhState.taskLog[plantId]) enhState.taskLog[plantId] = [];
+    enhState.taskLog[plantId].push(entry);
+    saveEnh();
+    touchFieldRecentPlant(plantId);
+    enqueueOfflineFieldAction('task', plantId, options.queueLabel || ((TASK_LOG_ICONS[entry.type] || '🪴') + ' ' + entry.type + ' logged locally'), { type: entry.type, date: entry.date });
+    if (typeof options.onAfterSave === 'function') options.onAfterSave(entry);
+    if (options.refreshCards !== false && G() && typeof G().renderCards === 'function') G().renderCards();
+    if (options.undoLabel) {
+      showUndoToast(options.undoLabel, function () {
+        enhState.taskLog[plantId] = beforeLog;
+        saveEnh();
+        if (typeof options.onAfterUndo === 'function') options.onAfterUndo(entry);
+        if (options.refreshCards !== false && G() && typeof G().renderCards === 'function') G().renderCards();
+      });
+    } else if (options.toastMessage) {
+      gardenToast(options.toastMessage, options.toastType || 'success', options.toastDuration || 1800);
+    }
+    return entry;
   }
 
   var undoToastState = null;
@@ -665,24 +1118,16 @@
         var s = section.querySelector('#gardenObsSpecies');
         var c = section.querySelector('#gardenObsCount');
         var n = section.querySelector('#gardenObsNotes');
-        var entry = {
-          date:    d ? d.value : new Date().toISOString().slice(0, 10),
-          type:    t ? t.value : 'other',
+        addObservationEntry(plantId, {
+          date: d ? d.value : todayIso(),
+          type: t ? t.value : 'other',
           species: s ? s.value.trim() : '',
-          count:   c ? c.value : '1',
-          notes:   n ? n.value.trim() : ''
-        };
-        if (!enhState.obsLog[plantId]) enhState.obsLog[plantId] = [];
-        entry.id = uid();
-        enhState.obsLog[plantId].push(entry);
-        saveEnh();
-        // Auto-capture first bloom date for phenology
-        if (entry.type === 'bloom') {
-          var isFirst = maybeCaptureFirstBloom(plantId, entry.date);
-          if (isFirst) gardenToast('🌸 First bloom date recorded for ' + entry.date.slice(0,4) + '!', 'success', 2200);
-        }
-        renderAndBindObsSection(section, plantId);
-        G().renderCards();
+          count: c ? c.value : '1',
+          notes: n ? n.value.trim() : ''
+        }, {
+          refreshCards: true,
+          onAfterSave: function () { renderAndBindObsSection(section, plantId); }
+        });
       });
     }
     section.querySelectorAll('.garden-obs-edit').forEach(function (btn) {
@@ -871,18 +1316,17 @@
       var d = section.querySelector('#gardenTaskDate');
       var t = section.querySelector('#gardenTaskType');
       var n = section.querySelector('#gardenTaskNotes');
-      var entry = {
-        id:    uid(),
-        date:  d ? d.value : new Date().toISOString().slice(0, 10),
-        type:  typeOverride || (t ? t.value : 'other'),
+      var selectedType = typeOverride || (t ? t.value : 'other');
+      addTaskEntry(plantId, {
+        date: d ? d.value : todayIso(),
+        type: selectedType,
         notes: n ? n.value.trim() : ''
-      };
-      if (!enhState.taskLog[plantId]) enhState.taskLog[plantId] = [];
-      enhState.taskLog[plantId].push(entry);
-      saveEnh();
-      renderAndBindTaskSection(section, plantId);
-      G().renderCards();
-      gardenToast(TASK_LOG_ICONS[entry.type] + ' ' + entry.type.charAt(0).toUpperCase() + entry.type.slice(1) + ' logged', 'success', 1600);
+      }, {
+        refreshCards: true,
+        onAfterSave: function () { renderAndBindTaskSection(section, plantId); },
+        toastMessage: TASK_LOG_ICONS[selectedType] + ' ' + selectedType.charAt(0).toUpperCase() + selectedType.slice(1) + ' logged',
+        toastDuration: 1600
+      });
     }
 
     if (addBtn) addBtn.addEventListener('click', function () { doAddTask(); });
@@ -2359,6 +2803,509 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  //  FEATURE L – MOBILE FIELD-USE MODE
+  // ═══════════════════════════════════════════════════════════════════════════
+  function openFieldMode(plantId) {
+    var modal = document.getElementById('gardenFieldModeModal');
+    if (!modal) return;
+    fieldModeState.search = '';
+    fieldModeState.voiceDraft = null;
+    fieldModeState.voiceTranscript = '';
+    if (plantId) fieldModeState.selectedPlantId = plantId;
+    if (!fieldModeState.selectedPlantId && enhState.fieldRecentPlants && enhState.fieldRecentPlants.length) {
+      fieldModeState.selectedPlantId = enhState.fieldRecentPlants[0];
+    }
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    renderFieldMode();
+  }
+
+  function closeFieldMode() {
+    var modal = document.getElementById('gardenFieldModeModal');
+    if (modal) {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  function renderFieldModePlantChoices(plants, selectedPlantId, search) {
+    search = String(search || '').toLowerCase().trim();
+    var filtered = plants.filter(function (plant) {
+      if (!search) return true;
+      var hay = [plant.commonName, plant.scientificName, plant.locationPlanted].join(' ').toLowerCase();
+      return hay.indexOf(search) >= 0;
+    }).sort(function (a, b) {
+      var aFav = hasEnhListId('fieldFavorites', a.id) ? 1 : 0;
+      var bFav = hasEnhListId('fieldFavorites', b.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      var aPatrol = hasEnhListId('fieldPatrolPlants', a.id) ? 1 : 0;
+      var bPatrol = hasEnhListId('fieldPatrolPlants', b.id) ? 1 : 0;
+      if (aPatrol !== bPatrol) return bPatrol - aPatrol;
+      var aRecent = (enhState.fieldRecentPlants || []).indexOf(a.id);
+      var bRecent = (enhState.fieldRecentPlants || []).indexOf(b.id);
+      if (aRecent >= 0 || bRecent >= 0) {
+        if (aRecent < 0) return 1;
+        if (bRecent < 0) return -1;
+        return aRecent - bRecent;
+      }
+      return String(a.commonName || '').localeCompare(String(b.commonName || ''));
+    });
+    if (!filtered.length) {
+      return '<p style="margin:0;padding:12px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;font-size:13px;text-align:center;">No plants match that search. Try a simpler name or clear the search.</p>';
+    }
+    return '<div class="garden-field-plant-grid">'
+      + filtered.map(function (plant) {
+          var isActive = plant.id === selectedPlantId;
+          var subtitle = [plant.locationPlanted || '', plant.scientificName || ''].filter(Boolean).join(' · ');
+          return '<button type="button" class="garden-field-plant-btn' + (isActive ? ' is-active' : '') + '" data-field-plant-id="' + esc(plant.id) + '">'
+            + '<span class="garden-field-plant-name">' + esc(plant.commonName || 'Unnamed plant') + '</span>'
+          + '<span class="garden-field-plant-badges">'
+          + (hasEnhListId('fieldFavorites', plant.id) ? '<span>⭐ Favorite</span>' : '')
+          + (hasEnhListId('fieldPatrolPlants', plant.id) ? '<span>🛤 Patrol</span>' : '')
+          + '</span>'
+            + (subtitle ? '<span class="garden-field-plant-meta">' + esc(subtitle) + '</span>' : '<span class="garden-field-plant-meta">Tap to quick-log here</span>')
+            + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  function renderFieldPlantChipCollection(label, ids, emptyHtml, extraClass) {
+    var plants = (ids || []).map(function (id) { return getPlantById(id); }).filter(Boolean);
+    if (!plants.length) return emptyHtml || '';
+    return '<div class="garden-field-recent ' + esc(extraClass || '') + '">'
+      + '<p class="garden-field-mini-label">' + esc(label) + '</p>'
+      + '<div class="garden-field-chip-row">'
+      + plants.map(function (plant) {
+          return '<button type="button" class="garden-field-chip" data-field-plant-id="' + esc(plant.id) + '">' + esc(plant.commonName || 'Unnamed plant') + '</button>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  function renderFieldModeRecentPlants() {
+    return renderFieldPlantChipCollection('Recent plants', enhState.fieldRecentPlants || [], '');
+  }
+
+  function renderFieldNearMeSection(plants) {
+    var coordsCount = Object.keys(enhState.locationCoords || {}).length;
+    var nearby = getNearbyPlants(fieldModeState.currentPosition, plants).slice(0, 6);
+    var status = fieldModeState.geoStatus ? '<p class="garden-field-geo-status">' + esc(fieldModeState.geoStatus) + '</p>' : '';
+    if (!fieldModeState.currentPosition) {
+      return '<div class="garden-field-recent">'
+        + '<p class="garden-field-mini-label">Near me</p>'
+        + '<div class="garden-field-empty-inline">Use your location to surface nearby beds.' + (coordsCount ? ' ' + coordsCount + ' bed spot' + (coordsCount !== 1 ? 's are' : ' is') + ' already saved.' : ' Save a rough bed spot first.') + '</div>'
+        + status
+        + '</div>';
+    }
+    if (!nearby.length) {
+      return '<div class="garden-field-recent">'
+        + '<p class="garden-field-mini-label">Near me</p>'
+        + '<div class="garden-field-empty-inline">No rough bed locations are saved yet. Tap “Save this bed here” on a selected plant to build nearby suggestions.</div>'
+        + status
+        + '</div>';
+    }
+    return '<div class="garden-field-recent">'
+      + '<p class="garden-field-mini-label">Near me</p>'
+      + '<div class="garden-field-chip-row">'
+      + nearby.map(function (item) {
+          return '<button type="button" class="garden-field-chip" data-field-plant-id="' + esc(item.plant.id) + '">' + esc(item.plant.commonName || 'Unnamed') + ' · ' + item.distanceMiles.toFixed(item.distanceMiles < 1 ? 1 : 0) + ' mi</button>';
+        }).join('')
+      + '</div>'
+      + status
+      + '</div>';
+  }
+
+  function renderFieldModeActionPanel(plant) {
+    if (!plant) {
+      return '<div class="garden-field-empty">'
+        + '<strong>Pick a plant to start.</strong>'
+        + '<p>Then tap Bloom, Watering, or Sighting. Today is prefilled so most updates are just one tap.</p>'
+        + '</div>';
+    }
+    var obsCount = (enhState.obsLog[plant.id] || []).length;
+    var taskCount = (enhState.taskLog[plant.id] || []).length;
+    var mediaCount = (enhState.fieldMediaLog[plant.id] || []).length;
+    var defaultType = fieldModeState.sightingType || 'bee';
+    var isFavorite = hasEnhListId('fieldFavorites', plant.id);
+    var isPatrol = hasEnhListId('fieldPatrolPlants', plant.id);
+    var locKey = getPlantLocationKey(plant);
+    var typeChips = OBS_TYPES.filter(function (t) { return t !== 'bloom'; }).map(function (t) {
+      var active = t === defaultType;
+      return '<button type="button" class="garden-field-type-chip' + (active ? ' is-active' : '') + '" data-field-sighting-type="' + esc(t) + '">'
+        + (OBS_ICONS[t] || '👁️') + ' ' + esc(t.charAt(0).toUpperCase() + t.slice(1)) + '</button>';
+    }).join('');
+    var voiceDraftHtml = '';
+    if (fieldModeState.voiceDraft) {
+      voiceDraftHtml = '<div class="garden-field-voice-draft">'
+        + '<p class="garden-field-mini-label">Voice draft</p>'
+        + '<p class="garden-field-voice-transcript">“' + esc(fieldModeState.voiceDraft.transcript || '') + '”</p>'
+        + '<p class="garden-field-voice-summary">'
+        + (fieldModeState.voiceDraft.action === 'sighting'
+          ? (OBS_ICONS[fieldModeState.voiceDraft.type] || '👁️') + ' Drafted ' + esc(fieldModeState.voiceDraft.type) + ' sighting ×' + esc(fieldModeState.voiceDraft.count || '1')
+          : (fieldModeState.voiceDraft.action === 'bloom' ? '🌸 Drafted bloom log' : '💧 Drafted watering log'))
+        + '</p>'
+        + (fieldModeState.voiceDraft.action !== 'sighting'
+          ? '<button type="button" class="garden-btn primary" data-field-action="voice-apply">Apply parsed ' + esc(fieldModeState.voiceDraft.action) + '</button>'
+          : '')
+        + '</div>';
+    }
+    return '<div class="garden-field-selected-card">'
+      + '<div class="garden-field-selected-top">'
+      + '<div>'
+      + '<p class="garden-field-selected-name">' + esc(plant.commonName || 'Unnamed plant') + '</p>'
+      + '<p class="garden-field-selected-meta">'
+      + esc(plant.locationPlanted || 'Location not set')
+      + (plant.scientificName ? ' · ' + esc(plant.scientificName) : '')
+      + '</p>'
+      + '</div>'
+      + '<div class="garden-field-counts">'
+      + '<span>👁️ ' + obsCount + '</span><span>🪴 ' + taskCount + '</span><span>📸 ' + mediaCount + '</span>'
+      + '</div></div>'
+      + '<div class="garden-field-pin-row">'
+      + '<button type="button" class="garden-field-pin-btn' + (isFavorite ? ' is-active' : '') + '" data-field-action="toggle-favorite">' + (isFavorite ? '⭐ Favorite' : '☆ Favorite') + '</button>'
+      + '<button type="button" class="garden-field-pin-btn' + (isPatrol ? ' is-active' : '') + '" data-field-action="toggle-patrol">' + (isPatrol ? '🛤 On patrol route' : '🛤 Add to patrol') + '</button>'
+      + '</div>'
+      + '<div class="garden-field-action-grid">'
+      + '<button type="button" class="garden-field-action garden-field-action-bloom" data-field-action="bloom">'
+      + '<span class="garden-field-action-emoji">🌸</span><span class="garden-field-action-label">Log bloom</span><span class="garden-field-action-note">One tap · updates phenology</span></button>'
+      + '<button type="button" class="garden-field-action garden-field-action-water" data-field-action="watered">'
+      + '<span class="garden-field-action-emoji">💧</span><span class="garden-field-action-label">Log watering</span><span class="garden-field-action-note">One tap · clears dry alert</span></button>'
+      + '<button type="button" class="garden-field-action garden-field-action-sighting" data-field-action="toggle-sighting">'
+      + '<span class="garden-field-action-emoji">👁️</span><span class="garden-field-action-label">Log sighting</span><span class="garden-field-action-note">Bee, butterfly, bird, and more</span></button>'
+      + '<button type="button" class="garden-field-action garden-field-action-camera" data-field-action="snap-photo">'
+      + '<span class="garden-field-action-emoji">📸</span><span class="garden-field-action-label">Snap and log</span><span class="garden-field-action-note">Photo + timestamp + plant</span></button>'
+      + '<button type="button" class="garden-field-action garden-field-action-voice" data-field-action="voice-start">'
+      + '<span class="garden-field-action-emoji">🎙️</span><span class="garden-field-action-label">Speak note</span><span class="garden-field-action-note">Draft from speech-to-text</span></button>'
+      + '<button type="button" class="garden-field-action garden-field-action-location" data-field-action="use-location">'
+      + '<span class="garden-field-action-emoji">📍</span><span class="garden-field-action-label">Plants near me</span><span class="garden-field-action-note">Use GPS + saved bed spots</span></button>'
+      + '</div>'
+      + '<input id="gardenFieldCameraInput" type="file" accept="image/*" capture="environment" style="display:none;">'
+      + voiceDraftHtml
+      + '<div class="garden-field-sighting-panel' + (fieldModeState.showSightingExtras ? ' is-open' : '') + '">'
+      + '<p class="garden-field-mini-label">What did you see?</p>'
+      + '<div class="garden-field-chip-row">' + typeChips + '</div>'
+      + '<div class="garden-field-form-grid">'
+      + '<label><span>Species (optional)</span><input id="gardenFieldSpecies" type="text" placeholder="e.g. Eastern tiger swallowtail" value="' + esc(fieldModeState.sightingSpecies || '') + '"></label>'
+      + '<label><span>How many?</span><input id="gardenFieldCount" type="number" min="1" value="' + esc(fieldModeState.sightingCount || '1') + '"></label>'
+      + '<label class="span-2"><span>Notes (optional)</span><input id="gardenFieldNotes" type="text" placeholder="quick note for later" value="' + esc(fieldModeState.sightingNotes || '') + '"></label>'
+      + '</div>'
+      + '<button type="button" class="garden-btn primary garden-field-sighting-submit" data-field-action="sighting-submit">'
+      + (OBS_ICONS[defaultType] || '👁️') + ' Log ' + esc(defaultType) + ' sighting</button>'
+      + '</div>'
+      + '<div class="garden-field-geo-controls">'
+      + '<button type="button" class="garden-btn" data-field-action="save-bed-location"' + (locKey ? '' : ' disabled') + '>📍 Save this bed here</button>'
+      + (locKey && enhState.locationCoords[locKey] ? '<span class="garden-field-inline-note">Saved rough spot for ' + esc(locKey) + '.</span>' : '<span class="garden-field-inline-note">Save a rough spot for this location to power “Near me”.</span>')
+      + '</div>'
+      + renderFieldMediaStrip(plant.id)
+      + '<div class="garden-field-footer-actions">'
+      + '<button type="button" class="garden-btn" data-field-action="details">Open full details</button>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function renderFieldMode() {
+    var modal = document.getElementById('gardenFieldModeModal');
+    var content = document.getElementById('gardenFieldModeContent');
+    var kapG = G();
+    var plants = kapG && kapG.state ? kapG.state.plants.slice() : [];
+    if (!modal || !content) return;
+    if (!plants.length) {
+      content.innerHTML = '<div class="garden-field-empty"><strong>No plants yet.</strong><p>Add at least one plant before using Field Mode.</p></div>';
+      return;
+    }
+    if (!fieldModeState.selectedPlantId || !getPlantById(fieldModeState.selectedPlantId)) {
+      fieldModeState.selectedPlantId = (enhState.fieldRecentPlants && enhState.fieldRecentPlants[0]) || plants[0].id;
+    }
+    var selectedPlant = getPlantById(fieldModeState.selectedPlantId);
+    content.innerHTML = '<div class="garden-field-shell' + (enhState.fieldTheme === 'glare' ? ' is-glare' : '') + '">'
+      + '<div class="garden-field-banner">'
+      + '<div><p class="garden-field-title">I\'m in the garden now</p><p class="garden-field-subtitle">Big buttons, bright contrast, and today prefilled for quick field notes.</p></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">'
+      + '<button type="button" class="garden-btn" id="gardenFieldThemeToggleBtn">' + (enhState.fieldTheme === 'glare' ? '🌤 Standard view' : '☀️ Sun-glare view') + '</button>'
+      + '<button type="button" class="garden-btn" id="gardenFieldCloseTop">Done</button>'
+      + '</div>'
+      + '</div>'
+      + renderFieldQueueBanner()
+      + (fieldModeState.lastActionText ? '<div class="garden-field-last-action">' + esc(fieldModeState.lastActionText) + '</div>' : '')
+      + '<div class="garden-field-toolbar">'
+      + '<label><span>Date</span><input id="gardenFieldDate" type="date" value="' + esc(fieldModeState.date || todayIso()) + '"></label>'
+      + '<label class="grow"><span>Find a plant</span><input id="gardenFieldSearch" type="text" placeholder="Search by plant or location" value="' + esc(fieldModeState.search || '') + '"></label>'
+      + '</div>'
+      + renderFieldPlantChipCollection('Favorite plants', enhState.fieldFavorites || [], '')
+      + renderFieldPlantChipCollection('Patrol route', enhState.fieldPatrolPlants || [], '')
+      + renderFieldModeRecentPlants()
+      + renderFieldNearMeSection(plants)
+      + '<div class="garden-field-layout">'
+      + '<div class="garden-field-list-wrap"><p class="garden-field-mini-label">Choose plant</p>' + renderFieldModePlantChoices(plants, fieldModeState.selectedPlantId, fieldModeState.search) + '</div>'
+      + '<div class="garden-field-panel-wrap">' + renderFieldModeActionPanel(selectedPlant) + '</div>'
+      + '</div>'
+      + '</div>';
+    bindFieldModeUI();
+  }
+
+  function bindFieldModePlantButtons(scope) {
+    if (!scope) return;
+    scope.querySelectorAll('[data-field-plant-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        fieldModeState.selectedPlantId = btn.getAttribute('data-field-plant-id');
+        fieldModeState.showSightingExtras = false;
+          fieldModeState.voiceDraft = null;
+        renderFieldMode();
+      });
+    });
+  }
+
+  function bindFieldModeUI() {
+    var modal = document.getElementById('gardenFieldModeModal');
+    var content = document.getElementById('gardenFieldModeContent');
+    if (!modal || !content) return;
+
+    var closeTop = content.querySelector('#gardenFieldCloseTop');
+    if (closeTop) closeTop.addEventListener('click', closeFieldMode);
+
+    var themeToggleBtn = content.querySelector('#gardenFieldThemeToggleBtn');
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', function () {
+        enhState.fieldTheme = enhState.fieldTheme === 'glare' ? 'default' : 'glare';
+        saveEnh();
+        renderFieldMode();
+      });
+    }
+
+    var clearQueueBtn = content.querySelector('#gardenFieldQueueClearBtn');
+    if (clearQueueBtn) {
+      clearQueueBtn.addEventListener('click', function () {
+        clearOfflineFieldQueue();
+        fieldModeState.lastActionText = '🧹 Cleared the offline queue banner.';
+        renderFieldMode();
+      });
+    }
+
+    var search = content.querySelector('#gardenFieldSearch');
+    if (search) {
+      search.addEventListener('input', function () {
+        fieldModeState.search = search.value;
+        var listWrap = content.querySelector('.garden-field-list-wrap');
+        var kapG = G();
+        var plants = kapG && kapG.state ? kapG.state.plants.slice() : [];
+        if (listWrap) {
+          listWrap.innerHTML = '<p class="garden-field-mini-label">Choose plant</p>' + renderFieldModePlantChoices(plants, fieldModeState.selectedPlantId, fieldModeState.search);
+          bindFieldModePlantButtons(listWrap);
+        }
+      });
+    }
+
+    var dateInput = content.querySelector('#gardenFieldDate');
+    if (dateInput) {
+      dateInput.addEventListener('change', function () {
+        fieldModeState.date = dateInput.value || todayIso();
+      });
+    }
+
+    var fieldSpecies = content.querySelector('#gardenFieldSpecies');
+    if (fieldSpecies) fieldSpecies.addEventListener('input', function () { fieldModeState.sightingSpecies = fieldSpecies.value; });
+    var fieldCount = content.querySelector('#gardenFieldCount');
+    if (fieldCount) fieldCount.addEventListener('input', function () { fieldModeState.sightingCount = fieldCount.value || '1'; });
+    var fieldNotes = content.querySelector('#gardenFieldNotes');
+    if (fieldNotes) fieldNotes.addEventListener('input', function () { fieldModeState.sightingNotes = fieldNotes.value; });
+
+    var cameraInput = content.querySelector('#gardenFieldCameraInput');
+    if (cameraInput) {
+      cameraInput.addEventListener('change', function () {
+        var plant = getPlantById(fieldModeState.selectedPlantId);
+        var date = fieldModeState.date || todayIso();
+        var file = cameraInput.files && cameraInput.files[0];
+        if (!plant || !file) return;
+        compressImageFile(file, function (dataUrl) {
+          if (!dataUrl) {
+            gardenToast('Could not read that photo.', 'error', 2200);
+            return;
+          }
+          addFieldMediaEntry(plant.id, {
+            date: date,
+            url: dataUrl,
+            caption: 'Field snapshot · ' + date,
+            kind: 'camera'
+          }, {
+            undoLabel: 'Field snapshot added for ' + (plant.commonName || 'plant'),
+            queueLabel: '📸 Field snapshot saved locally for ' + (plant.commonName || 'plant'),
+            onAfterSave: function () {
+              fieldModeState.lastActionText = '📸 Snapshot saved for ' + (plant.commonName || 'plant') + ' on ' + date + '.';
+              renderFieldMode();
+            },
+            onAfterUndo: function () {
+              fieldModeState.lastActionText = '↩ Snapshot removed for ' + (plant.commonName || 'plant') + '.';
+              renderFieldMode();
+            }
+          });
+        });
+        cameraInput.value = '';
+      });
+    }
+
+    bindFieldModePlantButtons(content);
+
+    content.querySelectorAll('[data-field-photo-view]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var url = btn.getAttribute('data-field-photo-view');
+        if (url) window.open(url, '_blank');
+      });
+    });
+
+    content.querySelectorAll('[data-field-sighting-type]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        fieldModeState.sightingType = btn.getAttribute('data-field-sighting-type') || 'bee';
+        fieldModeState.showSightingExtras = true;
+        renderFieldMode();
+      });
+    });
+
+    content.querySelectorAll('[data-field-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var plantId = fieldModeState.selectedPlantId;
+        var plant = getPlantById(plantId);
+        var action = btn.getAttribute('data-field-action');
+        var dateEl = content.querySelector('#gardenFieldDate');
+        var date = dateEl && dateEl.value ? dateEl.value : todayIso();
+        fieldModeState.date = date;
+        if (!plant) {
+          gardenToast('Choose a plant first.', 'error', 1800);
+          return;
+        }
+        if (action === 'toggle-sighting') {
+          fieldModeState.showSightingExtras = !fieldModeState.showSightingExtras;
+          renderFieldMode();
+          return;
+        }
+        if (action === 'details') {
+          closeFieldMode();
+          if (G() && typeof G().openDetails === 'function') G().openDetails(plant.id);
+          return;
+        }
+        if (action === 'toggle-favorite') {
+          var favEnabled = toggleIdInEnhList('fieldFavorites', plant.id, 20);
+          fieldModeState.lastActionText = favEnabled ? '⭐ Added ' + (plant.commonName || 'plant') + ' to favorites.' : '☆ Removed ' + (plant.commonName || 'plant') + ' from favorites.';
+          renderFieldMode();
+          return;
+        }
+        if (action === 'toggle-patrol') {
+          var patrolEnabled = toggleIdInEnhList('fieldPatrolPlants', plant.id, 20);
+          fieldModeState.lastActionText = patrolEnabled ? '🛤 Added ' + (plant.commonName || 'plant') + ' to your patrol route.' : '🛤 Removed ' + (plant.commonName || 'plant') + ' from your patrol route.';
+          renderFieldMode();
+          return;
+        }
+        if (action === 'voice-start') {
+          startFieldVoiceCapture();
+          return;
+        }
+        if (action === 'voice-apply') {
+          if (!fieldModeState.voiceDraft) return;
+          if (fieldModeState.voiceDraft.action === 'bloom') {
+            addObservationEntry(plantId, { date: date, type: 'bloom', count: '1', notes: fieldModeState.voiceDraft.transcript }, {
+              undoLabel: 'Voice bloom logged for ' + (plant.commonName || 'plant'),
+              queueLabel: '🌸 Voice bloom saved locally for ' + (plant.commonName || 'plant'),
+              refreshCards: true,
+              onAfterSave: function () {
+                fieldModeState.voiceDraft = null;
+                fieldModeState.lastActionText = '🎙 Applied bloom log for ' + (plant.commonName || 'plant') + '.';
+                renderFieldMode();
+              }
+            });
+          } else if (fieldModeState.voiceDraft.action === 'watered') {
+            addTaskEntry(plantId, { date: date, type: 'watered', notes: fieldModeState.voiceDraft.transcript }, {
+              undoLabel: 'Voice watering logged for ' + (plant.commonName || 'plant'),
+              queueLabel: '💧 Voice watering saved locally for ' + (plant.commonName || 'plant'),
+              refreshCards: true,
+              onAfterSave: function () {
+                fieldModeState.voiceDraft = null;
+                fieldModeState.lastActionText = '🎙 Applied watering log for ' + (plant.commonName || 'plant') + '.';
+                renderFieldMode();
+              }
+            });
+          }
+          return;
+        }
+        if (action === 'snap-photo') {
+          if (cameraInput) cameraInput.click();
+          return;
+        }
+        if (action === 'use-location') {
+          requestFieldPosition();
+          return;
+        }
+        if (action === 'save-bed-location') {
+          saveCurrentSpotForPlantLocation(plant);
+          return;
+        }
+        if (action === 'bloom') {
+          addObservationEntry(plantId, { date: date, type: 'bloom', count: '1' }, {
+            undoLabel: 'Bloom logged for ' + (plant.commonName || 'plant'),
+            queueLabel: '🌸 Bloom saved locally for ' + (plant.commonName || 'plant'),
+            refreshCards: true,
+            showFirstBloomToast: true,
+            onAfterSave: function () {
+              fieldModeState.lastActionText = '🌸 Bloom logged for ' + (plant.commonName || 'plant') + ' on ' + date + '.';
+              fieldModeState.showSightingExtras = false;
+              renderFieldMode();
+            },
+            onAfterUndo: function () {
+              fieldModeState.lastActionText = '↩ Bloom entry removed for ' + (plant.commonName || 'plant') + '.';
+              renderFieldMode();
+            }
+          });
+          return;
+        }
+        if (action === 'watered') {
+          addTaskEntry(plantId, { date: date, type: 'watered' }, {
+            undoLabel: 'Watering logged for ' + (plant.commonName || 'plant'),
+            queueLabel: '💧 Watering saved locally for ' + (plant.commonName || 'plant'),
+            refreshCards: true,
+            onAfterSave: function () {
+              fieldModeState.lastActionText = '💧 Watering logged for ' + (plant.commonName || 'plant') + ' on ' + date + '.';
+              fieldModeState.showSightingExtras = false;
+              renderFieldMode();
+            },
+            onAfterUndo: function () {
+              fieldModeState.lastActionText = '↩ Watering entry removed for ' + (plant.commonName || 'plant') + '.';
+              renderFieldMode();
+            }
+          });
+          return;
+        }
+        if (action === 'sighting-submit') {
+          var speciesEl = content.querySelector('#gardenFieldSpecies');
+          var countEl = content.querySelector('#gardenFieldCount');
+          var notesEl = content.querySelector('#gardenFieldNotes');
+          var sightingType = fieldModeState.sightingType || 'bee';
+          addObservationEntry(plantId, {
+            date: date,
+            type: sightingType,
+            species: speciesEl ? speciesEl.value : '',
+            count: countEl ? countEl.value : '1',
+            notes: notesEl ? notesEl.value : ''
+          }, {
+            undoLabel: OBS_ICONS[sightingType] + ' Sighting logged for ' + (plant.commonName || 'plant'),
+            queueLabel: (OBS_ICONS[sightingType] || '👁️') + ' ' + sightingType + ' saved locally for ' + (plant.commonName || 'plant'),
+            refreshCards: true,
+            onAfterSave: function () {
+              fieldModeState.lastActionText = (OBS_ICONS[sightingType] || '👁️') + ' ' + sightingType.charAt(0).toUpperCase() + sightingType.slice(1) + ' logged for ' + (plant.commonName || 'plant') + '.';
+              fieldModeState.showSightingExtras = true;
+              fieldModeState.sightingSpecies = '';
+              fieldModeState.sightingCount = '1';
+              fieldModeState.sightingNotes = '';
+              fieldModeState.voiceDraft = null;
+              renderFieldMode();
+            },
+            onAfterUndo: function () {
+              fieldModeState.lastActionText = '↩ Sighting removed for ' + (plant.commonName || 'plant') + '.';
+              renderFieldMode();
+            }
+          });
+        }
+      });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   //  HOOKS
   // ═══════════════════════════════════════════════════════════════════════════
   function afterRenderCards(filtered) {
@@ -2374,6 +3321,19 @@
       if (h3 && !card.querySelector('.garden-native-score')) {
         var sc = nativeScore(plant);
         if (sc > 0) h3.insertAdjacentHTML('beforeend', scoreBadgeHtml(sc));
+      }
+
+      // Field-mode launcher
+      var cardActions = card.querySelector('.garden-card-actions');
+      if (cardActions && !card.querySelector('.garden-field-launch-btn')) {
+        var fieldBtn = document.createElement('button');
+        fieldBtn.type = 'button';
+        fieldBtn.className = 'garden-btn garden-field-launch-btn';
+        fieldBtn.style.cssText = 'background:#0f172a;color:#fff;border-color:#0f172a;';
+        fieldBtn.textContent = '📱 Field';
+        fieldBtn.title = 'Open quick mobile field logger for this plant';
+        cardActions.insertBefore(fieldBtn, cardActions.firstChild);
+        fieldBtn.addEventListener('click', function () { openFieldMode(plant.id); });
       }
 
       // Frost-sensitive badge (Feature I)
@@ -2484,6 +3444,19 @@
     bindBrokenPhotoFallbacks(inner || gallerySection);
     bindPhotoGalleryExtras(inner || gallerySection, plant.id, gallerySection);
 
+    var fieldMediaMarkup = renderFieldMediaDetailSection(plant.id);
+    if (fieldMediaMarkup) {
+      var fieldMediaSection = document.createElement('div');
+      fieldMediaSection.innerHTML = fieldMediaMarkup;
+      detailContent.appendChild(fieldMediaSection);
+      fieldMediaSection.querySelectorAll('[data-field-photo-view]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var url = btn.getAttribute('data-field-photo-view');
+          if (url) window.open(url, '_blank');
+        });
+      });
+    }
+
     // Observation log
     var obsSection   = document.createElement('div');
     obsSection.id    = 'gardenObsSection';
@@ -2554,6 +3527,14 @@
     detailContent.appendChild(qrSection);
     var qrBtn = qrSection.querySelector('#gardenQRPrintBtn');
     if (qrBtn) qrBtn.addEventListener('click', function() { generatePlantQRLabel(plant); });
+
+    var fieldSection = document.createElement('div');
+    fieldSection.style.cssText = 'margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
+    fieldSection.innerHTML = '<button type="button" class="garden-btn primary" id="gardenFieldDetailBtn" style="font-size:12px;padding:8px 14px;">📱 Quick Field Log</button>'
+      + '<span style="font-size:11px;color:#6b7280;">Use the bright, large-button view for fast updates while you\'re standing in the garden.</span>';
+    detailContent.appendChild(fieldSection);
+    var fieldDetailBtn = fieldSection.querySelector('#gardenFieldDetailBtn');
+    if (fieldDetailBtn) fieldDetailBtn.addEventListener('click', function () { openFieldMode(plant.id); });
   }
 
   function beforeSavePlant(plant, onContinue) {
@@ -2639,6 +3620,16 @@
     if (bulkCancelBtn) bulkCancelBtn.addEventListener('click', function () {
       var m = document.getElementById('gardenBulkModal');
       if (m) m.classList.remove('open');
+    });
+
+    // Mobile field mode — Feature L
+    var fieldModeBtn = document.getElementById('gardenFieldModeBtn');
+    if (fieldModeBtn) fieldModeBtn.addEventListener('click', function () { openFieldMode(); });
+    var fieldModeCloseBtn = document.getElementById('gardenFieldModeCloseBtn');
+    if (fieldModeCloseBtn) fieldModeCloseBtn.addEventListener('click', closeFieldMode);
+    var fieldModeModal = document.getElementById('gardenFieldModeModal');
+    if (fieldModeModal) fieldModeModal.addEventListener('click', function (e) {
+      if (e.target === fieldModeModal) closeFieldMode();
     });
 
     // Exports
@@ -2816,7 +3807,6 @@
     });
 
     // Override refreshUndoPanel to also update badge
-    var _origRefresh = refreshUndoPanel;
     refreshUndoPanel = function () {
       var badge = document.getElementById('gardenUndoBadge');
       if (badge) {
@@ -2830,6 +3820,8 @@
   // ═══════════════════════════════════════════════════════════════════════════
   //  INIT
   // ═══════════════════════════════════════════════════════════════════════════
+  var _fieldConnectivityBound = false;
+
   function init() {
     loadEnh();
     if (!registerHooks()) return;
@@ -2837,6 +3829,17 @@
     renderCalendar();
     renderBulkToolbar();
     injectUndoPanel();
+    if (!_fieldConnectivityBound) {
+      _fieldConnectivityBound = true;
+      window.addEventListener('online', function () {
+        if (isFieldModeOpen()) renderFieldMode();
+        renderWeatherBanner();
+      });
+      window.addEventListener('offline', function () {
+        if (isFieldModeOpen()) renderFieldMode();
+        renderWeatherBanner();
+      });
+    }
     // Feature G: fetch weather in background so banner is ready when cards render
     fetchWeatherData();
   }
@@ -2874,7 +3877,14 @@
     generatePlantQRLabel:     generatePlantQRLabel,
     generateBatchQRLabels:    generateBatchQRLabels,
     renderInteractionNetwork: renderInteractionNetwork,
-    buildInteractionGraph:    buildInteractionGraph
+    buildInteractionGraph:    buildInteractionGraph,
+    openFieldMode:            openFieldMode,
+    closeFieldMode:           closeFieldMode,
+    renderFieldMode:          renderFieldMode,
+    startFieldVoiceCapture:   startFieldVoiceCapture,
+    requestFieldPosition:     requestFieldPosition,
+    saveCurrentSpotForPlantLocation: saveCurrentSpotForPlantLocation,
+    parseSpokenFieldTranscript: parseSpokenFieldTranscript
   };
 })();
 

@@ -112,6 +112,85 @@
      /* ── frost badge ── */
      #gardenPlannerRoot .garden-frost-badge { animation: gardenFrostPulse 2s infinite; }
      @keyframes gardenFrostPulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+     /* ── mobile field mode ── */
+     #gardenPlannerRoot .garden-field-shell { display:grid; gap:14px; }
+     #gardenPlannerRoot .garden-field-shell.is-glare { background:#fffbea; color:#111827; }
+     #gardenPlannerRoot .garden-field-banner { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:14px; background:linear-gradient(135deg,#0f172a,#166534); color:#fff; }
+     #gardenPlannerRoot .garden-field-shell.is-glare .garden-field-banner { background:#111827; color:#fff; border:3px solid #facc15; box-shadow:0 0 0 3px rgba(250,204,21,.2); }
+     #gardenPlannerRoot .garden-field-title { margin:0; font-size:20px; font-weight:800; }
+     #gardenPlannerRoot .garden-field-subtitle { margin:4px 0 0; font-size:13px; color:#d1fae5; line-height:1.45; }
+     #gardenPlannerRoot .garden-field-shell.is-glare .garden-field-subtitle { color:#fef08a; font-size:14px; }
+     #gardenPlannerRoot .garden-field-last-action { padding:10px 12px; border-radius:12px; background:#ecfdf5; border:1px solid #86efac; color:#166534; font-size:13px; font-weight:700; }
+     #gardenPlannerRoot .garden-field-queue-banner { display:grid; gap:6px; padding:12px 14px; border-radius:14px; font-size:13px; }
+     #gardenPlannerRoot .garden-field-queue-banner strong { font-size:14px; }
+     #gardenPlannerRoot .garden-field-queue-banner.is-offline { background:#111827; color:#f8fafc; border:2px solid #38bdf8; }
+     #gardenPlannerRoot .garden-field-queue-banner.is-online { background:#ecfdf5; color:#166534; border:2px solid #86efac; }
+     #gardenPlannerRoot .garden-field-queue-list { font-size:12px; line-height:1.45; opacity:.92; }
+     #gardenPlannerRoot .garden-field-toolbar { display:grid; grid-template-columns:140px 1fr; gap:10px; }
+     #gardenPlannerRoot .garden-field-toolbar label,
+     #gardenPlannerRoot .garden-field-form-grid label { display:grid; gap:4px; font-size:12px; font-weight:700; color:#334155; }
+     #gardenPlannerRoot .garden-field-toolbar label span,
+     #gardenPlannerRoot .garden-field-form-grid label span { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#64748b; }
+     #gardenPlannerRoot .garden-field-toolbar .grow { min-width:0; }
+     #gardenPlannerRoot .garden-field-layout { display:grid; grid-template-columns:minmax(0,320px) minmax(0,1fr); gap:12px; align-items:start; }
+     #gardenPlannerRoot .garden-field-list-wrap,
+     #gardenPlannerRoot .garden-field-panel-wrap,
+     #gardenPlannerRoot .garden-field-recent { display:grid; gap:8px; }
+     #gardenPlannerRoot .garden-field-mini-label { margin:0; font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+     #gardenPlannerRoot .garden-field-chip-row { display:flex; flex-wrap:wrap; gap:8px; }
+     #gardenPlannerRoot .garden-field-chip,
+     #gardenPlannerRoot .garden-field-type-chip { border:1px solid #cbd5e1; background:#fff; color:#0f172a; border-radius:999px; padding:10px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+     #gardenPlannerRoot .garden-field-type-chip.is-active,
+     #gardenPlannerRoot .garden-field-chip:hover,
+     #gardenPlannerRoot .garden-field-type-chip:hover { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
+     #gardenPlannerRoot .garden-field-plant-grid { display:grid; gap:8px; max-height:52vh; overflow:auto; padding-right:2px; }
+     #gardenPlannerRoot .garden-field-plant-btn { width:100%; text-align:left; border:2px solid #dbeafe; background:#fff; border-radius:14px; padding:12px 14px; cursor:pointer; display:grid; gap:4px; }
+     #gardenPlannerRoot .garden-field-plant-btn.is-active { border-color:#166534; background:#f0fdf4; box-shadow:0 4px 14px rgba(22,101,52,.08); }
+     #gardenPlannerRoot .garden-field-plant-name { font-size:15px; font-weight:800; color:#0f172a; }
+     #gardenPlannerRoot .garden-field-plant-badges { display:flex; flex-wrap:wrap; gap:4px; min-height:16px; }
+     #gardenPlannerRoot .garden-field-plant-badges span { font-size:10px; font-weight:800; color:#92400e; background:#fef3c7; border-radius:999px; padding:2px 7px; }
+     #gardenPlannerRoot .garden-field-plant-meta { font-size:12px; color:#64748b; }
+     #gardenPlannerRoot .garden-field-selected-card { display:grid; gap:12px; border:1px solid #cbd5e1; border-radius:16px; padding:14px; background:#fff; box-shadow:0 10px 30px rgba(15,23,42,.05); }
+     #gardenPlannerRoot .garden-field-shell.is-glare .garden-field-selected-card { border:3px solid #111827; box-shadow:none; }
+     #gardenPlannerRoot .garden-field-selected-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+     #gardenPlannerRoot .garden-field-selected-name { margin:0; font-size:18px; font-weight:800; color:#0f172a; }
+     #gardenPlannerRoot .garden-field-selected-meta { margin:4px 0 0; font-size:13px; color:#64748b; }
+     #gardenPlannerRoot .garden-field-counts { display:flex; flex-wrap:wrap; gap:6px; }
+     #gardenPlannerRoot .garden-field-counts span { background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:700; color:#334155; }
+     #gardenPlannerRoot .garden-field-pin-row { display:flex; flex-wrap:wrap; gap:8px; }
+     #gardenPlannerRoot .garden-field-pin-btn { border:2px solid #cbd5e1; background:#fff; color:#0f172a; border-radius:999px; padding:9px 13px; font-size:13px; font-weight:800; cursor:pointer; }
+     #gardenPlannerRoot .garden-field-pin-btn.is-active { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+     #gardenPlannerRoot .garden-field-action-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+     #gardenPlannerRoot .garden-field-action { min-height:96px; border:none; border-radius:16px; padding:14px 12px; cursor:pointer; display:grid; gap:4px; text-align:left; align-content:start; font:inherit; box-shadow:0 8px 24px rgba(15,23,42,.08); }
+     #gardenPlannerRoot .garden-field-action-bloom { background:#fdf2f8; color:#9d174d; }
+     #gardenPlannerRoot .garden-field-action-water { background:#eff6ff; color:#1d4ed8; }
+     #gardenPlannerRoot .garden-field-action-sighting { background:#f9fafb; color:#0f172a; }
+     #gardenPlannerRoot .garden-field-action-camera { background:#ecfeff; color:#155e75; }
+     #gardenPlannerRoot .garden-field-action-voice { background:#eef2ff; color:#4338ca; }
+     #gardenPlannerRoot .garden-field-action-location { background:#fff7ed; color:#9a3412; }
+     #gardenPlannerRoot .garden-field-shell.is-glare .garden-field-action { border:3px solid currentColor; box-shadow:none; }
+     #gardenPlannerRoot .garden-field-action-emoji { font-size:28px; line-height:1; }
+     #gardenPlannerRoot .garden-field-action-label { font-size:18px; font-weight:800; }
+     #gardenPlannerRoot .garden-field-action-note { font-size:12px; font-weight:600; opacity:.82; }
+     #gardenPlannerRoot .garden-field-voice-draft { display:grid; gap:6px; padding:12px; border-radius:14px; border:1px solid #c7d2fe; background:#eef2ff; }
+     #gardenPlannerRoot .garden-field-voice-transcript { margin:0; color:#312e81; font-size:14px; font-weight:700; line-height:1.45; }
+     #gardenPlannerRoot .garden-field-voice-summary { margin:0; color:#4338ca; font-size:12px; font-weight:700; }
+     #gardenPlannerRoot .garden-field-sighting-panel { display:none; gap:10px; padding:12px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
+     #gardenPlannerRoot .garden-field-sighting-panel.is-open { display:grid; }
+     #gardenPlannerRoot .garden-field-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+     #gardenPlannerRoot .garden-field-form-grid .span-2 { grid-column:span 2; }
+     #gardenPlannerRoot .garden-field-sighting-submit { min-height:56px; font-size:16px; font-weight:800; }
+     #gardenPlannerRoot .garden-field-geo-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+     #gardenPlannerRoot .garden-field-inline-note,
+     #gardenPlannerRoot .garden-field-geo-status { font-size:12px; color:#64748b; }
+     #gardenPlannerRoot .garden-field-empty-inline { padding:10px 12px; border-radius:12px; background:#fff; border:1px dashed #cbd5e1; color:#475569; font-size:12px; }
+     #gardenPlannerRoot .garden-field-photo-strip { display:flex; gap:8px; flex-wrap:wrap; }
+     #gardenPlannerRoot .garden-field-photo-thumb { width:94px; border:1px solid #d1d5db; border-radius:12px; overflow:hidden; padding:0; background:#fff; cursor:pointer; text-align:left; }
+     #gardenPlannerRoot .garden-field-photo-thumb img { width:100%; height:74px; object-fit:cover; display:block; }
+     #gardenPlannerRoot .garden-field-photo-thumb span { display:block; padding:5px 7px; font-size:10px; color:#475569; }
+     #gardenPlannerRoot .garden-field-footer-actions { display:flex; flex-wrap:wrap; gap:8px; }
+     #gardenPlannerRoot .garden-field-empty { padding:18px; border-radius:16px; border:1px dashed #cbd5e1; background:#fff; color:#475569; text-align:center; }
+     #gardenPlannerRoot .garden-field-empty strong { display:block; color:#0f172a; font-size:16px; margin-bottom:6px; }
      /* ── lightbox ── */
     #gardenLightboxModal { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 2000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 16px; }
     #gardenLightboxModal.open { display: flex; }
@@ -130,6 +209,16 @@
       #gardenPlannerRoot .garden-chip-row { gap: 8px; }
       #gardenPlannerRoot .garden-list-summary-top { align-items: flex-start; }
       #gardenPlannerRoot #gardenConflictContent { max-height: 46vh !important; }
+      #gardenPlannerRoot .garden-field-toolbar,
+      #gardenPlannerRoot .garden-field-layout,
+      #gardenPlannerRoot .garden-field-action-grid,
+      #gardenPlannerRoot .garden-field-form-grid { grid-template-columns: 1fr; }
+      #gardenPlannerRoot .garden-field-plant-grid { max-height: 30vh; }
+      #gardenPlannerRoot .garden-field-action { min-height: 104px; }
+      #gardenPlannerRoot .garden-field-photo-thumb { width: calc(50% - 4px); }
+      #gardenPlannerRoot #gardenFieldModeModal { padding: 0; align-items: stretch; }
+      #gardenPlannerRoot #gardenFieldModeModal .garden-modal { width: 100%; max-height: 100vh; min-height: 100vh; border-radius: 0; padding: max(12px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom)); background: #f8fafc; }
+      #gardenPlannerRoot .garden-field-banner { position: sticky; top: 0; z-index: 2; }
     }
   </style>
 
@@ -153,6 +242,7 @@
 
     <!-- Extra action row: calendar toggle, bulk select, exports, map, succession, weather, network, labels -->
     <div class="garden-extra-actions">
+      <button type="button" class="garden-btn primary" id="gardenFieldModeBtn" title="Open the bright, quick field logger for one-tap bloom, watering, and sightings">📱 I'm in the garden now</button>
       <button type="button" class="garden-btn" id="gardenCalToggle">📅 Show Planting Calendar</button>
       <button type="button" class="garden-btn" id="gardenBulkModeBtn">☑ Bulk Select</button>
       <button type="button" class="garden-btn" id="gardenMapBtn" title="Visual drag-and-drop bed map keyed to your location fields">🗺️ Garden Map</button>
@@ -270,6 +360,16 @@
       <div class="garden-actions">
         <button type="button" id="gardenCloseDetailBtn" class="garden-btn">Close</button>
       </div>
+    </div>
+  </div>
+
+  <div id="gardenFieldModeModal" class="garden-modal-backdrop" aria-hidden="true">
+    <div class="garden-modal" role="dialog" aria-modal="true" aria-labelledby="gardenFieldModeTitle">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <h2 id="gardenFieldModeTitle">📱 Field Mode</h2>
+        <button type="button" id="gardenFieldModeCloseBtn" class="garden-btn">Close</button>
+      </div>
+      <div id="gardenFieldModeContent"></div>
     </div>
   </div>
 
