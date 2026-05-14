@@ -344,6 +344,23 @@
     }
 
     function setActiveHouseholdSubTab(root, tabKey) {
+      // Garden and Budget now live in canonical primary tabs; route there.
+      if (tabKey === 'garden' || tabKey === 'budget') {
+        if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+          window.tabLoader.switchTab(tabKey, {
+            syncUrl: true,
+            historyMode: 'push',
+            source: 'household-tools-subtab'
+          });
+        } else {
+          const fallbackBtn = document.querySelector('.app-tab-btn[data-tab="' + tabKey + '"]');
+          if (fallbackBtn && typeof fallbackBtn.click === 'function') {
+            fallbackBtn.click();
+          }
+        }
+        return;
+      }
+
       state.activeSubTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'recipes';
       syncHouseholdSubTabs(root);
     }
