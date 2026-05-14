@@ -613,7 +613,7 @@ class TabContentLoader {
           return;
         }
 
-        const assetVersion = String(window.__APP_ASSET_VERSION || '2026.04.17.1');
+        const assetVersion = String(window.__APP_ASSET_VERSION || '2026.05.14.1');
         const urlObj = new URL(`${this.tabsPath}${tabInfo.file}`, window.location.href);
         urlObj.searchParams.set('v', assetVersion);
         const url = urlObj.toString();

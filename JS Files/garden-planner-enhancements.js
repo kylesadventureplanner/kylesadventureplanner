@@ -44,7 +44,8 @@
     fieldPatrolPlants: [], // route-specific plants checked often
     fieldOfflineQueue: [], // local-only field actions recorded while offline
     fieldMediaLog:   {}, // { [plantId]: [{id,date,url,caption,kind,ts}] }
-    locationCoords:  {}, // { [locationName]: { lat, lon, ts } }
+    plantAliases:    {}, // { [plantId]: string[] }
+    locationCoords:  {}, // { [locationName]: { lat, lon, radiusM, confidence, accuracyM, samples, ts, source } }
     fieldTheme:      'default',
     weatherCache:  null, // { fetchedAt, totalMm, days }  Open-Meteo cache
     bulkSelected:  [],
@@ -67,6 +68,8 @@
     voiceListening: false,
     voiceTranscript: '',
     voiceDraft: null,
+    voiceMatchPending: false,
+    bedRadiusMeters: 'auto',
     currentPosition: null,
     geoStatus: '',
     locationRequestedAt: 0
@@ -149,6 +152,7 @@
         fieldPatrolPlants: enhState.fieldPatrolPlants,
         fieldOfflineQueue: enhState.fieldOfflineQueue,
         fieldMediaLog: enhState.fieldMediaLog,
+        plantAliases: enhState.plantAliases,
         locationCoords: enhState.locationCoords,
         fieldTheme: enhState.fieldTheme
       }));
@@ -169,7 +173,8 @@
       enhState.fieldPatrolPlants = d.fieldPatrolPlants || [];
       enhState.fieldOfflineQueue = d.fieldOfflineQueue || [];
       enhState.fieldMediaLog = d.fieldMediaLog || {};
-      enhState.locationCoords = d.locationCoords || {};
+      enhState.plantAliases = d.plantAliases || {};
+      enhState.locationCoords = normalizeLocationCoordsMap(d.locationCoords || {});
       enhState.fieldTheme = d.fieldTheme || 'default';
     } catch (_) {}
   }
@@ -199,6 +204,80 @@
     var kapG = G();
     if (!kapG || !kapG.state || !kapG.state.plants) return null;
     return kapG.state.plants.find(function (p) { return p.id === plantId; }) || null;
+  }
+
+  function normalizeText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getPlantAliases(plantId) {
+    return (enhState.plantAliases && enhState.plantAliases[plantId] || []).slice();
+  }
+
+  function sanitizeAliases(raw) {
+    var list = Array.isArray(raw) ? raw : String(raw || '').split(/[\n,;]+/);
+    var seen = {};
+    var out = [];
+    list.forEach(function (value) {
+      var alias = String(value || '').trim();
+      if (!alias) return;
+      var norm = normalizeText(alias);
+      if (!norm || seen[norm]) return;
+      seen[norm] = true;
+      out.push(alias);
+    });
+    return out.slice(0, 12);
+  }
+
+  function setPlantAliases(plantId, aliases) {
+    if (!plantId) return;
+    if (!enhState.plantAliases) enhState.plantAliases = {};
+    var clean = sanitizeAliases(aliases);
+    if (!clean.length) delete enhState.plantAliases[plantId];
+    else enhState.plantAliases[plantId] = clean;
+    saveEnh();
+  }
+
+  function normalizeLocationCoordEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    var lat = Number(entry.lat);
+    var lon = Number(entry.lon);
+    if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    var accuracyM = Number(entry.accuracyM);
+    var radiusM = Number(entry.radiusM);
+    if (!isFinite(radiusM) || radiusM <= 0) {
+      radiusM = isFinite(accuracyM) && accuracyM > 0
+        ? Math.min(120, Math.max(6, Math.round(accuracyM * 1.15)))
+        : 20;
+    }
+    var confidence = String(entry.confidence || '').trim();
+    if (!confidence) confidence = radiusM <= 10 ? 'High' : radiusM <= 25 ? 'Medium' : 'Low';
+    return {
+      lat: lat,
+      lon: lon,
+      radiusM: radiusM,
+      confidence: confidence,
+      accuracyM: isFinite(accuracyM) && accuracyM > 0 ? accuracyM : null,
+      samples: Number(entry.samples) > 0 ? Number(entry.samples) : 1,
+      ts: entry.ts || Date.now(),
+      source: entry.source || 'gps'
+    };
+  }
+
+  function normalizeLocationCoordsMap(map) {
+    var out = {};
+    map = map || {};
+    Object.keys(map).forEach(function (key) {
+      var nk = String(key || '').trim();
+      if (!nk) return;
+      var entry = normalizeLocationCoordEntry(map[key]);
+      if (entry) out[nk] = entry;
+    });
+    return out;
   }
 
   function touchFieldRecentPlant(plantId) {
@@ -292,15 +371,23 @@
       var locKey = getPlantLocationKey(plant);
       var coords = locKey && enhState.locationCoords ? enhState.locationCoords[locKey] : null;
       if (!coords) return null;
+      var rawDistance = haversineMiles(position.lat, position.lon, coords.lat, coords.lon);
+      var radiusMiles = (Number(coords.radiusM) || 0) / 1609.34;
       return {
         plant: plant,
-        distanceMiles: haversineMiles(position.lat, position.lon, coords.lat, coords.lon),
-        location: locKey
+        distanceMiles: rawDistance,
+        effectiveDistanceMiles: Math.max(0, rawDistance - radiusMiles),
+        radiusMiles: radiusMiles,
+        location: locKey,
+        confidence: coords.confidence || 'Medium',
+        radiusM: Number(coords.radiusM) || 0
       };
     }).filter(Boolean).sort(function (a, b) {
       var favDelta = (hasEnhListId('fieldFavorites', a.plant.id) ? -1 : 0) - (hasEnhListId('fieldFavorites', b.plant.id) ? -1 : 0);
       if (favDelta) return favDelta;
-      return a.distanceMiles - b.distanceMiles;
+      if (a.effectiveDistanceMiles !== b.effectiveDistanceMiles) return a.effectiveDistanceMiles - b.effectiveDistanceMiles;
+      var confRank = { High: 0, Medium: 1, Low: 2 };
+      return (confRank[a.confidence] || 3) - (confRank[b.confidence] || 3);
     });
   }
 
@@ -337,12 +424,25 @@
       return;
     }
     var doSave = function (pos) {
+      var chosenRadius = fieldModeState.bedRadiusMeters === 'auto' || !fieldModeState.bedRadiusMeters
+        ? (pos.accuracy ? Math.min(120, Math.max(6, Math.round(pos.accuracy * 1.15))) : 20)
+        : Math.min(150, Math.max(3, Number(fieldModeState.bedRadiusMeters) || 20));
+      var confidence = chosenRadius <= 10 ? 'High' : chosenRadius <= 25 ? 'Medium' : 'Low';
       enhState.locationCoords = enhState.locationCoords || {};
-      enhState.locationCoords[locKey] = { lat: pos.lat, lon: pos.lon, ts: Date.now() };
+      enhState.locationCoords[locKey] = {
+        lat: pos.lat,
+        lon: pos.lon,
+        radiusM: chosenRadius,
+        confidence: confidence,
+        accuracyM: pos.accuracy || null,
+        samples: (enhState.locationCoords[locKey] && Number(enhState.locationCoords[locKey].samples) || 0) + 1,
+        ts: Date.now(),
+        source: 'gps'
+      };
       saveEnh();
-      fieldModeState.lastActionText = '📍 Saved a rough location for ' + locKey + '.';
+      fieldModeState.lastActionText = '📍 Saved ' + locKey + ' with ~' + chosenRadius + 'm bed radius (' + confidence + ' confidence).';
       if (isFieldModeOpen()) renderFieldMode();
-      gardenToast('Saved rough map spot for ' + locKey, 'success', 2000);
+      gardenToast('Saved rough map spot for ' + locKey + ' (~' + chosenRadius + 'm)', 'success', 2000);
     };
     if (fieldModeState.currentPosition) doSave(fieldModeState.currentPosition);
     else requestFieldPosition(doSave);
@@ -352,7 +452,61 @@
     return window.SpeechRecognition || window.webkitSpeechRecognition || null;
   }
 
-  function parseSpokenFieldTranscript(transcript, plant) {
+  function matchPlantFromTranscript(transcript, plants) {
+    var raw = normalizeText(transcript);
+    if (!raw || !plants || !plants.length) return null;
+    var cue = '';
+    var cueMatch = raw.match(/\b(?:on|at|near|by|around|in)\s+([a-z0-9 ]{2,})$/);
+    if (cueMatch && cueMatch[1]) cue = normalizeText(cueMatch[1]);
+    var best = null;
+    plants.forEach(function (plant) {
+      var common = normalizeText(plant.commonName);
+      var sci = normalizeText(plant.scientificName);
+      var loc = normalizeText(plant.locationPlanted);
+      var aliases = getPlantAliases(plant.id).map(normalizeText).filter(Boolean);
+      if (!common && !sci && !loc && !aliases.length) return;
+      var score = 0;
+      if (common && (raw.indexOf(common) >= 0 || common.indexOf(raw) >= 0)) score += 10;
+      if (sci && (raw.indexOf(sci) >= 0 || sci.indexOf(raw) >= 0)) score += 9;
+      if (loc && raw.indexOf(loc) >= 0) score += 3;
+      aliases.forEach(function (alias) {
+        if (raw.indexOf(alias) >= 0 || alias.indexOf(raw) >= 0) score += 8;
+      });
+      if (cue) {
+        if (common && (common.indexOf(cue) >= 0 || cue.indexOf(common) >= 0)) score += 8;
+        if (sci && (sci.indexOf(cue) >= 0 || cue.indexOf(sci) >= 0)) score += 7;
+        aliases.forEach(function (alias) {
+          if (alias.indexOf(cue) >= 0 || cue.indexOf(alias) >= 0) score += 7;
+        });
+      }
+      if (common) {
+        var cTokens = common.split(' ').filter(function (t) { return t.length > 2; });
+        var overlap = cTokens.filter(function (t) { return raw.indexOf(t) >= 0; });
+        score += overlap.length * 2;
+        var longToken = cTokens.filter(function (t) { return t.length >= 6; }).find(function (t) { return raw.indexOf(t) >= 0; });
+        if (longToken) score += 4;
+      }
+      if (sci) {
+        var sTokens = sci.split(' ').filter(function (t) { return t.length > 3; });
+        score += sTokens.filter(function (t) { return raw.indexOf(t) >= 0; }).length * 2;
+      }
+      aliases.forEach(function (alias) {
+        var aTokens = alias.split(' ').filter(function (t) { return t.length > 2; });
+        score += aTokens.filter(function (t) { return raw.indexOf(t) >= 0; }).length * 2;
+      });
+      if (score <= 0) return;
+      var recentBoost = (enhState.fieldRecentPlants || []).indexOf(plant.id);
+      var scoreWithTie = score + (recentBoost >= 0 ? (1 / (recentBoost + 2)) : 0);
+      if (!best || scoreWithTie > best.score) {
+        best = { plantId: plant.id, plantName: plant.commonName || 'Unnamed', score: scoreWithTie };
+      }
+    });
+    if (!best) return null;
+    best.confidence = best.score >= 10 ? 'High' : best.score >= 6 ? 'Medium' : 'Low';
+    return best;
+  }
+
+  function parseSpokenFieldTranscript(transcript, plant, plants) {
     var raw = String(transcript || '').trim();
     if (!raw) return null;
     var lower = raw.toLowerCase();
@@ -387,15 +541,23 @@
     if (plant && plant.commonName) {
       var plantRe = new RegExp(String(plant.commonName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
       species = species.replace(plantRe, '').replace(/\s+/g, ' ').trim();
+      getPlantAliases(plant.id).forEach(function (alias) {
+        var aliasRe = new RegExp(String(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+        species = species.replace(aliasRe, '').replace(/\s+/g, ' ').trim();
+      });
     }
     if (action !== 'sighting') species = '';
+    var match = matchPlantFromTranscript(raw, plants || []);
     return {
       transcript: raw,
       action: action,
       type: type,
       count: count,
       species: species,
-      notes: action === 'sighting' ? '' : raw
+      notes: action === 'sighting' ? '' : raw,
+      matchedPlantId: match ? match.plantId : '',
+      matchedPlantName: match ? match.plantName : '',
+      matchedPlantConfidence: match ? match.confidence : ''
     };
   }
 
@@ -403,15 +565,18 @@
     if (!draft) return;
     fieldModeState.voiceDraft = draft;
     fieldModeState.voiceTranscript = draft.transcript || '';
+    fieldModeState.voiceMatchPending = !!(draft.matchedPlantId && draft.matchedPlantId !== fieldModeState.selectedPlantId);
     if (draft.action === 'sighting') {
       fieldModeState.sightingType = draft.type || 'other';
       fieldModeState.sightingCount = draft.count || '1';
       fieldModeState.sightingSpecies = draft.species || '';
       fieldModeState.sightingNotes = draft.notes || '';
       fieldModeState.showSightingExtras = true;
-      fieldModeState.lastActionText = '🎙 Voice note drafted a ' + fieldModeState.sightingType + ' sighting. Review and tap log.';
+      fieldModeState.lastActionText = '🎙 Voice note drafted a ' + fieldModeState.sightingType + ' sighting. Review and tap log.'
+        + (draft.matchedPlantId ? ' Matched plant: ' + (draft.matchedPlantName || 'selected') + ' (' + (draft.matchedPlantConfidence || 'Low') + ').' : '');
     } else {
-      fieldModeState.lastActionText = '🎙 Voice draft ready: ' + draft.action + '. Review below and apply when ready.';
+      fieldModeState.lastActionText = '🎙 Voice draft ready: ' + draft.action + '. Review below and apply when ready.'
+        + (draft.matchedPlantId ? ' Matched plant: ' + (draft.matchedPlantName || 'selected') + ' (' + (draft.matchedPlantConfidence || 'Low') + ').' : '');
     }
   }
 
@@ -435,7 +600,9 @@
     if (isFieldModeOpen()) renderFieldMode();
     recognition.onresult = function (event) {
       var transcript = event.results && event.results[0] && event.results[0][0] ? event.results[0][0].transcript : '';
-      var draft = parseSpokenFieldTranscript(transcript, getPlantById(fieldModeState.selectedPlantId));
+      var kapG = G();
+      var plants = kapG && kapG.state ? kapG.state.plants : [];
+      var draft = parseSpokenFieldTranscript(transcript, getPlantById(fieldModeState.selectedPlantId), plants);
       applyVoiceDraftToFieldMode(draft);
       fieldModeState.voiceListening = false;
       if (isFieldModeOpen()) renderFieldMode();
@@ -532,6 +699,64 @@
         }).join('')
       + '</div>'
       + '</div>';
+  }
+
+  function renderAliasEditor(plant) {
+    var aliases = getPlantAliases(plant.id);
+    return '<div id="gardenAliasSection">'
+      + '<h4 style="margin:14px 0 6px;font-size:14px;color:#7c3aed;">🏷️ Alias Dictionary</h4>'
+      + '<p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Add alternate names and nicknames (e.g., coneflower, echinacea) to improve voice matching.</p>'
+      + '<div class="garden-alias-chip-row">'
+      + (aliases.length
+          ? aliases.map(function (alias) {
+              return '<button type="button" class="garden-alias-chip" data-alias-remove="' + esc(alias) + '">' + esc(alias) + ' ✕</button>';
+            }).join('')
+          : '<span class="garden-alias-empty">No aliases yet.</span>')
+      + '</div>'
+      + '<div class="garden-alias-add-row">'
+      + '<input id="gardenAliasInput" type="text" placeholder="Add alias (comma or Enter for multiple)">'
+      + '<button type="button" class="garden-btn" id="gardenAliasAddBtn">Add</button>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function bindAliasEditor(section, plantId) {
+    if (!section || !plantId) return;
+    function rerender() {
+      var plant = getPlantById(plantId);
+      if (!plant) return;
+      section.innerHTML = renderAliasEditor(plant);
+      bindAliasEditor(section, plantId);
+    }
+    var input = section.querySelector('#gardenAliasInput');
+    var addBtn = section.querySelector('#gardenAliasAddBtn');
+    function addAliasesFromInput() {
+      if (!input) return;
+      var values = sanitizeAliases(input.value);
+      if (!values.length) return;
+      var merged = getPlantAliases(plantId).concat(values);
+      setPlantAliases(plantId, merged);
+      fieldModeState.lastActionText = '🏷️ Alias updated for ' + ((getPlantById(plantId) || {}).commonName || 'plant') + '.';
+      input.value = '';
+      rerender();
+    }
+    if (addBtn) addBtn.addEventListener('click', addAliasesFromInput);
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          addAliasesFromInput();
+        }
+      });
+    }
+    section.querySelectorAll('[data-alias-remove]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = btn.getAttribute('data-alias-remove');
+        var next = getPlantAliases(plantId).filter(function (alias) { return alias !== target; });
+        setPlantAliases(plantId, next);
+        rerender();
+      });
+    });
   }
 
   function addObservationEntry(plantId, data, options) {
@@ -2811,6 +3036,7 @@
     fieldModeState.search = '';
     fieldModeState.voiceDraft = null;
     fieldModeState.voiceTranscript = '';
+    fieldModeState.voiceMatchPending = false;
     if (plantId) fieldModeState.selectedPlantId = plantId;
     if (!fieldModeState.selectedPlantId && enhState.fieldRecentPlants && enhState.fieldRecentPlants.length) {
       fieldModeState.selectedPlantId = enhState.fieldRecentPlants[0];
@@ -2832,7 +3058,8 @@
     search = String(search || '').toLowerCase().trim();
     var filtered = plants.filter(function (plant) {
       if (!search) return true;
-      var hay = [plant.commonName, plant.scientificName, plant.locationPlanted].join(' ').toLowerCase();
+      var aliases = getPlantAliases(plant.id);
+      var hay = [plant.commonName, plant.scientificName, plant.locationPlanted, aliases.join(' ')].join(' ').toLowerCase();
       return hay.indexOf(search) >= 0;
     }).sort(function (a, b) {
       var aFav = hasEnhListId('fieldFavorites', a.id) ? 1 : 0;
@@ -2862,6 +3089,7 @@
           + '<span class="garden-field-plant-badges">'
           + (hasEnhListId('fieldFavorites', plant.id) ? '<span>⭐ Favorite</span>' : '')
           + (hasEnhListId('fieldPatrolPlants', plant.id) ? '<span>🛤 Patrol</span>' : '')
+              + (getPlantAliases(plant.id).length ? '<span>🏷️ Alias</span>' : '')
           + '</span>'
             + (subtitle ? '<span class="garden-field-plant-meta">' + esc(subtitle) + '</span>' : '<span class="garden-field-plant-meta">Tap to quick-log here</span>')
             + '</button>';
@@ -2907,7 +3135,9 @@
       + '<p class="garden-field-mini-label">Near me</p>'
       + '<div class="garden-field-chip-row">'
       + nearby.map(function (item) {
-          return '<button type="button" class="garden-field-chip" data-field-plant-id="' + esc(item.plant.id) + '">' + esc(item.plant.commonName || 'Unnamed') + ' · ' + item.distanceMiles.toFixed(item.distanceMiles < 1 ? 1 : 0) + ' mi</button>';
+          var dist = item.effectiveDistanceMiles;
+          var distText = dist < 0.1 ? 'nearby' : (dist < 1 ? dist.toFixed(1) + ' mi' : Math.round(dist) + ' mi');
+          return '<button type="button" class="garden-field-chip" data-field-plant-id="' + esc(item.plant.id) + '">' + esc(item.plant.commonName || 'Unnamed') + ' · ' + distText + ' · ' + esc(item.confidence) + '</button>';
         }).join('')
       + '</div>'
       + status
@@ -2928,6 +3158,7 @@
     var isFavorite = hasEnhListId('fieldFavorites', plant.id);
     var isPatrol = hasEnhListId('fieldPatrolPlants', plant.id);
     var locKey = getPlantLocationKey(plant);
+    var locCoords = locKey ? enhState.locationCoords[locKey] : null;
     var typeChips = OBS_TYPES.filter(function (t) { return t !== 'bloom'; }).map(function (t) {
       var active = t === defaultType;
       return '<button type="button" class="garden-field-type-chip' + (active ? ' is-active' : '') + '" data-field-sighting-type="' + esc(t) + '">'
@@ -2935,6 +3166,14 @@
     }).join('');
     var voiceDraftHtml = '';
     if (fieldModeState.voiceDraft) {
+      var matchedControls = '';
+      if (fieldModeState.voiceDraft.matchedPlantId && fieldModeState.voiceMatchPending) {
+        matchedControls = '<div class="garden-field-voice-chip">'
+          + '<span>Matched: ' + esc(fieldModeState.voiceDraft.matchedPlantName || 'Plant') + ' - ' + esc(fieldModeState.voiceDraft.matchedPlantConfidence || 'Low') + '</span>'
+          + '<button type="button" class="garden-btn" data-field-action="voice-use-matched">Use matched</button>'
+          + '<button type="button" class="garden-btn" data-field-action="voice-keep-current">Keep current</button>'
+          + '</div>';
+      }
       voiceDraftHtml = '<div class="garden-field-voice-draft">'
         + '<p class="garden-field-mini-label">Voice draft</p>'
         + '<p class="garden-field-voice-transcript">“' + esc(fieldModeState.voiceDraft.transcript || '') + '”</p>'
@@ -2943,6 +3182,10 @@
           ? (OBS_ICONS[fieldModeState.voiceDraft.type] || '👁️') + ' Drafted ' + esc(fieldModeState.voiceDraft.type) + ' sighting ×' + esc(fieldModeState.voiceDraft.count || '1')
           : (fieldModeState.voiceDraft.action === 'bloom' ? '🌸 Drafted bloom log' : '💧 Drafted watering log'))
         + '</p>'
+        + (fieldModeState.voiceDraft.matchedPlantId
+          ? '<p class="garden-field-voice-match">Matched plant: <strong>' + esc(fieldModeState.voiceDraft.matchedPlantName || 'selected') + '</strong> (' + esc(fieldModeState.voiceDraft.matchedPlantConfidence || 'Low') + ' confidence).' + (fieldModeState.voiceMatchPending ? ' Tap to confirm/switch.' : '') + '</p>'
+          : '<p class="garden-field-voice-match">No confident plant match found — using currently selected plant.</p>')
+        + matchedControls
         + (fieldModeState.voiceDraft.action !== 'sighting'
           ? '<button type="button" class="garden-btn primary" data-field-action="voice-apply">Apply parsed ' + esc(fieldModeState.voiceDraft.action) + '</button>'
           : '')
@@ -2993,7 +3236,9 @@
       + '</div>'
       + '<div class="garden-field-geo-controls">'
       + '<button type="button" class="garden-btn" data-field-action="save-bed-location"' + (locKey ? '' : ' disabled') + '>📍 Save this bed here</button>'
-      + (locKey && enhState.locationCoords[locKey] ? '<span class="garden-field-inline-note">Saved rough spot for ' + esc(locKey) + '.</span>' : '<span class="garden-field-inline-note">Save a rough spot for this location to power “Near me”.</span>')
+      + (locCoords
+        ? '<span class="garden-field-inline-note">Saved ' + esc(locKey) + ': ~' + esc(String(Math.round(locCoords.radiusM || 0))) + 'm radius (' + esc(locCoords.confidence || 'Medium') + ').</span>'
+        : '<span class="garden-field-inline-note">Save a rough spot for this location to power “Near me”.</span>')
       + '</div>'
       + renderFieldMediaStrip(plant.id)
       + '<div class="garden-field-footer-actions">'
@@ -3029,6 +3274,13 @@
       + '<div class="garden-field-toolbar">'
       + '<label><span>Date</span><input id="gardenFieldDate" type="date" value="' + esc(fieldModeState.date || todayIso()) + '"></label>'
       + '<label class="grow"><span>Find a plant</span><input id="gardenFieldSearch" type="text" placeholder="Search by plant or location" value="' + esc(fieldModeState.search || '') + '"></label>'
+      + '<label><span>Bed radius</span><select id="gardenFieldBedRadius">'
+      + '<option value="auto"' + ((fieldModeState.bedRadiusMeters === 'auto' || !fieldModeState.bedRadiusMeters) ? ' selected' : '') + '>Auto (GPS accuracy)</option>'
+      + '<option value="8"' + (String(fieldModeState.bedRadiusMeters) === '8' ? ' selected' : '') + '>Tight bed (~8m)</option>'
+      + '<option value="15"' + (String(fieldModeState.bedRadiusMeters) === '15' ? ' selected' : '') + '>Medium bed (~15m)</option>'
+      + '<option value="30"' + (String(fieldModeState.bedRadiusMeters) === '30' ? ' selected' : '') + '>Wide bed (~30m)</option>'
+      + '<option value="50"' + (String(fieldModeState.bedRadiusMeters) === '50' ? ' selected' : '') + '>Large zone (~50m)</option>'
+      + '</select></label>'
       + '</div>'
       + renderFieldPlantChipCollection('Favorite plants', enhState.fieldFavorites || [], '')
       + renderFieldPlantChipCollection('Patrol route', enhState.fieldPatrolPlants || [], '')
@@ -3048,7 +3300,8 @@
       btn.addEventListener('click', function () {
         fieldModeState.selectedPlantId = btn.getAttribute('data-field-plant-id');
         fieldModeState.showSightingExtras = false;
-          fieldModeState.voiceDraft = null;
+        fieldModeState.voiceDraft = null;
+        fieldModeState.voiceMatchPending = false;
         renderFieldMode();
       });
     });
@@ -3098,6 +3351,13 @@
     if (dateInput) {
       dateInput.addEventListener('change', function () {
         fieldModeState.date = dateInput.value || todayIso();
+      });
+    }
+
+    var bedRadiusInput = content.querySelector('#gardenFieldBedRadius');
+    if (bedRadiusInput) {
+      bedRadiusInput.addEventListener('change', function () {
+        fieldModeState.bedRadiusMeters = bedRadiusInput.value || 'auto';
       });
     }
 
@@ -3197,6 +3457,21 @@
           startFieldVoiceCapture();
           return;
         }
+        if (action === 'voice-use-matched') {
+          if (!fieldModeState.voiceDraft || !fieldModeState.voiceDraft.matchedPlantId) return;
+          fieldModeState.selectedPlantId = fieldModeState.voiceDraft.matchedPlantId;
+          fieldModeState.voiceMatchPending = false;
+          touchFieldRecentPlant(fieldModeState.selectedPlantId);
+          fieldModeState.lastActionText = '🎯 Using matched plant: ' + (fieldModeState.voiceDraft.matchedPlantName || 'selected plant') + '.';
+          renderFieldMode();
+          return;
+        }
+        if (action === 'voice-keep-current') {
+          fieldModeState.voiceMatchPending = false;
+          fieldModeState.lastActionText = '✅ Keeping current plant for this voice draft.';
+          renderFieldMode();
+          return;
+        }
         if (action === 'voice-apply') {
           if (!fieldModeState.voiceDraft) return;
           if (fieldModeState.voiceDraft.action === 'bloom') {
@@ -3206,6 +3481,7 @@
               refreshCards: true,
               onAfterSave: function () {
                 fieldModeState.voiceDraft = null;
+                fieldModeState.voiceMatchPending = false;
                 fieldModeState.lastActionText = '🎙 Applied bloom log for ' + (plant.commonName || 'plant') + '.';
                 renderFieldMode();
               }
@@ -3217,6 +3493,7 @@
               refreshCards: true,
               onAfterSave: function () {
                 fieldModeState.voiceDraft = null;
+                fieldModeState.voiceMatchPending = false;
                 fieldModeState.lastActionText = '🎙 Applied watering log for ' + (plant.commonName || 'plant') + '.';
                 renderFieldMode();
               }
@@ -3456,6 +3733,11 @@
         });
       });
     }
+
+    var aliasSection = document.createElement('div');
+    aliasSection.innerHTML = renderAliasEditor(plant);
+    detailContent.appendChild(aliasSection);
+    bindAliasEditor(aliasSection, plant.id);
 
     // Observation log
     var obsSection   = document.createElement('div');
