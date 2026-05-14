@@ -126,23 +126,24 @@
       <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
       <div class="household-concerts-features-tabs" role="tablist">
         <button type="button" class="household-concerts-feature-tab active" role="tab" data-view="default">Overview</button>
+        <button type="button" class="household-concerts-feature-tab" role="tab" data-view="upcoming">Upcoming</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="stats">My Stats</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="analytics">Analytics</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="gallery">Gallery</button>
       </div>
-      <div id="householdConcertsPersonalStats" class="household-concerts-panel" style="display:none;"></div>
-      <div id="householdConcertsAchievements" class="household-concerts-panel" style="display:none;"></div>
-      <div id="householdConcertsVenueReport" class="household-concerts-panel" style="display:none;"></div>
-      <div id="householdConcertsAnalyticsDash" class="household-concerts-panel" style="display:none;"></div>
-      <div id="householdConcertsPhotoGallery" class="household-concerts-panel" style="display:none;"></div>
-      <section class="household-concerts-search-card-shell">
+      <div id="householdConcertsPersonalStats" class="household-concerts-panel" data-concert-view="stats" hidden></div>
+      <div id="householdConcertsAchievements" class="household-concerts-panel" data-concert-view="stats" hidden></div>
+      <div id="householdConcertsVenueReport" class="household-concerts-panel" data-concert-view="stats" hidden></div>
+      <div id="householdConcertsAnalyticsDash" class="household-concerts-panel" data-concert-view="analytics" hidden></div>
+      <div id="householdConcertsPhotoGallery" class="household-concerts-panel" data-concert-view="gallery" hidden></div>
+      <section class="household-concerts-search-card-shell" data-concert-view="default">
         <div class="household-concerts-search-row">
           <input id="householdConcertsSearchInput" type="search" placeholder="Search artist catalog by band name..." aria-label="Search artist catalog">
           <button type="button" class="pill-button" data-concert-action="search-web">Search Web</button>
           <button type="button" class="pill-button" data-concert-action="open-add-band">Manual Add</button>
         </div>
       </section>
-      <div class="household-concerts-main-grid">
+      <div class="household-concerts-main-grid" data-concert-view="default">
         <section class="household-concerts-panel">
           <div class="household-concerts-filter-row">
             <input id="householdConcertsFilterInput" type="search" placeholder="Filter favorite bands by name, genre, label, songs, or members..." aria-label="Filter favorite bands">
@@ -161,14 +162,14 @@
           </section>
         </div>
       </div>
-      <div class="household-concerts-lower-grid">
+      <div class="household-concerts-lower-grid" data-concert-view="upcoming" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel"><div id="householdConcertsPriorityDashboard"></div></section>
         <section class="household-concerts-panel"><div id="householdConcertsFestivalDashboard"></div></section>
       </div>
-      <div class="household-concerts-lower-grid">
+      <div class="household-concerts-lower-grid" data-concert-view="upcoming" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel"><div id="householdConcertsTicketedCalendar"></div></section>
       </div>
-      <div class="household-concerts-lower-grid">
+      <div class="household-concerts-lower-grid" data-concert-view="stats" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel">
           <div class="household-concerts-panel-head">
             <div><h3>Attended Concerts</h3></div>
@@ -176,6 +177,8 @@
           </div>
           <div id="householdConcertsAttendedList" class="household-concerts-entry-list" data-testid="concerts-attended-list"></div>
         </section>
+      </div>
+      <div class="household-concerts-lower-grid" data-concert-view="upcoming" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel">
           <div class="household-concerts-panel-head">
             <div><h3>Upcoming Concerts</h3></div>

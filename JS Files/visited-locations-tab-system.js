@@ -405,6 +405,36 @@
     });
   }
 
+  function syncDailyConcertChromeVisibility() {
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activePrimaryTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+    const hideForDailyConcerts = activePrimaryTabId === 'visited-locations' && !isAdvancedAppMode() && state.activeProgressSubTab === 'concerts';
+    const tvModeHeaderBtn = document.getElementById('tvModeHeaderBtn');
+    if (tvModeHeaderBtn) {
+      tvModeHeaderBtn.hidden = hideForDailyConcerts;
+      tvModeHeaderBtn.setAttribute('aria-hidden', hideForDailyConcerts ? 'true' : 'false');
+    }
+
+    const shortcutsBtn = document.getElementById('pageShortcutHelpToggle');
+    if (shortcutsBtn) {
+      shortcutsBtn.hidden = hideForDailyConcerts;
+      shortcutsBtn.setAttribute('aria-hidden', hideForDailyConcerts ? 'true' : 'false');
+    }
+
+    if (hideForDailyConcerts) {
+      const shortcutsBackdrop = document.getElementById('pageShortcutHelpBackdrop');
+      const shortcutsDrawer = document.getElementById('pageShortcutHelpDrawer');
+      if (shortcutsBackdrop) shortcutsBackdrop.classList.remove('open');
+      if (shortcutsDrawer) shortcutsDrawer.classList.remove('open');
+    }
+
+    const diagnosticsStatusLine = document.getElementById('persistentDiagnosticsStatusLine');
+    if (diagnosticsStatusLine) {
+      diagnosticsStatusLine.hidden = hideForDailyConcerts;
+      diagnosticsStatusLine.setAttribute('aria-hidden', hideForDailyConcerts ? 'true' : 'false');
+    }
+  }
+
   function getExplorerPageSize() {
     // Daily mode defaults to paged explorer results to keep first paint and scrolling manageable.
     return isAdvancedAppMode() ? 0 : 24;
@@ -629,6 +659,7 @@
       updateVisitedChallengeTitle(root);
       updateVisitedJumpLinksVisibility(root);
       syncDailyAddLocationButtons(root);
+       syncDailyConcertChromeVisibility();
 
       syncVisitedSubTabDock(root);
       ensureConcertsSubtabInitialized(root);

@@ -23,6 +23,7 @@
   var ROCKVILLE_2026_WORKSHEET = 'Rockville_2026';
   var WORKBOOK_NAME = 'Concerts_Bands.xlsx';
   var DISTANCE_STOPS = [25, 50, 75, 100, 250, 1000];
+  var CONCERT_FEATURE_VIEWS = ['default', 'upcoming', 'stats', 'analytics', 'gallery'];
   var CONCERT_ATTENDEE_OPTIONS = ['Kyle', 'Heather', 'Both'];
   var VENUE_PRESET_OPTIONS = [
     'The Prophet Bar - Dallas, TX',
@@ -61,6 +62,7 @@
   var PRIORITY_BANDS_STORAGE_KEY = 'householdConcertsPriorityBandsV1';
   var UPCOMING_TICKETS_STORAGE_KEY = 'householdConcertsUpcomingTicketsV1';
   var BAND_CARD_COLS_STORAGE_KEY = 'householdConcertsBandCardColsV1';
+  var BAND_CARD_DENSITY_STORAGE_KEY = 'householdConcertsBandCardDensityV1';
   var ROCKVILLE_2026_STORAGE_KEY = 'householdConcertsRockville2026V1';
   var ROCKVILLE_2026_DAYS = [
     { key: 'thursday', label: 'Thursday' },
@@ -247,6 +249,7 @@
       priorityBands: readJsonStorage(PRIORITY_BANDS_STORAGE_KEY, {}),
        upcomingTickets: readJsonStorage(UPCOMING_TICKETS_STORAGE_KEY, {}),
       bandCardColumns: Math.max(1, Math.min(4, Number(readStringStorage(BAND_CARD_COLS_STORAGE_KEY, '2')) || 2)),
+        bandCardDensity: readStringStorage(BAND_CARD_DENSITY_STORAGE_KEY, ''),
       rockville2026: normalizeRockville2026Data(readJsonStorage(ROCKVILLE_2026_STORAGE_KEY, {})),
       rockvilleView: {
         open: false,
@@ -3345,6 +3348,8 @@
    function renderFavoriteBands() {
      var el = $(FAVORITES_GRID_ID);
      if (!el) return;
+     var isDailyMode = isDailyConcertsMode();
+     var compactCards = getBandCardDensityMode() === 'compact';
      var bands = getFilteredBands();
      if (!bands.length) {
        state.bandsPage = 1;
@@ -3366,19 +3371,19 @@
        var priority = isPriorityBand(band);
         var enrichmentBadge = renderBandEnrichmentBadge(band);
           var lockBadge = renderBandLockBadge(band);
-        var links = renderBandLinks(band, true);
+        var links = renderBandLinks(band, compactCards);
         var coverStyle = buildCoverStyle(band);
         var logo = band.bandLogoUrl
          ? '<img class="household-concerts-band-logo" src="' + escapeHtml(safeUrl(band.bandLogoUrl)) + '" alt="' + escapeHtml(band.bandName) + ' logo">'
          : '<div class="household-concerts-band-logo household-concerts-band-logo--placeholder">🎵</div>';
-       return '<article class="household-concerts-band-card' + (isActive ? ' is-active' : '') + '" data-concert-band-key="' + escapeHtml(band.id) + '">'
+       return '<article class="household-concerts-band-card' + (isActive ? ' is-active' : '') + (compactCards ? ' household-concerts-band-card--compact' : '') + '" data-concert-band-key="' + escapeHtml(band.id) + '">'
          + '<div class="household-concerts-band-cover"' + coverStyle + '></div>'
          + '<div class="household-concerts-band-card-body">'
          + '<div class="household-concerts-band-header">'
          + logo
          + '<div>'
           + '<h3>' + escapeHtml(band.bandName) + lockBadge + '</h3>'
-         + '<div class="household-concerts-band-meta">' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + ' • ' + escapeHtml(normalizeBandTier(band.bandTier)) + '</div>'
+         + '<div class="household-concerts-band-meta">' + escapeHtml(band.origin || 'Origin not set') + ' • ' + escapeHtml(band.founded || 'Founded date not set') + (isDailyMode ? '' : (' • ' + escapeHtml(normalizeBandTier(band.bandTier)))) + '</div>'
           + enrichmentBadge
          + '</div>'
          + '</div>'
@@ -3390,24 +3395,24 @@
          + '<div class="household-concerts-tag-display">' + (tags.length ? tags.map(function (tag) { return '<span class="household-concerts-tag-badge">' + escapeHtml(tag) + '</span>'; }).join('') : '') + '</div>'
          + '<div class="household-concerts-tag-row household-concerts-tag-row--band-card">' + (genres.length ? genres.map(renderTag).join('') : '') + '</div>'
          + '<div class="household-concerts-band-detail-grid">'
-         + detailLine('Tier', normalizeBandTier(band.bandTier))
-         + detailLine('Last Release', band.lastReleaseDate ? formatDate(band.lastReleaseDate) : 'Unknown')
-         + detailLine('Label', band.recordLabel || 'Not set')
-         + detailLine('Top Songs', songs.length ? songs.join(', ') : 'Add favorite songs')
+         + (isDailyMode ? '' : detailLine('Tier', normalizeBandTier(band.bandTier)))
+         + (isDailyMode ? '' : detailLine('Last Release', band.lastReleaseDate ? formatDate(band.lastReleaseDate) : 'Unknown'))
+         + (isDailyMode ? '' : detailLine('Label', band.recordLabel || 'Not set'))
+         + (isDailyMode ? '' : detailLine('Top Songs', songs.length ? songs.join(', ') : 'Add favorite songs'))
          + detailLine('Members', members.length ? members.join(' • ') : 'Add members and roles')
-         + detailLine('Lineup Timeline', band.memberTimeline || 'Run Auto-fill Profile to capture current/former eras')
+         + (isDailyMode ? '' : detailLine('Lineup Timeline', band.memberTimeline || 'Run Auto-fill Profile to capture current/former eras'))
          + '</div>'
          + '<div class="household-concerts-band-links-block">' + links + '</div>'
          + '<div class="household-concerts-band-actions">'
-         + '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>'
+         + (isDailyMode ? '' : '<button type="button" class="pill-button" data-concert-action="select-band" data-band-key="' + escapeHtml(band.id) + '">Focus</button>')
          + '<button type="button" class="pill-button" data-concert-action="open-band-details" data-band-key="' + escapeHtml(band.id) + '">View Profile</button>'
-         + '<button type="button" class="pill-button" data-concert-action="cycle-band-tier" data-band-key="' + escapeHtml(band.id) + '">Tier: ' + escapeHtml(normalizeBandTier(band.bandTier).replace(/\s*\(.+\)$/, '')) + '</button>'
+         + (isDailyMode ? '' : '<button type="button" class="pill-button" data-concert-action="cycle-band-tier" data-band-key="' + escapeHtml(band.id) + '">Tier: ' + escapeHtml(normalizeBandTier(band.bandTier).replace(/\s*\(.+\)$/, '')) + '</button>')
          + '<button type="button" class="pill-button" data-concert-action="toggle-priority-band" data-band-key="' + escapeHtml(band.id) + '">' + (priority ? '⭐ Prioritized' : '☆ Prioritize Live') + '</button>'
-         + '<button type="button" class="pill-button" data-concert-action="open-band-image-picker" data-band-key="' + escapeHtml(band.id) + '">Manage Photos</button>'
-         + '<button type="button" class="pill-button household-concerts-refresh-profile-btn pill-button-refresh-profile" data-concert-action="refresh-band-profile" data-band-key="' + escapeHtml(band.id) + '">↻ Refresh Profile</button>'
+         + (isDailyMode ? '' : '<button type="button" class="pill-button" data-concert-action="open-band-image-picker" data-band-key="' + escapeHtml(band.id) + '">Manage Photos</button>')
+         + (isDailyMode ? '' : '<button type="button" class="pill-button household-concerts-refresh-profile-btn pill-button-refresh-profile" data-concert-action="refresh-band-profile" data-band-key="' + escapeHtml(band.id) + '">↻ Refresh Profile</button>')
          + '<button type="button" class="pill-button" data-concert-action="open-log-concert" data-band-key="' + escapeHtml(band.id) + '">Log Concert</button>'
          + '<button type="button" class="pill-button" data-concert-action="open-add-upcoming" data-band-key="' + escapeHtml(band.id) + '">Add Upcoming</button>'
-         + (band.bandsintownUrl ? '<button type="button" class="pill-button" data-concert-action="sync-tour" data-band-key="' + escapeHtml(band.id) + '" title="Fetch tour dates from Bandsintown">🔄 Sync Tour</button>' : '')
+         + (isDailyMode ? '' : (band.bandsintownUrl ? '<button type="button" class="pill-button" data-concert-action="sync-tour" data-band-key="' + escapeHtml(band.id) + '" title="Fetch tour dates from Bandsintown">🔄 Sync Tour</button>' : ''))
          + '</div>'
          + '</div>'
          + '</article>';
@@ -3429,18 +3434,25 @@
         ? ('Refreshing ' + Math.min(refreshProgress.current, refreshProgress.total || refreshProgress.current) + '/' + (refreshProgress.total || bands.length) + '...')
         : 'Refresh All Profiles';
 
+      var densityControl = isDailyMode
+        ? ('<span class="household-concerts-col-control-label">Card height:</span>'
+          + '<button type="button" class="household-concerts-chip' + (compactCards ? ' is-active' : '') + '" data-concert-action="set-band-card-density" data-density="compact">Compact</button>'
+          + '<button type="button" class="household-concerts-chip' + (!compactCards ? ' is-active' : '') + '" data-concert-action="set-band-card-density" data-density="comfortable">Comfortable</button>')
+        : '';
+
       var columnControl = '<div class="household-concerts-col-control">'
         + '<span class="household-concerts-col-control-label">Columns:</span>'
         + [1, 2, 3, 4].map(function (n) {
           return '<button type="button" class="household-concerts-chip' + (cols === n ? ' is-active' : '') + '" data-concert-action="set-band-columns" data-columns="' + n + '" title="' + n + ' column' + (n === 1 ? '' : 's') + '">' + n + '</button>';
         }).join('')
         + '<button type="button" class="pill-button household-concerts-refresh-all-btn" data-concert-action="refresh-all-band-profiles"' + (state.bulkProfileRefreshBusy ? ' disabled' : '') + '>' + refreshLabel + '</button>'
+        + densityControl
         + '</div>';
 
       var toolbar = '<div class="household-concerts-bands-toolbar">' + columnControl + buildPagination('top') + '</div>';
 
       var favCardHtml = bands.length
-        ? '<div class="household-concerts-band-grid" style="' + gridStyle + '">' + pagedBands.map(renderBandCard).join('') + '</div>'
+        ? '<div class="household-concerts-band-grid' + (compactCards ? ' is-compact' : '') + '" style="' + gridStyle + '">' + pagedBands.map(renderBandCard).join('') + '</div>'
         : '<p class="household-concerts-muted">No bands in this filter range.</p>';
       var bandSection = '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Bands</h4><p>' + bands.length + ' band' + (bands.length === 1 ? '' : 's') + '</p></div></div>' + favCardHtml + '</section>';
 
@@ -3460,6 +3472,7 @@
   }
 
   function renderBandLinks(band, compact) {
+    var isDailyMode = isDailyConcertsMode();
     var completeness = summarizeLinkCompletenessForBandShape(band);
     var links = [
       { label: 'Website', url: band.websiteUrl },
@@ -3477,7 +3490,7 @@
         return '<a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(item.url)) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.label) + '</a>';
       }).join('') + '</div>')
       : (compact ? '' : '<p class="household-concerts-muted">Add website and social links to build out the full band profile.</p>');
-    var enrichBtn = band && band.id && completeness.missing.length
+    var enrichBtn = !isDailyMode && band && band.id && completeness.missing.length
       ? '<button type="button" class="pill-button" data-concert-action="enrich-missing-links" data-band-key="' + escapeHtml(band.id) + '">Fill Missing Links</button>'
       : '';
     return '<div class="household-concerts-muted">Link completeness: ' + completeness.score + '% • ' + escapeHtml(missingText) + '</div>' + linksHtml + (enrichBtn ? ('<div class="household-concerts-form-actions">' + enrichBtn + '</div>') : '');
@@ -3554,6 +3567,19 @@
   function renderDiscovery() {
     var el = $(DISCOVERY_ID);
     if (!el) return;
+    var panel = el.closest ? el.closest('.household-concerts-panel') : null;
+    if (isDailyConcertsMode()) {
+      if (panel) {
+        panel.hidden = true;
+        panel.setAttribute('aria-hidden', 'true');
+      }
+      el.innerHTML = '';
+      return;
+    }
+    if (panel) {
+      panel.hidden = false;
+      panel.setAttribute('aria-hidden', 'false');
+    }
     var activeBand = resolveActiveBand();
     if (!activeBand) {
       el.innerHTML = emptyState('Build your favorite band list first', 'Once you add bands, this panel will show similar favorites and recommended bands you have not added yet.');
@@ -3698,6 +3724,10 @@
   function renderRecommendationToast() {
     var host = getToastHost();
     if (!host) return;
+    if (isDailyConcertsMode()) {
+      host.innerHTML = '';
+      return;
+    }
     var toast = state.recommendationToast;
     if (!toast || !toast.token || !state.pendingRecommendationAdds[toast.token]) {
       host.innerHTML = '';
@@ -3808,6 +3838,58 @@
         : '<p class="household-concerts-muted">Run Refresh Festivals to scan for nationwide festival opportunities.</p>');
   }
 
+  function normalizeConcertFeatureView(view) {
+    var nextView = String(view || '').trim().toLowerCase();
+    return CONCERT_FEATURE_VIEWS.indexOf(nextView) >= 0 ? nextView : 'default';
+  }
+
+  function getCurrentAppModeSafe() {
+    if (typeof global.getAppMode === 'function') {
+      return global.getAppMode() === 'advanced' ? 'advanced' : 'daily';
+    }
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily';
+  }
+
+  function isDailyConcertsMode() {
+    return getCurrentAppModeSafe() === 'daily';
+  }
+
+  function getBandCardDensityMode() {
+    var stored = String(state.bandCardDensity || '').trim().toLowerCase();
+    if (stored === 'compact' || stored === 'comfortable') return stored;
+    return isDailyConcertsMode() ? 'compact' : 'comfortable';
+  }
+
+  function applyConcertFeatureView(root) {
+    var scope = root && typeof root.querySelectorAll === 'function' ? root : getRoot();
+    if (!scope) return;
+    var appMode = getCurrentAppModeSafe();
+    var activeView = normalizeConcertFeatureView(state.currentView);
+    if (appMode !== 'daily' && activeView === 'upcoming') {
+      activeView = 'default';
+    }
+    state.currentView = activeView;
+
+    scope.querySelectorAll('.household-concerts-feature-tab[data-view]').forEach(function (button) {
+      var tabView = normalizeConcertFeatureView(button.getAttribute('data-view'));
+      var hideInCurrentMode = appMode !== 'daily' && tabView === 'upcoming';
+      var isActive = !hideInCurrentMode && tabView === activeView;
+      button.hidden = hideInCurrentMode;
+      button.setAttribute('aria-hidden', hideInCurrentMode ? 'true' : 'false');
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    scope.querySelectorAll('[data-concert-view]').forEach(function (section) {
+      var modeAttr = section.getAttribute('data-concert-view-' + appMode);
+      var sectionView = normalizeConcertFeatureView(modeAttr || section.getAttribute('data-concert-view'));
+      var isActive = sectionView === activeView;
+      section.hidden = !isActive;
+      section.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+  }
+
    function renderAll() {
      renderStatus();
      renderSummary();
@@ -3830,6 +3912,7 @@
      renderAnalyticsDashboard();
      renderRecommendationToast();
       renderRockville2026();
+      applyConcertFeatureView(getRoot());
    }
 
   async function readTableSafe(filePath, tableName) {
@@ -7265,6 +7348,13 @@
      root.dataset.householdConcertsBound = '1';
 
      root.addEventListener('click', function (event) {
+       var tabButton = event.target && event.target.closest ? event.target.closest('.household-concerts-feature-tab[data-view]') : null;
+       if (!tabButton || !root.contains(tabButton)) return;
+       state.currentView = normalizeConcertFeatureView(tabButton.getAttribute('data-view'));
+       applyConcertFeatureView(root);
+     });
+
+     root.addEventListener('click', function (event) {
        var target = event.target && event.target.closest ? event.target.closest('[data-concert-action]') : null;
        if (!target) return;
        var action = String(target.getAttribute('data-concert-action') || '').trim();
@@ -7785,6 +7875,14 @@
            renderFavoriteBands();
            break;
          }
+         case 'set-band-card-density': {
+           var density = String(target.getAttribute('data-density') || '').trim().toLowerCase();
+           if (density !== 'compact' && density !== 'comfortable') break;
+           state.bandCardDensity = density;
+           writeStringStorage(BAND_CARD_DENSITY_STORAGE_KEY, density);
+           renderFavoriteBands();
+           break;
+         }
          case 'toggle-form-field-lock':
          case 'toggle-preview-field-lock':
          case 'toggle-provenance-field-lock':
@@ -7974,6 +8072,14 @@
             break;
           case 'view-gallery':
             state.currentView = 'gallery';
+            renderAll();
+            break;
+          case 'view-upcoming':
+            state.currentView = 'upcoming';
+            renderAll();
+            break;
+          case 'view-stats':
+            state.currentView = 'stats';
             renderAll();
             break;
           case 'view-analytics':
