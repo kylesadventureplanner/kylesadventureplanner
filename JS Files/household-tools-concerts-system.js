@@ -141,10 +141,11 @@
     logoPositionY: ['Logo_Position_Y', 'Logo Position Y']
   };
   var BAND_TIER_OPTIONS = [
-    { key: 'tier1', value: 'Tier 1 (The Best Bands)' },
-    { key: 'tier2', value: 'Tier 2 (Great Bands)' },
-    { key: 'tier3', value: 'Tier 3 (Good Bands)' },
-    { key: 'tier4', value: 'Tier 4 (Attended Concert / Not Favorite)' }
+    { key: 'tier1', value: 'Tier 1 (Best Bands / Amazing Live)', label: 'Tier 1', tooltip: 'Best Bands / Amazing Live' },
+    { key: 'tier2', value: 'Tier 2 (Great Bands / Great Live)', label: 'Tier 2', tooltip: 'Great Bands / Great Live' },
+    { key: 'tier3', value: 'Tier 3 (Good Bands / Decent Live)', label: 'Tier 3', tooltip: 'Good Bands / Decent Live' },
+    { key: 'tier4', value: 'Tier 4 (Ok Bands / Ok Live)', label: 'Tier 4', tooltip: 'Ok Bands / Ok Live' },
+    { key: 'tier5', value: 'Tier 5 (Ok Bands / Bad Live)', label: 'Tier 5', tooltip: 'Ok Bands / Bad Live' }
   ];
   var TABLE_WRITE_COLUMN_ALIASES = {
     bandmembersroles: ['bandmembers'],
@@ -219,8 +220,7 @@
      activeBandKey: '',
      bandFilter: '',
      genreFilter: '',
-      tierFilter: '',
-      showTier4Bands: readStringStorage(SHOW_TIER4_STORAGE_KEY, '0') === '1',
+      tierFilters: [],
       bandSummaryFilter: '',
       bandsPage: 1,
      distanceIndex: 3,
@@ -411,10 +411,11 @@
 
   function normalizeBandTier(value) {
     var text = normalizeText(value);
-    if (text.indexOf('tier 1') >= 0 || text.indexOf('the best bands') >= 0 || text === 'tier1') return BAND_TIER_OPTIONS[0].value;
+    if (text.indexOf('tier 1') >= 0 || text.indexOf('best bands') >= 0 || text.indexOf('the best bands') >= 0 || text === 'tier1') return BAND_TIER_OPTIONS[0].value;
     if (text.indexOf('tier 2') >= 0 || text.indexOf('great bands') >= 0 || text === 'tier2') return BAND_TIER_OPTIONS[1].value;
     if (text.indexOf('tier 3') >= 0 || text.indexOf('good bands') >= 0 || text === 'tier3') return BAND_TIER_OPTIONS[2].value;
-    if (text.indexOf('tier 4') >= 0 || text.indexOf('not favorite') >= 0 || text === 'tier4') return BAND_TIER_OPTIONS[3].value;
+    if (text.indexOf('tier 4') >= 0 || text.indexOf('ok bands / ok') >= 0 || text.indexOf('not favorite') >= 0 || text.indexOf('attended concert') >= 0 || text === 'tier4') return BAND_TIER_OPTIONS[3].value;
+    if (text.indexOf('tier 5') >= 0 || text.indexOf('bad live') >= 0 || text === 'tier5') return BAND_TIER_OPTIONS[4].value;
     return BAND_TIER_OPTIONS[1].value;
   }
 
@@ -427,7 +428,9 @@
   }
 
   function isTier4Band(value) {
-    return normalizeBandTier(value) === BAND_TIER_OPTIONS[3].value;
+    // With the new 5-tier system all tiers are tracked bands; this function is kept for
+    // backward-compatibility but always returns false so no band is treated as "not a favorite".
+    return false;
   }
 
   function getNextBandTierValue(currentTier) {
@@ -3161,14 +3164,13 @@
   function getFilteredBands() {
     var query = normalizeText(state.bandFilter);
     var genreFilter = normalizeText(state.genreFilter);
-    var tierFilter = normalizeText(state.tierFilter);
     var summaryFilter = normalizeText(state.bandSummaryFilter);
+    var activeTierFilters = state.tierFilters && state.tierFilters.length ? state.tierFilters : null;
     return state.favoriteBands.filter(function (band) {
-      var isTier4 = isTier4Band(band.bandTier);
-      if (tierFilter) {
-        if (normalizeText(normalizeBandTier(band.bandTier)) !== tierFilter) return false;
-      } else if (!state.showTier4Bands && isTier4) {
-        return false;
+      if (activeTierFilters) {
+        var bandTierNorm = normalizeText(normalizeBandTier(band.bandTier));
+        var matchesTier = activeTierFilters.some(function (tf) { return normalizeText(tf) === bandTierNorm; });
+        if (!matchesTier) return false;
       }
       if (genreFilter) {
         var hasGenre = (band.genres || []).some(function (genre) { return normalizeText(genre) === genreFilter; });
@@ -3176,11 +3178,8 @@
       }
       if (summaryFilter) {
         var stats = computeBandStats(band.id);
-        if (summaryFilter === 'favorite-bands' && isTier4) return false;
-        if (summaryFilter === 'seen-live-not-favorites' && !isTier4) return false;
         if (summaryFilter === 'concerts-seen' && (!stats || stats.attendedCount < 1)) return false;
         if (summaryFilter === 'upcoming-in-range' && (!stats || stats.upcomingCount < 1)) return false;
-        if (summaryFilter === 'average-rating' && (!stats || !(Number(stats.averageRating) > 0))) return false;
       }
       if (!query) return true;
       var haystack = [
@@ -3219,8 +3218,12 @@
     var crumbs = [];
     if (state.bandFilter) crumbs.push({ kind: 'query', label: 'Search: ' + state.bandFilter });
     if (state.genreFilter) crumbs.push({ kind: 'genre', label: 'Genre: ' + state.genreFilter });
-    if (state.tierFilter) crumbs.push({ kind: 'tier', label: 'Tier: ' + state.tierFilter });
-    if (state.showTier4Bands && !state.tierFilter) crumbs.push({ kind: 'tier4', label: 'Including Tier 4' });
+    if (state.tierFilters && state.tierFilters.length) {
+      state.tierFilters.forEach(function (tf) {
+        var option = BAND_TIER_OPTIONS.find(function (o) { return normalizeText(o.value) === normalizeText(tf); });
+        crumbs.push({ kind: 'tier', label: option ? option.label : tf, tierValue: tf });
+      });
+    }
     if (state.bandSummaryFilter) crumbs.push({ kind: 'summary', label: getSummaryFilterLabel(state.bandSummaryFilter) });
     return crumbs;
   }
@@ -3235,11 +3238,23 @@
       return;
     }
     el.style.display = 'flex';
-    el.innerHTML = '<div class="household-concerts-crumb-list">'
-      + crumbs.map(function (crumb) {
-        return '<button type="button" class="household-concerts-crumb" data-concert-action="remove-band-filter" data-filter-kind="' + escapeHtml(crumb.kind) + '"><span>' + escapeHtml(crumb.label) + '</span><strong>×</strong></button>';
-      }).join('')
-      + '</div>'
+    // Group tier crumbs together and show OR separator between them
+    var tierCrumbs = crumbs.filter(function (c) { return c.kind === 'tier'; });
+    var otherCrumbs = crumbs.filter(function (c) { return c.kind !== 'tier'; });
+    var crumbHtml = [];
+    otherCrumbs.forEach(function (crumb) {
+      crumbHtml.push('<button type="button" class="household-concerts-crumb" data-concert-action="remove-band-filter" data-filter-kind="' + escapeHtml(crumb.kind) + '"><span>' + escapeHtml(crumb.label) + '</span><strong>×</strong></button>');
+    });
+    if (tierCrumbs.length) {
+      crumbHtml.push('<div class="household-concerts-crumb-tier-group">');
+      crumbHtml.push('<span class="household-concerts-crumb-group-label">Tier (OR):</span>');
+      tierCrumbs.forEach(function (crumb, i) {
+        if (i > 0) crumbHtml.push('<span class="household-concerts-crumb-or">OR</span>');
+        crumbHtml.push('<button type="button" class="household-concerts-crumb household-concerts-crumb--tier" data-concert-action="remove-band-filter" data-filter-kind="tier" data-tier-value="' + escapeHtml(crumb.tierValue || '') + '"><span>' + escapeHtml(crumb.label) + '</span><strong>×</strong></button>');
+      });
+      crumbHtml.push('</div>');
+    }
+    el.innerHTML = '<div class="household-concerts-crumb-list">' + crumbHtml.join('') + '</div>'
       + '<button type="button" class="pill-button" data-concert-action="clear-all-band-filters">Clear All Filters</button>';
   }
 
@@ -3277,10 +3292,8 @@
 
     el.innerHTML = [
       summaryCard('Favorite Bands', String(favoriteCount), 'Artists you actively follow and want to keep up with.', 'favorite-bands'),
-      summaryCard('Bands Seen Live (Not Favorites)', String(seenLiveNotFavoriteCount), 'Tier 4 bands tracked separately from favorites.', 'seen-live-not-favorites'),
-      summaryCard('Concerts Seen', String(attendedCount), 'Every show you have logged, rated, and documented. ' + formatAttendeeBreakdown(attendeeCounts) + '.', 'concerts-seen'),
+      summaryCard('Concerts Seen', String(attendedCount), 'Every show you have logged, documented, and remembered. ' + formatAttendeeBreakdown(attendeeCounts) + '.', 'concerts-seen'),
       summaryCard('Upcoming In Range', String(upcomingNearbyCount), state.location ? (isDefaultConcertsLocation(state.location) ? ('Based on your default concert home base: ' + state.location.label + '.') : 'Based on your current distance slider and saved location.') : 'Set your location to turn on nearby concert filtering.', 'upcoming-in-range'),
-      summaryCard('Average Rating', averageRating ? averageRating.toFixed(1) + ' / 5' : '—', 'How your attended shows are trending overall.', 'average-rating'),
       summaryCard('Active Band Focus', activeBand ? activeBand.bandName : 'Pick a band', activeStats ? (activeStats.attendedCount + ' seen • ' + activeStats.upcomingCount + ' upcoming') : 'Select a band card to see similar artists and recommendations.')
     ].join('');
   }
@@ -3312,15 +3325,20 @@
   function renderTierChips() {
     var el = $(TIER_CHIPS_ID);
     if (!el) return;
-    var viewMode = [
-      '<button type="button" class="household-concerts-chip' + ((!state.showTier4Bands && !state.tierFilter) ? ' is-active' : '') + '" data-concert-action="set-tier4-visibility" data-tier4-visible="0">Favorites (Tier 1-3)</button>',
-      '<button type="button" class="household-concerts-chip' + ((state.showTier4Bands && !state.tierFilter) ? ' is-active' : '') + '" data-concert-action="set-tier4-visibility" data-tier4-visible="1">Include Tier 4</button>'
+    var allActive = !state.tierFilters || !state.tierFilters.length;
+    var html = [
+      '<div class="household-concerts-tier-filter-header">',
+      '<span class="household-concerts-tier-filter-label">Filter by Tier</span>',
+      '<span class="household-concerts-tier-filter-mode">Bands matching <strong>any</strong> selected tier will appear (OR)</span>',
+      '</div>',
+      '<div class="household-concerts-tier-chip-row">',
+      '<button type="button" class="household-concerts-chip household-concerts-chip--all-tiers' + (allActive ? ' is-active' : '') + '" data-concert-action="set-tier-filter" data-tier="" title="Show all tiers">All Tiers</button>'
     ];
-    var html = viewMode.concat(['<button type="button" class="household-concerts-chip' + (state.tierFilter ? '' : ' is-active') + '" data-concert-action="set-tier-filter" data-tier="">All visible tiers</button>']);
     BAND_TIER_OPTIONS.forEach(function (option) {
-      var active = normalizeText(option.value) === normalizeText(state.tierFilter);
-      html.push('<button type="button" class="household-concerts-chip' + (active ? ' is-active' : '') + '" data-concert-action="set-tier-filter" data-tier="' + escapeHtml(option.value) + '">' + escapeHtml(option.value) + '</button>');
+      var isActive = state.tierFilters && state.tierFilters.some(function (tf) { return normalizeText(tf) === normalizeText(option.value); });
+      html.push('<button type="button" class="household-concerts-chip household-concerts-chip--tier household-concerts-chip--' + escapeHtml(option.key) + (isActive ? ' is-active' : '') + '" data-concert-action="set-tier-filter" data-tier="' + escapeHtml(option.value) + '" title="' + escapeHtml(option.tooltip) + '">' + escapeHtml(option.label) + '</button>');
     });
+    html.push('</div>');
     el.innerHTML = html.join('');
   }
 
@@ -3337,13 +3355,8 @@
      var start = (page - 1) * BAND_DASHBOARD_PAGE_SIZE;
      var end = start + BAND_DASHBOARD_PAGE_SIZE;
      var pagedBands = bands.slice(start, end);
-     var activeBandKey = normalizeKey(resolveActiveBand() && resolveActiveBand().id);
-     var favoriteBands = pagedBands.filter(function (band) { return !isTier4Band(band.bandTier); });
-     var seenLiveBands = pagedBands.filter(function (band) { return isTier4Band(band.bandTier); });
-     // Total counts across all filtered bands (not just current page)
-     var totalFavoriteBands = bands.filter(function (band) { return !isTier4Band(band.bandTier); }).length;
-     var totalSeenLiveBands = bands.filter(function (band) { return isTier4Band(band.bandTier); }).length;
-     var renderBandCard = function (band) {
+      var activeBandKey = normalizeKey(resolveActiveBand() && resolveActiveBand().id);
+      var renderBandCard = function (band) {
        var stats = computeBandStats(band.id);
        var isActive = normalizeKey(band.id) === activeBandKey;
        var members = (band.members || []).slice(0, 4);
@@ -3426,19 +3439,12 @@
 
       var toolbar = '<div class="household-concerts-bands-toolbar">' + columnControl + buildPagination('top') + '</div>';
 
-      var favCardHtml = favoriteBands.length
-        ? '<div class="household-concerts-band-grid" style="' + gridStyle + '">' + favoriteBands.map(renderBandCard).join('') + '</div>'
-        : '<p class="household-concerts-muted">No favorites in this filter range.</p>';
-      var favoriteSection = '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Favorite Bands</h4><p>' + totalFavoriteBands + ' band' + (totalFavoriteBands === 1 ? '' : 's') + '</p></div></div>' + favCardHtml + '</section>';
+      var favCardHtml = bands.length
+        ? '<div class="household-concerts-band-grid" style="' + gridStyle + '">' + pagedBands.map(renderBandCard).join('') + '</div>'
+        : '<p class="household-concerts-muted">No bands in this filter range.</p>';
+      var bandSection = '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Bands</h4><p>' + bands.length + ' band' + (bands.length === 1 ? '' : 's') + '</p></div></div>' + favCardHtml + '</section>';
 
-      var shouldShowSeenLiveSection = state.showTier4Bands || normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value);
-      var seenCardHtml = seenLiveBands.length
-        ? '<div class="household-concerts-band-grid" style="' + gridStyle + '">' + seenLiveBands.map(renderBandCard).join('') + '</div>'
-        : '<p class="household-concerts-muted">No Tier 4 bands in this filter range.</p>';
-      var seenLiveSection = shouldShowSeenLiveSection
-        ? '<section class="household-concerts-tier-section"><div class="household-concerts-panel-head"><div><h4>Bands Seen Live (Not Favorites)</h4><p>' + totalSeenLiveBands + ' band' + (totalSeenLiveBands === 1 ? '' : 's') + '</p></div></div>' + seenCardHtml + '</section>'
-        : '';
-      el.innerHTML = toolbar + favoriteSection + seenLiveSection + buildPagination('bottom');
+      el.innerHTML = toolbar + bandSection + buildPagination('bottom');
    }
 
   function statPill(label, value) {
@@ -6098,7 +6104,7 @@
      var bandOptions = buildAttendedBandOptionsHtml(bandName, '');
       var venueListId = 'householdConcertsVenueOptionsAttended';
      openModal(
-       '<div class="household-concerts-modal-head"><div><h3>' + (isEditing ? 'Update Concert Log' : 'Log Attended Concert') + '</h3><p>Track the band, date, venue, star rating, photos, notes, and setlist links for a show you have seen.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
+        '<div class="household-concerts-modal-head"><div><h3>' + (isEditing ? 'Update Concert Log' : 'Log Attended Concert') + '</h3><p>Track the band, date, venue, photos, notes, and setlist links for a show you have seen.</p></div><button type="button" class="household-concerts-icon-btn" data-concert-action="close-modal">✕</button></div>'
        + '<form id="householdConcertsAttendedForm" class="household-concerts-form">'
        + '<input type="hidden" name="Attended_Concert_Id" value="' + escapeHtml(editConcertId) + '">'
        + '<input type="hidden" name="Attended_Row_Index" value="' + escapeHtml(editRowIndex >= 0 ? String(editRowIndex) : '') + '">'

@@ -620,6 +620,115 @@ test.describe('Drinks Cocktails – modal flows', () => {
     expect(stored['thc-cocktail-recipes'][0].name).toBe('Purple Nightcap');
     expect(stored['thc-cocktail-recipes'][0].ingredients).toContain('THC seltzer');
   });
+
+  test('edits an existing NA brew item through the modal and persists updated values', async ({ page }) => {
+    const storage = buildDrinksStorage({
+      'na-brew': [
+        makeItem({ id: 'na-edit-1', brand: 'Athletic Brewing', flavor: 'Run Wild IPA', myRating: 3 })
+      ]
+    });
+    const root = await openDrinksTab(page, storage);
+
+    await root.locator('[data-dc-pane="na-brew"] [data-dc-action="edit-item"]').first().click();
+
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Edit NA Brew Tracker item');
+
+    await modal.locator('[data-dc-modal-field="brand"]').fill('Athletic Brewing Co.');
+    await modal.locator('[data-dc-modal-field="flavor"]').fill('Free Wave Hazy IPA');
+    await modal.locator('[data-dc-modal-field="myRating"]').selectOption('5');
+    await modal.locator('[data-dc-modal-action="save"]').click();
+
+    await expect(modal).toBeHidden();
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(1);
+    await expect(root.locator('[data-dc-pane="na-brew"] [data-dc-card-brand="1"]')).toContainText('Athletic Brewing Co. - Free Wave Hazy IPA');
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Saved changes in NA Brew Tracker.');
+
+    const stored = await readDrinksStorage(page);
+    expect(stored['na-brew']).toHaveLength(1);
+    expect(stored['na-brew'][0].id).toBe('na-edit-1');
+    expect(stored['na-brew'][0].brand).toBe('Athletic Brewing Co.');
+    expect(stored['na-brew'][0].flavor).toBe('Free Wave Hazy IPA');
+    expect(stored['na-brew'][0].myRating).toBe(5);
+  });
+
+  test('deletes an existing NA brew item and removes it from localStorage', async ({ page }) => {
+    const storage = buildDrinksStorage({
+      'na-brew': [makeItem({ id: 'na-delete-1', brand: 'Delete Me', flavor: 'Original' })]
+    });
+    const root = await openDrinksTab(page, storage);
+
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(1);
+    await root.locator('[data-dc-pane="na-brew"] [data-dc-action="delete-item"]').first().click();
+
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(0);
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Item removed.');
+
+    const stored = await readDrinksStorage(page);
+    expect(stored['na-brew']).toHaveLength(0);
+  });
+
+  test('cancels NA brew add modal without creating a new item', async ({ page }) => {
+    const root = await openDrinksTab(page);
+
+    await root.locator('[data-dc-action="add-item"][data-tracker="na-brew"]').click();
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+
+    await modal.locator('[data-dc-modal-field="brand"]').fill('Should Not Save');
+    await modal.locator('[data-dc-modal-action="close"]').first().click();
+
+    await expect(modal).toBeHidden();
+    await expect(root.locator('[data-dc-pane="na-brew"] .dc-item-card')).toHaveCount(0);
+
+    const stored = await readDrinksStorage(page);
+    expect(Array.isArray(stored['na-brew'])).toBe(true);
+    expect(stored['na-brew']).toHaveLength(0);
+  });
+
+  test('edits and deletes a THC cocktail recipe via card actions', async ({ page }) => {
+    const storage = buildDrinksStorage({
+      'thc-cocktail-recipes': [
+        {
+          id: 'recipe-1',
+          name: 'Sunset Spritz',
+          ingredients: 'THC soda\norange\nice',
+          instructions: 'Build over ice.'
+        }
+      ]
+    });
+    const root = await openDrinksTab(page, storage);
+
+    await drinksSubtab(page, 'thc-cocktail-recipes').click();
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"]')).toBeVisible();
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"] .dc-item-card')).toHaveCount(1);
+
+    await root.locator('[data-dc-pane="thc-cocktail-recipes"] [data-dc-action="edit-cocktail-recipe"]').first().click();
+
+    const modal = page.locator('.dc-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Edit THC cocktail recipe');
+
+    await modal.locator('[data-dc-modal-field="name"]').fill('Sunset Spritz 2.0');
+    await modal.locator('[data-dc-modal-action="save"]').click();
+
+    await expect(modal).toBeHidden();
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"] [data-dc-recipe-name="1"]')).toContainText('Sunset Spritz 2.0');
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Saved THC cocktail recipe.');
+
+    let stored = await readDrinksStorage(page);
+    expect(stored['thc-cocktail-recipes']).toHaveLength(1);
+    expect(stored['thc-cocktail-recipes'][0].id).toBe('recipe-1');
+    expect(stored['thc-cocktail-recipes'][0].name).toBe('Sunset Spritz 2.0');
+
+    await root.locator('[data-dc-pane="thc-cocktail-recipes"] [data-dc-action="delete-cocktail-recipe"]').first().click();
+    await expect(root.locator('[data-dc-pane="thc-cocktail-recipes"] .dc-item-card')).toHaveCount(0);
+    await expect(root.locator('#drinksCocktailsStatus')).toContainText('Deleted cocktail recipe.');
+
+    stored = await readDrinksStorage(page);
+    expect(stored['thc-cocktail-recipes']).toHaveLength(0);
+  });
 });
 
 
