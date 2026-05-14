@@ -1,19 +1,399 @@
-<!-- GARDEN PLANNER TAB CONTENT -->
-<!-- This file is loaded dynamically by tab-content-loader.js -->
-<!-- All CSS, JS, and functions are available from the main index -->
+<div id="gardenPlannerRoot" class="garden-planner-root">
+  <style>
+    /* ── core layout ── */
+    #gardenPlannerRoot { padding: 16px; }
+    #gardenPlannerRoot .garden-shell { display: grid; gap: 14px; }
+    #gardenPlannerRoot .garden-header { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+    #gardenPlannerRoot .garden-header-title { margin: 0; font-size: 20px; }
+    #gardenPlannerRoot .garden-header-subtitle { margin: 0; color: #4b5563; font-size: 13px; }
+    #gardenPlannerRoot .garden-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    #gardenPlannerRoot .garden-btn { border: 1px solid #d1d5db; background: #fff; color: #111827; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; font-size: 13px; transition: background .15s; }
+    #gardenPlannerRoot .garden-btn:hover:not(:disabled) { background: #f9fafb; }
+    #gardenPlannerRoot .garden-btn.primary { background: #166534; border-color: #166534; color: #fff; }
+    #gardenPlannerRoot .garden-btn.primary:hover:not(:disabled) { background: #15803d; }
+    #gardenPlannerRoot .garden-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    #gardenPlannerRoot .garden-status { padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+    #gardenPlannerRoot .garden-status.synced { background: #ecfdf5; color: #047857; border: 1px solid #86efac; }
+    #gardenPlannerRoot .garden-status.local  { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+    #gardenPlannerRoot .garden-status.error  { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    #gardenPlannerRoot .garden-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    #gardenPlannerRoot .garden-filter { display: grid; gap: 6px; }
+    #gardenPlannerRoot .garden-filter label { font-size: 12px; color: #374151; font-weight: 600; }
+    #gardenPlannerRoot input, #gardenPlannerRoot select, #gardenPlannerRoot textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; font: inherit; }
+    #gardenPlannerRoot .garden-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    #gardenPlannerRoot .garden-card { border: 1px solid #d1d5db; border-radius: 10px; padding: 12px; background: #fff; display: grid; gap: 8px; transition: box-shadow .15s; }
+    #gardenPlannerRoot .garden-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    #gardenPlannerRoot .garden-card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+    #gardenPlannerRoot .garden-card p { margin: 0; font-size: 13px; color: #374151; }
+    #gardenPlannerRoot .garden-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    #gardenPlannerRoot .garden-pill { font-size: 11px; border-radius: 999px; background: #f3f4f6; color: #111827; padding: 4px 8px; }
+    #gardenPlannerRoot .garden-card-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    #gardenPlannerRoot .garden-empty { padding: 20px; border: 1px dashed #cbd5e1; border-radius: 10px; text-align: center; color: #475569; }
+    #gardenPlannerRoot .garden-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 1200; display: none; align-items: center; justify-content: center; padding: 16px; }
+    #gardenPlannerRoot .garden-modal-backdrop.open { display: flex; }
+    #gardenPlannerRoot .garden-modal { width: min(980px, 100%); max-height: 90vh; overflow: auto; background: #fff; border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+    #gardenPlannerRoot .garden-modal h2 { margin: 0; }
+    #gardenPlannerRoot .garden-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    #gardenPlannerRoot .garden-form-grid .span-2 { grid-column: span 2; }
+    #gardenPlannerRoot .garden-inline-note { font-size: 11px; color: #6b7280; }
+    #gardenPlannerRoot .garden-detail-list { display: grid; gap: 8px; }
+    #gardenPlannerRoot .garden-detail-row { border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+    #gardenPlannerRoot .garden-detail-row strong { display: block; font-size: 12px; color: #4b5563; }
+    /* ── extra action row ── */
+    #gardenPlannerRoot .garden-extra-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    /* ── planting calendar ── */
+    #gardenPlannerRoot #gardenCalendarPanel { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; display: none; }
+    #gardenPlannerRoot .garden-cal-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0 8px; }
+    #gardenPlannerRoot .garden-cal-nav { padding: 4px 10px; font-size: 18px; line-height: 1; }
+    #gardenPlannerRoot .garden-cal-body { display: grid; gap: 8px; }
+    #gardenPlannerRoot .garden-cal-section-title { margin: 6px 0 4px; font-size: 13px; font-weight: 700; color: #374151; }
+    #gardenPlannerRoot .garden-cal-tasks { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+    #gardenPlannerRoot .garden-cal-task { font-size: 13px; }
+    #gardenPlannerRoot .garden-cal-type-seed      { color: #166534; }
+    #gardenPlannerRoot .garden-cal-type-transplant { color: #0369a1; }
+    #gardenPlannerRoot .garden-cal-type-prune      { color: #7c3aed; }
+    #gardenPlannerRoot .garden-cal-type-plan       { color: #0f766e; }
+    /* ── photo gallery ── */
+    #gardenPlannerRoot .garden-photo-strip { display: flex; gap: 10px; flex-wrap: wrap; padding: 4px 0; }
+    #gardenPlannerRoot .garden-photo-thumb { position: relative; width: 90px; height: 90px; border-radius: 8px; overflow: hidden; border: 2px solid #d1d5db; cursor: grab; transition: border-color .15s; }
+    #gardenPlannerRoot .garden-photo-thumb.garden-photo-primary { border-color: #166534; }
+    #gardenPlannerRoot .garden-photo-thumb.dragging { opacity: .5; border-style: dashed; }
+    #gardenPlannerRoot .garden-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #gardenPlannerRoot .garden-photo-primary-badge { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(22,101,52,.8); color: #fff; font-size: 9px; text-align: center; padding: 2px; }
+    #gardenPlannerRoot .garden-photo-view-btn { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.5); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; padding: 2px 4px; }
+    /* ── observation log ── */
+    #gardenPlannerRoot .garden-obs-add { background: #f9fafb; border-radius: 8px; padding: 12px; }
+    #gardenPlannerRoot .garden-obs-timeline { display: grid; gap: 8px; margin-top: 10px; }
+    #gardenPlannerRoot .garden-obs-entry { display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
+    #gardenPlannerRoot .garden-obs-icon { font-size: 20px; line-height: 1; }
+    #gardenPlannerRoot .garden-obs-body { flex: 1; font-size: 13px; }
+    #gardenPlannerRoot .garden-obs-type-badge { background: #f3f4f6; border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+    #gardenPlannerRoot .garden-season-chart { background: #fafafa; border-radius: 8px; padding: 10px; margin: 8px 0; }
+    /* ── bulk toolbar ── */
+    #gardenPlannerRoot #gardenBulkToolbar { display: none; position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px; gap: 10px; align-items: center; z-index: 50; border-radius: 0 0 10px 10px; flex-wrap: wrap; box-shadow: 0 -2px 8px rgba(0,0,0,.06); }
+    #gardenPlannerRoot .garden-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    #gardenPlannerRoot .garden-chip-btn { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    #gardenPlannerRoot .garden-chip-btn:hover { background: #dcfce7; }
+    #gardenPlannerRoot .garden-conflict-summary { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 13px; color: #334155; }
+    #gardenPlannerRoot .garden-dialog-intro { margin: 0; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; color: #374151; font-size: 13px; line-height: 1.45; }
+    #gardenPlannerRoot .garden-dialog-callout { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 13px; line-height: 1.45; }
+    #gardenPlannerRoot .garden-dialog-grid { display: grid; gap: 10px; }
+    #gardenPlannerRoot .garden-dialog-field { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+    #gardenPlannerRoot .garden-dialog-field input,
+    #gardenPlannerRoot .garden-dialog-field select { width: 100%; }
+    #gardenPlannerRoot .garden-dialog-note { font-size: 12px; color: #6b7280; font-weight: 500; }
+    #gardenPlannerRoot .garden-list-summary { display: grid; gap: 6px; padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
+    #gardenPlannerRoot .garden-list-summary-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    #gardenPlannerRoot .garden-list-summary-count { font-size: 13px; font-weight: 700; color: #0f172a; }
+    #gardenPlannerRoot .garden-active-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    #gardenPlannerRoot .garden-filter-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; }
+    #gardenPlannerRoot .garden-filter-chip button { border: none; background: transparent; color: inherit; cursor: pointer; padding: 0; font: inherit; line-height: 1; }
+    #gardenPlannerRoot .garden-filter-chip.reset { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+     #gardenPlannerRoot .garden-photo-actions { display:flex;gap:4px;position:absolute;top:4px;right:4px; }
+     #gardenPlannerRoot .garden-photo-view-btn,
+     #gardenPlannerRoot .garden-photo-primary-btn { background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 5px; }
+     #gardenPlannerRoot .garden-photo-primary-btn { background:rgba(0,0,0,.38); }
+     #gardenPlannerRoot .garden-photo-caption-input { display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:4px 6px;font-size:11px;border:1px solid #e5e7eb;border-radius:5px;color:#374151;background:#fafafa;font:inherit; }
+     #gardenPlannerRoot .garden-photo-caption-input:focus { outline:2px solid #166534;background:#fff; }
+     #gardenPlannerRoot .garden-obs-edit-form { padding:8px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0; }
+     #gardenUndoHistoryPanel::-webkit-scrollbar { width:5px; }
+     #gardenUndoHistoryPanel::-webkit-scrollbar-thumb { background:#e2e8f0;border-radius:3px; }
+     /* ── garden map ── */
+     #gardenPlannerRoot .garden-map-bed { transition: border-color .2s; }
+     #gardenPlannerRoot .garden-map-plant-chip:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); transform: translateY(-1px); }
+     /* ── phenology section ── */
+     #gardenPlannerRoot .garden-phenology-outer table td { vertical-align: middle; }
+     /* ── weather banner ── */
+     #gardenWeatherBanner { margin: 0; }
+     /* ── plant lookup bar (Feature H) ── */
+     #gardenPlantLookupBar .garden-lookup-row:hover { background: #f0fdf4 !important; }
+     /* ── species network (Feature K) ── */
+     #gardenNetworkContent svg { display: block; }
+     /* ── frost badge ── */
+     #gardenPlannerRoot .garden-frost-badge { animation: gardenFrostPulse 2s infinite; }
+     @keyframes gardenFrostPulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+     /* ── lightbox ── */
+    #gardenLightboxModal { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 2000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; padding: 16px; }
+    #gardenLightboxModal.open { display: flex; }
+    #gardenLightboxModal img { max-width: 92vw; max-height: 80vh; border-radius: 8px; object-fit: contain; }
+    #gardenLightboxModal .garden-lb-controls { display: flex; gap: 12px; align-items: center; }
+    #gardenLightboxModal .garden-lb-btn { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 16px; font-weight: 600; }
 
-<div class="tab-placeholder">
-  <div class="tab-placeholder-icon">🌱</div>
-  <div class="tab-placeholder-text">Garden Planner</div>
-  <div class="tab-placeholder-subtext">Plan and organize your garden activities</div>
+    @media (max-width: 640px) {
+      #gardenPlannerRoot { padding: 10px; }
+      #gardenPlannerRoot .garden-actions { width: 100%; }
+      #gardenPlannerRoot .garden-btn { min-height: 44px; }
+      #gardenPlannerRoot .garden-modal-backdrop { align-items: flex-end; padding: 8px; }
+      #gardenPlannerRoot .garden-modal { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; padding: 12px; }
+      #gardenPlannerRoot .garden-modal .garden-actions { flex-direction: column; }
+      #gardenPlannerRoot .garden-modal .garden-actions .garden-btn { width: 100%; }
+      #gardenPlannerRoot .garden-chip-row { gap: 8px; }
+      #gardenPlannerRoot .garden-list-summary-top { align-items: flex-start; }
+      #gardenPlannerRoot #gardenConflictContent { max-height: 46vh !important; }
+    }
+  </style>
+
+  <div class="garden-shell">
+    <div class="garden-header">
+      <div>
+        <h2 class="garden-header-title">🌿 Garden Planner</h2>
+        <p class="garden-header-subtitle">Track plants, habitat value, sightings, and sync state for table <strong>mygarden</strong> in workbook <strong>garden_planner</strong>.</p>
+      </div>
+      <div class="garden-actions">
+        <button type="button" class="garden-btn primary" id="gardenAddPlantBtn">+ Add Plant</button>
+        <button type="button" class="garden-btn" id="gardenSyncFromExcelBtn">↓ Sync from Excel</button>
+        <button type="button" class="garden-btn" id="gardenSyncToExcelBtn">↑ Sync to Excel</button>
+      </div>
+    </div>
+
+    <div id="gardenSyncStatus" class="garden-status local">Local-only data pending sync.</div>
+
+    <!-- Weather + watering-need banner — Feature G (populated by JS) -->
+    <div id="gardenWeatherBanner" style="display:none;"></div>
+
+    <!-- Extra action row: calendar toggle, bulk select, exports, map, succession, weather, network, labels -->
+    <div class="garden-extra-actions">
+      <button type="button" class="garden-btn" id="gardenCalToggle">📅 Show Planting Calendar</button>
+      <button type="button" class="garden-btn" id="gardenBulkModeBtn">☑ Bulk Select</button>
+      <button type="button" class="garden-btn" id="gardenMapBtn" title="Visual drag-and-drop bed map keyed to your location fields">🗺️ Garden Map</button>
+      <button type="button" class="garden-btn" id="gardenSuccessionBtn" title="See bloom coverage gaps and get Henderson County native fill-in suggestions">🌱 Bloom Gaps</button>
+      <button type="button" class="garden-btn" id="gardenNetworkBtn" title="D3.js force graph of plants and their shared butterfly, bee, and bird species">🕸️ Species Map</button>
+      <button type="button" class="garden-btn" id="gardenPrintLabelsBtn" title="Print QR code labels for all plants — one per plant, 3-up sheet">🏷️ Print All Labels</button>
+      <button type="button" class="garden-btn" id="gardenExportPollinators" title="Download CSV + printable page with pollinator plants">🦋 Export Pollinators</button>
+      <button type="button" class="garden-btn" id="gardenExportBirds" title="Download CSV + printable page with bird-support plants">🐦 Export Bird Plants</button>
+      <button type="button" class="garden-btn" id="gardenExportToBuy" title="Download CSV of plants not yet on property">🛒 To Buy This Season</button>
+    </div>
+
+    <!-- Planting Calendar panel (hidden by default) -->
+    <div id="gardenCalendarPanel">
+      <p style="color:#6b7280;font-size:13px;">Calendar loading…</p>
+    </div>
+
+    <div class="garden-filters">
+      <div class="garden-filter">
+        <label for="gardenSearchFilter">Search plants</label>
+        <input id="gardenSearchFilter" type="text" placeholder="Name, location, species, notes">
+      </div>
+      <div class="garden-filter">
+        <label for="gardenBloomRangeFilter">Bloom time range</label>
+        <input id="gardenBloomRangeFilter" type="text" placeholder="ex: spring to fall">
+      </div>
+      <div class="garden-filter">
+        <label for="gardenHostFilter">Butterfly host plant</label>
+        <select id="gardenHostFilter"><option value="">Any</option><option value="yes">Yes</option><option value="no">No</option></select>
+      </div>
+      <div class="garden-filter">
+        <label for="gardenBeeFilter">Supports specialist bees</label>
+        <select id="gardenBeeFilter"><option value="">Any</option><option value="yes">Yes</option><option value="no">No</option></select>
+      </div>
+      <div class="garden-filter">
+        <label for="gardenBirdFilter">Supports birds</label>
+        <select id="gardenBirdFilter"><option value="">Any</option><option value="yes">Yes</option><option value="no">No</option></select>
+      </div>
+    </div>
+
+    <div id="gardenListSummary" class="garden-list-summary" aria-live="polite"></div>
+    <div id="gardenActiveFilters" class="garden-active-filters" aria-label="Active filters"></div>
+
+    <div id="gardenCards" class="garden-cards"></div>
+
+    <!-- Bulk action toolbar (sticky, appears when items are selected) -->
+    <div id="gardenBulkToolbar">
+      <span id="gardenBulkCount" style="font-size:13px;font-weight:700;color:#166534;"></span>
+      <button type="button" class="garden-btn primary" id="gardenBulkEditBtn">✏️ Edit Selected</button>
+      <button type="button" class="garden-btn" id="gardenBulkDeselectBtn">✕ Deselect All</button>
+    </div>
+  </div>
+
+  <div id="gardenEditorBackdrop" class="garden-modal-backdrop" aria-hidden="true">
+    <div class="garden-modal" role="dialog" aria-modal="true" aria-labelledby="gardenEditorTitle">
+      <h2 id="gardenEditorTitle">Add Plant</h2>
+      <form id="gardenEditorForm">
+        <div class="garden-form-grid">
+          <div><label>Plant name (common)<input name="commonName" required></label></div>
+          <div><label>Scientific name<input name="scientificName"></label></div>
+          <div><label>Location planted<input name="locationPlanted" placeholder="front yard, side driveway"></label></div>
+          <div><label>Perennial or annual<select name="lifeCycle"><option value="">Unknown</option><option>Perennial</option><option>Annual</option></select></label></div>
+          <div><label>Native to NC<select name="nativeToNc"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Native to Henderson county<select name="nativeToHenderson"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Sun requirement<select name="sunRequirement"><option value="">Unknown</option><option>Full Sun</option><option>Part Sun</option><option>Shade</option></select></label></div>
+          <div><label>Deer resistant<select name="deerResistant"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Best time to plant seed<input name="bestTimeSeed"></label></div>
+          <div><label>Bloom seasons / range<input name="bloomSeasons" placeholder="Spring to Fall"></label></div>
+          <div><label>Bloom months<input name="bloomMonths" placeholder="Apr-May, Sep"></label></div>
+          <div><label>Propagation method<input name="propagationMethod"></label></div>
+          <div><label>Self-propagates?<input name="selfPropagation" placeholder="Seeds, rhizomes, etc"></label></div>
+          <div><label>Cold resistance temperature<input name="coldResistance"></label></div>
+          <div><label>Seed harvest method<input name="seedHarvestMethod"></label></div>
+          <div><label>Started from seed<select name="startedFromSeed"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Started from live plant<select name="startedFromLivePlant"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Toxic to humans<select name="toxicHumans"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Toxic to dogs/cats<select name="toxicPets"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Supports dragonflies<select name="supportsDragonflies"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Supports hover flies<select name="supportsHoverflies"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Supports moths<select name="supportsMoths"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Supports birds<select name="supportsBirds"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Butterfly host<select name="butterflyHost"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Supports specialist bees<select name="supportsSpecialistBees"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Purchase source<select id="gardenPurchaseSourceSelect" name="wherePurchased"></select></label></div>
+          <div><label>Custom purchase source<input name="purchaseSourceCustom" placeholder="Used when Custom is selected"></label></div>
+          <div><label>Did not purchase / already on property<select name="alreadyOnProperty"><option value="">No</option><option>Yes</option></select></label></div>
+          <div><label>Deer seen eating<select name="deerSeenEating"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div><label>Rabbits seen eating<select name="rabbitsSeenEating"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label></div>
+          <div class="span-2"><label>Butterfly species supported<textarea name="butterflySpeciesSupported" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Butterfly host species<textarea name="butterflyHostSpecies" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Bee species supported<textarea name="specialistBeeSpecies" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Bird species supported<textarea name="birdSpeciesSupported" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Moth species supported<textarea name="mothSpeciesSupported" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Informational URLs (NC-focused preferred)<textarea name="informationalUrls" rows="3" placeholder="One URL per line"></textarea></label></div>
+          <div class="span-2"><label>Photos (URLs or local references)<textarea name="photos" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Notes<textarea name="notes" rows="3" placeholder="One note per line"></textarea></label></div>
+          <div class="span-2"><label>Insect species seen<textarea name="otherInsectSpeciesSeen" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Butterfly species seen on plant<textarea name="butterflySpeciesSeen" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Bee species seen on plant<textarea name="beeSpeciesSeen" rows="2" placeholder="One per line"></textarea></label></div>
+          <div class="span-2"><label>Bird species seen on plant<textarea name="birdSpeciesSeen" rows="2" placeholder="One per line"></textarea></label></div>
+        </div>
+        <p class="garden-inline-note">Data saves locally immediately. Sync status above tells you whether records are local-only or synced to Excel backend.</p>
+        <div class="garden-actions">
+          <button type="submit" class="garden-btn primary">Save Plant</button>
+          <button type="button" id="gardenCancelEditorBtn" class="garden-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="gardenDetailBackdrop" class="garden-modal-backdrop" aria-hidden="true">
+    <div class="garden-modal" role="dialog" aria-modal="true" aria-labelledby="gardenDetailTitle">
+      <h2 id="gardenDetailTitle">Plant Details</h2>
+      <div id="gardenDetailContent" class="garden-detail-list"></div>
+      <!-- Photo gallery + observation log are injected here by garden-planner-enhancements.js -->
+      <div class="garden-actions">
+        <button type="button" id="gardenCloseDetailBtn" class="garden-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= PHOTO LIGHTBOX ======= -->
+  <div id="gardenLightboxModal" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <img id="gardenLightboxImg" src="" alt="Full size plant photo">
+    <div class="garden-lb-controls">
+      <button class="garden-lb-btn" id="gardenLightboxPrev" title="Previous (←)">‹</button>
+      <span id="gardenLightboxCounter" style="color:#fff;font-size:13px;min-width:60px;text-align:center;"></span>
+      <button class="garden-lb-btn" id="gardenLightboxNext" title="Next (→)">›</button>
+      <button class="garden-lb-btn" id="gardenLightboxClose" title="Close (Esc)">✕</button>
+    </div>
+  </div>
+
+  <!-- ======= BULK EDIT MODAL ======= -->
+  <div id="gardenBulkModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:480px;" role="dialog" aria-modal="true">
+      <h2 style="font-size:16px;">✏️ Bulk Edit Selected Plants</h2>
+      <p id="gardenBulkSummary" class="garden-dialog-intro">0 plants selected.</p>
+      <p class="garden-dialog-intro">These changes will be applied to every selected plant. Leave any field blank to keep that value unchanged.</p>
+      <div class="garden-dialog-grid">
+        <label class="garden-dialog-field">
+          Set location planted
+          <input id="gardenBulkLocation" type="text" placeholder="e.g. front yard, shade bed">
+          <span class="garden-dialog-note">Examples: front yard, shade bed, pollinator bed.</span>
+        </label>
+        <label class="garden-dialog-field">
+          Add custom tag
+          <input id="gardenBulkTag" type="text" placeholder="e.g. front yard, shade bed, pollinator bed">
+          <span class="garden-dialog-note">Use commas or line breaks for multiple tags. Click a suggestion to add it.</span>
+          <span class="garden-dialog-note" style="font-weight:600;color:#374151;">Quick tags</span>
+          <div class="garden-chip-row" aria-label="Suggested bulk tags">
+            <button type="button" class="garden-chip-btn garden-bulk-tag-chip" data-tag="front yard">front yard</button>
+            <button type="button" class="garden-chip-btn garden-bulk-tag-chip" data-tag="shade bed">shade bed</button>
+            <button type="button" class="garden-chip-btn garden-bulk-tag-chip" data-tag="pollinator bed">pollinator bed</button>
+            <button type="button" class="garden-chip-btn garden-bulk-tag-chip" data-tag="back border">back border</button>
+          </div>
+        </label>
+        <label class="garden-dialog-field">
+          Set NC Native flag
+          <select id="gardenBulkNative" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font:inherit;width:auto;">
+            <option value="">— no change —</option><option>Yes</option><option>No</option>
+          </select>
+        </label>
+        <label class="garden-dialog-field">
+          Set Supports Birds flag
+          <select id="gardenBulkBird" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font:inherit;width:auto;">
+            <option value="">— no change —</option><option>Yes</option><option>No</option>
+          </select>
+        </label>
+      </div>
+      <div class="garden-actions">
+        <button type="button" class="garden-btn primary" id="gardenBulkApplyBtn">Apply Changes</button>
+        <button type="button" class="garden-btn" id="gardenBulkCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= DUPLICATE WARNING MODAL ======= -->
+  <div id="gardenDupeModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:460px;" role="dialog" aria-modal="true">
+      <h2 style="font-size:16px;">⚠️ Possible Duplicate Plant</h2>
+      <p id="gardenDupeSummary" class="garden-dialog-intro">0 possible matches found.</p>
+      <p class="garden-dialog-intro">This looks similar to a plant already in your list. Review the match before saving.</p>
+      <div id="gardenDupeList" style="background:#fef3c7;border-radius:8px;padding:10px;font-size:13px;"></div>
+      <p class="garden-dialog-callout">If this is a different plant, you can still save it. If not, go back and update the existing entry instead.</p>
+      <div class="garden-actions">
+        <button type="button" class="garden-btn primary" id="gardenDupeContinueBtn">Save Anyway</button>
+        <button type="button" class="garden-btn" id="gardenDupeCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= SYNC CONFLICT MODAL ======= -->
+  <div id="gardenConflictModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:720px;" role="dialog" aria-modal="true">
+      <h2 style="font-size:16px;">🔀 Review changes before syncing</h2>
+      <p id="gardenConflictSummaryTop" class="garden-dialog-intro">0 conflict changes found.</p>
+      <p class="garden-dialog-intro">
+        These plants have changes both in the app and in Excel. Choose which version to keep before syncing.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="garden-btn primary" id="gardenConflictAllLocal" style="font-size:12px;">Keep My Changes</button>
+        <button type="button" class="garden-btn" style="background:#dbeafe;font-size:12px;" id="gardenConflictAllSnap">Use Excel Version</button>
+      </div>
+      <div id="gardenConflictContent" style="display:grid;gap:8px;max-height:55vh;overflow:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ======= GARDEN MAP MODAL (Feature E) ======= -->
+  <div id="gardenMapModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:960px;" role="dialog" aria-modal="true" aria-labelledby="gardenMapTitle">
+      <h2 id="gardenMapTitle" style="font-size:16px;">🗺️ Garden Bed Map</h2>
+      <p class="garden-dialog-intro">Each card below is a garden bed. <strong>Drag plants between beds</strong> to reassign their location. Click a plant name to view its details.</p>
+      <p class="garden-dialog-callout" style="margin:0 0 4px;">Beds are created automatically from the <em>Location planted</em> field on each plant.</p>
+      <div id="gardenMapContent" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;max-height:60vh;overflow:auto;padding:4px;"></div>
+      <div class="garden-actions" style="margin-top:8px;">
+        <button type="button" class="garden-btn" id="gardenMapCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= SUCCESSION PLANNER MODAL (Feature F) ======= -->
+  <div id="gardenSuccessionModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:820px;" role="dialog" aria-modal="true" aria-labelledby="gardenSuccessionTitle">
+      <h2 id="gardenSuccessionTitle" style="font-size:16px;">🌱 Succession Planting Planner</h2>
+      <p class="garden-dialog-intro">See your garden's bloom coverage by month, identify gaps, and get fill-in suggestions from Henderson County NC natives.</p>
+      <div id="gardenSuccessionContent" style="max-height:68vh;overflow:auto;padding:4px;"></div>
+      <div class="garden-actions" style="margin-top:8px;">
+        <button type="button" class="garden-btn" id="gardenSuccessionCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= SPECIES INTERACTION NETWORK MODAL (Feature K) ======= -->
+  <div id="gardenNetworkModal" class="garden-modal-backdrop">
+    <div class="garden-modal" style="max-width:900px;" role="dialog" aria-modal="true" aria-labelledby="gardenNetworkTitle">
+      <h2 id="gardenNetworkTitle" style="font-size:16px;">🕸️ Species Interaction Network</h2>
+      <p class="garden-dialog-intro">A force-directed graph of your plants and the butterfly, bee, and bird species they support. <strong>Drag</strong> nodes to rearrange · <strong>scroll</strong> to zoom · <strong>click</strong> a plant to open its details.</p>
+      <p class="garden-dialog-callout" style="margin:0 0 6px;">Fill in "Butterfly / Bee / Bird species seen" or "Host species" fields on your plants to populate this map.</p>
+      <div id="gardenNetworkContent" style="min-height:200px;"></div>
+      <div class="garden-actions" style="margin-top:8px;">
+        <button type="button" class="garden-btn" id="gardenNetworkCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
-
-<script>
-  // Initialize Garden Planner tab
-  window.initGardenTab = function() {
-    console.log('✅ Garden Planner tab initialized');
-    // Add your garden-specific initialization here
-    // All JS functions are available from main index
-  };
-</script>
-

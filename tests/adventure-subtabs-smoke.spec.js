@@ -172,12 +172,39 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
 
     const addLocationCtas = page.locator('#visitedProgressPane-all-locations .visited-daily-primary-cta');
     await expect(addLocationCtas).toHaveCount(2);
+    await expect.poll(() => addLocationCtas.first().evaluate((btn) => {
+      const style = window.getComputedStyle(btn);
+      const minHeight = parseFloat(style.minHeight || '0');
+      const fontWeight = parseInt(style.fontWeight || '0', 10);
+      return minHeight >= 46 && fontWeight >= 700;
+    })).toBe(true);
 
     await activateFooterAction(page, nextPageBtn);
     await expect.poll(async () => {
       const text = await pagination.innerText().catch(() => '');
       return String(text || '').replace(/\s+/g, ' ').trim();
     }, { timeout: 10000 }).toMatch(/Page\s*2\s*of/i);
+  });
+
+  test('daily city explorer view hides back/chrome diagnostics surfaces', async ({ page }) => {
+    await openAdventureChallenge(page, { mode: 'daily', subtabKey: 'city-explorer' });
+    await waitForAdventureSubtabView(page, 'all-locations', 'city-explorer', { timeout: 15000 });
+
+    const cityExplorerPane = page.locator('#visitedProgressPane-all-locations [data-visited-subtab-view="city-explorer"]').first();
+    await expect(cityExplorerPane).toBeVisible();
+
+    const backButton = cityExplorerPane.locator('[data-daily-hide-city-explorer-back="true"]').first();
+    await expect(backButton).toBeHidden();
+
+    await expect.poll(() => page.evaluate(() => {
+      const ids = ['pageShortcutHelpToggle', 'tvModeHeaderBtn', 'persistentDiagnosticsStatusLine'];
+      return ids.every((id) => {
+        const el = document.getElementById(id);
+        if (!el) return true;
+        const style = window.getComputedStyle(el);
+        return el.hidden || style.display === 'none' || style.visibility === 'hidden';
+      });
+    }), { timeout: 12000 }).toBe(true);
   });
 });
 

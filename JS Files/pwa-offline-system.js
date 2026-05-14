@@ -6,7 +6,7 @@
   var STORE_QUEUE = 'writeQueue';
   var LAST_PACK_KEY = 'kafOfflinePackLastPreparedAt';
   var LAST_HARD_REFRESH_KEY = 'kafHardRefreshDiagnosticsLastResult';
-  var SERVICE_WORKER_VERSION = '2026.05.02.1';
+  var SERVICE_WORKER_VERSION = '2026.05.13.1';
   var serviceWorkerUrl = new URL('sw.js', window.location.href);
   serviceWorkerUrl.searchParams.set('v', SERVICE_WORKER_VERSION);
   var SERVICE_WORKER_PATH = serviceWorkerUrl.toString();
@@ -28,6 +28,7 @@
     '/JS%20Files/household-tools-concerts-system.js',
     '/JS%20Files/visited-locations-tab-system.js',
     '/JS%20Files/nature-challenge-tab-system.js',
+    '/JS%20Files/garden-planner-system.js',
     '/JS%20Files/pwa-offline-system.js',
     '/HTML%20Files/tabs/visited-locations-tab.html',
     '/HTML%20Files/tabs/nature-challenge-tab.html',

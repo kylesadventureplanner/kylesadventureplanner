@@ -127,6 +127,19 @@ test.describe('Adventure Concerts daily layout + chrome regression', () => {
     await expect(page.locator('#householdConcertsPane .household-concerts-feature-tab[data-view="upcoming"]')).toBeVisible();
     await expect.poll(() => isElementHiddenOrMissing(page, 'tvModeHeaderBtn')).toBe(true);
     await expect.poll(() => isElementHiddenOrMissing(page, 'pageShortcutHelpToggle')).toBe(true);
+
+    await setAppMode(page, 'advanced');
+
+    await expect.poll(() => sectionHiddenForElement(page, 'householdConcertsAttendedList')).toBe(false);
+    await expect.poll(() => sectionHiddenForElement(page, 'householdConcertsUpcomingList')).toBe(false);
+    await expect(page.locator('#householdConcertsPane .household-concerts-feature-tab[data-view="upcoming"]')).toBeHidden();
+
+    // Verify advanced mode restores both discovery and diagnostics surfaces.
+    await expect.poll(() => page.evaluate(() => {
+      const discoveryPanel = document.getElementById('householdConcertsDiscovery')?.closest('.household-concerts-panel');
+      return !!(discoveryPanel && !discoveryPanel.hidden);
+    })).toBe(true);
+    await expect.poll(() => isElementHiddenOrMissing(page, 'persistentDiagnosticsStatusLine')).toBe(false);
   });
 
   test('daily mode hides requested band-card content/actions and defaults to compact density', async ({ page }) => {

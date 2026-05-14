@@ -806,6 +806,51 @@
       color: #6b7280;
       font-weight: 600;
     }
+    .loc-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0 2px;
+    }
+    .loc-pagination[hidden] {
+      display: none !important;
+    }
+    .loc-pagination-meta {
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .loc-pagination-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .loc-pagination-btn {
+      min-width: 110px;
+      min-height: 38px;
+      border: 2px solid #1d4ed8;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+    .loc-pagination-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 22px rgba(37, 99, 235, 0.34);
+      filter: brightness(1.02);
+    }
+    .loc-pagination-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      box-shadow: none;
+      transform: none;
+      filter: none;
+    }
     .loc-reset-btn {
       padding: 7px 14px;
       background: white;
@@ -3537,6 +3582,7 @@
       if (isEmbeddedViewer()) {
         document.body.classList.add('embedded-viewer');
       }
+      cityViewerAppMode = resolveCityViewerAppMode();
       resolveNearbyDebugThresholdsFromUrl();
       resolvePrefilterFromUrl();
       syncLocFilterPanelState({ force: true });
@@ -3893,6 +3939,9 @@
     let bypassAdventurePrefilterForLocations = false;
     let activeLocSourceFilter = '';
     let activeLocSourceTypeFilter = '';
+    let cityViewerAppMode = 'daily';
+    let locCurrentPage = 1;
+    const LOC_DAILY_PAGE_SIZE = 16;
     let familyPreferences = null;
     let activeFamilyPreset = '';
     const locCoreRefreshInFlight = new Set();
@@ -3934,6 +3983,68 @@
       saved: 'Saved',
       default: 'Other'
     };
+
+    function resolveCityViewerAppMode() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const fromUrl = String(params.get('appMode') || '').trim().toLowerCase();
+        if (fromUrl === 'daily') return 'daily';
+        if (fromUrl === 'advanced') return 'advanced';
+      } catch (_error) {
+        // fall through
+      }
+      return 'advanced';
+    }
+
+    function getLocPageSize() {
+      return cityViewerAppMode === 'advanced' ? 0 : LOC_DAILY_PAGE_SIZE;
+    }
+
+    function getLocPagedResults(results) {
+      const list = Array.isArray(results) ? results : [];
+      const pageSize = getLocPageSize();
+      if (pageSize <= 0) return list;
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      locCurrentPage = Math.max(1, Math.min(totalPages, locCurrentPage || 1));
+      const start = (locCurrentPage - 1) * pageSize;
+      return list.slice(start, start + pageSize);
+    }
+
+    function renderLocPagination(totalResults) {
+      const host = document.getElementById('locPagination');
+      if (!host) return;
+      const pageSize = getLocPageSize();
+      const total = Math.max(0, Number(totalResults || 0));
+      if (pageSize <= 0 || total <= pageSize) {
+        host.hidden = true;
+        host.innerHTML = '';
+        return;
+      }
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      locCurrentPage = Math.max(1, Math.min(totalPages, locCurrentPage || 1));
+      const start = (locCurrentPage - 1) * pageSize + 1;
+      const end = Math.min(total, locCurrentPage * pageSize);
+      host.hidden = false;
+      host.innerHTML = '<div class="loc-pagination-meta">Page ' + locCurrentPage + ' of ' + totalPages + ' • Showing ' + start + '-' + end + ' of ' + total + '</div>'
+        + '<div class="loc-pagination-actions">'
+        + '<button type="button" class="loc-pagination-btn" onclick="setLocPage(' + (locCurrentPage - 1) + ')"' + (locCurrentPage <= 1 ? ' disabled' : '') + '>◀ Previous</button>'
+        + '<button type="button" class="loc-pagination-btn" onclick="setLocPage(' + (locCurrentPage + 1) + ')"' + (locCurrentPage >= totalPages ? ' disabled' : '') + '>Next ▶</button>'
+        + '</div>';
+    }
+
+    function setLocPage(nextPage) {
+      locCurrentPage = Math.max(1, Number(nextPage || 1) || 1);
+      if (!currentCityKey || !citiesData[currentCityKey]) return;
+      const cityEntry = citiesData[currentCityKey];
+      const cityLocations = getCityLocationsForView(cityEntry);
+      const paged = getLocPagedResults(lastFilteredLocations);
+      renderLocPagination(lastFilteredLocations.length);
+      renderCategoryBar(cityLocations, paged);
+      renderLocationCards(paged);
+      renderLocMap(paged);
+      renderShortlistTray();
+      updateUrlFromState();
+    }
 
     function runDeferredCityViewerWork(task) {
       if (typeof task !== 'function') return;
@@ -8571,8 +8682,9 @@
       '</div>';
     }
 
-    function applyLocFilters() {
+    function applyLocFilters(options) {
       if (!currentCityKey || !citiesData[currentCityKey]) return;
+      const opts = options && typeof options === 'object' ? options : {};
       const cityEntry = citiesData[currentCityKey];
       const sortBy = document.getElementById('locSortBy').value;
       const criteria = getLocFilterCriteria();
@@ -8584,6 +8696,7 @@
         .sort((a, b) => compareLocationsForSort(a, b, sortBy, cityEntry));
 
       lastFilteredLocations = results;
+      if (!opts.preservePage) locCurrentPage = 1;
       lastRankBadgeIndex = buildRankBadgeIndexForCity({ ...cityEntry, locations: cityLocations });
       document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
       renderLocPrefilterScopeToggle();
@@ -8593,9 +8706,11 @@
       renderSmartPresetState();
       renderDataFreshnessBadge();
       renderMixedSourceDiagnosticsPanel(cityEntry, baseResults, results);
-      renderCategoryBar(cityLocations, results);
-      renderLocationCards(results);
-      renderLocMap(results);
+      renderLocPagination(results.length);
+      const pagedResults = getLocPagedResults(results);
+      renderCategoryBar(cityLocations, pagedResults);
+      renderLocationCards(pagedResults);
+      renderLocMap(pagedResults);
       renderShortlistTray();
       updateUrlFromState();
     }
@@ -8749,6 +8864,7 @@
       locFilterPanelManualOverride = false;
       syncLocFilterPanelState({ force: true });
       syncLocStatusPanelState({ force: true });
+      locCurrentPage = 1;
 
       buildQuickTagPills(viewLocations);
       populateTagDatalist(viewLocations);
@@ -8775,6 +8891,7 @@
       currentCityKey = null;
       activeLocId = null;
       activeLocationDetailId = null;
+      locCurrentPage = 1;
       locMapScope = 'city';
       updateLocMapScopeButton();
       const catBar = document.getElementById('locCategoryBar');
@@ -8782,6 +8899,7 @@
       document.getElementById('locationsPage').style.display = 'none';
       document.getElementById('cityGrid').style.display = 'grid';
       document.querySelector('.controls').style.display = 'flex';
+      renderLocPagination(0);
       setLocationResultsMode();
     }
 

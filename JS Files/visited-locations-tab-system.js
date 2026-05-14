@@ -4873,7 +4873,8 @@
       'tvModeGlobalToggle',
       'diagSectionWrap',
       'debugBar',
-      'visitedDiagnosticsDetails'
+      'visitedDiagnosticsDetails',
+      'persistentDiagnosticsStatusLine'
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -4881,6 +4882,13 @@
       el.setAttribute('aria-hidden', isDailyCityExplorer ? 'true' : 'false');
       el.style.display = isDailyCityExplorer ? 'none' : '';
     });
+
+    if (isDailyCityExplorer) {
+      const shortcutsBackdrop = document.getElementById('pageShortcutHelpBackdrop');
+      const shortcutsDrawer = document.getElementById('pageShortcutHelpDrawer');
+      if (shortcutsBackdrop) shortcutsBackdrop.classList.remove('open');
+      if (shortcutsDrawer) shortcutsDrawer.classList.remove('open');
+    }
   }
 
   function workbookPathCandidates(workbook) {
