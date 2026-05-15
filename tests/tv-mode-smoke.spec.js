@@ -3,6 +3,13 @@ const { test, expect } = require('@playwright/test');
 test('TV mode toggles and retired Adventure Planner affordances stay gone', async ({ page }) => {
   await page.goto('/index.html');
 
+  // TV controls are advanced-only.
+  await page.evaluate(() => {
+    if (typeof window.setAppMode === 'function') {
+      window.setAppMode('advanced');
+    }
+  });
+
   const toggle = page.locator('#tvModeGlobalToggle');
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveText(/TV Mode: OFF/i);

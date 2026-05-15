@@ -464,6 +464,46 @@
     display: none;
   }
 
+  #visitedLocationsRoot .visited-suggestions-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0 6px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .visited-suggestions-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #visitedLocationsRoot .visited-suggestions-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0 12px;
+  }
+
+  #visitedLocationsRoot .visited-suggestions-filter-chip {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #visitedLocationsRoot .visited-suggestions-filter-chip.is-active {
+    border-color: #93c5fd;
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
   #visitedLocationsRoot .visited-skeleton-block {
     height: 14px;
     border-radius: 6px;
@@ -1949,6 +1989,21 @@
 
   #visitedLocationsRoot .adventure-achv-section {
     scroll-margin-top: 110px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-combined-group.is-collapsed {
+    padding-bottom: 2px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-combined-body {
+    display: grid;
+    gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-combined-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 2px;
   }
 
   #visitedLocationsRoot .adventure-achv-section > .card-header {

@@ -13,6 +13,8 @@
   var SEARCH_RESULTS_ID = 'householdConcertsSearchResults';
   var DISCOVERY_ID = 'householdConcertsDiscovery';
   var ATTENDED_ID = 'householdConcertsAttendedList';
+  var ATTENDED_META_ID = 'householdConcertsAttendedMeta';
+  var ATTENDED_PAGINATION_ID = 'householdConcertsAttendedPagination';
   var UPCOMING_ID = 'householdConcertsUpcomingList';
   var LOCATION_TEXT_ID = 'householdConcertsLocationText';
   var DISTANCE_VALUE_ID = 'householdConcertsDistanceValue';
@@ -23,7 +25,7 @@
   var ROCKVILLE_2026_WORKSHEET = 'Rockville_2026';
   var WORKBOOK_NAME = 'Concerts_Bands.xlsx';
   var DISTANCE_STOPS = [25, 50, 75, 100, 250, 1000];
-  var CONCERT_FEATURE_VIEWS = ['default', 'upcoming', 'stats', 'analytics', 'gallery'];
+  var CONCERT_FEATURE_VIEWS = ['default', 'attended', 'upcoming', 'stats', 'analytics', 'gallery'];
   var CONCERT_ATTENDEE_OPTIONS = ['Kyle', 'Heather', 'Both'];
   var VENUE_PRESET_OPTIONS = [
     'The Prophet Bar - Dallas, TX',
@@ -40,6 +42,7 @@
   var HISTORIC_RADIUS_OPTIONS = [25, 50, 100];
   var HISTORIC_DEFAULT_FROM_YEAR = 2006;
   var BAND_DASHBOARD_PAGE_SIZE = 12;
+  var ATTENDED_PAGE_SIZE = 10;
   var HISTORIC_SEARCH_LOCATIONS = [
     { id: 'richardson', label: 'Richardson, TX 75081', latitude: 32.9483, longitude: -96.7299 },
     { id: 'hendersonville', label: 'Hendersonville, NC 28791', latitude: 35.3187, longitude: -82.4609 }
@@ -225,6 +228,9 @@
       tierFilters: [],
       bandSummaryFilter: '',
       bandsPage: 1,
+      attendedPage: 1,
+      attendedFilterQuery: '',
+      attendedFilterAttendee: 'all',
      distanceIndex: 3,
      searchBusy: false,
      geocodeBusy: false,
@@ -5494,6 +5500,198 @@
     }).join('') + '</div>';
   }
 
+  function normalizeBandImageRole(role) {
+    var key = normalizeText(role);
+    return key === 'logo' ? 'logo' : 'cover';
+  }
+
+  function getBandImagePickerUrlByRole(role) {
+    if (!state.bandImagePicker || !state.bandImagePicker.formData) return '';
+    return normalizeBandImageRole(role) === 'logo'
+      ? String(state.bandImagePicker.formData.bandLogoUrl || '').trim()
+      : String(state.bandImagePicker.formData.bandCoverPhotoUrl || '').trim();
+  }
+
+  function setBandImagePickerUrlByRole(role, url) {
+    if (!state.bandImagePicker || !state.bandImagePicker.formData) return;
+    if (normalizeBandImageRole(role) === 'logo') state.bandImagePicker.formData.bandLogoUrl = String(url || '').trim();
+    else state.bandImagePicker.formData.bandCoverPhotoUrl = String(url || '').trim();
+  }
+
+  function getBandImagePickerManagedFile(role) {
+    if (!state.bandImagePicker) return null;
+    var key = normalizeBandImageRole(role);
+    var managed = state.bandImagePicker.managedFiles && typeof state.bandImagePicker.managedFiles === 'object'
+      ? state.bandImagePicker.managedFiles
+      : {};
+    return managed[key] || null;
+  }
+
+  function toShareToken(url) {
+    var value = String(url || '').trim();
+    if (!value) return '';
+    try {
+      return 'u!' + btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function formatBandImageOneDriveLocation(meta) {
+    var safe = meta && typeof meta === 'object' ? meta : {};
+    var folderPath = String(safe.folderPath || '').trim();
+    var fileName = String(safe.fileName || '').trim();
+    if (!folderPath && !fileName) return '';
+    return [folderPath, fileName].filter(Boolean).join('/').replace(/\/\/+/, '/');
+  }
+
+  function renderBandImageManagerSection() {
+    if (!state.bandImagePicker) return '';
+    var entries = [
+      { role: 'logo', label: 'Logo' },
+      { role: 'cover', label: 'Cover' }
+    ];
+    return '<section class="household-concerts-band-image-manager">'
+      + '<h4>Saved Image Files</h4>'
+      + '<p class="household-concerts-muted">Inspect where current images are stored in OneDrive, then rename or delete files without leaving the app.</p>'
+      + '<div class="household-concerts-band-image-manager-grid">'
+      + entries.map(function (entry) {
+        var url = getBandImagePickerUrlByRole(entry.role);
+        var meta = getBandImagePickerManagedFile(entry.role);
+        var locationText = formatBandImageOneDriveLocation(meta);
+        var hasFileRef = !!(meta && meta.fileId);
+        return '<article class="household-concerts-band-image-manager-card">'
+          + '<h5>' + escapeHtml(entry.label) + '</h5>'
+          + (url
+            ? '<p><a class="household-concerts-link-pill" href="' + escapeHtml(safeUrl(url)) + '" target="_blank" rel="noopener noreferrer">Open current ' + escapeHtml(entry.label.toLowerCase()) + '</a></p>'
+            : '<p class="household-concerts-muted">No image currently set.</p>')
+          + (locationText
+            ? '<p class="household-concerts-muted"><strong>Saved in OneDrive:</strong> <code>' + escapeHtml(locationText) + '</code></p>'
+            : '<p class="household-concerts-muted">Location not resolved yet.</p>')
+          + '<div class="household-concerts-form-actions">'
+          + '<button type="button" class="pill-button" data-concert-action="resolve-band-image-location" data-image-role="' + escapeHtml(entry.role) + '"' + (url ? '' : ' disabled') + '>Resolve Location</button>'
+          + '<button type="button" class="pill-button" data-concert-action="rename-band-image-file" data-image-role="' + escapeHtml(entry.role) + '"' + (hasFileRef ? '' : ' disabled') + '>Rename</button>'
+          + '<button type="button" class="pill-button" data-concert-action="delete-band-image-file" data-image-role="' + escapeHtml(entry.role) + '"' + (hasFileRef ? '' : ' disabled') + '>Delete</button>'
+          + '</div>'
+          + '</article>';
+      }).join('')
+      + '</div>'
+      + '</section>';
+  }
+
+  async function resolveBandImageDriveItemFromUrl(url) {
+    var shareToken = toShareToken(url);
+    if (!shareToken) throw new Error('Could not resolve this image URL into a OneDrive file reference.');
+    var payload = await fetchJson('https://graph.microsoft.com/v1.0/shares/' + shareToken + '/driveItem?$select=id,name,webUrl,parentReference');
+    var parentPath = payload && payload.parentReference && payload.parentReference.path
+      ? String(payload.parentReference.path || '').replace('/drive/root:', '').replace(/^\/+/, '')
+      : '';
+    return {
+      fileId: String(payload && payload.id || '').trim(),
+      fileName: String(payload && payload.name || '').trim(),
+      webUrl: String(payload && payload.webUrl || '').trim(),
+      folderPath: parentPath
+    };
+  }
+
+  function rerenderBandImagePickerModal() {
+    if (!state.bandImagePicker) return;
+    openBandImagePickerModal(null, state.bandImagePicker.candidates || []);
+  }
+
+  async function persistBandImagePickerDataToSourceBand() {
+    if (!state.bandImagePicker || state.bandImagePicker.sourceType !== 'band') return;
+    var sourceBandKey = String(state.bandImagePicker.sourceBandKey || '').trim();
+    var sourceBand = getBandByKey(sourceBandKey);
+    if (!sourceBand) return;
+    var formData = state.bandImagePicker.formData || {};
+    var imagePatch = {
+      bandLogoUrl: String(formData.bandLogoUrl || '').trim(),
+      bandCoverPhotoUrl: String(formData.bandCoverPhotoUrl || '').trim()
+    };
+    await persistFavoriteBandProfilePatch(sourceBand, imagePatch, { skipRender: true });
+    saveBandProfileOverride(sourceBandKey, imagePatch);
+    state.favoriteBands = state.favoriteBands.map(function (entry) {
+      if (!entry) return entry;
+      var sameId = normalizeKey(entry.id || '') === normalizeKey(sourceBand.id || '');
+      var sameName = normalizeKey(entry.bandName || '') === normalizeKey(sourceBand.bandName || '');
+      if (!sameId && !sameName) return entry;
+      return Object.assign({}, entry, imagePatch);
+    });
+  }
+
+  async function inspectBandManagedImage(role) {
+    if (!state.bandImagePicker) return;
+    var safeRole = normalizeBandImageRole(role);
+    var url = getBandImagePickerUrlByRole(safeRole);
+    if (!url) {
+      setBandImagePickerStatus('No ' + safeRole + ' image is currently set.', 'warning');
+      return;
+    }
+    setBandImagePickerStatus('Resolving OneDrive location for the ' + safeRole + ' image...', 'info');
+    try {
+      var managed = await resolveBandImageDriveItemFromUrl(url);
+      state.bandImagePicker.managedFiles[safeRole] = managed;
+      setBandImagePickerStatus('Resolved ' + safeRole + ' location: ' + (formatBandImageOneDriveLocation(managed) || managed.fileName || 'OneDrive file') + '.', 'success');
+      rerenderBandImagePickerModal();
+    } catch (error) {
+      setBandImagePickerStatus(error && error.message ? error.message : 'Could not resolve image file location.', 'error');
+    }
+  }
+
+  async function renameBandManagedImage(role) {
+    if (!state.bandImagePicker) return;
+    var safeRole = normalizeBandImageRole(role);
+    var managed = getBandImagePickerManagedFile(safeRole);
+    if (!managed || !managed.fileId) {
+      await inspectBandManagedImage(safeRole);
+      managed = getBandImagePickerManagedFile(safeRole);
+    }
+    if (!managed || !managed.fileId) return;
+    var suggestedName = String(managed.fileName || '').trim() || (safeRole + '-image.jpg');
+    var nextName = String(global.prompt('Rename this ' + safeRole + ' file to:', suggestedName) || '').trim();
+    if (!nextName || nextName === suggestedName) return;
+    setBandImagePickerStatus('Renaming OneDrive file...', 'info');
+    try {
+      var payload = await fetchJson('https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent(managed.fileId), {
+        method: 'PATCH',
+        body: { name: sanitizeFileName(nextName) }
+      });
+      state.bandImagePicker.managedFiles[safeRole] = Object.assign({}, managed, {
+        fileName: String(payload && payload.name || sanitizeFileName(nextName)).trim(),
+        webUrl: String(payload && payload.webUrl || managed.webUrl || '').trim()
+      });
+      setBandImagePickerStatus('Renamed ' + safeRole + ' image file successfully.', 'success');
+      rerenderBandImagePickerModal();
+    } catch (error) {
+      setBandImagePickerStatus(error && error.message ? error.message : 'Could not rename image file.', 'error');
+    }
+  }
+
+  async function deleteBandManagedImage(role) {
+    if (!state.bandImagePicker) return;
+    var safeRole = normalizeBandImageRole(role);
+    var managed = getBandImagePickerManagedFile(safeRole);
+    if (!managed || !managed.fileId) {
+      await inspectBandManagedImage(safeRole);
+      managed = getBandImagePickerManagedFile(safeRole);
+    }
+    if (!managed || !managed.fileId) return;
+    if (!global.confirm('Delete this ' + safeRole + ' image from OneDrive? This cannot be undone.')) return;
+    setBandImagePickerStatus('Deleting OneDrive file...', 'info');
+    try {
+      await fetchJson('https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent(managed.fileId), { method: 'DELETE' });
+      setBandImagePickerUrlByRole(safeRole, '');
+      delete state.bandImagePicker.managedFiles[safeRole];
+      await persistBandImagePickerDataToSourceBand();
+      setBandImagePickerStatus('Deleted ' + safeRole + ' image file and cleared it from this band.', 'success');
+      rerenderBandImagePickerModal();
+      renderAll();
+    } catch (error) {
+      setBandImagePickerStatus(error && error.message ? error.message : 'Could not delete image file.', 'error');
+    }
+  }
+
   // ===== IMAGE CROP / POSITION =====
 
   function getBandImageCrop(bandId) {
@@ -5645,7 +5843,8 @@
       sourceBandKey: String(safeOptions.sourceBandKey || (existing && existing.sourceBandKey) || '').trim(),
       candidates: Array.isArray(candidates) ? candidates.slice() : (existing ? (existing.candidates || []).slice() : []),
       selectedCoverIndex: Number.isFinite(selectedCoverIndex) ? selectedCoverIndex : -1,
-      selectedLogoIndex: Number.isFinite(selectedLogoIndex) ? selectedLogoIndex : -1
+      selectedLogoIndex: Number.isFinite(selectedLogoIndex) ? selectedLogoIndex : -1,
+      managedFiles: Object.assign({}, safeOptions.managedFiles || (existing && existing.managedFiles) || {})
     };
     var pickerBandKey = state.bandImagePicker.sourceType === 'band'
       ? normalizeKey(state.bandImagePicker.sourceBandKey || state.bandImagePicker.bandName || '')
@@ -5661,6 +5860,7 @@
       + '<div class="household-concerts-form-row"><label>Import logo from URL</label><input id="householdConcertsBandLogoUrlInput" placeholder="https://..."><button type="button" class="pill-button" data-concert-action="import-band-logo-url">Import Logo URL</button></div>'
       + '<div class="household-concerts-form-row"><label>Import cover from URL</label><input id="householdConcertsBandCoverUrlInput" placeholder="https://..."><button type="button" class="pill-button" data-concert-action="import-band-cover-url">Import Cover URL</button></div>'
       + '</div>'
+      + renderBandImageManagerSection()
       + (pickerBandKey
         ? '<div class="household-concerts-form-row"><label>Adjust image position</label><div class="household-concerts-form-actions"><button type="button" class="pill-button" data-concert-action="open-image-position-cover" data-band-key="' + escapeHtml(pickerBandKey) + '">Adjust Cover Position</button><button type="button" class="pill-button" data-concert-action="open-image-position-logo" data-band-key="' + escapeHtml(pickerBandKey) + '">Adjust Logo Position</button></div></div>'
         : '')
@@ -7680,6 +7880,15 @@
         case 'import-band-cover-url':
           importBandImageFromUrlInput('householdConcertsBandCoverUrlInput', 'Band_Cover_Photo_URL', 'cover');
           break;
+        case 'resolve-band-image-location':
+          inspectBandManagedImage(target.getAttribute('data-image-role') || 'cover');
+          break;
+        case 'rename-band-image-file':
+          renameBandManagedImage(target.getAttribute('data-image-role') || 'cover');
+          break;
+        case 'delete-band-image-file':
+          deleteBandManagedImage(target.getAttribute('data-image-role') || 'cover');
+          break;
         case 'open-log-concert':
           openAttendedConcertForm(getBandByKey(target.getAttribute('data-band-key')) || resolveActiveBand());
           break;
@@ -7822,7 +8031,14 @@
            } else if (filterKind === 'genre') {
              state.genreFilter = '';
            } else if (filterKind === 'tier') {
-             state.tierFilter = '';
+              var tierValue = String(target.getAttribute('data-tier-value') || '').trim();
+              if (tierValue) {
+                state.tierFilters = (state.tierFilters || []).filter(function (entry) {
+                  return normalizeText(entry) !== normalizeText(tierValue);
+                });
+              } else {
+                state.tierFilters = [];
+              }
            } else if (filterKind === 'tier4') {
              state.showTier4Bands = false;
              writeStringStorage(SHOW_TIER4_STORAGE_KEY, '0');
@@ -7836,7 +8052,7 @@
          case 'clear-all-band-filters': {
            state.bandFilter = '';
            state.genreFilter = '';
-           state.tierFilter = '';
+            state.tierFilters = [];
            state.bandSummaryFilter = '';
            state.showTier4Bands = false;
            writeStringStorage(SHOW_TIER4_STORAGE_KEY, '0');
@@ -7848,17 +8064,30 @@
          }
          case 'set-tier4-visibility':
            state.showTier4Bands = String(target.getAttribute('data-tier4-visible') || '') === '1';
-           if (!state.showTier4Bands && normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value)) {
-             state.tierFilter = '';
+           if (!state.showTier4Bands) {
+             state.tierFilters = (state.tierFilters || []).filter(function (entry) {
+               return normalizeText(entry) !== normalizeText(BAND_TIER_OPTIONS[3].value);
+             });
            }
            state.bandsPage = 1;
            writeStringStorage(SHOW_TIER4_STORAGE_KEY, state.showTier4Bands ? '1' : '0');
            renderAll();
            break;
          case 'set-tier-filter':
-           state.tierFilter = String(target.getAttribute('data-tier') || '').trim();
+           var selectedTier = String(target.getAttribute('data-tier') || '').trim();
+           if (!selectedTier) {
+             state.tierFilters = [];
+           } else {
+             var currentTierFilters = Array.isArray(state.tierFilters) ? state.tierFilters.slice() : [];
+             var existingTierIndex = currentTierFilters.findIndex(function (entry) {
+               return normalizeText(entry) === normalizeText(selectedTier);
+             });
+             if (existingTierIndex >= 0) currentTierFilters.splice(existingTierIndex, 1);
+             else currentTierFilters.push(selectedTier);
+             state.tierFilters = currentTierFilters;
+           }
            state.bandsPage = 1;
-           if (normalizeText(state.tierFilter) === normalizeText(BAND_TIER_OPTIONS[3].value)) {
+           if ((state.tierFilters || []).some(function (entry) { return normalizeText(entry) === normalizeText(BAND_TIER_OPTIONS[3].value); })) {
              state.showTier4Bands = true;
              writeStringStorage(SHOW_TIER4_STORAGE_KEY, '1');
            }
@@ -7868,6 +8097,21 @@
            state.bandsPage = Number(target.getAttribute('data-page') || 1) || 1;
            renderFavoriteBands();
            break;
+         case 'set-attended-page':
+           state.attendedPage = Math.max(1, Number(target.getAttribute('data-page') || 1) || 1);
+           renderAttendedConcerts();
+           break;
+         case 'clear-attended-filters': {
+           state.attendedFilterQuery = '';
+           state.attendedFilterAttendee = 'all';
+           state.attendedPage = 1;
+           var attendedSearchInput = $('householdConcertsAttendedSearchInput');
+           if (attendedSearchInput) attendedSearchInput.value = '';
+           var attendedAttendeeFilter = $('householdConcertsAttendedAttendeeFilter');
+           if (attendedAttendeeFilter) attendedAttendeeFilter.value = 'all';
+           renderAttendedConcerts();
+           break;
+         }
          case 'set-band-columns': {
            var newCols = Math.max(1, Math.min(4, Number(target.getAttribute('data-columns') || 2) || 2));
            state.bandCardColumns = newCols;
@@ -8121,6 +8365,11 @@
          renderUpcomingConcerts();
          renderSummary();
        }
+       if (target.id === 'householdConcertsAttendedSearchInput') {
+         state.attendedFilterQuery = String(target.value || '').trim();
+         state.attendedPage = 1;
+         renderAttendedConcerts();
+       }
        if (target.id === 'householdConcertsPhotoFileInput') {
          state.attendedUploadFiles = target.files ? Array.from(target.files) : [];
          if (state.attendedUploadFiles.length) {
@@ -8142,6 +8391,16 @@
         if (target.id === 'householdConcertsCropX' || target.id === 'householdConcertsCropY' || target.id === 'householdConcertsCropZoom') {
           updateImageCropPreview();
         }
+     });
+
+     root.addEventListener('change', function (event) {
+       var target = event.target;
+       if (!target) return;
+       if (target.id === 'householdConcertsAttendedAttendeeFilter') {
+         state.attendedFilterAttendee = normalizeAttendedViewAttendeeFilter(target.value || 'all');
+         state.attendedPage = 1;
+         renderAttendedConcerts();
+       }
      });
 
     root.addEventListener('keydown', function (event) {

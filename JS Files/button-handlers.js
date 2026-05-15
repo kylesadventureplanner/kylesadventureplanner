@@ -1235,6 +1235,7 @@
     const detailsUrl = new URL(resolvePlannerUrl('HTML Files/adventure-details-window.html'), window.location.href);
     detailsUrl.searchParams.set('sourceIndex', String(entry.sourceIndex));
     detailsUrl.searchParams.set('corrId', correlationId);
+    detailsUrl.searchParams.set('appMode', typeof window.getAppMode === 'function' ? window.getAppMode() : 'daily');
 
     const values = entry && entry.row && entry.row.values ? entry.row.values[0] : [];
     const debugName = Array.isArray(values) ? String(values[0] || '') : '';

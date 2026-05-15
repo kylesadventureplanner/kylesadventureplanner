@@ -107,6 +107,13 @@
     };
   }
 
+  function isAdvancedAppMode() {
+    if (typeof window.getAppMode === 'function') {
+      return window.getAppMode() === 'advanced';
+    }
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced';
+  }
+
   function ensureShortcutHelpStyles() {
     if (document.getElementById(SHORTCUT_HELP_STYLE_ID)) return;
     const style = document.createElement('style');
@@ -165,6 +172,10 @@
       document.body.appendChild(drawer);
     }
 
+    toggle.setAttribute('data-advanced-only', 'true');
+    backdrop.setAttribute('data-advanced-only', 'true');
+    drawer.setAttribute('data-advanced-only', 'true');
+
     toggle.textContent = config.buttonLabel;
     toggle.title = config.buttonLabel + ' (?)';
     toggle.setAttribute('data-tooltip', config.buttonLabel + ' (?)');
@@ -192,6 +203,7 @@
       closeBtn.addEventListener('click', function () { toggleShortcutHelpDrawer(false); });
     }
     applyShortcutTooltips(config);
+    syncShortcutHelpUiVisibility();
   }
 
   function toggleShortcutHelpDrawer(forceOpen) {
@@ -199,12 +211,33 @@
     const drawer = document.getElementById('pageShortcutHelpDrawer');
     if (!backdrop || !drawer) return;
     const nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !SYSTEM.shortcutDrawerOpen;
+    if (nextOpen && !isAdvancedAppMode()) return;
     SYSTEM.shortcutDrawerOpen = nextOpen;
     backdrop.classList.toggle('open', nextOpen);
     drawer.classList.toggle('open', nextOpen);
     if (nextOpen) {
       const closeBtn = document.getElementById('pageShortcutHelpCloseBtn');
       if (closeBtn && typeof closeBtn.focus === 'function') closeBtn.focus();
+    }
+  }
+
+  function syncShortcutHelpUiVisibility() {
+    const isAdvanced = isAdvancedAppMode();
+    const toggle = document.getElementById('pageShortcutHelpToggle');
+    const backdrop = document.getElementById('pageShortcutHelpBackdrop');
+    const drawer = document.getElementById('pageShortcutHelpDrawer');
+
+    [toggle, backdrop, drawer].forEach((el) => {
+      if (!el) return;
+      el.hidden = !isAdvanced;
+      el.setAttribute('aria-hidden', isAdvanced ? 'false' : 'true');
+      el.style.display = isAdvanced ? '' : 'none';
+    });
+
+    if (!isAdvanced) {
+      SYSTEM.shortcutDrawerOpen = false;
+      if (backdrop) backdrop.classList.remove('open');
+      if (drawer) drawer.classList.remove('open');
     }
   }
 
@@ -566,6 +599,7 @@
 
     window.addEventListener('reliability:update-banner-event', recordUpdateBannerTelemetry);
     ensureShortcutHelpUi();
+    document.addEventListener('kap:app-mode-changed', syncShortcutHelpUiVisibility);
 
     document.addEventListener('keydown', function (event) {
       if (!event) return;
@@ -575,6 +609,7 @@
         return;
       }
       if ((event.key === '?' || (event.key === '/' && event.shiftKey)) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (!isAdvancedAppMode()) return;
         var target = event.target;
         var editable = target && target.closest && target.closest('input, textarea, select, [contenteditable], [role="textbox"]');
         if (editable) return;

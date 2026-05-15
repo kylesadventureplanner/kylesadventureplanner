@@ -6121,6 +6121,7 @@
   function render(payload) {
     window.__detailCurrentPayload = payload || null;
     configureDetailShortcutHelp();
+    applyDailyDetailModeUi();
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
       document.getElementById('header').innerHTML =
@@ -6132,6 +6133,7 @@
       if (window.ButtonReliability && typeof window.ButtonReliability.refreshShortcutHelp === 'function') {
         try { window.ButtonReliability.refreshShortcutHelp(); } catch (_shortcutErr) {}
       }
+      applyDailyDetailModeUi();
       return;
     }
 

@@ -3982,6 +3982,11 @@
       display: none !important;
     }
 
+    html[data-app-mode="daily"] #tvModeGlobalToggle,
+    html[data-app-mode="daily"] #tvModeShortcutHud {
+      display: none !important;
+    }
+
     #appModeToggleBtn[data-mode="daily"] {
       background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);
       color: #1d4ed8;
@@ -9006,8 +9011,8 @@
 </div>
 
 <!-- Diagnostics Drawer - Contains compact error and advanced debug controls -->
-<div id="diagnosticsDrawer" class="is-collapsed">
-  <button id="diagnosticsDrawerToggle" type="button" title="Open diagnostics drawer" aria-expanded="false" aria-controls="diagnosticsDrawerBody">🧰 Diagnostics</button>
+<div id="diagnosticsDrawer" class="is-collapsed" data-advanced-only="true">
+  <button id="diagnosticsDrawerToggle" type="button" title="Open diagnostics drawer" aria-expanded="false" aria-controls="diagnosticsDrawerBody" data-advanced-only="true">🧰 Diagnostics</button>
   <div id="diagnosticsDrawerBody">
     <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
     <div id="errorNotificationBar" class="collapsed">
@@ -9071,7 +9076,7 @@
       <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup" data-advanced-only="true">💾 App Backup</button>
       <button id="diagnosticsHubBtn" class="auth-btn" title="Open Central Diagnostics Hub" data-tooltip="Open Central Diagnostics Hub" data-advanced-only="true">🩺 Diagnostics</button>
       <button id="appModeToggleBtn" class="auth-btn app-mode-btn" type="button" title="Switch between Daily Use Mode and Advanced Mode" aria-pressed="false"><span class="app-mode-chip app-mode-chip--daily"></span>🛠 Advanced Mode</button>
-      <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
+      <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" data-advanced-only="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
       <button id="deviceSignInBtn" class="auth-btn" title="Sign in using device code flow on another device" data-advanced-only="true">Sign In via Device</button>
@@ -9126,7 +9131,7 @@
     <button id="sessionRecoveryDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
   </div>
 </div>
-<div id="workbookPatchDiagnosticsPanel" class="workbook-patch-diagnostics" role="status" aria-live="polite" hidden>
+<div id="workbookPatchDiagnosticsPanel" class="workbook-patch-diagnostics" role="status" aria-live="polite" data-advanced-only="true" hidden>
   <div class="workbook-patch-diagnostics-header">
     <div class="workbook-patch-diagnostics-title-wrap">
       <div class="workbook-patch-diagnostics-title">🩺 Workbook row patch diagnostics</div>

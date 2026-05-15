@@ -276,6 +276,22 @@
   // CREATE STATUS LINE MOUNT POINT
   // ============================================================
 
+  function isAdvancedAppMode() {
+    if (typeof window.getAppMode === 'function') {
+      return window.getAppMode() === 'advanced';
+    }
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced';
+  }
+
+  function syncStatusLineModeVisibility() {
+    const mount = document.getElementById('persistentDiagnosticsStatusLine');
+    if (!mount) return;
+    const show = isAdvancedAppMode();
+    mount.hidden = !show;
+    mount.setAttribute('aria-hidden', show ? 'false' : 'true');
+    mount.style.display = show ? '' : 'none';
+  }
+
   function createStatusLineMount() {
     // Check if it already exists
     if (document.getElementById('persistentDiagnosticsStatusLine')) return;
@@ -283,6 +299,7 @@
     // Create the mount element
     const mount = document.createElement('div');
     mount.id = 'persistentDiagnosticsStatusLine';
+    mount.setAttribute('data-advanced-only', 'true');
     mount.setAttribute('role', 'status');
     mount.setAttribute('aria-live', 'polite');
     mount.setAttribute('aria-atomic', 'true');
@@ -298,6 +315,7 @@
 
     // Initialize status line
     window.PersistentDiagnosticsTracker.updateStatusLine();
+    syncStatusLineModeVisibility();
   }
 
   // ============================================================
@@ -320,6 +338,10 @@
     // Listen for metrics updates from other systems
     document.addEventListener('diagnostics-metrics-updated', function(event) {
       console.log('📊 Metrics updated:', event.detail);
+    });
+
+    document.addEventListener('kap:app-mode-changed', function() {
+      syncStatusLineModeVisibility();
     });
   }
 

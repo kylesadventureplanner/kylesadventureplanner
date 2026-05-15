@@ -330,10 +330,12 @@
      weatherMode: 'auto',
      searchText: '',
      categoryFilter: 'all',
+     suggestionVisitFilter: 'all',
      catalogVisitFilter: 'all',
      catalogSourceFilter: 'all',
      catalogRenderLimit: CATALOG_INITIAL_LIMIT,
      latestVisitMap: {},
+     latestSuggestions: [],
      challengeState: {},
      metaState: {},
      latestLocations: [],
@@ -1143,7 +1145,7 @@
   function openEditModeStandaloneForSubtab(subtabKey, options = {}) {
     const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
     const url = buildEditModeUrlForSubtab(key, { ...(options || {}), embedded: false });
-    return Boolean(openUrlInNewTab(url, `Please allow a new tab for ${PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Edit Mode'}.`));
+    return Boolean(openUrlInNewTab(url, `Please allow a new tab for ${PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Edit Mode'}.`, { keepOpener: true }));
   }
 
   function openVisitLogStandaloneForSubtab(subtabKey, options = {}) {
@@ -6180,6 +6182,7 @@
   function buildExplorerDetailsUrl(subtabKey, item, initialTab, navigationContext, options) {
     const baseUrl = resolveInlinePageUrl('HTML Files/adventure-details-window.html');
     const url = new URL(baseUrl, window.location.href);
+    url.searchParams.set('appMode', getCurrentAppModeSafe());
     const detailKey = cacheExplorerDetailsPayload(subtabKey, item, navigationContext);
     if (detailKey) url.searchParams.set('detailKey', detailKey);
     url.searchParams.set('embedded', '1');
@@ -6385,6 +6388,13 @@
       const routeSelection = getExplorerRouteSelectionSet(subtabKey);
       const isSelectedForRoute = routeSelection.has(String(item.id || '').trim());
       const isVisited = Boolean(visitMap[item.id]);
+      const visitedAtRaw = isVisited && visitMap[item.id] ? String(visitMap[item.id].visitedAt || '').trim() : '';
+      const visitedAtDate = visitedAtRaw ? new Date(visitedAtRaw) : null;
+      const hasVisitedDate = Boolean(visitedAtDate && !Number.isNaN(visitedAtDate.getTime()));
+      const visitedAtLabel = hasVisitedDate ? visitedAtDate.toLocaleDateString() : '';
+      const visitLabel = isVisited
+        ? `Visited location${visitedAtLabel ? ` on ${visitedAtLabel}` : ''}`
+        : 'Not visited yet';
 
       // Pre-compute active tag filter sets for chip state decorations.
       const tagIncludeSet = new Set(normalizeExplorerFilterTokenList(explorerState.tagInclude));
@@ -6452,7 +6462,7 @@
           ${coverPhoto && coverPhoto.downloadUrl ? `<img class="visited-explorer-cover-photo" src="${escapeHtml(coverPhoto.downloadUrl)}" alt="Cover photo" loading="lazy" onerror="this.style.display='none'">` : ''}
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">
-              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
+              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${escapeHtml(visitLabel)}" title="${escapeHtml(visitLabel)}">${isVisited ? '✅' : '⭕'}</span>
               ${escapeHtml(item.title || 'Unknown')}
               ${photoCount > 0 ? `<span class="visited-photo-count-badge" title="${photoCount} photo${photoCount === 1 ? '' : 's'}">📷 ${photoCount}</span>` : ''}
             </div>
@@ -8468,13 +8478,44 @@
    function renderSuggestions(suggestions) {
      const container = document.getElementById('visitedSuggestionList');
      if (!container) return;
+     const visitMap = state.latestVisitMap || getVisitMap();
+     const visitFilter = String(state.suggestionVisitFilter || 'all').trim();
 
-     if (suggestions.length === 0) {
-       container.innerHTML = '<div class="visited-empty ui-empty-state">No recommendation candidates yet. Load adventure data first.</div>';
+     const quickFilterRow = document.getElementById('visitedSuggestionQuickFilters');
+     if (quickFilterRow) {
+       quickFilterRow.querySelectorAll('[data-suggestion-filter]').forEach((button) => {
+         const value = String(button.getAttribute('data-suggestion-filter') || 'all').trim();
+         const isActive = value === visitFilter;
+         button.classList.toggle('is-active', isActive);
+         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+       });
+     }
+
+     const visibleSuggestions = (Array.isArray(suggestions) ? suggestions : []).filter((suggestion) => {
+       const visited = Boolean(visitMap[suggestion.id]);
+       if (visitFilter === 'visited') return visited;
+       if (visitFilter === 'unvisited') return !visited;
+       return true;
+     });
+
+     const filterLabel = visitFilter === 'visited'
+       ? 'visited'
+       : (visitFilter === 'unvisited' ? 'not visited' : 'current');
+
+     if (visibleSuggestions.length === 0) {
+       container.innerHTML = `<div class="visited-empty ui-empty-state">No recommendation candidates match your ${escapeHtml(filterLabel)} filter yet.</div>`;
        return;
      }
 
-     container.innerHTML = suggestions.map(suggestion => {
+     container.innerHTML = visibleSuggestions.map(suggestion => {
+       const isVisited = Boolean(visitMap[suggestion.id]);
+       const visitedAtRaw = isVisited && visitMap[suggestion.id] ? String(visitMap[suggestion.id].visitedAt || '').trim() : '';
+       const visitedAtDate = visitedAtRaw ? new Date(visitedAtRaw) : null;
+       const hasVisitedDate = Boolean(visitedAtDate && !Number.isNaN(visitedAtDate.getTime()));
+       const visitedAtLabel = hasVisitedDate ? visitedAtDate.toLocaleDateString() : '';
+       const visitLabel = isVisited
+         ? `Visited location${visitedAtLabel ? ` on ${visitedAtLabel}` : ''}`
+         : 'Not visited yet';
        const categoryLabels = suggestion.categories.map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
        const openBadge = suggestion.openState === true
          ? '<span class="visited-pill open">Open now</span>'
@@ -8488,7 +8529,7 @@
        return `
          <div class="adventure-card visited-suggestion-card">
            <div class="adventure-card-header">
-             <div class="adventure-card-title">${escapeHtml(suggestion.name)}</div>
+             <div class="adventure-card-title"><span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${escapeHtml(visitLabel)}" title="${escapeHtml(visitLabel)}">${isVisited ? '✅' : '⭕'}</span> ${escapeHtml(suggestion.name)}</div>
              <div class="adventure-card-location">📍 ${escapeHtml(suggestion.city)}, ${escapeHtml(suggestion.state)} ${categoryLabels}</div>
              <div class="adventure-card-time">🚗 ${escapeHtml(suggestion.driveTime || 'Drive time unknown')}</div>
            </div>
@@ -8671,11 +8712,18 @@
 
      container.innerHTML = visible.map(adventure => {
        const visited = Boolean(visitMap[adventure.id]);
+       const visitedAtRaw = visited && visitMap[adventure.id] ? String(visitMap[adventure.id].visitedAt || '').trim() : '';
+       const visitedAtDate = visitedAtRaw ? new Date(visitedAtRaw) : null;
+       const hasVisitedDate = Boolean(visitedAtDate && !Number.isNaN(visitedAtDate.getTime()));
+       const visitedAtLabel = hasVisitedDate ? visitedAtDate.toLocaleDateString() : '';
+       const visitLabel = visited
+         ? `Visited location${visitedAtLabel ? ` on ${visitedAtLabel}` : ''}`
+         : 'Not visited yet';
        const categories = categoriesForAdventure(adventure).map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
        return `
          <div class="visited-catalog-row">
            <div>
-             <div class="visited-catalog-name">${escapeHtml(adventure.name)} ${categories}</div>
+             <div class="visited-catalog-name"><span class="visited-explorer-visit-indicator${visited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${visited ? 'visited' : 'unvisited'}" aria-label="${escapeHtml(visitLabel)}" title="${escapeHtml(visitLabel)}">${visited ? '✅' : '⭕'}</span> ${escapeHtml(adventure.name)} ${categories}</div>
              <div class="visited-catalog-meta">${escapeHtml(adventure.city)}, ${escapeHtml(adventure.state)} • ${escapeHtml(adventure.driveTime || 'Drive time unknown')}</div>
            </div>
            <button type="button" class="quick-filter-btn ${visited ? 'active' : ''}" data-visit-action="toggle" data-location-id="${escapeHtml(adventure.id)}" title="${visited ? 'Mark as not visited' : 'Mark as visited'}" data-tooltip="${visited ? 'Mark as not visited' : 'Mark as visited'}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">
@@ -8714,6 +8762,7 @@
         const badges = buildBadgeProgress(stats, insights);
         const questSet = buildRotatingQuests(insights);
         const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
+        state.latestSuggestions = Array.isArray(suggestions) ? suggestions : [];
 
         renderSummary(stats, challengeProgress, badges, questSet);
         renderCategories(stats);
@@ -8721,7 +8770,7 @@
         renderBadges(badges);
         renderRotatingQuests(questSet);
         renderHeatmap(stats);
-        renderSuggestions(suggestions);
+        renderSuggestions(state.latestSuggestions);
         renderRecentVisits(stats, visitMap);
         renderCatalog(adventures, visitMap);
 
@@ -10094,6 +10143,15 @@
                   setButtonBusy(toggleBtn, false);
                 });
             }
+            return;
+          }
+
+          const suggestionFilterBtn = closest('[data-suggestion-filter]');
+          if (suggestionFilterBtn) {
+            event.preventDefault();
+            const nextFilter = String(suggestionFilterBtn.getAttribute('data-suggestion-filter') || 'all').trim();
+            state.suggestionVisitFilter = ['all', 'visited', 'unvisited'].includes(nextFilter) ? nextFilter : 'all';
+            renderSuggestions(state.latestSuggestions || []);
             return;
           }
 

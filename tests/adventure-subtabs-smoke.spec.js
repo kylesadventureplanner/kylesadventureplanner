@@ -63,6 +63,14 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
     await expect(page.locator('#visitedProgressPane-challenges')).toBeVisible();
     await expect(page.locator('#achv-root-challenges')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('#achv-root-challenges [data-achv-combined-subtab]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#achv-root-challenges [data-achv-combined-subtab][data-achv-combined-collapsed="true"]').first()).toBeVisible({ timeout: 15000 });
+    const firstCombinedSection = page.locator('#achv-root-challenges [data-achv-combined-subtab]').first();
+    await firstCombinedSection.locator('[data-achv-combined-toggle]').click();
+    await expect(firstCombinedSection).toHaveAttribute('data-achv-combined-collapsed', 'false');
+    const showFullBtn = firstCombinedSection.locator('[data-achv-combined-show-all]').first();
+    await expect(showFullBtn).toBeVisible();
+    await showFullBtn.click();
+    await expect(firstCombinedSection.locator('[data-achv-combined-show-all]')).toHaveCount(0);
     await expect(page.locator('#visitedProgressPane-challenges .visited-subtab-action-row')).toHaveCount(0);
 
     await setAppMode(page, 'advanced');

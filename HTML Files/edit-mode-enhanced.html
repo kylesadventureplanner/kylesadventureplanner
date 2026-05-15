@@ -7083,21 +7083,36 @@
         };
       }
 
-      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
-        throw new Error('Search is not available. Ensure Google Places is loaded in the main window.');
+      const searchHostCandidates = [mainWindow, window.opener, window.parent, window];
+      const searchHost = searchHostCandidates.find((candidate) => {
+        try {
+          return candidate && typeof candidate.searchPlaces === 'function';
+        } catch (_error) {
+          return false;
+        }
+      }) || null;
+      if (!searchHost) {
+        throw new Error('Search is not available yet. Open Add Location from Adventure Challenge while signed in, then try again.');
       }
+      const searchPlacesFn = searchHost.searchPlaces.bind(searchHost);
+      const resolvePlaceIdFromInputFn = typeof searchHost.resolvePlaceIdFromInput === 'function'
+        ? searchHost.resolvePlaceIdFromInput.bind(searchHost)
+        : null;
+      const getPlaceDetailsFn = typeof searchHost.getPlaceDetails === 'function'
+        ? searchHost.getPlaceDetails.bind(searchHost)
+        : null;
 
       const isUrlInput = inputType === 'website' || inputType === 'placeUrl';
       const searchQuery = isUrlInput
         ? deriveSearchQueryFromWebsiteInput(query)
         : query;
 
-      let rows = await mainWindow.searchPlaces(searchQuery);
-      if ((!Array.isArray(rows) || rows.length === 0) && isUrlInput && typeof mainWindow.resolvePlaceIdFromInput === 'function') {
+      let rows = await searchPlacesFn(searchQuery);
+      if ((!Array.isArray(rows) || rows.length === 0) && isUrlInput && resolvePlaceIdFromInputFn) {
         try {
-          const placeId = String(await mainWindow.resolvePlaceIdFromInput(inputType, query) || '').trim();
-          if (placeId && typeof mainWindow.getPlaceDetails === 'function') {
-            const details = await mainWindow.getPlaceDetails(placeId);
+          const placeId = String(await resolvePlaceIdFromInputFn(inputType, query) || '').trim();
+          if (placeId && getPlaceDetailsFn) {
+            const details = await getPlaceDetailsFn(placeId);
             if (details && (details.name || details.address)) {
               rows = [{
                 placeId,
@@ -7532,6 +7547,7 @@
       setBulkCandidateStatus(`<span class="spinner"></span> Searching ${festivalMode ? 'festival events for ' : ''}${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
       let foundTotal = 0;
+      let searchUnavailableCount = 0;
       let droppedByStateTotal = 0;
       let droppedByDistanceTotal = 0;
       let totalBefore = 0;
@@ -7554,6 +7570,8 @@
           probeSummaryTotal = mergeProbeSummaries(probeSummaryTotal, sourceResults.probeSummary);
         } catch (error) {
           console.error('❌ Bulk candidate search failed for query:', group.source, error);
+          const message = String(error && error.message ? error.message : '').toLowerCase();
+          if (message.includes('search is not available')) searchUnavailableCount += 1;
           group.candidates = [];
           group.selectedIndexes = [];
         }
@@ -7571,6 +7589,10 @@
       renderBulkCandidateResults();
       const selectedCount = getSelectedBulkCandidateCount();
       if (!selectedCount) {
+        if (searchUnavailableCount > 0) {
+          setBulkCandidateStatus('⚠️ Search provider is not ready. Open Add Location from Adventure Challenge while signed in, then retry this search.', 'error');
+          return;
+        }
         setBulkCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'matches'} were found. Try adding city/state context.`, 'error');
         return;
       }

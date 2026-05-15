@@ -373,6 +373,7 @@
     if (document.getElementById(TOGGLE_ID)) return;
     const btn = document.createElement('button');
     btn.id = TOGGLE_ID; btn.type = 'button';
+    btn.setAttribute('data-advanced-only', 'true');
     btn.setAttribute('data-tv-focusable', 'true');
     btn.setAttribute('aria-pressed', 'false');
     btn.textContent = 'TV Mode: OFF';
@@ -386,6 +387,7 @@
     if (document.getElementById(HUD_ID)) return;
     const hud = document.createElement('div');
     hud.id    = HUD_ID;
+    hud.setAttribute('data-advanced-only', 'true');
     hud.setAttribute('aria-live', 'polite');
     hud.setAttribute('role', 'status');
     hud.innerHTML = [
@@ -501,6 +503,7 @@
 
     const rail = document.createElement('div');
     rail.id = QUICK_RAIL_ID;
+    rail.setAttribute('data-advanced-only', 'true');
     rail.setAttribute('aria-label', 'TV quick filters');
     rail.setAttribute('role', 'toolbar');
 

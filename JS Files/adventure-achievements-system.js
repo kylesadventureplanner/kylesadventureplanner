@@ -36,6 +36,13 @@ window.AdventureAchievements = (function () {
   const BADGE_LEVEL_TARGETS = [1, 5, 10, 20, 25];
   const LEVEL_NAMES = ['Rookie', 'Novice', 'Semi-Pro', 'Pro', 'MVP'];
   const COMBINED_CONTAINER_KEY = 'challenges';
+  const DAILY_COMBINED_PREVIEW_LIMITS = {
+    categories: 4,
+    challenges: 3,
+    badges: 3,
+    quests: 2
+  };
+  const combinedDailyUiState = {};
 
   function currentSeason() {
     const m = new Date().getMonth() + 1;
@@ -43,6 +50,41 @@ window.AdventureAchievements = (function () {
     if (m >= 6 && m <= 8) return 'summer';
     if (m >= 9 && m <= 11) return 'fall';
     return 'winter';
+  }
+
+  function getCurrentAppModeSafe() {
+    if (typeof window.getAppMode === 'function') {
+      return window.getAppMode() === 'advanced' ? 'advanced' : 'daily';
+    }
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced' ? 'advanced' : 'daily';
+  }
+
+  function isDailyAppMode() {
+    return getCurrentAppModeSafe() !== 'advanced';
+  }
+
+  function getCombinedDailyUiEntry(key) {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) {
+      return { collapsed: true, showAll: false };
+    }
+    if (!combinedDailyUiState[normalizedKey]) {
+      combinedDailyUiState[normalizedKey] = { collapsed: true, showAll: false };
+    }
+    return combinedDailyUiState[normalizedKey];
+  }
+
+  function pickTopByScore(items, limit, scoreFn) {
+    const cap = Number(limit) || 0;
+    if (!Array.isArray(items) || cap <= 0 || items.length <= cap) {
+      return Array.isArray(items) ? items.slice() : [];
+    }
+    return items
+      .map((item, index) => ({ item, index, score: Number(scoreFn(item, index)) || 0 }))
+      .sort((a, b) => (b.score - a.score) || (a.index - b.index))
+      .slice(0, cap)
+      .sort((a, b) => a.index - b.index)
+      .map((entry) => entry.item);
   }
 
   // ─── CONFIGS ──────────────────────────────────────────────────────────────
@@ -718,8 +760,21 @@ window.AdventureAchievements = (function () {
     host.setAttribute('data-achv-sync-subtab', key);
   }
 
-  function renderCategorySection(key, config, sub, progress) {
-    const catHtml = config.categories.map(cat => {
+   function renderCategorySection(key, config, sub, progress, options) {
+     const opts = options && typeof options === 'object' ? options : {};
+     const visibleCategories = pickTopByScore(
+       config.categories,
+       opts.limitCategories,
+       (cat) => {
+         const visited = Number(progress.categoryVisited[cat.key] || 0);
+         const total = Number(progress.categoryTotals[cat.key] || 0);
+         const completion = total > 0 ? (visited / total) : (visited > 0 ? 0.1 : 0);
+         const hasProgress = visited > 0 ? 400 : 0;
+         return hasProgress + (completion * 150) + Math.min(visited, 50);
+       }
+     );
+    const categoriesToRender = Number(opts.limitCategories) > 0 ? visibleCategories : config.categories;
+    const catHtml = categoriesToRender.map(cat => {
       const visited = Number(progress.categoryVisited[cat.key] || 0);
       const total = progress.explorerLoaded ? Number(progress.categoryTotals[cat.key] || 0) : '?';
       const p = pct(visited, typeof total === 'number' ? total : visited + 10);
@@ -791,7 +846,8 @@ window.AdventureAchievements = (function () {
     button.classList.toggle('is-needs-sync', !sub.syncPromptAcknowledged && !isLoading);
   }
 
-  function renderChallengesSection(key, config, sub, progress) {
+  function renderChallengesSection(key, config, sub, progress, options) {
+    const opts = options && typeof options === 'object' ? options : {};
     function getBadgeProgress(badge) {
       if (badge.metric === 'total') return config.categories.reduce((s, c) => s + Number(progress.categoryVisited[c.key] || 0), 0);
       if (badge.metric === 'challenges') return config.challenges.filter((ch) => Number(progress.challengesById[ch.id] || 0) >= ch.goal).length;
@@ -822,7 +878,31 @@ window.AdventureAchievements = (function () {
     }, 0);
     const badgeTotalCount = config.badges.length * BADGE_LEVEL_TARGETS.length;
 
-    const challengeHtml = config.challenges.map((ch) => {
+     const challengesToRender = Number(opts.limitChallenges) > 0
+       ? pickTopByScore(config.challenges, opts.limitChallenges, (ch) => {
+           const progressValue = Number(progress.challengesById[ch.id] || 0);
+           const nextTarget = CHALLENGE_TIER_TARGETS.find((target) => progressValue < target);
+           const remaining = typeof nextTarget === 'number' ? Math.max(0, nextTarget - progressValue) : 999;
+           const isComplete = typeof nextTarget !== 'number';
+           const percentToNext = nextTarget && nextTarget > 0 ? Math.max(0, (progressValue / nextTarget) * 100) : 0;
+           if (isComplete) return 50;
+           return (percentToNext * 10) + (remaining <= 1 ? 500 : (remaining <= 2 ? 300 : (remaining <= 5 ? 100 : 0)));
+         })
+       : config.challenges;
+
+     const badgesToRender = Number(opts.limitBadges) > 0
+       ? pickTopByScore(config.badges, opts.limitBadges, (badge) => {
+           const progressValue = getBadgeProgress(badge);
+           const nextTarget = BADGE_LEVEL_TARGETS.find((target) => progressValue < target);
+           const remaining = typeof nextTarget === 'number' ? Math.max(0, nextTarget - progressValue) : 999;
+           const isComplete = typeof nextTarget !== 'number';
+           const percentToNext = nextTarget && nextTarget > 0 ? Math.max(0, (progressValue / nextTarget) * 100) : 0;
+           if (isComplete) return 40;
+           return (percentToNext * 8) + (remaining <= 1 ? 480 : (remaining <= 2 ? 280 : (remaining <= 5 ? 80 : 0)));
+         })
+       : config.badges;
+
+    const challengeHtml = challengesToRender.map((ch) => {
       const progressValue = Number(progress.challengesById[ch.id] || 0);
       const highestTier = CHALLENGE_TIER_TARGETS.filter((target) => progressValue >= target).length;
       let currentLevelIdx = -1;
@@ -903,7 +983,7 @@ window.AdventureAchievements = (function () {
         </div>`;
     }).join('');
 
-    const badgeHtml = config.badges.map((badge) => {
+    const badgeHtml = badgesToRender.map((badge) => {
       const unlocked = isBadgeUnlocked(badge);
       const badgeProgress = getBadgeProgress(badge);
       const color = RARITY_COLORS[badge.rarity] || '#6b7280';
@@ -1117,10 +1197,24 @@ window.AdventureAchievements = (function () {
       </div>`;
   }
 
-  function renderQuestsSection(key, config, progress) {
+  function renderQuestsSection(key, config, progress, options) {
+    const opts = options && typeof options === 'object' ? options : {};
     const season = currentSeason();
     const records = getVisitRecordsForSubtab(key);
-    const questHtml = config.quests.map(quest => {
+     const questsToRender = Number(opts.limitQuests) > 0
+       ? pickTopByScore(config.quests, opts.limitQuests, (quest) => {
+           const doneSteps = quest.steps.filter((step) => isQuestStepDoneFromVisits(key, step, config, progress, records)).length;
+           const remaining = Math.max(0, quest.steps.length - doneSteps);
+           const isCurrentSeason = quest.season === season;
+           const isComplete = remaining === 0;
+           if (isComplete) return 30;
+           const currentSeasonBoost = isCurrentSeason ? 800 : 0;
+           const stepsPercentDone = Math.max(0, ((doneSteps / quest.steps.length) * 100));
+           const proximityBonus = remaining === 1 ? 400 : (remaining === 2 ? 200 : 0);
+           return currentSeasonBoost + (stepsPercentDone * 4) + proximityBonus + doneSteps * 50;
+         })
+       : config.quests;
+    const questHtml = questsToRender.map(quest => {
       const isCurrent = quest.season === season;
       const meta = SEASON_MAP[quest.season];
       const stepsHtml = quest.steps.map((step, i) => {
@@ -1200,25 +1294,38 @@ window.AdventureAchievements = (function () {
     if (!container) return;
     const keys = Object.keys(CONFIGS);
     const state = loadState();
+    const dailyMode = isDailyAppMode();
 
     const blocks = keys.map((key) => {
       const config = CONFIGS[key];
       if (!config) return '';
+      const dailyUi = getCombinedDailyUiEntry(key);
+      const sectionCollapsed = dailyMode ? Boolean(dailyUi.collapsed) : false;
+      const showAll = !dailyMode || Boolean(dailyUi.showAll);
+      const hasHiddenRows =
+        config.categories.length > DAILY_COMBINED_PREVIEW_LIMITS.categories ||
+        config.challenges.length > DAILY_COMBINED_PREVIEW_LIMITS.challenges ||
+        config.badges.length > DAILY_COMBINED_PREVIEW_LIMITS.badges ||
+        config.quests.length > DAILY_COMBINED_PREVIEW_LIMITS.quests;
       const sub = getSubState(state, key);
       const settings = getSubSettings(state, key);
       const progress = buildProgressModel(key, config, sub, settings);
       return `
-        <section class="card adventure-achv-section" data-achv-combined-subtab="${esc(key)}" style="margin-top:12px;">
+        <section class="card adventure-achv-section adventure-achv-combined-group${sectionCollapsed ? ' is-collapsed' : ''}" data-achv-combined-subtab="${esc(key)}" data-achv-combined-collapsed="${sectionCollapsed ? 'true' : 'false'}" style="margin-top:12px;">
           <div class="card-header">
             <div>
               <div class="card-title">${esc(config.icon || '🏅')} ${esc(config.label)}</div>
-              <div class="card-subtitle">Combined challenges dashboard for ${esc(config.label)}.</div>
+              <div class="card-subtitle">Combined challenges dashboard for ${esc(config.label)}.${dailyMode && !showAll ? ' Showing a focused daily preview.' : ''}</div>
             </div>
+            ${dailyMode ? `<button type="button" class="adventure-achv-adj-btn" data-achv-combined-toggle data-achv-combined-key="${esc(key)}">${sectionCollapsed ? 'Show section' : 'Hide section'}</button>` : ''}
           </div>
-          ${normalizeCombinedSectionIds(renderCategorySection(key, config, sub, progress), key)}
-          ${normalizeCombinedSectionIds(renderChallengesSection(key, config, sub, progress), key)}
-          ${normalizeCombinedSectionIds(renderQuestsSection(key, config, progress), key)}
-          ${normalizeCombinedSectionIds(renderBingoSection(key, config, progress), key)}
+          <div class="adventure-achv-combined-body" ${sectionCollapsed ? 'hidden' : ''}>
+            ${normalizeCombinedSectionIds(renderCategorySection(key, config, sub, progress, showAll ? null : { limitCategories: DAILY_COMBINED_PREVIEW_LIMITS.categories }), key)}
+            ${normalizeCombinedSectionIds(renderChallengesSection(key, config, sub, progress, showAll ? null : { limitChallenges: DAILY_COMBINED_PREVIEW_LIMITS.challenges, limitBadges: DAILY_COMBINED_PREVIEW_LIMITS.badges }), key)}
+            ${normalizeCombinedSectionIds(renderQuestsSection(key, config, progress, showAll ? null : { limitQuests: DAILY_COMBINED_PREVIEW_LIMITS.quests }), key)}
+            ${normalizeCombinedSectionIds(renderBingoSection(key, config, progress), key)}
+            ${dailyMode && !showAll && hasHiddenRows ? `<div class="adventure-achv-combined-actions"><button type="button" class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-combined-show-all data-achv-combined-key="${esc(key)}">Show full list</button></div>` : ''}
+          </div>
         </section>`;
     }).join('');
 
@@ -1261,6 +1368,25 @@ window.AdventureAchievements = (function () {
   }
 
   function bindEvents(container, key, config, state) {
+    const combinedToggleBtn = container.querySelector('[data-achv-combined-toggle]');
+    if (combinedToggleBtn) {
+      combinedToggleBtn.addEventListener('click', () => {
+        const entry = getCombinedDailyUiEntry(key);
+        entry.collapsed = !entry.collapsed;
+        renderAll(COMBINED_CONTAINER_KEY);
+      });
+    }
+
+    const combinedShowAllBtn = container.querySelector('[data-achv-combined-show-all]');
+    if (combinedShowAllBtn) {
+      combinedShowAllBtn.addEventListener('click', () => {
+        const entry = getCombinedDailyUiEntry(key);
+        entry.showAll = true;
+        entry.collapsed = false;
+        renderAll(COMBINED_CONTAINER_KEY);
+      });
+    }
+
     const modeSelect = document.querySelector(`#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="${key}"]`) || container.querySelector('[data-achv-sync-mode]');
     if (modeSelect) {
       modeSelect.addEventListener('change', () => {

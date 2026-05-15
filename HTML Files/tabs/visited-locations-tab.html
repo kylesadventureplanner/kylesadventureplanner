@@ -126,6 +126,7 @@
       <div id="householdConcertsSummaryGrid" class="household-concerts-summary-grid"></div>
       <div class="household-concerts-features-tabs" role="tablist">
         <button type="button" class="household-concerts-feature-tab active" role="tab" data-view="default">Overview</button>
+        <button type="button" class="household-concerts-feature-tab" role="tab" data-view="attended">Attended</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="upcoming">Upcoming</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="stats">My Stats</button>
         <button type="button" class="household-concerts-feature-tab" role="tab" data-view="analytics">Analytics</button>
@@ -162,6 +163,27 @@
           </section>
         </div>
       </div>
+      <div class="household-concerts-lower-grid" data-concert-view="attended" hidden>
+        <section class="household-concerts-panel">
+          <div class="household-concerts-panel-head">
+            <div><h3>Attended Concerts</h3></div>
+            <button type="button" class="pill-button" data-concert-action="open-log-concert">＋ Log Concert</button>
+          </div>
+          <div class="household-concerts-filter-row household-concerts-attended-filter-row">
+            <input id="householdConcertsAttendedSearchInput" type="search" placeholder="Search attended concerts by band, venue, city, state, notes..." aria-label="Search attended concerts">
+            <select id="householdConcertsAttendedAttendeeFilter" aria-label="Filter attended concerts by attendee">
+              <option value="all">All attendees</option>
+              <option value="kyle">Kyle</option>
+              <option value="heather">Heather</option>
+              <option value="both">Both</option>
+            </select>
+            <button type="button" class="pill-button" data-concert-action="clear-attended-filters">Clear</button>
+          </div>
+          <p id="householdConcertsAttendedMeta" class="household-concerts-muted">Showing attended concerts.</p>
+          <div id="householdConcertsAttendedList" class="household-concerts-entry-list" data-testid="concerts-attended-list"></div>
+          <div id="householdConcertsAttendedPagination" class="household-concerts-pagination" aria-label="Attended concerts pagination"></div>
+        </section>
+      </div>
       <div class="household-concerts-lower-grid" data-concert-view="upcoming" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel"><div id="householdConcertsPriorityDashboard"></div></section>
         <section class="household-concerts-panel"><div id="householdConcertsFestivalDashboard"></div></section>
@@ -170,15 +192,6 @@
         <section class="household-concerts-panel"><div id="householdConcertsTicketedCalendar"></div></section>
       </div>
       <div class="household-concerts-lower-grid" data-concert-view="stats" data-concert-view-advanced="default" hidden>
-        <section class="household-concerts-panel">
-          <div class="household-concerts-panel-head">
-            <div><h3>Attended Concerts</h3></div>
-            <button type="button" class="pill-button" data-concert-action="open-log-concert">＋ Log Concert</button>
-          </div>
-          <div id="householdConcertsAttendedList" class="household-concerts-entry-list" data-testid="concerts-attended-list"></div>
-        </section>
-      </div>
-      <div class="household-concerts-lower-grid" data-concert-view="upcoming" data-concert-view-advanced="default" hidden>
         <section class="household-concerts-panel">
           <div class="household-concerts-panel-head">
             <div><h3>Upcoming Concerts</h3></div>
@@ -264,6 +277,15 @@
       </div>
       <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions">
         <button id="visitedSuggestionsBackBtn" type="button" class="pill-button app-back-btn" title="Back to Visited Locations">← Back to Visited</button>
+        <div class="visited-suggestions-legend" role="note" aria-label="Visited status legend">
+          <span class="visited-suggestions-legend-item"><span class="visited-explorer-visit-indicator is-visited" aria-hidden="true">✅</span> Visited</span>
+          <span class="visited-suggestions-legend-item"><span class="visited-explorer-visit-indicator is-unvisited" aria-hidden="true">⭕</span> Not visited</span>
+        </div>
+        <div id="visitedSuggestionQuickFilters" class="visited-suggestions-filter-row" role="group" aria-label="Suggestion visit-status filters">
+          <button type="button" class="visited-suggestions-filter-chip is-active" data-suggestion-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="visited-suggestions-filter-chip" data-suggestion-filter="visited" aria-pressed="false">Visited only</button>
+          <button type="button" class="visited-suggestions-filter-chip" data-suggestion-filter="unvisited" aria-pressed="false">Not visited only</button>
+        </div>
         <div id="visitedSuggestionList" class="adventure-cards-grid"></div>
       </div>
     </div>
@@ -1547,6 +1569,8 @@
     }
   }());
 </script>
+
+
 
 
 
