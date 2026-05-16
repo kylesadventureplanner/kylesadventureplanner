@@ -38,6 +38,14 @@ const EXTENSION_NOISE_PATTERNS = [
   // partial.  The app detects this and logs the error below – it is not a functional
   // regression, just a dev-server routing quirk that does not reproduce in production.
   /❌ Error loading tab [^:]+: Error: Tab HTML for '[^']+' returned the app shell instead of tab markup/i,
+  // The nature tab fetches live weather/precipitation data from api.open-meteo.com.
+  // In the GitHub Actions (and local preview) test environment that origin is unreachable
+  // so the browser emits a CORS or network error.  These are expected and do not
+  // indicate a regression – the tab gracefully degrades when the API is unavailable.
+  /blocked by CORS policy[\s\S]*api\.open-meteo\.com/i,
+  /Access to fetch at 'https:\/\/api\.open-meteo\.com\//i,
+  /Failed to load resource.*api\.open-meteo\.com/i,
+  /net::ERR_[\w_]+.*api\.open-meteo\.com/i,
 ];
 
 function isIntentionalWorkbookProbe404(text, locationUrl) {
