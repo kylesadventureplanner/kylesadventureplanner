@@ -2761,7 +2761,232 @@
   }
 
   function normalizePdfLine(line) {
-    return String(line || '').replace(/\s+/g, ' ').trim();
+    return String(line || '')
+      .replace(/\s+/g, ' ')
+      .replace(/(\d)\s*\/\s*(\d)/g, '$1/$2')
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .replace(/\s+([,.;:!?])/g, '$1')
+      .trim();
+  }
+
+  function composePdfRowText(chunks) {
+    return (chunks || []).map(function (chunk) {
+      return normalizePdfLine(chunk && chunk.text || '');
+    }).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function buildPdfRowsFromItems(items, splitX) {
+    var byY = {};
+    (items || []).forEach(function (item) {
+      var transform = item && item.transform ? item.transform : null;
+      var x = transform ? Number(transform[4]) : 0;
+      var y = transform ? Number(transform[5]) : 0;
+      var bucket = Math.round(y / 2) * 2;
+      byY[bucket] = byY[bucket] || [];
+      byY[bucket].push({
+        x: x,
+        y: y,
+        h: Number(item && item.height || 0),
+        text: String(item && item.str || '').trim()
+      });
+    });
+
+    return Object.keys(byY).map(function (key) {
+      var chunks = byY[key].slice().sort(function (a, b) { return a.x - b.x; });
+      var left = chunks.filter(function (chunk) { return chunk.x < splitX; });
+      var right = chunks.filter(function (chunk) { return chunk.x >= splitX; });
+      var maxHeight = chunks.reduce(function (acc, chunk) { return Math.max(acc, Number(chunk.h || 0)); }, 0);
+      return {
+        y: Number(key),
+        maxHeight: maxHeight,
+        left: composePdfRowText(left),
+        right: composePdfRowText(right),
+        full: composePdfRowText(chunks)
+      };
+    }).sort(function (a, b) { return b.y - a.y; }).filter(function (row) {
+      return row.left || row.right || row.full;
+    });
+  }
+
+  function splitInlineStepText(line) {
+    var text = normalizePdfLine(line);
+    if (!text) return [];
+    var starts = [];
+    var regex = /\d{1,2}[).]?\s+[A-Za-z]/g;
+    var match;
+    while ((match = regex.exec(text))) {
+      var index = match.index;
+      if (index === 0 || /[.;:!?]\s*$/.test(text.slice(0, index))) starts.push(index);
+    }
+    if (starts.length <= 1) return [text];
+    starts.push(text.length);
+    return starts.slice(0, -1).map(function (start, idx) {
+      return normalizePdfLine(text.slice(start, starts[idx + 1]));
+    }).filter(Boolean);
+  }
+
+  function parsePdfStepsFromLines(lines) {
+    var steps = [];
+    var current = '';
+    var pendingNumber = '';
+    (lines || []).forEach(function (line) {
+      splitInlineStepText(line).forEach(function (pieceRaw) {
+        var piece = normalizePdfLine(pieceRaw);
+        if (!piece) return;
+        if (/^\d{1,2}$/.test(piece)) {
+          pendingNumber = piece;
+          return;
+        }
+        var numbered = piece.match(/^\d{1,2}[).]?\s+(.+)$/);
+        if (numbered) {
+          if (current) steps.push(current);
+          current = normalizePdfLine(numbered[1]);
+          pendingNumber = '';
+          return;
+        }
+        if (pendingNumber) {
+          if (current) steps.push(current);
+          current = piece;
+          pendingNumber = '';
+          return;
+        }
+        current = current ? normalizePdfLine(current + ' ' + piece) : piece;
+      });
+    });
+    if (current) steps.push(current);
+    return steps.filter(Boolean);
+  }
+
+  function pickPdfTitleFromRows(rows, fallbackTitle) {
+    var topRows = (rows || []).slice(0, 24).filter(function (row) {
+      if (!row || !row.full) return false;
+      if (/^\d+$/.test(row.full)) return false;
+      if (detectPdfSectionHeading(row.full)) return false;
+      return row.full.length >= 4;
+    });
+    if (!topRows.length) return String(fallbackTitle || 'Imported Recipe PDF').trim();
+    topRows.sort(function (a, b) {
+      if ((b.maxHeight || 0) !== (a.maxHeight || 0)) return (b.maxHeight || 0) - (a.maxHeight || 0);
+      return (String(a.full || '').length - String(b.full || '').length);
+    });
+    return String(topRows[0].full || fallbackTitle || 'Imported Recipe PDF').trim();
+  }
+
+  function parseRecipeFromPdfRows(rows, fallbackTitle) {
+    if (!rows || !rows.length) return null;
+    var title = pickPdfTitleFromRows(rows, fallbackTitle);
+    var sectionAnchors = [];
+    rows.forEach(function (row, index) {
+      var heading = detectPdfSectionHeading(row.left || '');
+      if (!heading) return;
+      sectionAnchors.push({ index: index, title: heading });
+    });
+    if (!sectionAnchors.length) return null;
+
+    var sections = sectionAnchors.map(function (anchor, idx) {
+      var endIndex = idx + 1 < sectionAnchors.length ? sectionAnchors[idx + 1].index : rows.length;
+      var windowRows = rows.slice(anchor.index + 1, endIndex);
+      var ingredients = [];
+      var leftLines = windowRows.map(function (row) { return normalizePdfLine(row.left || ''); }).filter(Boolean);
+      leftLines.forEach(function (line) {
+        if (detectPdfSectionHeading(line)) return;
+        var ingredient = parseIngredientLine(line);
+        if (!ingredient) return;
+        var previous = ingredients.length ? ingredients[ingredients.length - 1] : null;
+        var continuesPrev = previous && !/^\d/.test(line) && ingredient.quantity === '';
+        if (continuesPrev) {
+          previous.item = normalizePdfLine(previous.item + ' ' + ingredient.item);
+        } else {
+          ingredients.push(ingredient);
+        }
+      });
+
+      var rightLines = windowRows.map(function (row) { return normalizePdfLine(row.right || ''); }).filter(Boolean);
+      var steps = parsePdfStepsFromLines(rightLines);
+      if (!steps.length) {
+        var fallbackStepLines = windowRows.map(function (row) { return normalizePdfLine(row.full || ''); }).filter(function (line) {
+          return /^\d{1,2}[).]?\s+/.test(line);
+        });
+        steps = parsePdfStepsFromLines(fallbackStepLines);
+      }
+
+      return {
+        title: anchor.title,
+        ingredients: ingredients,
+        steps: steps
+      };
+    }).filter(function (section) {
+      return section.ingredients.length || section.steps.length;
+    });
+
+    if (!sections.length) return null;
+
+    var flatIngredients = [];
+    var flatSteps = [];
+    var sectionOverrides = [];
+    sections.forEach(function (section) {
+      var start = flatSteps.length + 1;
+      (section.steps || []).forEach(function (step) { flatSteps.push(step); });
+      var end = flatSteps.length;
+      (section.ingredients || []).forEach(function (row) { flatIngredients.push(row); });
+      sectionOverrides.push({
+        id: uid('section'),
+        title: section.title,
+        stepRefs: section.steps.length ? (start + '-' + end) : '',
+        ingredientKeywords: section.ingredients.map(function (row) { return row.item; }).slice(0, 5).join(', ')
+      });
+    });
+
+    var aggregateText = rows.map(function (row) { return row.full; }).join(' ');
+    var model = normalizeRecipe({
+      title: title,
+      description: 'Imported from PDF. Review and save.',
+      servings: 4,
+      proteins: inferFromOptions(aggregateText, PROTEIN_OPTIONS),
+      cuisines: inferFromOptions(aggregateText, CUISINE_OPTIONS),
+      methods: inferFromOptions(aggregateText, METHOD_OPTIONS),
+      prepMinutes: parseTimeFromText(aggregateText, 'prep'),
+      cookMinutes: parseTimeFromText(aggregateText, 'cook'),
+      ingredients: flatIngredients.length ? flatIngredients : [{ quantity: '', item: '' }],
+      steps: flatSteps.length ? flatSteps : [''],
+      sectionOverrides: sectionOverrides
+    });
+    var sectionPreviewLines = sectionOverrides.map(function (section, idx) {
+      return (idx + 1) + '. ' + section.title + ' | steps: ' + (section.stepRefs || 'all') + ' | ingredient keywords: ' + (section.ingredientKeywords || 'none');
+    }).join('\n');
+    var previewText = [
+      'Detected title: ' + title,
+      '---',
+      'Detected section boundaries:',
+      sectionPreviewLines,
+      '---',
+      'Column-aware extracted PDF text (first 220 rows):',
+      rows.slice(0, 220).map(function (row) {
+        return [row.left || '', row.right ? (' || ' + row.right) : ''].join('');
+      }).join('\n')
+    ].join('\n');
+    return {
+      model: model,
+      previewText: previewText,
+      diagnostics: {
+        parseMode: 'column_aware',
+        sectionCount: sections.length,
+        totalLineCount: rows.length,
+        leftLineCount: rows.filter(function (row) { return Boolean(String(row.left || '').trim()); }).length,
+        rightLineCount: rows.filter(function (row) { return Boolean(String(row.right || '').trim()); }).length,
+        usedFallback: false
+      },
+      suggestedSections: sectionOverrides.map(function (section) {
+        return {
+          id: section.id,
+          title: section.title,
+          stepRefs: section.stepRefs,
+          ingredientKeywords: section.ingredientKeywords,
+          accepted: true
+        };
+      })
+    };
   }
 
   function parseIngredientLine(line) {
@@ -2885,6 +3110,14 @@
     return {
       model: model,
       previewText: previewText,
+      diagnostics: {
+        parseMode: 'legacy_text',
+        sectionCount: sectionOverrides.length,
+        totalLineCount: lines.length,
+        leftLineCount: 0,
+        rightLineCount: 0,
+        usedFallback: true
+      },
       suggestedSections: sectionOverrides.map(function (section) {
         return {
           id: section.id,
@@ -2902,10 +3135,23 @@
     var pdfjsLib = await ensurePdfJsLoaded();
     var bytes = await file.arrayBuffer();
     var doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+    var structuredRows = [];
     var texts = [];
     for (var pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
       var page = await doc.getPage(pageNum);
       var content = await page.getTextContent();
+      var viewport = page.getViewport({ scale: 1 });
+      var splitX = Number(viewport && viewport.width ? viewport.width / 2 : 320);
+      var pageRows = buildPdfRowsFromItems(content.items || [], splitX);
+      pageRows.forEach(function (row) {
+        structuredRows.push({
+          left: row.left,
+          right: row.right,
+          full: row.full,
+          maxHeight: row.maxHeight,
+          pageNum: pageNum
+        });
+      });
       var lineMap = {};
       (content.items || []).forEach(function (item) {
         var transform = item && item.transform ? item.transform : null;
@@ -2918,7 +3164,17 @@
       }).filter(Boolean);
       texts.push(pageLines.join('\n'));
     }
-    return parseRecipeFromPdfText(texts.join('\n'), String(file.name || '').replace(/\.pdf$/i, ''));
+    var fallbackTitle = String(file.name || '').replace(/\.pdf$/i, '');
+    var structured = parseRecipeFromPdfRows(structuredRows, fallbackTitle);
+    if (structured) return structured;
+    var legacy = parseRecipeFromPdfText(texts.join('\n'), fallbackTitle);
+    legacy.diagnostics = Object.assign({}, legacy.diagnostics || {}, {
+      parseMode: 'legacy_text',
+      usedFallback: true,
+      fallbackReason: 'column_parse_inconclusive',
+      structuredRowCount: structuredRows.length
+    });
+    return legacy;
   }
 
   function renderEditorPdfPreview() {

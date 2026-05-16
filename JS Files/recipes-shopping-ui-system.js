@@ -595,6 +595,33 @@
       return typedName || String(fallbackName || modelTitle || 'Imported recipe').trim();
     }
 
+    function renderPdfParserDiagnostics(parsedResult) {
+      var diagnostics = parsedResult && parsedResult.diagnostics && typeof parsedResult.diagnostics === 'object'
+        ? parsedResult.diagnostics
+        : null;
+      if (!diagnostics) return '';
+      var mode = String(diagnostics.parseMode || 'unknown').trim();
+      var modeLabel = mode === 'column_aware' ? 'Column-aware parser' : (mode === 'legacy_text' ? 'Legacy text parser' : 'Unknown parser');
+      var sectionCount = Number.isFinite(Number(diagnostics.sectionCount)) ? Number(diagnostics.sectionCount) : 0;
+      var leftCount = Number.isFinite(Number(diagnostics.leftLineCount)) ? Number(diagnostics.leftLineCount) : 0;
+      var rightCount = Number.isFinite(Number(diagnostics.rightLineCount)) ? Number(diagnostics.rightLineCount) : 0;
+      var totalCount = Number.isFinite(Number(diagnostics.totalLineCount)) ? Number(diagnostics.totalLineCount) : (leftCount + rightCount);
+      var fallbackTag = diagnostics.usedFallback ? 'Fallback used' : 'Primary parse';
+      var isFallback = diagnostics.usedFallback === true || mode === 'legacy_text';
+      var chipBackground = isFallback ? '#fef3c7' : '#dcfce7';
+      var chipBorder = isFallback ? '#f59e0b' : '#22c55e';
+      var chipText = isFallback ? '#92400e' : '#166534';
+      return '<div style="margin-bottom:16px;padding:8px 10px;border-radius:6px;background:' + chipBackground + ';color:' + chipText + ';font-size:12px;border:1px solid ' + chipBorder + ';">'
+        + '<strong>Parser diagnostics:</strong> '
+        + escapeHtml(modeLabel)
+        + ' • sections=' + escapeHtml(String(sectionCount))
+        + ' • lines=' + escapeHtml(String(totalCount))
+        + ' • left=' + escapeHtml(String(leftCount))
+        + ' • right=' + escapeHtml(String(rightCount))
+        + ' • ' + escapeHtml(fallbackTag)
+        + '</div>';
+    }
+
     function showPdfImportRecipeForm() {
       var container = document.getElementById(ROOT_ID);
       if (!container) return;
@@ -715,6 +742,7 @@
       ';
 
       var resolvedRecipeName = String(recipeName || model.title || 'Imported recipe').trim();
+      var parserDiagnosticsHtml = renderPdfParserDiagnostics(parsedResult);
 
       dialog.innerHTML = '\
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\
@@ -724,6 +752,7 @@
         <div style="margin-bottom:16px;padding:12px;background:#e8f5e9;border-radius:6px;border-left:4px solid #4CAF50;">\
           <p style="margin:0;color:#2e7d32;font-size:13px;">✓ Parsed PDF recipe. Review the ingredients and steps, then save it as a new recipe.</p>\
         </div>\
+        ' + parserDiagnosticsHtml + '\
         <div style="margin-bottom:16px;">\
           <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe Name</label>\
           <input type="text" id="recipe-pdf-preview-name" value="' + escapeHtml(resolvedRecipeName) + '" placeholder="e.g., Grandma\'s Chili" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-size:14px;" />\
