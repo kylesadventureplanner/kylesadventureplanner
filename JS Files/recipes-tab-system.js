@@ -4388,6 +4388,7 @@
 
   window.RecipesTabSystem = {
     init: init,
+    parseRecipeFromPdfFile: parseRecipeFromPdfFile,
     syncFromExcel: syncFromExcel,
     syncToExcel: syncToExcel
   };

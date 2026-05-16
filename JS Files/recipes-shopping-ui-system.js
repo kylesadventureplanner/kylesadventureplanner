@@ -560,6 +560,225 @@
        });
      }
 
+    function getPdfRecipeParser() {
+      return window.RecipesTabSystem && typeof window.RecipesTabSystem.parseRecipeFromPdfFile === 'function'
+        ? window.RecipesTabSystem.parseRecipeFromPdfFile
+        : null;
+    }
+
+    function saveParsedPdfRecipe(recipeName, parsedResult, descriptionText) {
+      var model = parsedResult && parsedResult.model ? parsedResult.model : null;
+      if (!model) {
+        showNoticeModal('PDF parse failed', 'No recipe data could be extracted from that PDF.');
+        return;
+      }
+
+      var recipeId = 'recipe-' + Date.now();
+      var normalizedName = String(recipeName || model.title || 'Imported recipe').trim();
+      sys.saveRecipe(recipeId, Object.assign({}, model, {
+        name: normalizedName,
+        title: normalizedName,
+        description: String(descriptionText || model.description || 'Imported from PDF.').trim() || 'Imported from PDF.',
+        source: 'imported-pdf',
+        originalText: String(parsedResult.previewText || '').trim(),
+        syncStatus: 'local-only'
+      }));
+      sys.updateRecipeSyncStatus(recipeId, 'local-only');
+      renderMainView();
+      showNoticeModal('Recipe imported from PDF', 'Your recipe was created from the PDF and saved locally. Open the Recipes tab to sync with Excel if needed.');
+    }
+
+    function getPreviewPdfRecipeName(fallbackName, parsedResult) {
+      var previewNameInput = document.getElementById('recipe-pdf-preview-name');
+      var typedName = String(previewNameInput && previewNameInput.value || '').trim();
+      var modelTitle = String(parsedResult && parsedResult.model && parsedResult.model.title || '').trim();
+      return typedName || String(fallbackName || modelTitle || 'Imported recipe').trim();
+    }
+
+    function showPdfImportRecipeForm() {
+      var container = document.getElementById(ROOT_ID);
+      if (!container) return;
+
+      var modal = document.createElement('div');
+      modal.className = 'recipe-import-modal';
+      modal.style.cssText = '\
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;\
+        background: rgba(0,0,0,0.5); display: flex; align-items: center;\
+        justify-content: center; z-index: 10000;\
+      ';
+
+      var dialog = document.createElement('div');
+      dialog.className = 'recipe-import-dialog';
+      dialog.style.cssText = '\
+        background: white; border-radius: 12px; padding: 24px;\
+        max-width: 640px; width: 92%; max-height: 85vh; overflow: auto;\
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);\
+      ';
+
+      dialog.innerHTML = '\
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\
+          <h2 style="margin:0;font-size:20px;color:#333;">📄 Import Recipe from PDF</h2>\
+          <button onclick="this.closest(\'.recipe-import-modal\').remove()" style="border:none;background:none;font-size:24px;cursor:pointer;padding:0;">×</button>\
+        </div>\
+        <div style="margin-bottom:16px;">\
+          <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe Name</label>\
+          <input type="text" id="recipe-pdf-name" placeholder="e.g., Grandma\'s Chili" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-size:14px;" />\
+        </div>\
+        <div style="margin-bottom:16px;">\
+          <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe PDF file</label>\
+          <input type="file" id="recipe-pdf-file" accept="application/pdf" style="width:100%;" />\
+        </div>\
+        <div style="margin-bottom:16px;padding:12px;background:#f0f7ff;border-radius:6px;border-left:4px solid #0066cc;">\
+          <p style="margin:0;color:#0066cc;font-size:13px;">\
+            Upload a recipe PDF, parse it, review the extracted ingredients/steps, and then save it as a new recipe.\
+          </p>\
+        </div>\
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px;">\
+          <button onclick="this.closest(\'.recipe-import-modal\').remove()" style="padding:10px 20px;border:1px solid #ddd;background:#f5f5f5;border-radius:6px;cursor:pointer;color:#333;font-weight:500;">Cancel</button>\
+          <button data-modal-action="parse-pdf-recipe" style="padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">📄 Parse PDF & Preview</button>\
+        </div>\
+      ';
+
+      modal.appendChild(dialog);
+      document.body.appendChild(modal);
+
+      setTimeout(function () {
+        var input = document.getElementById('recipe-pdf-name');
+        if (input) input.focus();
+      }, 100);
+
+      modal.addEventListener('click', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (!target) return;
+        if (String(target.getAttribute('data-modal-action') || '').trim() !== 'parse-pdf-recipe') return;
+        var nameInput = modal.querySelector('#recipe-pdf-name');
+        var fileInput = modal.querySelector('#recipe-pdf-file');
+        var recipeName = String((nameInput && nameInput.value) || '').trim();
+        var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        if (!file) {
+          showNoticeModal('PDF required', 'Please choose a recipe PDF before continuing.');
+          return;
+        }
+
+        var parser = getPdfRecipeParser();
+        if (!parser) {
+          showNoticeModal('PDF parser unavailable', 'The shared PDF parser is not ready yet. Open the Recipes tab once, then try again.');
+          return;
+        }
+
+        target.disabled = true;
+        target.textContent = 'Parsing…';
+        parser(file).then(function (parsedResult) {
+          modal.remove();
+          showPdfRecipePreview(recipeName, parsedResult);
+        }).catch(function (error) {
+          target.disabled = false;
+          target.textContent = '📄 Parse PDF & Preview';
+          showNoticeModal('PDF import failed', error && error.message ? error.message : 'Unable to parse that PDF recipe.');
+        });
+      });
+    }
+
+    function showPdfRecipePreview(recipeName, parsedResult) {
+      var model = parsedResult && parsedResult.model ? parsedResult.model : null;
+      if (!model) {
+        showNoticeModal('PDF parse failed', 'No recipe data could be extracted from that PDF.');
+        return;
+      }
+
+      var ingredientsHtml = (model.ingredients || []).map(function (ing) {
+        return '\
+          <li style="margin-bottom:6px;">\
+            ' + escapeHtml([ing.quantity, ing.item].filter(Boolean).join(' ').trim() || ing.item || 'Ingredient') + '\
+          </li>\
+        ';
+      }).join('');
+
+      var stepsHtml = (model.steps || []).map(function (step) {
+        return '<li style="margin-bottom:6px;">' + escapeHtml(step) + '</li>';
+      }).join('');
+
+      var modal = document.createElement('div');
+      modal.className = 'recipe-import-preview-modal';
+      modal.style.cssText = '\
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;\
+        background: rgba(0,0,0,0.5); display: flex; align-items: center;\
+        justify-content: center; z-index: 10001; overflow: auto;\
+      ';
+
+      var dialog = document.createElement('div');
+      dialog.className = 'recipe-import-preview-dialog';
+      dialog.style.cssText = '\
+        background: white; border-radius: 12px; padding: 24px;\
+        max-width: 760px; width: 92%; max-height: 88vh; overflow: auto;\
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin: 20px auto;\
+      ';
+
+      var resolvedRecipeName = String(recipeName || model.title || 'Imported recipe').trim();
+
+      dialog.innerHTML = '\
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\
+          <h2 style="margin:0;font-size:20px;color:#333;">Recipe Preview: ' + escapeHtml(resolvedRecipeName) + '</h2>\
+          <button onclick="this.closest(\'.recipe-import-preview-modal\').remove()" style="border:none;background:none;font-size:24px;cursor:pointer;padding:0;">×</button>\
+        </div>\
+        <div style="margin-bottom:16px;padding:12px;background:#e8f5e9;border-radius:6px;border-left:4px solid #4CAF50;">\
+          <p style="margin:0;color:#2e7d32;font-size:13px;">✓ Parsed PDF recipe. Review the ingredients and steps, then save it as a new recipe.</p>\
+        </div>\
+        <div style="margin-bottom:16px;">\
+          <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe Name</label>\
+          <input type="text" id="recipe-pdf-preview-name" value="' + escapeHtml(resolvedRecipeName) + '" placeholder="e.g., Grandma\'s Chili" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-size:14px;" />\
+        </div>\
+        <div style="display:grid;gap:18px;margin-bottom:20px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">\
+          <div>\
+            <h3 style="margin:0 0 10px 0;color:#555;font-size:14px;text-transform:uppercase;">Ingredients</h3>\
+            <ul style="margin:0;padding-left:20px;max-height:220px;overflow:auto;">' + (ingredientsHtml || '<li>No ingredients detected.</li>') + '</ul>\
+          </div>\
+          <div>\
+            <h3 style="margin:0 0 10px 0;color:#555;font-size:14px;text-transform:uppercase;">Steps</h3>\
+            <ol style="margin:0;padding-left:20px;max-height:220px;overflow:auto;">' + (stepsHtml || '<li>No steps detected.</li>') + '</ol>\
+          </div>\
+        </div>\
+        <div style="margin-bottom:20px;">\
+          <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe Description (Optional)</label>\
+          <textarea id="recipe-pdf-description-input" placeholder="Add notes about this recipe..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-size:13px;min-height:80px;resize:vertical;"></textarea>\
+        </div>\
+        <div style="display:flex;gap:12px;justify-content:flex-end;">\
+          <button onclick="this.closest(\'.recipe-import-preview-modal\').remove()" style="padding:10px 20px;border:1px solid #ddd;background:#f5f5f5;border-radius:6px;cursor:pointer;color:#333;font-weight:500;">Cancel</button>\
+          <button data-modal-action="save-pdf-recipe" style="padding:10px 20px;background:#4CAF50;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">💾 Save Recipe</button>\
+        </div>\
+      ';
+
+      modal.appendChild(dialog);
+      document.body.appendChild(modal);
+
+      setTimeout(function () {
+        var previewNameInput = document.getElementById('recipe-pdf-preview-name');
+        if (previewNameInput) {
+          previewNameInput.focus();
+          previewNameInput.select();
+        }
+      }, 100);
+
+      modal.addEventListener('keydown', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (target && target.id === 'recipe-pdf-preview-name' && event.key === 'Enter') {
+          event.preventDefault();
+          var saveBtn = modal.querySelector('[data-modal-action="save-pdf-recipe"]');
+          if (saveBtn) saveBtn.click();
+        }
+      });
+
+      modal.addEventListener('click', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (!target) return;
+        if (String(target.getAttribute('data-modal-action') || '').trim() !== 'save-pdf-recipe') return;
+      var descriptionInput = modal.querySelector('#recipe-pdf-description-input');
+      var effectiveName = getPreviewPdfRecipeName(recipeName, parsedResult);
+      saveParsedPdfRecipe(effectiveName, parsedResult, descriptionInput ? descriptionInput.value : '');
+        modal.remove();
+      });
+    }
+
    function showRecipeForm() {
      var modal = showModalDialog({
        modalClass: 'recipes-shopping-create-recipe-modal',
@@ -569,8 +788,9 @@
          + '<label style="display:block;margin-bottom:8px;">Ingredients (required)<textarea id="quick-recipe-ingredients" rows="5" placeholder="One ingredient per line" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;margin-bottom:8px;">Cook instructions (required)<textarea id="quick-recipe-instructions" rows="5" placeholder="Step-by-step instructions" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;">Description<textarea id="quick-recipe-description" rows="3" placeholder="Optional notes" style="width:100%;margin-top:4px;"></textarea></label>',
-       footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
-         + buildPrimaryModalButton('save-recipe', 'Save recipe')
+        footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
+          + '<button type="button" class="pill-button" data-modal-action="import-pdf">📄 Import PDF</button>'
+          + buildPrimaryModalButton('save-recipe', 'Save recipe')
      });
 
      modal.addEventListener('click', function (event) {
@@ -580,10 +800,14 @@
          if (modalAction === 'copy-selected-ingredients') {
            var ingredientsField = modal.querySelector('#quick-recipe-ingredients');
            if (!ingredientsField) return;
-           var mergedText = mergeUniqueIngredients(getSelectedPresetIngredients(modal), parseRecipeIngredientNames(ingredientsField.value)).join('\n');
-           ingredientsField.value = mergedText;
+            ingredientsField.value = mergeUniqueIngredients(getSelectedPresetIngredients(modal), parseRecipeIngredientNames(ingredientsField.value)).join('\n');
            return;
          }
+          if (modalAction === 'import-pdf') {
+            modal.remove();
+            showPdfImportRecipeForm();
+            return;
+          }
          if (modalAction !== 'save-recipe') return;
        var name = String((modal.querySelector('#quick-recipe-name') || {}).value || '').trim();
          var ingredientsRaw = String((modal.querySelector('#quick-recipe-ingredients') || {}).value || '').trim();
@@ -747,7 +971,7 @@
        box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin: 20px auto;\
      ';
 
-     var ingredientsList = parsedIngredients.map(function(ing, idx) {
+      var ingredientsList = parsedIngredients.map(function(ing) {
        var isCustom = ing.source === 'imported-custom';
        return '\
          <div style="display: flex; gap: 12px; margin-bottom: 12px; padding: 12px; background: #f9f9f9; border-radius: 6px; border-left: 3px solid ' + (isCustom ? '#ff9800' : '#4CAF50') + ';">\
@@ -810,8 +1034,6 @@
     * Finalize and save the imported recipe
     */
    function finalizeImportRecipe(name, originalText) {
-     // Get current ingredients from preview (those not removed)
-     var ingredientElements = document.querySelectorAll('.recipe-import-preview-modal .recipe-import-preview-dialog > div');
      var description = document.getElementById('recipe-description-input');
      var descriptionText = description ? description.value.trim() : '';
 
