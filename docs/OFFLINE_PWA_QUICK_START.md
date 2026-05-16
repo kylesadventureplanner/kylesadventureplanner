@@ -7,7 +7,7 @@ This app now includes a first-pass offline pack and write queue bridge.
 - Service worker shell caching via `sw.js`
 - Web app manifest at `manifest.webmanifest`
 - "Offline Pack" action buttons in:
-  - Adventure Challenge (`visited-locations`) top actions
+    - Adventures (`visited-locations`) top actions
   - Birds diagnostics/sync section
 - IndexedDB offline write queue (`kafOfflineDb` / `writeQueue`)
 - Offline/sync badges and checklists in Planner and Birds
@@ -18,8 +18,8 @@ This app now includes a first-pass offline pack and write queue bridge.
 ## How to use in the field
 
 1. Sign in while online.
-2. Open Adventure Challenge (`visited-locations`) and click `Offline Pack`.
-3. Open Nature Challenge > Birds > Diagnostics and click `Offline Pack`.
+2. Open Adventures (`visited-locations`) and click `Offline Pack`.
+3. Open Nature > Birds > Diagnostics and click `Offline Pack`.
 4. Confirm checklist badges show cached status and pending queue count.
 5. Use the app offline; writes are queued.
 6. When back online, queued writes will sync automatically, or press `Sync Now` in Birds.

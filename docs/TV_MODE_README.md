@@ -30,7 +30,7 @@ Typing guard, D-pad focusable cards, cone filter, focus beacon, aria-live announ
 | Key | Action | Context |
 |-----|--------|---------|
 | 🏷️ Clone Tags button | Open modal to clone tags from source card to multiple targets | On each adventure card footer |
-| 📋 Multi-Select button | Toggle multi-select mode with checkboxes + bulk action bar | Adventure Challenge (`visited-locations`, legacy/archived Adventure Planner replacement) |
+| 📋 Multi-Select button | Toggle multi-select mode with checkboxes + bulk action bar | Adventures (`visited-locations`, legacy/archived Adventure Planner replacement) |
 | 🔊 Audio Feedback checkbox | Toggle navigation beeps (D-pad, select, modal close) | HUD (🎮 D-pad row) |
 
 ## Implementation highlights

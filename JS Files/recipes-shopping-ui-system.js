@@ -150,14 +150,15 @@
          syncBadge = '<span class="recipe-sync-badge recipe-sync-badge--pending" title="Pending sync">⏳ Pending Sync</span>';
        }
 
-       return '\
-         <div class="recipe-card">\
+        return '\
+          <div class="recipe-card" data-recipe-id="' + escapeHtml(id) + '" role="button" tabindex="0" onclick="(window.RecipesShoppingUI || {}).showRecipeDetailsModal && window.RecipesShoppingUI.showRecipeDetailsModal(\'' + escapeHtml(id) + '\')">\
            <div class="recipe-card-header">\
              <div class="recipe-card-title">' + escapeHtml(recipe.name || 'Untitled Recipe') + ' ' + syncBadge + '</div>\
              <div class="recipe-card-actions">\
-               ' + (recipe.source === 'imported' ? '<button class="recipe-action-btn" title="Edit imported recipe" onclick="(window.RecipesShoppingUI || {}).showEditImportedRecipeForm && window.RecipesShoppingUI.showEditImportedRecipeForm(\'' + escapeHtml(id) + '\')">✏️ Edit</button>' : '') + '\
-               <button class="recipe-action-btn" title="Create shopping list from this recipe" onclick="(window.RecipesShoppingUI || {}).createShoppingListFromRecipe && window.RecipesShoppingUI.createShoppingListFromRecipe(\'' + escapeHtml(id) + '\')">🛒 Add to Shopping List</button>\
-               <button class="recipe-action-btn recipe-action-delete" title="Delete recipe" onclick="(window.RecipesShoppingUI || {}).deleteRecipe && window.RecipesShoppingUI.deleteRecipe(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
+                ' + (recipe.source === 'imported' ? '<button class="recipe-action-btn" title="Edit imported recipe" onclick="event.stopPropagation();(window.RecipesShoppingUI || {}).showEditImportedRecipeForm && window.RecipesShoppingUI.showEditImportedRecipeForm(\'' + escapeHtml(id) + '\')">✏️ Edit</button>' : '') + '\
+                <button class="recipe-action-btn" title="Open recipe" onclick="event.stopPropagation();(window.RecipesShoppingUI || {}).showRecipeDetailsModal && window.RecipesShoppingUI.showRecipeDetailsModal(\'' + escapeHtml(id) + '\')">👁️ View</button>\
+                <button class="recipe-action-btn" title="Create shopping list from this recipe" onclick="event.stopPropagation();(window.RecipesShoppingUI || {}).createShoppingListFromRecipe && window.RecipesShoppingUI.createShoppingListFromRecipe(\'' + escapeHtml(id) + '\')">🛒 Add to Shopping List</button>\
+                <button class="recipe-action-btn recipe-action-delete" title="Delete recipe" onclick="event.stopPropagation();(window.RecipesShoppingUI || {}).deleteRecipe && window.RecipesShoppingUI.deleteRecipe(\'' + escapeHtml(id) + '\')">🗑️ Delete</button>\
              </div>\
            </div>\
            <div class="recipe-card-content">\
@@ -165,6 +166,7 @@
              <div class="recipe-ingredients-summary">\
                Ingredients: ' + (recipe.ingredients ? recipe.ingredients.length : 0) + ' items\
              </div>\
+              <div class="recipe-card-open-hint">Click anywhere to open recipe</div>\
            </div>\
          </div>\
        ';
@@ -572,6 +574,137 @@
         : null;
     }
 
+    function getRecipesTabSaveAndSyncHelper() {
+      return window.RecipesTabSystem && typeof window.RecipesTabSystem.saveRecipeAndSync === 'function'
+        ? window.RecipesTabSystem.saveRecipeAndSync
+        : null;
+    }
+
+    function mapShoppingRecipeToExcelRecipe(recipeId, recipeRecord) {
+      var recipe = recipeRecord || {};
+      var ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(function (row) {
+        return {
+          quantity: String((row && row.quantity) || '').trim(),
+          item: String((row && (row.item || row.name)) || '').trim(),
+          category: String((row && row.category) || '').trim()
+        };
+      }).filter(function (row) { return row.quantity || row.item; }) : [];
+      var steps = Array.isArray(recipe.steps)
+        ? recipe.steps.slice()
+        : (String(recipe.instructions || recipe.originalText || '').trim() ? String(recipe.instructions || recipe.originalText).split(/\n+/).map(function (line) { return line.trim(); }).filter(Boolean) : []);
+
+      return {
+        id: String(recipeId || recipe.id || '').trim() || 'recipe-' + Date.now(),
+        title: String(recipe.name || recipe.title || 'Imported recipe').trim(),
+        description: String(recipe.description || '').trim() || 'Imported recipe',
+        ingredients: ingredients,
+        steps: steps,
+        sourceUrl: String(recipe.sourceUrl || '').trim(),
+        recipePdf: String(recipe.recipePdf || '').trim(),
+        photos: Array.isArray(recipe.photos) ? recipe.photos.slice() : [],
+        notes: Array.isArray(recipe.notes) ? recipe.notes.slice() : [],
+        sectionOverrides: Array.isArray(recipe.sectionOverrides) ? recipe.sectionOverrides.slice() : [],
+        preferredCookMethodProfile: String(recipe.preferredCookMethodProfile || '').trim(),
+        proteins: Array.isArray(recipe.proteins) ? recipe.proteins.slice() : [],
+        cuisines: Array.isArray(recipe.cuisines) ? recipe.cuisines.slice() : [],
+        methods: Array.isArray(recipe.methods) ? recipe.methods.slice() : [],
+        courseCategory: String(recipe.courseCategory || '').trim(),
+        healthiness: String(recipe.healthiness || '').trim(),
+        servings: Number(recipe.servings || 4) || 4,
+        prepMinutes: recipe.prepMinutes,
+        cookMinutes: recipe.cookMinutes,
+        createdAt: Number(recipe.createdAt || Date.now()),
+        updatedAt: Number(recipe.updatedAt || Date.now())
+      };
+    }
+
+    async function bridgeShoppingRecipeToExcel(recipeId, recipeRecord) {
+      var helper = getRecipesTabSaveAndSyncHelper();
+      if (!helper) return false;
+      try {
+        await helper(mapShoppingRecipeToExcelRecipe(recipeId, recipeRecord));
+        if (sys && typeof sys.markRecipeAsSynced === 'function') {
+          sys.markRecipeAsSynced(recipeId);
+        }
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function renderRecipeDetailsList(items, emptyText) {
+      var list = Array.isArray(items) ? items : [];
+      if (!list.length) return '<div style="color:#64748b;">' + escapeHtml(emptyText) + '</div>';
+      return '<ul style="margin:0;padding-left:20px;">' + list.map(function (row) {
+        return '<li style="margin-bottom:6px;">' + escapeHtml(String(row || '').trim()) + '</li>';
+      }).join('') + '</ul>';
+    }
+
+    function showRecipeDetailsModal(recipeId) {
+      var recipes = sys.getSavedRecipes();
+      var recipe = recipes[recipeId];
+      if (!recipe) {
+        showNoticeModal('Recipe not found', 'Unable to locate this recipe.');
+        return;
+      }
+
+      var modal = document.createElement('div');
+      modal.className = 'recipe-import-preview-modal';
+      modal.style.cssText = '\
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;\
+        background: rgba(0,0,0,0.5); display: flex; align-items: center;\
+        justify-content: center; z-index: 10001; overflow: auto;\
+      ';
+
+      var dialog = document.createElement('div');
+      dialog.className = 'recipe-import-preview-dialog';
+      dialog.style.cssText = '\
+        background: white; border-radius: 12px; padding: 24px;\
+        max-width: 780px; width: 92%; max-height: 88vh; overflow: auto;\
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin: 20px auto;\
+      ';
+
+      var ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+      var steps = Array.isArray(recipe.steps) ? recipe.steps : [];
+      var originalText = String(recipe.originalText || '').trim();
+
+      dialog.innerHTML = '\
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">\
+          <h2 style="margin:0;font-size:20px;color:#333;">Recipe: ' + escapeHtml(recipe.name || recipe.title || 'Untitled recipe') + '</h2>\
+          <button data-modal-action="close-recipe-details" style="border:none;background:none;font-size:24px;cursor:pointer;padding:0;">×</button>\
+        </div>\
+        <div style="margin-bottom:12px;color:#475569;"><strong>Description:</strong> ' + escapeHtml(recipe.description || 'No description yet.') + '</div>\
+        <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:16px;">\
+          <div><h3 style="margin:0 0 8px 0;font-size:14px;text-transform:uppercase;color:#334155;">Ingredients</h3>' + renderRecipeDetailsList(ingredients.map(function (row) { return [row.quantity, row.item].filter(Boolean).join(' ').trim(); }), 'No ingredients saved.') + '</div>\
+          <div><h3 style="margin:0 0 8px 0;font-size:14px;text-transform:uppercase;color:#334155;">Steps</h3>' + renderRecipeDetailsList(steps, 'No steps saved.') + '</div>\
+        </div>\
+        ' + (recipe.recipePdf ? '<div style="margin-bottom:10px;"><strong>Original PDF:</strong> <a href="' + escapeHtml(recipe.recipePdf) + '" target="_blank" rel="noopener noreferrer">Open original PDF</a></div>' : '') + '\
+        ' + (recipe.sourceUrl ? '<div style="margin-bottom:10px;"><strong>Source URL:</strong> <a href="' + escapeHtml(recipe.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(recipe.sourceUrl) + '</a></div>' : '') + '\
+        ' + (originalText ? '<details style="margin-top:12px;"><summary style="cursor:pointer;font-weight:600;">Original imported text</summary><pre style="white-space:pre-wrap;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;max-height:240px;overflow:auto;">' + escapeHtml(originalText) + '</pre></details>' : '') + '\
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">\
+          <button data-modal-action="close-recipe-details" style="padding:10px 20px;border:1px solid #ddd;background:#f5f5f5;border-radius:6px;cursor:pointer;color:#333;font-weight:500;">Close</button>\
+          ' + (recipe.source === 'imported' ? '<button data-modal-action="edit-imported-recipe" style="padding:10px 20px;background:#6366f1;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;">✏️ Edit recipe</button>' : '') + '\
+        </div>\
+      ';
+
+      modal.appendChild(dialog);
+      document.body.appendChild(modal);
+
+      modal.addEventListener('click', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (!target) return;
+        var action = String(target.getAttribute('data-modal-action') || '').trim();
+        if (action === 'close-recipe-details') {
+          modal.remove();
+          return;
+        }
+        if (action === 'edit-imported-recipe') {
+          modal.remove();
+          showEditImportedRecipeForm(recipeId);
+        }
+      });
+    }
+
     function saveParsedPdfRecipe(recipeName, parsedResult, descriptionText) {
       var model = parsedResult && parsedResult.model ? parsedResult.model : null;
       if (!model) {
@@ -591,6 +724,15 @@
         syncStatus: 'local-only'
       }));
       sys.updateRecipeSyncStatus(recipeId, 'local-only');
+      bridgeShoppingRecipeToExcel(recipeId, Object.assign({}, model, {
+        id: recipeId,
+        name: normalizedName,
+        title: normalizedName,
+        description: String(descriptionText || model.description || 'Imported from PDF.').trim() || 'Imported from PDF.',
+        recipePdf: String(parsedResult && parsedResult.recipePdfUrl || '').trim(),
+        source: 'imported-pdf',
+        originalText: String(parsedResult.previewText || '').trim()
+      }));
       renderMainView();
       showNoticeModal('Recipe imported from PDF', 'Your recipe was created from the PDF and saved locally. Open the Recipes tab to sync with Excel if needed.');
     }
@@ -1192,6 +1334,15 @@
        sys.saveRecipe(recipeId, recipe);
      }
 
+      bridgeShoppingRecipeToExcel(recipeId, Object.assign({}, recipe || {}, {
+        id: recipeId,
+        name: name,
+        title: name,
+        description: descriptionText,
+        source: 'imported',
+        originalText: originalText
+      }));
+
      // Close modal
      var modal = document.querySelector('.recipe-import-preview-modal');
      if (modal) modal.remove();
@@ -1427,6 +1578,7 @@
      showRecipeImportPreview: showRecipeImportPreview,
      finalizeImportRecipe: finalizeImportRecipe,
      showEditImportedRecipeForm: showEditImportedRecipeForm,
+      showRecipeDetailsModal: showRecipeDetailsModal,
      saveEditedRecipe: saveEditedRecipe,
      showSyncHelpModal: showSyncHelpModal,
      deleteRecipe: deleteRecipe,

@@ -1,7 +1,7 @@
 # PHASE 2: species explorer enhancements - implementation GUIDE
 
 ## Overview
-This document provides complete implementation details for Phase 2 enhancements to Kyle's Adventure Challenge app (legacy/archived Adventure Planner naming). We've created three major features to improve the species explorer experience.
+This document provides complete implementation details for Phase 2 enhancements to Kyle's Adventures app (legacy/archived Adventure Planner naming). We've created three major features to improve the species explorer experience.
 
 ---
 

@@ -96,7 +96,7 @@ async function activateFooterAction(page, locator) {
 }
 
 /**
- * Waits for Adventure Challenge to be mounted and a specific subtab pane to be
+ * Waits for Adventures to be mounted and a specific subtab pane to be
  * interactive.
  *
  * @param {import('@playwright/test').Page} page
@@ -121,7 +121,7 @@ async function waitForAdventureChallengeReady(page, subtabKey = 'all-locations')
 }
 
 /**
- * Opens Adventure Challenge using the requested app mode and waits for a target
+ * Opens Adventures using the requested app mode and waits for a target
  * subtab to become interactive.
  *
  * @param {import('@playwright/test').Page} page
@@ -319,8 +319,8 @@ async function waitForEmbeddedFrameReady(frameLocator, options) {
 }
 
 /**
- * Opens Nature Challenge -> Birds Log view and returns the log pane locator.
- * Safe to call from a fresh page or when already inside Nature Challenge.
+ * Opens Nature -> Birds Log view and returns the log pane locator.
+ * Safe to call from a fresh page or when already inside Nature.
  *
  * @param {import('@playwright/test').Page} page
  */
@@ -387,7 +387,7 @@ async function openNatureLogView(page) {
 }
 
 /**
- * Opens Nature Challenge and waits for the Birds overview controls to be
+ * Opens Nature and waits for the Birds overview controls to be
  * fully interactive.
  *
  * @param {import('@playwright/test').Page} page
@@ -418,7 +418,7 @@ async function openNatureOverviewView(page) {
 }
 
 /**
- * Opens Nature Challenge -> Birds Log view and optionally skips the test when
+ * Opens Nature -> Birds Log view and optionally skips the test when
  * required UI elements are unavailable on the current build.
  *
  * @param {import('@playwright/test').TestInfo} testInfo

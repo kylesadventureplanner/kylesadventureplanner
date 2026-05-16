@@ -199,6 +199,36 @@ test.describe('Recipes tab', () => {
     await page.locator('#recipesFindCookTimeBtn').click();
     await expect(page.locator('#recipesCookTimeResult')).toContainText('Chicken Breast (Air Fry): 14-18 min @ 375F');
 
+    await expect(page.locator('#recipesCookMethodFromSelect option[value="conventional_crockpot_slow_cooker"]')).toContainText('Conventional crockpot (slow cooker)');
+    await expect(page.locator('#recipesCookMethodFromSelect option[value="instant_pot_pressure_cooker"]')).toContainText('Instant Pot (pressure cooker)');
+    await expect(page.locator('#recipesCookMethodFromSelect option[value="sous_vide"]')).toContainText('Sous vide');
+    await expect(page.locator('#recipesCookMethodFromSelect option[value="rice_cooker"]')).toContainText('Rice Cooker');
+    await expect(page.locator('#recipesCookMethodFromSelect option[value="stovetop_pot"]')).toContainText('StoveTop Pot');
+
+    await page.locator('#recipesCookMethodBaseTime').fill('8 hr');
+    await page.locator('#recipesCookMethodFromSelect').selectOption('conventional_crockpot_slow_cooker');
+    await page.locator('#recipesCookMethodToSelect').selectOption('instant_pot_pressure_cooker');
+    await page.locator('#recipesCookMethodProteinPreset').selectOption('pork_chop');
+    await page.locator('#recipesConvertCookMethodBtn').click();
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('Conventional crockpot (slow cooker)');
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('Instant Pot (pressure cooker)');
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('Reduce slow-cooker time by roughly 75-85%');
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('1-2 cups');
+
+    await page.locator('#recipesCookMethodBaseTime').fill('60 min');
+    await page.locator('#recipesCookMethodFromSelect').selectOption('conventional_oven');
+    await page.locator('#recipesCookMethodToSelect').selectOption('air_fry_oven');
+    await page.locator('#recipesConvertCookMethodBtn').click();
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('Reduce oven time by about 20-25%');
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('Lower bake temperature by roughly 25-50F');
+
+    await page.locator('#recipesCookMethodBaseTime').fill('90 min');
+    await page.locator('#recipesCookMethodFromSelect').selectOption('stovetop_pot');
+    await page.locator('#recipesCookMethodToSelect').selectOption('instant_pot_pressure_cooker');
+    await page.locator('#recipesConvertCookMethodBtn').click();
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('divided by about 3');
+    await expect(page.locator('#recipesCookMethodConvertResult')).toContainText('1/2-1 cup');
+
     const cardCountBeforeVariation = await page.locator('#recipesCards .recipes-card').count();
     await page.locator('[data-variation-title-index="0"]').fill('Spicy Weeknight Variation');
     await page.locator('[data-variation-text-index="0"]').fill('Add chipotle peppers, reduce prep steps, and finish with lime for a faster spicy version.');

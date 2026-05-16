@@ -115,7 +115,7 @@ window.initIphoneToggle = function() {
 
 ### How to test
 
-1. **Load the application** with the Adventure Challenge tab active (`visited-locations`, legacy/archived Adventure Planner replacement)
+1. **Load the application** with the Adventures tab active (`visited-locations`, legacy/archived Adventure Planner replacement)
 2. **Click the "📱 iPhone View" button** in the header
    - ✅ Button text should change to "💻 Desktop View"
    - ✅ Button should get `.active` class (blue highlight)
@@ -123,10 +123,10 @@ window.initIphoneToggle = function() {
 
 3. **Switch to the Bike Trails tab**
 4. **Click the "📱 iPhone View" button** there
-   - ✅ Same behavior as Adventure Challenge
+   - ✅ Same behavior as Adventures
    - ✅ Both buttons should stay synchronized
 
-5. **Switch back to Adventure Challenge**
+5. **Switch back to Adventures**
    - ✅ iPhone View should still be active (state persisted in localStorage)
 
 6. **Press ESC key**

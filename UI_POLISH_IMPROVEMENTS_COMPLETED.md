@@ -187,7 +187,7 @@ All animations remain performant on mobile devices with:
 
 If you want to continue polishing the app, consider:
 
-1. **Sub-tab Selection Animations** - Add smooth scale and opacity animations when selecting Nature Challenge sub-tabs
+1. **Sub-tab Selection Animations** - Add smooth scale and opacity animations when selecting Nature sub-tabs
 2. **Loading State Spinners** - Replace generic spinners with custom animated icons matching the app's style
 3. **Glass Morphism Effects** - Apply frosted glass effects to modal overlays and floating panels
 4. **Mobile Touch Targets** - Ensure all interactive elements are at least 44x44px on mobile

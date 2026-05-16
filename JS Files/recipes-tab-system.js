@@ -135,12 +135,76 @@
   var COMMON_STEAK_DONENESS = ['rare', 'medium_rare', 'medium', 'medium_well', 'well_done'];
   var COOK_METHOD_CONVERSION_PROFILES = {
     skillet_saute: { label: 'Skillet saute', factor: 0.7 },
+    instant_pot_pressure_cooker: { label: 'Instant Pot (pressure cooker)', factor: 0.32 },
     conventional_oven: { label: 'Conventional oven', factor: 1.0 },
     convection_oven: { label: 'Convection oven', factor: 0.85 },
     air_fry_oven: { label: 'Air fry oven', factor: 0.75 },
     indoor_grill: { label: 'Indoor grill', factor: 0.72 },
     flat_top_grill: { label: 'Flat top grill', factor: 0.68 },
-    infrared_smoker_big_easy: { label: 'Infrared smoker (Char-Broil Big Easy)', factor: 1.2 }
+    infrared_smoker_big_easy: { label: 'Infrared smoker (Char-Broil Big Easy)', factor: 1.2 },
+    conventional_crockpot_slow_cooker: { label: 'Conventional crockpot (slow cooker)', factor: 3.0 },
+    sous_vide: { label: 'Sous vide', factor: 2.6 },
+    rice_cooker: { label: 'Rice Cooker', factor: 1.35 },
+    stovetop_pot: { label: 'StoveTop Pot', factor: 1.05 }
+  };
+  var COOK_METHOD_PAIR_HINTS = {
+    'conventional_crockpot_slow_cooker__instant_pot_pressure_cooker': {
+      ratioMin: 0.15,
+      ratioMax: 0.25,
+      confidence: 'high',
+      guidance: [
+        'Reduce slow-cooker time by roughly 75-85% (often about one-quarter of original time).',
+        'Keep thin liquid around 1-2 cups total; thick sauces or tomato paste do not count as pressure liquid.',
+        'Layer thin liquid first, then tougher meats, then tender vegetables on top.',
+        'Add dairy and starch thickeners after pressure cooking using Saute/Warm.',
+        'For long meat braises, a common start point is about 25-30 minutes high pressure for an 8-hour low slow-cooker roast.'
+      ]
+    },
+    'conventional_oven__instant_pot_pressure_cooker': {
+      ratioMin: 0.3,
+      ratioMax: 0.36,
+      confidence: 'high',
+      guidance: [
+        'Pressure cooking is moist heat: start around one-third of oven bake time.',
+        'Cut recipe liquid by about half, but keep at least 1 cup thin liquid for pressure.',
+        'Deglaze first and layer thick sauces on top without stirring into the bottom liquid.',
+        'Add dairy after pressure cooking; use Saute to finish texture.'
+      ]
+    },
+    'conventional_oven__air_fry_oven': {
+      ratioMin: 0.75,
+      ratioMax: 0.8,
+      confidence: 'high',
+      guidance: [
+        'Reduce oven time by about 20-25% in air-fry mode.',
+        'Lower bake temperature by roughly 25-50F.',
+        'Preheat 2-3 minutes and avoid overcrowding so hot air can circulate.',
+        'Check around two-thirds of adjusted time to avoid over-browning.'
+      ]
+    },
+    'stovetop_pot__instant_pot_pressure_cooker': {
+      ratioMin: 0.28,
+      ratioMax: 0.38,
+      confidence: 'high',
+      guidance: [
+        'A practical starting rule is stovetop time divided by about 3.',
+        'Reduce very liquidy recipes by roughly 20-25% in the sealed pot.',
+        'Use at least 1/2-1 cup thin liquid and always deglaze after sauteing.',
+        'Cook dense proteins first, then pressure-cook tender vegetables in a short second phase.',
+        'Add dairy and flour/cornstarch slurries only after pressure cooking.'
+      ]
+    },
+    'conventional_oven__infrared_smoker_big_easy': {
+      ratioMin: 0.7,
+      ratioMax: 0.8,
+      confidence: 'high',
+      guidance: [
+        'Infrared fryer conversions usually keep similar temperature but run about 20-30% faster.',
+        'Start checking around 75% of original oven time and verify with a thermometer.',
+        'For large poultry/meat cooks, 10-12 minutes per pound is a useful planning range.',
+        'Use the lid mainly for weather or late-stage crisping to avoid over-darkening early.'
+      ]
+    }
   };
   var PROTEIN_CONVERSION_PRESETS = {
     none: {
@@ -563,6 +627,8 @@
       workbookPath: '',
       lastSyncAt: 0,
       lastAutoSyncAt: 0,
+      syncInProgress: false,
+      syncQueued: false,
       lastError: '',
       schemaColumnNames: []
     }
@@ -1339,8 +1405,13 @@
     var token = normalizeMethodProfileKey(rawMethodText);
     if (!token) return '';
     if (COOK_METHOD_CONVERSION_PROFILES[token]) return token;
+    if (/instant_pot|pressure_cooker/.test(token)) return 'instant_pot_pressure_cooker';
     if (/flat_top|griddle/.test(token)) return 'flat_top_grill';
     if (/smok|big_easy/.test(token)) return 'infrared_smoker_big_easy';
+    if (/crock|slow_cooker/.test(token)) return 'conventional_crockpot_slow_cooker';
+    if (/sous_vide/.test(token)) return 'sous_vide';
+    if (/rice_cooker/.test(token)) return 'rice_cooker';
+    if (/stovetop_pot|stove_top_pot/.test(token)) return 'stovetop_pot';
     if (/indoor_grill/.test(token)) return 'indoor_grill';
     if (/grill/.test(token)) return 'flat_top_grill';
     if (/air_fry/.test(token)) return 'air_fry_oven';
@@ -1348,6 +1419,31 @@
     if (/oven|bake/.test(token)) return 'conventional_oven';
     if (/skillet|saute|stove|pan/.test(token)) return 'skillet_saute';
     return '';
+  }
+
+  function parseDurationTokenToMinutes(rawToken, defaultUnit) {
+    var token = String(rawToken || '').trim().toLowerCase().replace(/,/g, '');
+    if (!token) return NaN;
+
+    var clock = token.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (clock) {
+      var h = Number(clock[1]);
+      var m = Number(clock[2]);
+      if (Number.isFinite(h) && Number.isFinite(m)) return (h * 60) + m;
+    }
+
+    var unit = String(defaultUnit || '').trim().toLowerCase();
+    if (/\b(hours?|hrs?|hr|h)\b/.test(token)) unit = 'hour';
+    if (/\b(minutes?|mins?|min|m)\b/.test(token)) unit = 'minute';
+    if (!unit) unit = 'minute';
+
+    var numericToken = token
+      .replace(/\bhours?\b|\bhrs?\b|\bhr\b|\bh\b/g, '')
+      .replace(/\bminutes?\b|\bmins?\b|\bmin\b|\bm\b/g, '')
+      .trim();
+    var value = parseQuantityNumber(numericToken);
+    if (!Number.isFinite(value) || value <= 0) return NaN;
+    return unit === 'hour' ? (value * 60) : value;
   }
 
   function inferPreferredCookMethodProfile(recipe) {
@@ -1362,31 +1458,123 @@
   }
 
   function parseMinuteRange(rawValue) {
-    var value = String(rawValue || '').trim().toLowerCase().replace(/minutes?|mins?|min/g, '').trim();
+    var value = String(rawValue || '').trim().toLowerCase().replace(/[–—]/g, '-');
     if (!value) return null;
-    var range = value.match(/^(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)$/);
+
+    var inferredUnit = '';
+    if (/\b(hours?|hrs?|hr|h)\b/.test(value)) inferredUnit = 'hour';
+    else if (/\b(minutes?|mins?|min|m)\b/.test(value)) inferredUnit = 'minute';
+
+    var range = value.match(/^(.+?)\s*(?:-|to)\s*(.+)$/);
     if (range) {
-      var min = Number(range[1]);
-      var max = Number(range[2]);
+      var min = parseDurationTokenToMinutes(range[1], inferredUnit || 'minute');
+      var max = parseDurationTokenToMinutes(range[2], inferredUnit || 'minute');
       if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
       return { min: Math.min(min, max), max: Math.max(min, max) };
     }
-    var single = Number(value);
+
+    var single = parseDurationTokenToMinutes(value, inferredUnit || 'minute');
     if (!Number.isFinite(single) || single <= 0) return null;
     return { min: single, max: single };
+  }
+
+  function formatMinutesAsDuration(totalMinutes) {
+    var minutes = Math.max(1, Math.round(Number(totalMinutes) || 0));
+    if (minutes < 60) return String(minutes) + ' min';
+    var hours = Math.floor(minutes / 60);
+    var rem = minutes % 60;
+    if (!rem) return String(hours) + ' hr';
+    return String(hours) + ' hr ' + String(rem) + ' min';
   }
 
   function formatMinuteRange(range) {
     if (!range) return '';
     var min = Math.max(1, Math.round(range.min));
     var max = Math.max(1, Math.round(range.max));
-    if (min === max) return String(min) + ' min';
-    return String(min) + '-' + String(max) + ' min';
+    if (min === max) return formatMinutesAsDuration(min);
+    return formatMinutesAsDuration(min) + ' - ' + formatMinutesAsDuration(max);
   }
 
-  function renderCookMethodConversion(baseMinutesText, fromMethodKey, toMethodKey, proteinPresetKey, thicknessKey, donenessKey) {
+  function getCookMethodPairHint(fromMethodKey, toMethodKey) {
+    return COOK_METHOD_PAIR_HINTS[String(fromMethodKey || '') + '__' + String(toMethodKey || '')] || null;
+  }
+
+  function buildCookMethodGuidanceHtml(pairHint) {
+    if (!pairHint || !Array.isArray(pairHint.guidance) || !pairHint.guidance.length) return '';
+    return '<ul class="recipes-help-text-inline" style="margin:6px 0 0 18px;">'
+      + pairHint.guidance.map(function (line) {
+        return '<li>' + safeText(line) + '</li>';
+      }).join('')
+      + '</ul>';
+  }
+
+  function parseLiquidCups(rawValue) {
+    var value = String(rawValue || '').trim().toLowerCase();
+    if (!value) return null;
+    value = value.replace(/cups?/g, '').trim();
+    if (!value) return null;
+
+    var mixedMatch = value.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (mixedMatch) {
+      var whole = Number(mixedMatch[1]);
+      var numerator = Number(mixedMatch[2]);
+      var denominator = Number(mixedMatch[3]);
+      if (!Number.isFinite(whole) || !Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return NaN;
+      return whole + (numerator / denominator);
+    }
+
+    var fractionMatch = value.match(/^(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      var fracNum = Number(fractionMatch[1]);
+      var fracDen = Number(fractionMatch[2]);
+      if (!Number.isFinite(fracNum) || !Number.isFinite(fracDen) || fracDen <= 0) return NaN;
+      return fracNum / fracDen;
+    }
+
+    var numeric = Number(value);
+    if (!Number.isFinite(numeric)) return NaN;
+    return numeric;
+  }
+
+  function formatCupAmount(cupsValue) {
+    var value = Math.max(0, Number(cupsValue) || 0);
+    var rounded = Math.round(value * 100) / 100;
+    var text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/\.0+$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+    return text + (rounded === 1 ? ' cup' : ' cups');
+  }
+
+  function buildCookMethodLiquidHint(pairHint, fromMethodKey, toMethodKey, baseLiquidCups) {
+    if (!pairHint || toMethodKey !== 'instant_pot_pressure_cooker' || !Number.isFinite(baseLiquidCups) || baseLiquidCups <= 0) {
+      return { html: '', noteText: '' };
+    }
+
+    var pairKey = String(fromMethodKey || '') + '__' + String(toMethodKey || '');
+    var message = '';
+    if (pairKey === 'conventional_crockpot_slow_cooker__instant_pot_pressure_cooker') {
+      var slowCookerTarget = Math.min(2, Math.max(1, baseLiquidCups));
+      message = 'Liquid target: adjust from ' + formatCupAmount(baseLiquidCups) + ' to about ' + formatCupAmount(slowCookerTarget) + ' (Instant Pot sweet spot is usually 1-2 cups thin liquid).';
+    } else if (pairKey === 'conventional_oven__instant_pot_pressure_cooker') {
+      var ovenTarget = Math.max(1, baseLiquidCups * 0.5);
+      message = 'Liquid target: adjust from ' + formatCupAmount(baseLiquidCups) + ' to about ' + formatCupAmount(ovenTarget) + ' (roughly half, but keep at least 1 cup thin liquid).';
+    } else if (pairKey === 'stovetop_pot__instant_pot_pressure_cooker') {
+      var stovetopTarget = Math.min(1, Math.max(0.5, baseLiquidCups));
+      message = 'Liquid target: adjust from ' + formatCupAmount(baseLiquidCups) + ' to about ' + formatCupAmount(stovetopTarget) + ' (typical pressure-cook range is 0.5-1 cup thin liquid).';
+    }
+
+    if (!message) return { html: '', noteText: '' };
+    return {
+      html: '<div class="recipes-help-text-inline" style="margin-top:6px;">' + safeText(message) + '</div>',
+      noteText: ' Liquid: ' + message
+    };
+  }
+
+  function renderCookMethodConversion(baseMinutesText, fromMethodKey, toMethodKey, proteinPresetKey, thicknessKey, donenessKey, baseLiquidText) {
     var parsedRange = parseMinuteRange(baseMinutesText);
-    if (!parsedRange) return { ok: false, message: 'Enter minutes in a format like 12 or 12-15.' };
+    if (!parsedRange) return { ok: false, message: 'Enter cook time in a format like 30, 30-40, 1.5 hr, or 1 hr 30 min.' };
+    var parsedBaseLiquid = parseLiquidCups(baseLiquidText);
+    if (parsedBaseLiquid !== null && (!Number.isFinite(parsedBaseLiquid) || parsedBaseLiquid <= 0)) {
+      return { ok: false, message: 'Optional base liquid must be a positive cups value (for example: 1, 1.5, 3/4, or 1 1/2).' };
+    }
     var fromMeta = COOK_METHOD_CONVERSION_PROFILES[fromMethodKey];
     var toMeta = COOK_METHOD_CONVERSION_PROFILES[toMethodKey];
     if (!fromMeta || !toMeta) return { ok: false, message: 'Select both source and target methods.' };
@@ -1398,30 +1586,55 @@
     var appliedDoneness = allowedDoneness.indexOf(donenessKey) >= 0 ? donenessKey : 'auto';
     var thicknessMultiplier = Number(proteinPreset.thicknessMultiplier[appliedThickness] || 1);
     var donenessMultiplier = Number(proteinPreset.donenessMultiplier[appliedDoneness] || 1);
-    var ratio = (toMeta.factor / fromMeta.factor) * thicknessMultiplier * donenessMultiplier;
+    var pairHint = getCookMethodPairHint(fromMethodKey, toMethodKey);
+    var baseRatio = (toMeta.factor / fromMeta.factor);
+    var ratioMin = baseRatio * thicknessMultiplier * donenessMultiplier;
+    var ratioMax = ratioMin;
+    if (pairHint && Number.isFinite(pairHint.ratioMin) && Number.isFinite(pairHint.ratioMax)) {
+      ratioMin = pairHint.ratioMin * thicknessMultiplier * donenessMultiplier;
+      ratioMax = pairHint.ratioMax * thicknessMultiplier * donenessMultiplier;
+    }
 
     var converted = {
-      min: parsedRange.min * ratio,
-      max: parsedRange.max * ratio
+      min: parsedRange.min * Math.min(ratioMin, ratioMax),
+      max: parsedRange.max * Math.max(ratioMin, ratioMax)
     };
+
+    if (pairHint
+      && fromMethodKey === 'conventional_crockpot_slow_cooker'
+      && toMethodKey === 'instant_pot_pressure_cooker'
+      && proteinKey !== 'none'
+      && parsedRange.max >= 360) {
+      converted.min = Math.max(25, converted.min);
+      converted.max = Math.max(30, Math.min(45, converted.max));
+    }
+
     var methodDistance = Math.abs(Number(fromMeta.factor || 1) - Number(toMeta.factor || 1));
     var hasKnownProfile = proteinKey !== 'none';
     var confidence = 'low';
-    if (methodDistance <= 0.2 && hasKnownProfile) confidence = 'high';
+    if (pairHint && pairHint.confidence) confidence = String(pairHint.confidence);
+    else if (methodDistance <= 0.2 && hasKnownProfile) confidence = 'high';
     else if (methodDistance <= 0.35 || hasKnownProfile) confidence = 'medium';
     var confidenceLabel = confidence.charAt(0).toUpperCase() + confidence.slice(1);
     var message = formatMinuteRange(parsedRange) + ' on ' + fromMeta.label + ' is about ' + formatMinuteRange(converted) + ' on ' + toMeta.label + '.';
     var profileText = proteinKey === 'none'
       ? 'No protein profile selected.'
       : (proteinPreset.label + ' | ' + PROTEIN_THICKNESS_PRESETS[appliedThickness].label + ' | ' + PROTEIN_DONENESS_PRESETS[appliedDoneness].label + '.');
+    var liquidHint = buildCookMethodLiquidHint(pairHint, fromMethodKey, toMethodKey, parsedBaseLiquid);
 
     return {
       ok: true,
       confidence: confidence,
       confidenceLabel: confidenceLabel,
       message: message,
-      html: '<span class="recipes-confidence-badge recipes-confidence-' + confidence + '">' + confidenceLabel + ' confidence</span> ' + safeText(message) + ' <span class="recipes-help-text-inline">' + safeText(profileText) + '</span>',
+      html: '<span class="recipes-confidence-badge recipes-confidence-' + confidence + '">' + confidenceLabel + ' confidence</span> '
+        + safeText(message)
+        + ' <span class="recipes-help-text-inline">' + safeText(profileText) + '</span>'
+        + buildCookMethodGuidanceHtml(pairHint)
+        + liquidHint.html,
       noteText: '[Cook conversion | ' + confidenceLabel + '] ' + message + ' Profile: ' + profileText
+        + (pairHint && pairHint.guidance && pairHint.guidance.length ? (' Hints: ' + pairHint.guidance.slice(0, 2).join(' ')) : '')
+        + liquidHint.noteText
     };
   }
 
@@ -2347,6 +2560,7 @@
         '</div>' +
         '<div class="recipes-inline-input-row">' +
           '<label>Base time<input id="recipesCookMethodBaseTime" type="text" placeholder="12 or 12-15"></label>' +
+          '<label>Base liquid (cups, optional)<input id="recipesCookMethodBaseLiquid" type="text" placeholder="1, 1.5, 3/4"></label>' +
           '<button type="button" class="pill-button" id="recipesUseRecipeCookTimeBtn">Use recipe cook time</button>' +
           '<label>From method<select id="recipesCookMethodFromSelect">'
             + cookMethodConverterOptions.map(function (item) { return '<option value="' + safeText(item.key) + '"' + (item.key === preferredCookMethodProfile ? ' selected' : '') + '>' + safeText(item.label) + '</option>'; }).join('')
@@ -2580,6 +2794,7 @@
     var root = getRoot();
     if (!root) return;
     var baseInput = root.querySelector('#recipesCookMethodBaseTime');
+    var baseLiquidInput = root.querySelector('#recipesCookMethodBaseLiquid');
     var fromSelect = root.querySelector('#recipesCookMethodFromSelect');
     var toSelect = root.querySelector('#recipesCookMethodToSelect');
     var proteinPresetSelect = root.querySelector('#recipesCookMethodProteinPreset');
@@ -2594,7 +2809,8 @@
       toSelect.value,
       proteinPresetSelect.value,
       thicknessPresetSelect.value,
-      donenessPresetSelect.value
+      donenessPresetSelect.value,
+      baseLiquidInput ? baseLiquidInput.value : ''
     );
     state.lastCookMethodConversion = conversion && conversion.ok ? conversion : null;
     output.innerHTML = conversion && conversion.ok ? conversion.html : safeText(conversion ? conversion.message : 'Unable to convert time.');
@@ -3611,6 +3827,9 @@
     saveRecipes();
     updateSuggestionLists();
     renderCards();
+    if (getGraphAccessToken()) {
+      syncToExcel().catch(function (_error) {});
+    }
   }
 
   function getGraphAccessToken() {
@@ -4036,6 +4255,11 @@
   }
 
   async function syncToExcel() {
+    if (state.excel.syncInProgress) {
+      state.excel.syncQueued = true;
+      return;
+    }
+    state.excel.syncInProgress = true;
     try {
       setExcelStatus('Syncing to Excel...', false);
       await writeRecipesToExcel();
@@ -4052,7 +4276,34 @@
       setExcelStatus('Excel sync complete.', false);
     } catch (error) {
       setExcelStatus(error && error.message ? error.message : 'Excel write failed.', true);
+    } finally {
+      state.excel.syncInProgress = false;
+      if (state.excel.syncQueued) {
+        state.excel.syncQueued = false;
+        syncToExcel().catch(function (_error) {});
+      }
     }
+  }
+
+  async function saveRecipeAndSync(recipe) {
+    var model = normalizeRecipe(recipe || {});
+    var existingIndex = state.recipes.findIndex(function (row) { return String(row.id || '') === String(model.id || ''); });
+    if (existingIndex >= 0) {
+      model.createdAt = state.recipes[existingIndex].createdAt || model.createdAt;
+      model.updatedAt = Date.now();
+      state.recipes[existingIndex] = model;
+    } else {
+      model.createdAt = Number(model.createdAt || Date.now());
+      model.updatedAt = Date.now();
+      state.recipes.unshift(model);
+    }
+    saveRecipes();
+    updateSuggestionLists();
+    renderCards();
+    if (getGraphAccessToken()) {
+      await syncToExcel();
+    }
+    return model;
   }
 
   function updateIntakeStatus(message, isError) {
@@ -4150,6 +4401,9 @@
     saveRecipes();
     updateSuggestionLists();
     renderCards();
+    if (getGraphAccessToken()) {
+      syncToExcel().catch(function (_error) {});
+    }
     setEditorStatus('Recipe saved.', false);
     closeEditor();
     renderDetails(model.id);
@@ -4723,6 +4977,9 @@
       if (target.id === 'recipesCookMethodBaseTime') {
         showCookMethodConversionForSelection();
       }
+      if (target.id === 'recipesCookMethodBaseLiquid') {
+        showCookMethodConversionForSelection();
+      }
       var suggestionToggleIndex = target.getAttribute && target.getAttribute('data-pdf-suggestion-toggle');
       if (suggestionToggleIndex != null) {
         var toggleIndex = Number(suggestionToggleIndex);
@@ -4808,6 +5065,7 @@
     init: init,
     parseRecipeFromPdfFile: parseRecipeFromPdfFile,
     uploadRecipePdfToOneDrive: uploadRecipePdfToOneDrive,
+    saveRecipeAndSync: saveRecipeAndSync,
     syncFromExcel: syncFromExcel,
     syncToExcel: syncToExcel
   };

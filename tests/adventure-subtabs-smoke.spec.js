@@ -44,7 +44,7 @@ const ADVENTURE_SUBTABS = [
   }
 ];
 
-test.describe('Adventure Challenge daily/advanced mode regression', () => {
+test.describe('Adventures daily/advanced mode regression', () => {
   test('daily mode defaults to All Locations and advanced mode restores the full subtab set', async ({ page }) => {
     await openAdventureChallenge(page, { mode: 'daily', subtabKey: 'all-locations' });
 
@@ -216,12 +216,12 @@ test.describe('Adventure Challenge daily/advanced mode regression', () => {
   });
 });
 
-test.describe('Adventure Challenge advanced subtabs smoke', () => {
+test.describe('Adventures advanced subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
     await openAdventureChallenge(page, { mode: 'advanced', subtabKey: 'outdoors' });
   });
 
-  test('legacy top header controls are removed from Adventure Challenge', async ({ page }) => {
+  test('legacy top header controls are removed from Adventures', async ({ page }) => {
     await expect(page.locator('#visitedRefreshBtn')).toHaveCount(0);
     await expect(page.locator('#visitedWeatherMode')).toHaveCount(0);
     await expect(page.locator('#visitedCtaInjectorStatus')).toHaveCount(0);

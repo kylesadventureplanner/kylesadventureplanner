@@ -50,14 +50,14 @@ test.describe('Central diagnostics hub smoke', () => {
     await expect(page.locator('#diagnosticsHubMount')).toContainText('Recommended: course_category, healthiness');
   });
 
-  test('legacy adventure-planner deep links redirect to Adventure Challenge', async ({ page }) => {
+  test('legacy adventure-planner deep links redirect to Adventures', async ({ page }) => {
     await page.goto('/?tab=adventure-planner');
 
     await expect(page.locator('.app-tab-btn.active')).toHaveAttribute('data-tab', 'visited-locations');
     await expect(page).toHaveURL(/tab=visited-locations/);
   });
 
-  test('legacy household concerts deep link resolves to Adventure Challenge tab', async ({ page }) => {
+  test('legacy household concerts deep link resolves to Adventures tab', async ({ page }) => {
     await page.goto('/?tab=household-tools&householdSubtab=concerts');
 
     await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();

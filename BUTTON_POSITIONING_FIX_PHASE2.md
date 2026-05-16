@@ -1,4 +1,4 @@
-# Nature Challenge Tab - Button Positioning Fix (Phase 2)
+# Nature Tab - Button Positioning Fix (Phase 2)
 
 ## Issue
 Buttons in the nature challenge tab were being rendered with a viewport position of `top: -3575px`, indicating they were positioned 3575 pixels above the visible viewport. This was a layout issue where the button's parent containers were not properly constraining their dimensions.

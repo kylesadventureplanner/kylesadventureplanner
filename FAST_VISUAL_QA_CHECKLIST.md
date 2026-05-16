@@ -38,7 +38,7 @@ Quick pass for the three requested visual areas:
 - Existing repository warnings remain outside this checklist scope.
 
 ## Optional Manual Browser Spot Check
-- Open Nature Challenge tab and switch subtabs to confirm green hover/active transitions.
+- Open Nature tab and switch subtabs to confirm green hover/active transitions.
 - Trigger a loading overlay and verify spinner pulse + ring contrast.
 - Navigate to an unloaded tab to confirm lazy loader spinner style.
 

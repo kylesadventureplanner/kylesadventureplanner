@@ -152,7 +152,7 @@ test('first-click success: bike edit mode', async ({ page }) => {
   expect(ok).toBeTruthy();
 });
 
-test('legacy bike tab URL keeps Adventure Challenge bike tools reachable', async ({ page }) => {
+test('legacy bike tab URL keeps Adventures bike tools reachable', async ({ page }) => {
   await primeAppModeStorage(page, 'advanced');
   await page.goto('/?tab=bike-trails');
   await waitForInteractive(page);
@@ -186,7 +186,7 @@ test('legacy bike tab URL keeps Adventure Challenge bike tools reachable', async
   expect(ok).toBeTruthy();
 });
 
-test('all-locations explorer URL opens Adventure Challenge explorer view in daily mode', async ({ page }) => {
+test('all-locations explorer URL opens Adventures explorer view in daily mode', async ({ page }) => {
   await page.goto('/?tab=visited-locations&visitedSubtab=all-locations&visitedView=explorer');
   await waitForInteractive(page);
   await waitForAdventureDeepLinkRouteState(page, { subtabKey: 'all-locations', viewKey: 'explorer' });

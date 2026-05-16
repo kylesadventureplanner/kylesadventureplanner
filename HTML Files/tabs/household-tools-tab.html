@@ -1,42 +1,39 @@
-<!-- HOUSEHOLD TOOLS TAB CONTENT -->
-<!-- Consolidates recipes, garden planner, and budget utilities into one tab -->
+<!-- FINANCES TAB CONTENT -->
+<!-- Consolidates budgeting, tax planning, and retirement planning in one tab -->
 
 <div id="householdToolsRoot">
   <div class="household-tools-header">
-    <h1>Household Tools</h1>
-    <p class="household-tools-subtitle">Keep your kitchen, garden, and budget planning in one workflow.</p>
+    <h1>Finances</h1>
+    <p class="household-tools-subtitle">Keep your budget, tax planning, and retirement planning in one workflow.</p>
   </div>
 
-  <div class="household-tools-subtabs" role="tablist" aria-label="Household tools sections">
-    <button id="householdToolsTab-recipes" type="button" class="household-tools-subtab active" role="tab" aria-controls="householdToolsPane-recipes" aria-selected="true" data-household-subtab="recipes">👨‍🍳 Recipes</button>
-    <button id="householdToolsTab-garden" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-garden" aria-selected="false" data-household-subtab="garden">🌱 Garden Planner</button>
-    <button id="householdToolsTab-budget" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-budget" aria-selected="false" data-household-subtab="budget">💰 Budget</button>
+  <div class="household-tools-subtabs" role="tablist" aria-label="Finance sections">
+    <button id="householdToolsTab-budget" type="button" class="household-tools-subtab active" role="tab" aria-controls="householdToolsPane-budget" aria-selected="true" data-household-subtab="budget">💰 Budget</button>
+    <button id="householdToolsTab-tax-planning" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-tax-planning" aria-selected="false" data-household-subtab="tax-planning">🧾 Tax Planning</button>
+    <button id="householdToolsTab-retirement-planning" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-retirement-planning" aria-selected="false" data-household-subtab="retirement-planning">🏦 Retirement Planning</button>
   </div>
 
-  <div id="householdToolsPane-recipes" class="household-tools-pane is-active" data-household-pane="recipes" role="tabpanel" aria-labelledby="householdToolsTab-recipes">
-    <div id="recipesShoppingPane" class="recipes-shopping-pane" aria-live="polite"></div>
-    <noscript>
-      <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">👨‍🍳</div>
-        <div class="tab-placeholder-text">Recipes</div>
-        <div class="tab-placeholder-subtext">Enable JavaScript to use Recipes & Shopping tools.</div>
-      </div>
-    </noscript>
-  </div>
-
-  <div id="householdToolsPane-garden" class="household-tools-pane" data-household-pane="garden" role="tabpanel" aria-labelledby="householdToolsTab-garden" hidden>
+  <div id="householdToolsPane-budget" class="household-tools-pane is-active" data-household-pane="budget" role="tabpanel" aria-labelledby="householdToolsTab-budget">
     <div class="tab-placeholder">
-      <div class="tab-placeholder-icon">🌱</div>
-      <div class="tab-placeholder-text">Garden Planner</div>
-      <div class="tab-placeholder-subtext">Plan and organize your garden activities.</div>
+      <div class="tab-placeholder-icon">💰</div>
+      <div class="tab-placeholder-text">Budget</div>
+      <div class="tab-placeholder-subtext">Track income, expenses, and monthly goals.</div>
     </div>
   </div>
 
-  <div id="householdToolsPane-budget" class="household-tools-pane" data-household-pane="budget" role="tabpanel" aria-labelledby="householdToolsTab-budget" hidden>
+  <div id="householdToolsPane-tax-planning" class="household-tools-pane" data-household-pane="tax-planning" role="tabpanel" aria-labelledby="householdToolsTab-tax-planning" hidden>
     <div class="tab-placeholder">
-      <div class="tab-placeholder-icon">💰</div>
-      <div class="tab-placeholder-text">Budget Planner</div>
-      <div class="tab-placeholder-subtext">Track and manage your household and adventure budget.</div>
+      <div class="tab-placeholder-icon">🧾</div>
+      <div class="tab-placeholder-text">Tax Planning</div>
+      <div class="tab-placeholder-subtext">Organize deductions, deadlines, and filing readiness.</div>
+    </div>
+  </div>
+
+  <div id="householdToolsPane-retirement-planning" class="household-tools-pane" data-household-pane="retirement-planning" role="tabpanel" aria-labelledby="householdToolsTab-retirement-planning" hidden>
+    <div class="tab-placeholder">
+      <div class="tab-placeholder-icon">🏦</div>
+      <div class="tab-placeholder-text">Retirement Planning</div>
+      <div class="tab-placeholder-subtext">Plan long-term savings targets and retirement milestones.</div>
     </div>
   </div>
 
@@ -91,8 +88,8 @@
 
 <script>
   (function () {
-    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget'];
-    const state = { activeSubTab: 'recipes' };
+    const HOUSEHOLD_SUBTAB_KEYS = ['budget', 'tax-planning', 'retirement-planning'];
+    const state = { activeSubTab: 'budget' };
 
     function isHouseholdToolsTabMountedAndActive(root) {
       if (!root || !document.body || !document.body.contains(root)) return false;
@@ -307,61 +304,10 @@
       });
 
       syncHouseholdSubTabDock(root);
-      if (state.activeSubTab === 'recipes') {
-        renderHouseholdRecipesPane(root);
-      }
-    }
-
-    function renderHouseholdRecipesPane(root) {
-      if (!root || state.activeSubTab !== 'recipes') return;
-      const pane = root.querySelector('#householdToolsPane-recipes');
-      if (!pane) return;
-      var mount = pane.querySelector('#recipesShoppingPane');
-      if (!mount) {
-        pane.innerHTML = '<div id="recipesShoppingPane" class="recipes-shopping-pane" aria-live="polite"></div>';
-        mount = pane.querySelector('#recipesShoppingPane');
-      }
-      if (!mount) return;
-
-      if (!window.RecipesShoppingUI || typeof window.RecipesShoppingUI.init !== 'function') {
-        window.setTimeout(function () {
-          const liveRoot = document.getElementById('householdToolsRoot');
-          if (!liveRoot || state.activeSubTab !== 'recipes') return;
-          renderHouseholdRecipesPane(liveRoot);
-        }, 120);
-        return;
-      }
-
-      try {
-        if (typeof window.RecipesShoppingUI.renderMainView === 'function') {
-          window.RecipesShoppingUI.renderMainView();
-        } else {
-          window.RecipesShoppingUI.init();
-        }
-      } catch (error) {
-        console.error('Failed to render Recipes & Shopping UI in Household Tools:', error);
-      }
     }
 
     function setActiveHouseholdSubTab(root, tabKey) {
-      // Garden and Budget now live in canonical primary tabs; route there.
-      if (tabKey === 'garden' || tabKey === 'budget') {
-        if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-          window.tabLoader.switchTab(tabKey, {
-            syncUrl: true,
-            historyMode: 'push',
-            source: 'household-tools-subtab'
-          });
-        } else {
-          const fallbackBtn = document.querySelector('.app-tab-btn[data-tab="' + tabKey + '"]');
-          if (fallbackBtn && typeof fallbackBtn.click === 'function') {
-            fallbackBtn.click();
-          }
-        }
-        return;
-      }
-
-      state.activeSubTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'recipes';
+      state.activeSubTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'budget';
       syncHouseholdSubTabs(root);
     }
 
@@ -389,8 +335,8 @@
 
 
       bindHouseholdPrimaryTabFallbackSync(root);
-      setActiveHouseholdSubTab(root, 'recipes');
-      console.log('✅ Household Tools tab initialized');
+      setActiveHouseholdSubTab(root, 'budget');
+      console.log('✅ Finances tab initialized');
     };
   })();
 </script>

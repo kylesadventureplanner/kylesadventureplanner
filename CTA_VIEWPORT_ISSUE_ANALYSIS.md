@@ -4,7 +4,7 @@
 
 ## Problem Summary
 
-1. **User Symptom**: Nature Challenge CTA buttons (Explore Species, Log a Sighting, Map, Refresh Data) are non-responsive to clicks and don't show tooltips on hover.
+1. **User Symptom**: Nature CTA buttons (Explore Species, Log a Sighting, Map, Refresh Data) are non-responsive to clicks and don't show tooltips on hover.
 
 2. **Root Cause Identified**: CTA probes were executed outside the normalized overview action context, producing offscreen measurements even when handlers were healthy.
 

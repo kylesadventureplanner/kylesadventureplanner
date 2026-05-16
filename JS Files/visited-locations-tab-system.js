@@ -1,5 +1,5 @@
 /*
- * Adventure Challenge Tab System
+ * Adventures Tab System
  * Gamified progress tracking + smart suggestions for adventures.
  */
 
@@ -513,7 +513,7 @@
     const active = normalizeProgressSubtabKey(state.activeProgressSubTab);
     const activeButton = getProgressSubTabButtons(root).find((btn) => btn.getAttribute('data-progress-subtab') === active);
     const label = getVisitedSubTabLabel(activeButton ? activeButton.textContent : active);
-    titleEl.textContent = `Adventure Challenge - ${label}`;
+    titleEl.textContent = `Adventures - ${label}`;
   }
 
   function updateVisitedSubTabRowVisibility(row, slot) {
@@ -822,12 +822,12 @@
       return requestedSubtab;
     }
 
-    // Legacy compatibility: old bike deep links now resolve to Adventure Challenge bike subtab.
+    // Legacy compatibility: old bike deep links now resolve to Adventures bike subtab.
     if (requestedTab === 'bike-trails') {
       return 'bike-trails';
     }
 
-    // Legacy compatibility: household concerts route now maps to Adventure Challenge concerts.
+    // Legacy compatibility: household concerts route now maps to Adventures concerts.
     if (requestedTab === 'household-tools' && householdSubtab === 'concerts') {
       return 'concerts';
     }
@@ -923,9 +923,9 @@
     const viewKey = isEdit ? 'edit-mode' : (isVisitLog ? 'visit-log' : 'city-explorer');
     const title = isEdit ? '📝 Edit Mode' : (isVisitLog ? '📋 Log a Visit' : '🌆 City Explorer');
     const subtitle = isEdit
-      ? 'Manage records in Edit Mode without leaving Adventure Challenge.'
+      ? 'Manage records in Edit Mode without leaving Adventures.'
       : (isVisitLog
-        ? `Log a visit without leaving ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure Challenge'}.`
+        ? `Log a visit without leaving ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventures'}.`
         : `City Explorer filtered for ${PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Adventure'}.`);
     const standaloneAction = isEdit
       ? `open-edit-mode-newtab-${subtabKey}`
@@ -1915,7 +1915,7 @@
     });
 
     const dataStatus = document.getElementById('visitedDataStatus');
-    if (dataStatus) dataStatus.textContent = 'Refreshing Adventure Challenge data...';
+    if (dataStatus) dataStatus.textContent = 'Refreshing Adventures data...';
   }
 
   function clearLoadingState() {
@@ -9115,11 +9115,11 @@
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
       if (root.dataset.bound === '1' && root.__visitedClickHandler) {
-        logVisitedDiagnostics('✅ Adventure Challenge controls already bound - skipping rebind');
+        logVisitedDiagnostics('✅ Adventures controls already bound - skipping rebind');
         return;
       }
 
-      logVisitedDiagnostics('🔌 Binding Adventure Challenge controls...');
+      logVisitedDiagnostics('🔌 Binding Adventures controls...');
 
       // Store bound flag and handler reference for cleanup/dedup
       root.dataset.bound = '1';
@@ -10171,7 +10171,7 @@
 
         // ATTACH THE HANDLER ONCE
         root.addEventListener('click', root.__visitedClickHandler);
-        logVisitedDiagnostics('✅ Adventure Challenge click handler attached (deduped)');
+        logVisitedDiagnostics('✅ Adventures click handler attached (deduped)');
       }
 
       root.addEventListener('mousemove', (event) => {
@@ -10334,7 +10334,7 @@
     scheduleDataRefreshCheck();
 
     if (!state.initialized) {
-      logVisitedDiagnostics('✅ Adventure Challenge tab initialized');
+      logVisitedDiagnostics('✅ Adventures tab initialized');
       state.initialized = true;
     }
   }

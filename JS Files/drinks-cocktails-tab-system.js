@@ -6,6 +6,7 @@
   var STORAGE_KEY = 'kap_drinks_cocktails_v1';
   var WORKBOOK_CANDIDATES = ['Recipes.xlsx', 'recipes.xlsx', 'Recipes.xlsm', 'recipes.xlsm', 'recipes', 'Excel_DB.xlsx', 'excel_db.xlsx'];
   var WORKBOOK_SEARCH_TERMS = ['Recipes', 'recipes', 'Excel_DB', 'excel'];
+  var WORKBOOK_PATH_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
   var WORKBOOK_PATH_STORAGE_KEY = 'kap_drinks_workbook_path_v1';
   var AUTO_SYNC_COOLDOWN_MS = 45000;
 
@@ -54,6 +55,7 @@
 
   var state = {
     activeSubtab: 'na-brew',
+    lastTrackerSubtab: 'na-brew',
     data: {
       'na-brew': [],
       'thc-bev': [],
@@ -109,6 +111,25 @@
     return root ? root.querySelector('.drinks-cocktails-subtabs') : null;
   }
 
+  function getActiveAppTabId() {
+    var activePane = document.querySelector('.app-tab-pane.active[data-tab]');
+    if (activePane) return String(activePane.getAttribute('data-tab') || '');
+    var activeButton = document.querySelector('.app-tab-btn.active[data-tab]');
+    return activeButton ? String(activeButton.getAttribute('data-tab') || '') : '';
+  }
+
+  function isFoodDrinkAppTab(tabId) {
+    return tabId === 'drinks-cocktails' || tabId === 'recipes';
+  }
+
+  function setActiveSubtab(subtabKey) {
+    var key = String(subtabKey || '').trim() || 'na-brew';
+    if (key !== 'recipes') {
+      state.lastTrackerSubtab = key;
+    }
+    state.activeSubtab = key;
+  }
+
   function updateDrinksSubTabRowVisibility(row, slot) {
     if (!row || !slot) return;
     var hasVisibleChild = Array.from(slot.children || []).some(function (child) {
@@ -151,9 +172,8 @@
       updateDrinksSubTabRowVisibility(dock.row, dock.slot);
       return;
     }
-    var activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
-    var activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
-    var shouldShow = activeTabId === 'drinks-cocktails';
+    var activeTabId = getActiveAppTabId();
+    var shouldShow = isFoodDrinkAppTab(activeTabId);
 
     if (shouldShow && !dock.slot.contains(subTabs)) {
       dock.slot.appendChild(subTabs);
@@ -297,6 +317,15 @@
     return parentPath ? (parentPath + '/' + itemName) : itemName;
   }
 
+  function expandWorkbookCandidatePath(path) {
+    var clean = String(path || '').trim().replace(/^\/+/, '');
+    if (!clean) return [];
+    if (clean.indexOf('/') >= 0) return [clean];
+    return WORKBOOK_PATH_PREFIXES.map(function (prefix) {
+      return String(prefix || '') + clean;
+    }).filter(Boolean);
+  }
+
   async function probeWorkbookForTable(filePath, tableName) {
     var normalizedPath = String(filePath || '').trim();
     var normalizedTable = String(tableName || '').trim();
@@ -373,17 +402,20 @@
     var seen = {};
 
     function appendCandidate(list, path) {
-      var normalized = String(path || '').trim();
-      if (!normalized) return;
-      var key = normalized.toLowerCase();
-      if (seen[key]) return;
-      seen[key] = true;
-      list.push(normalized);
+      expandWorkbookCandidatePath(path).forEach(function (expandedPath) {
+        var normalized = String(expandedPath || '').trim();
+        if (!normalized) return;
+        var key = normalized.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = true;
+        list.push(normalized);
+      });
     }
 
     var candidates = [];
     appendCandidate(candidates, state.excel.workbookPath);
     appendCandidate(candidates, readStringStorage(WORKBOOK_PATH_STORAGE_KEY, ''));
+    appendCandidate(candidates, global.__resolvedExcelFilePath || global.filePath || '');
     WORKBOOK_CANDIDATES.forEach(function (candidate) {
       appendCandidate(candidates, candidate);
     });
@@ -1063,9 +1095,24 @@
     var subtab = target.closest('[data-dc-subtab]');
     var subTabsEl = getDrinksSubTabsElement(root);
     if (subtab && subTabsEl && subTabsEl.contains(subtab)) {
-      state.activeSubtab = String(subtab.getAttribute('data-dc-subtab') || 'na-brew');
+      var subtabKey = String(subtab.getAttribute('data-dc-subtab') || 'na-brew');
+      setActiveSubtab(subtabKey);
+
+      if (subtabKey === 'recipes') {
+        renderSubtabs();
+        syncDrinksSubTabDock(root);
+        if (global.tabLoader && typeof global.tabLoader.switchTab === 'function') {
+          global.tabLoader.switchTab('recipes', { syncUrl: true, historyMode: 'push', source: 'food-drink-subtab' });
+        }
+        return;
+      }
+
       render();
       syncDrinksSubTabDock(root);
+      if (global.tabLoader && typeof global.tabLoader.switchTab === 'function' && getActiveAppTabId() !== 'drinks-cocktails') {
+        global.tabLoader.switchTab('drinks-cocktails', { syncUrl: true, historyMode: 'push', source: 'food-drink-subtab' });
+        return;
+      }
       if (TRACKERS[state.activeSubtab]) {
         autoSyncTracker(state.activeSubtab, 'subtab-open');
       }
@@ -1239,10 +1286,28 @@
     ensureSeedData();
     bindEvents();
 
+    if (getActiveAppTabId() === 'recipes') {
+      setActiveSubtab('recipes');
+    } else if (state.activeSubtab === 'recipes') {
+      setActiveSubtab(state.lastTrackerSubtab || 'na-brew');
+    }
+
     if (!state._tabOpenSyncBound) {
       state._tabOpenSyncBound = true;
       window.addEventListener('app:tab-switched', function (event) {
         var tabId = event && event.detail ? event.detail.tabId : '';
+        if (tabId === 'recipes') {
+          setActiveSubtab('recipes');
+          renderSubtabs();
+          syncDrinksSubTabDock(root);
+          return;
+        }
+        if (tabId === 'drinks-cocktails' && state.activeSubtab === 'recipes') {
+          setActiveSubtab(state.lastTrackerSubtab || 'na-brew');
+        }
+        if (tabId === 'drinks-cocktails') {
+          render();
+        }
         syncDrinksSubTabDock(root);
         if (tabId !== 'drinks-cocktails') return;
         autoSyncTracker(state.activeSubtab, 'tab-open');
@@ -1251,7 +1316,7 @@
 
     render();
     syncDrinksSubTabDock(root);
-    setStatus('Drinks / Cocktails tracker ready. Auto-sync runs when this tab opens.', false);
+    setStatus('Food / Drink hub ready. Auto-sync runs when a drinks tracker opens.', false);
 
     autoSyncTracker(state.activeSubtab, 'init');
   }

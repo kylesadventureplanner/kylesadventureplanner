@@ -1,7 +1,7 @@
 # Legacy/archived Adventure Planner retirement note
 
 **Status:** Retired in runtime UI  
-**Canonical replacement:** `visited-locations` (Adventure Challenge)
+**Canonical replacement:** `visited-locations` (Adventures)
 
 ## What changed
 

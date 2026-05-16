@@ -145,7 +145,7 @@
       const TAB_THEME_CONFIG = {
         // Adventure tabs - Blue theme
         'visited-locations': {
-          borderColor: '#bfdbfe',      // Light blue (Adventure Challenge)
+          borderColor: '#bfdbfe',      // Light blue (Adventures)
           arrowShadowColor: '#dbeafe',
           tabColor: 'blue'
         },
@@ -6864,6 +6864,18 @@
       color: #166534;
     }
 
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--garden-link {
+      border-color: #f59e0b;
+      background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+      color: #92400e;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--birding-link {
+      border-color: #60a5fa;
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1d4ed8;
+    }
+
     .app-subtabs-row .visited-progress-subtab {
       border: 1px solid #93c5fd;
       background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
@@ -6888,6 +6900,20 @@
       transform: translateY(-2px);
       box-shadow: 0 4px 10px rgba(22, 163, 74, 0.22);
       background: #dcfce7;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--garden-link:hover {
+      border-color: #d97706;
+      color: #78350f;
+      box-shadow: 0 4px 10px rgba(217, 119, 6, 0.24);
+      background: #fde68a;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--birding-link:hover {
+      border-color: #2563eb;
+      color: #1e3a8a;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.24);
+      background: #bfdbfe;
     }
 
     .app-subtabs-row .visited-progress-subtab:hover {
@@ -6922,6 +6948,20 @@
       transform: scale(1.05);
       box-shadow: 0 4px 14px rgba(22, 163, 74, 0.28);
       animation: activeSubTabPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--garden-link.active {
+      border-color: #b45309;
+      background: linear-gradient(180deg, #fde68a 0%, #fcd34d 100%);
+      color: #78350f;
+      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.28);
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--birding-link.active {
+      border-color: #1d4ed8;
+      background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #1e3a8a;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
     }
 
     .app-subtabs-row .visited-progress-subtab.active {
@@ -6974,6 +7014,14 @@
 
     .app-subtabs-row .nature-challenge-subtab:focus-visible {
       outline: 3px solid #15803d;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--garden-link:focus-visible {
+      outline-color: #b45309;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.nature-challenge-subtab--birding-link:focus-visible {
+      outline-color: #1d4ed8;
     }
 
     .app-subtabs-row .visited-progress-subtab:focus-visible {
@@ -9162,12 +9210,12 @@
 <div class="app-container">
   <!-- Tab Navigation -->
   <div class="app-tabs-nav" id="appTabsNav">
-    <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Adventure Challenge</button>
-    <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
-    <button class="app-tab-btn" data-tab="household-tools" title="Open household tools" data-tooltip="Open household tools">🧰 Household Tools</button>
-    <button class="app-tab-btn" data-tab="drinks-cocktails" title="Track drinks and cocktails" data-tooltip="Track drinks and cocktails">🍹 Drinks / Cocktails</button>
-    <button class="app-tab-btn" data-tab="birding" title="View birding locations" data-tooltip="View birding locations">🐦 Birding Locations</button>
+    <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventures" data-tooltip="Open Adventures">🎮 Adventures</button>
+    <button class="app-tab-btn" data-tab="nature-challenge" title="Open Nature" data-tooltip="Open Nature">🌿 Nature</button>
+    <button class="app-tab-btn" data-tab="household-tools" title="Open finances" data-tooltip="Open finances">💵 Finances</button>
+    <button class="app-tab-btn" data-tab="drinks-cocktails" title="Open food and drink tools" data-tooltip="Open food and drink tools">🍽️ Food / Drink</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="recipes" aria-hidden="true" tabindex="-1">Recipes</button>
+    <button class="app-tab-btn tab-utility-hidden" data-tab="birding" aria-hidden="true" tabindex="-1">Birding Locations</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="garden" aria-hidden="true" tabindex="-1">Garden Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="budget" aria-hidden="true" tabindex="-1">Budget Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
@@ -9189,9 +9237,9 @@
     <div class="app-tab-pane" data-tab="adventure-planner" id="adventurePlannerTab" data-retired="true" hidden aria-hidden="true">
       <div class="card" style="margin-top:12px;">
         <div class="card-title">🏁 Adventure Planner is retired</div>
-        <div class="card-subtitle" style="margin-top:6px;">Adventure Challenge is now the canonical experience.</div>
+        <div class="card-subtitle" style="margin-top:6px;">Adventures is now the canonical experience.</div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <a class="planner-top-btn" href="?tab=visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Open Adventure Challenge</a>
+          <a class="planner-top-btn" href="?tab=visited-locations" title="Open Adventures" data-tooltip="Open Adventures">🎮 Open Adventures</a>
         </div>
       </div>
     </div>
@@ -9232,34 +9280,34 @@
       </div>
     </div>
 
-    <!-- Household Tools Tab -->
+    <!-- Finances Tab -->
     <div class="app-tab-pane" data-tab="household-tools" id="householdToolsTab">
       <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">🧰</div>
-        <div class="tab-placeholder-text">Household Tools</div>
-        <div class="tab-placeholder-subtext">Loading household tools...</div>
+        <div class="tab-placeholder-icon">💵</div>
+        <div class="tab-placeholder-text">Finances</div>
+        <div class="tab-placeholder-subtext">Loading finances...</div>
       </div>
     </div>
 
-    <!-- Drinks / Cocktails Tab -->
+    <!-- Food / Drink Tab -->
     <div class="app-tab-pane" data-tab="drinks-cocktails" id="drinksCocktailsTab">
       <div class="tab-placeholder">
-        <div class="tab-placeholder-icon">🍹</div>
-        <div class="tab-placeholder-text">Drinks / Cocktails</div>
-        <div class="tab-placeholder-subtext">Track NA brews, THC beverages, edibles, and recipes</div>
+        <div class="tab-placeholder-icon">🍽️</div>
+        <div class="tab-placeholder-text">Food / Drink</div>
+        <div class="tab-placeholder-subtext">Open recipes plus drink trackers for NA brews, THC beverages, edibles, and cocktail recipes</div>
       </div>
     </div>
 
-    <!-- Nature Challenge Tab -->
+    <!-- Nature Tab -->
     <div class="app-tab-pane" data-tab="nature-challenge" id="natureChallengeTab">
       <div class="tab-placeholder">
         <div class="tab-placeholder-icon">🌿</div>
-        <div class="tab-placeholder-text">Nature Challenge</div>
+        <div class="tab-placeholder-text">Nature</div>
         <div class="tab-placeholder-subtext">Track nature species sightings and complete challenges</div>
       </div>
     </div>
 
-     <!-- Adventure Challenge Tab -->
+     <!-- Adventures Tab -->
      <div class="app-tab-pane active" data-tab="visited-locations" id="visitedLocationsTab">
        <!-- Adventure Planner Controls Section -->
        <div id="adventureListActions" class="adventure-list-actions" style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;">
@@ -9365,8 +9413,8 @@
             <ul class="offline-mode-list">
               <li><strong>Reload App</strong> refreshes the whole browser page.</li>
               <li><strong>Adventure Planner</strong> reloads Excel adventure data only.</li>
-              <li><strong>Adventure Challenge</strong> refreshes tracker summaries and visited sync state.</li>
-              <li><strong>Nature Challenge</strong> refreshes Birds data and Bird-specific UI state.</li>
+              <li><strong>Adventures</strong> refreshes tracker summaries and visited sync state.</li>
+              <li><strong>Nature</strong> refreshes Birds data and Bird-specific UI state.</li>
             </ul>
           </div>
         </div>
@@ -24564,7 +24612,7 @@ COMMON ISSUES:
 <!-- Shared status message composer (icon + plain language + CTA) -->
 <script src="JS Files/ui-status-message-composer.js"></script>
 
-<!-- Adventure Challenge Tab System -->
+<!-- Adventures Tab System -->
 <script src="JS Files/visited-locations-tab-system.js"></script>
 <script src="JS Files/adventure-achievements-system.js"></script>
 
@@ -24574,10 +24622,10 @@ COMMON ISSUES:
 <!-- Central Diagnostics Hub -->
 <script src="JS Files/diagnostics-hub-system.js"></script>
 
-<!-- Nature Challenge Tab System -->
+<!-- Nature Tab System -->
 <script src="JS Files/nature-challenge-tab-system.js"></script>
 
-<!-- Drinks / Cocktails Tab System -->
+<!-- Food / Drink Tab System -->
 <script src="JS Files/drinks-cocktails-tab-system.js"></script>
 
 <!-- Garden Planner Tab System -->
@@ -27820,11 +27868,18 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   border-radius: 10px;
   padding: 14px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .recipe-card:hover {
   border-color: #d1d5db;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.recipe-card:focus-visible {
+  outline: 3px solid rgba(99, 102, 241, 0.35);
+  outline-offset: 2px;
 }
 
 .recipe-card-header {
@@ -27886,6 +27941,13 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   font-size: 12px;
   color: #9ca3af;
   font-weight: 600;
+}
+
+.recipe-card-open-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6366f1;
 }
 
 /* Recipe Sync Status */

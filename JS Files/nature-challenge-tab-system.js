@@ -1,5 +1,5 @@
 /*
- * Nature Challenge Tab System
+ * Nature Tab System
  * Birds overview + species explorer + species detail workflow.
  */
 
@@ -2996,7 +2996,7 @@
 
     if (typeof helper.reportSchemaStatus === 'function') {
       helper.reportSchemaStatus('nature-challenge', {
-        feature: 'Nature Challenge',
+        feature: 'Nature',
         table: 'birds_sightings + birds_user_state',
         missingRequired: requiredMissing,
         missingRecommended: optionalMissing,
@@ -3016,7 +3016,7 @@
     if (optionalMissing.length) details.push('Recommended evidence columns missing: ' + optionalMissing.join(', '));
 
     helper.upsertGlobalBanner('nature-challenge', {
-      title: 'Nature Challenge Excel schema check',
+      title: 'Nature Excel schema check',
       message: requiredMissing.length
         ? 'Your Nature sync tables are missing required columns.'
         : 'Your Nature sightings table is missing recommended evidence URL columns.',
@@ -3049,7 +3049,7 @@
     }
     if (window.ExcelSchemaCheckHelper && typeof window.ExcelSchemaCheckHelper.reportSchemaStatus === 'function') {
       window.ExcelSchemaCheckHelper.reportSchemaStatus('nature-challenge', {
-        feature: 'Nature Challenge',
+        feature: 'Nature',
         table: 'birds_sightings + birds_user_state',
         missingRequired: [],
         missingRecommended: [],
@@ -9328,6 +9328,18 @@
     return subTabs ? Array.from(subTabs.querySelectorAll('[data-nature-subtab]')) : [];
   }
 
+  function getNatureDockButtons(root) {
+    const subTabs = getNatureSubTabsElement(root);
+    return subTabs ? Array.from(subTabs.querySelectorAll('[data-nature-link-tab], [data-nature-subtab]')) : [];
+  }
+
+  function getActiveAppTabId() {
+    const activePane = document.querySelector('.app-tab-pane.active[data-tab]');
+    if (activePane) return String(activePane.getAttribute('data-tab') || '');
+    const activeButton = document.querySelector('.app-tab-btn.active[data-tab]');
+    return activeButton ? String(activeButton.getAttribute('data-tab') || '') : '';
+  }
+
   function isNatureSubTabLoading(subTabKey) {
     const key = String(subTabKey || '').trim();
     if (!key) return false;
@@ -9348,7 +9360,40 @@
     if (!titleEl) return;
     const activeButton = getNatureSubTabButtons(root).find((button) => button.getAttribute('data-nature-subtab') === state.activeSubTab);
     const label = getNatureTitleLabel(activeButton ? activeButton.textContent : state.activeSubTab);
-    titleEl.textContent = `Nature Challenge - ${label}`;
+    titleEl.textContent = `Nature - ${label}`;
+  }
+
+  function syncNatureLinkedTabButtons(root) {
+    const activeAppTabId = getActiveAppTabId();
+    const subTabs = getNatureSubTabsElement(root);
+    if (!subTabs) return;
+    Array.from(subTabs.querySelectorAll('[data-nature-link-tab]')).forEach((button) => {
+      const targetTabId = String(button.getAttribute('data-nature-link-tab') || '').trim();
+      const isActive = Boolean(targetTabId) && activeAppTabId === targetTabId;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      button.setAttribute('tabindex', isActive ? '0' : '-1');
+      button.setAttribute('aria-current', isActive ? 'page' : 'false');
+    });
+  }
+
+  function activateNatureTabTarget(root, button) {
+    if (!root || !button) return;
+    const linkedTabId = String(button.getAttribute('data-nature-link-tab') || '').trim();
+    if (linkedTabId) {
+      syncNatureLinkedTabButtons(root);
+      if (window.tabLoader && typeof window.tabLoader.switchTab === 'function' && getActiveAppTabId() !== linkedTabId) {
+        window.tabLoader.switchTab(linkedTabId, { syncUrl: true, historyMode: 'push', source: 'nature-subtab-link' });
+      }
+      return;
+    }
+    const subTabKey = String(button.getAttribute('data-nature-subtab') || '').trim();
+    if (!subTabKey) return;
+    ensureNatureButtonsResponsive(root);
+    setActiveNatureSubTab(root, subTabKey);
+    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function' && getActiveAppTabId() !== 'nature-challenge') {
+      window.tabLoader.switchTab('nature-challenge', { syncUrl: true, historyMode: 'push', source: 'nature-subtab-link' });
+    }
   }
 
   function getActiveCategoryLabel() {
@@ -9514,7 +9559,7 @@
         ? rawTarget
         : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
       if (!elementTarget || typeof elementTarget.closest !== 'function') return null;
-      const button = elementTarget.closest('[data-nature-subtab]');
+      const button = elementTarget.closest('[data-nature-link-tab], [data-nature-subtab]');
       if (!button || !subTabs.contains(button)) return null;
       return button;
     };
@@ -9523,13 +9568,13 @@
       const button = resolveDockButtonTarget(event);
       if (!button) return;
       event.preventDefault();
-      setActiveNatureSubTab(root, button.getAttribute('data-nature-subtab'));
+      activateNatureTabTarget(root, button);
     });
 
     subTabs.addEventListener('keydown', (event) => {
       const button = resolveDockButtonTarget(event);
       if (!button) return;
-      const buttons = getNatureSubTabButtons(root);
+      const buttons = getNatureDockButtons(root);
       if (!buttons.length) return;
 
       const currentIndex = buttons.indexOf(button);
@@ -9558,7 +9603,7 @@
       event.preventDefault();
       const nextButton = buttons[nextIndex];
       if (!nextButton) return;
-      setActiveNatureSubTab(root, nextButton.getAttribute('data-nature-subtab'));
+      activateNatureTabTarget(root, nextButton);
       nextButton.focus();
     });
   }
@@ -9620,6 +9665,7 @@
     }
 
     bindNatureSubTabDock(root, subTabs);
+    syncNatureLinkedTabButtons(root);
 
     if (shouldShow) {
       Array.from(slot.children || []).forEach((child) => {
@@ -9664,6 +9710,7 @@
   function syncNatureSubTabs(root) {
     if (!root) return;
     const activePaneKey = isConfigDrivenSubTab(state.activeSubTab) ? 'birds' : state.activeSubTab;
+    syncNatureLinkedTabButtons(root);
 
     getNatureSubTabButtons(root).forEach((button) => {
     const key = button.getAttribute('data-nature-subtab');
@@ -10520,6 +10567,7 @@
 
   const NATURE_DELEGATED_ACTION_SELECTOR = [
     '[data-birds-action]',
+    '[data-nature-link-tab]',
     '[data-nature-subtab]',
     '#natureChallengeRefreshBtn',
     '#birdsUndoActionBtn',
@@ -10668,10 +10716,9 @@
       }
       // ────────────────────────────────────────────────────────────────────────
 
-      const subTabButton = event.target.closest('[data-nature-subtab]');
+      const subTabButton = event.target.closest('[data-nature-link-tab], [data-nature-subtab]');
       if (subTabButton) {
-        ensureNatureButtonsResponsive(root);
-        setActiveNatureSubTab(root, subTabButton.getAttribute('data-nature-subtab'));
+        activateNatureTabTarget(root, subTabButton);
         return;
       }
 
@@ -12003,7 +12050,7 @@
       });
 
     if (!state.initialized) {
-      console.log('Nature Challenge tab initialized');
+      console.log('Nature tab initialized');
       state.initialized = true;
     }
   }

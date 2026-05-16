@@ -1,4 +1,4 @@
-# Nature Challenge Tab - Button Visibility Fix
+# Nature Tab - Button Visibility Fix
 
 ## Issue
 Buttons on the nature challenge page were not responding to clicks. The clickability probe revealed:

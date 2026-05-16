@@ -30,6 +30,20 @@ class TabContentLoader {
       'adventure-planner': 'visited-locations',
       'bike-trails': 'visited-locations'
     };
+    this.primaryTabChildren = {
+      'drinks-cocktails': ['recipes', 'drinks-cocktails'],
+      'nature-challenge': ['garden', 'birding']
+    };
+    this.primaryTabDefaults = {
+      'drinks-cocktails': 'recipes'
+    };
+    this.primaryTabSelections = {};
+    this.childToPrimaryTab = Object.entries(this.primaryTabChildren).reduce((map, [primaryTabId, childTabIds]) => {
+      (childTabIds || []).forEach((childTabId) => {
+        map[childTabId] = primaryTabId;
+      });
+      return map;
+    }, {});
     this.handlePopState = this.handlePopState.bind(this);
     this.handleHashChange = this.handleHashChange.bind(this);
     this.ensureLoaderStyles();
@@ -177,9 +191,58 @@ class TabContentLoader {
 
   getTabLabel(tabId) {
     tabId = this.canonicalizeTabId(tabId);
-    const button = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
+    const buttonTabId = this.getPrimaryTabButtonId(tabId);
+    const button = document.querySelector(`.app-tab-btn[data-tab="${buttonTabId}"]`);
     if (!button) return String(tabId || 'Tab');
     return button.textContent.replace(/\s+/g, ' ').trim();
+  }
+
+  getPrimaryTabButtonId(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
+    return this.childToPrimaryTab[tabId] || tabId;
+  }
+
+  rememberPrimaryTabSelection(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
+    const primaryTabId = this.getPrimaryTabButtonId(tabId);
+    const childTabs = this.primaryTabChildren[primaryTabId];
+    if (!childTabs || !childTabs.includes(tabId)) return;
+    this.primaryTabSelections[primaryTabId] = tabId;
+  }
+
+  resolveRequestedTabId(tabId, options = {}) {
+    const { source = 'programmatic' } = options;
+    tabId = this.canonicalizeTabId(tabId);
+    const childTabs = this.primaryTabChildren[tabId];
+    if (source === 'user-click' && childTabs && childTabs.length) {
+      const rememberedTabId = this.primaryTabSelections[tabId];
+      if (rememberedTabId && this.tabs[rememberedTabId]) {
+        return rememberedTabId;
+      }
+      const defaultChildTabId = this.primaryTabDefaults[tabId];
+      if (defaultChildTabId && this.tabs[defaultChildTabId]) {
+        return defaultChildTabId;
+      }
+    }
+    return tabId;
+  }
+
+  ensurePrimaryTabSupportLoaded(tabId) {
+    tabId = this.canonicalizeTabId(tabId);
+    const primaryTabId = this.getPrimaryTabButtonId(tabId);
+    if (primaryTabId === 'drinks-cocktails' && tabId === 'recipes') {
+      if (!this.tabs['drinks-cocktails'] || this.loadedTabs.has('drinks-cocktails') || this.loadingTabs.has('drinks-cocktails')) return;
+      this.loadTab('drinks-cocktails', true).catch((error) => {
+        console.warn('Unable to preload Food / Drink support shell:', error);
+      });
+      return;
+    }
+    if (primaryTabId === 'nature-challenge' && (tabId === 'garden' || tabId === 'birding')) {
+      if (!this.tabs['nature-challenge'] || this.loadedTabs.has('nature-challenge') || this.loadingTabs.has('nature-challenge')) return;
+      this.loadTab('nature-challenge', true).catch((error) => {
+        console.warn('Unable to preload Nature support shell:', error);
+      });
+    }
   }
 
   /**
@@ -294,8 +357,9 @@ class TabContentLoader {
     const activeButton = document.querySelector('.app-tab-btn.active');
     const fallbackButton = activeButton || document.querySelector('.app-tab-btn');
     const tabId = fallbackButton ? fallbackButton.getAttribute('data-tab') : '';
-    if (!tabId || !this.tabs[tabId]) return null;
-    return tabId;
+    const resolvedTabId = this.resolveRequestedTabId(tabId, { source: 'initial-load' });
+    if (!resolvedTabId || !this.tabs[resolvedTabId]) return null;
+    return resolvedTabId;
   }
 
   openRequestedTabFromUrl() {
@@ -450,7 +514,9 @@ class TabContentLoader {
    */
   switchTab(tabId, options = {}) {
     const { syncUrl = true, historyMode = 'replace', source = 'programmatic' } = options;
-    tabId = this.canonicalizeTabId(tabId);
+    const requestedTabId = this.canonicalizeTabId(tabId);
+    tabId = this.resolveRequestedTabId(requestedTabId, { source });
+    this.rememberPrimaryTabSelection(tabId);
     console.log(`📑 Switching to tab: ${tabId}`);
 
     if (typeof window.clearStaleModalBackdrops === 'function') {
@@ -478,9 +544,10 @@ class TabContentLoader {
     });
 
     // Activate clicked tab button
-    const tabButton = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
+    const buttonTabId = this.getPrimaryTabButtonId(tabId);
+    const tabButton = document.querySelector(`.app-tab-btn[data-tab="${buttonTabId}"]`);
     if (!tabButton) {
-      console.error(`❌ Tab button not found for tab: ${tabId}`);
+      console.error(`❌ Tab button not found for tab: ${buttonTabId}`);
       return;
     }
     tabButton.classList.add('active');
@@ -509,11 +576,15 @@ class TabContentLoader {
     window.dispatchEvent(new CustomEvent('app:tab-switched', {
       detail: {
         tabId,
+        requestedTabId,
+        primaryTabId: buttonTabId,
         source,
         loaded: this.loadedTabs.has(tabId),
         timestamp: Date.now()
       }
     }));
+
+    this.ensurePrimaryTabSupportLoaded(tabId);
 
     // Keep sticky offsets in sync with the newly active tab layout.
     setTimeout(() => {

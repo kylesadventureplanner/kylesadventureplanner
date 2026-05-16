@@ -79,7 +79,7 @@
       box-shadow: 0 4px 20px rgba(102, 126, 234, 0.22);
     }
 
-    /* Embedded mode already has a parent header in Adventure Challenge. */
+    /* Embedded mode already has a parent header in Adventures. */
     body.embedded-edit-mode .header {
       display: none;
     }
@@ -7092,7 +7092,7 @@
         }
       }) || null;
       if (!searchHost) {
-        throw new Error('Search is not available yet. Open Add Location from Adventure Challenge while signed in, then try again.');
+        throw new Error('Search is not available yet. Open Add Location from Adventures while signed in, then try again.');
       }
       const searchPlacesFn = searchHost.searchPlaces.bind(searchHost);
       const resolvePlaceIdFromInputFn = typeof searchHost.resolvePlaceIdFromInput === 'function'
@@ -7590,7 +7590,7 @@
       const selectedCount = getSelectedBulkCandidateCount();
       if (!selectedCount) {
         if (searchUnavailableCount > 0) {
-          setBulkCandidateStatus('⚠️ Search provider is not ready. Open Add Location from Adventure Challenge while signed in, then retry this search.', 'error');
+          setBulkCandidateStatus('⚠️ Search provider is not ready. Open Add Location from Adventures while signed in, then retry this search.', 'error');
           return;
         }
         setBulkCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'matches'} were found. Try adding city/state context.`, 'error');

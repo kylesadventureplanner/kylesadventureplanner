@@ -51,7 +51,7 @@ Create this file:
 
 ```javascript
 /**
- * Performance Optimizations for Adventure Challenge (legacy/archived Adventure Planner)
+ * Performance Optimizations for Adventures (legacy/archived Adventure Planner)
  * Version 1.0
  * Debouncing, caching, and other performance improvements
  */

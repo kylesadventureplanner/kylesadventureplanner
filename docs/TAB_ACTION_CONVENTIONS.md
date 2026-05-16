@@ -59,7 +59,7 @@ Recommended patterns:
 - `data-bike-action`
 - `data-birds-action`
 - `data-visited-action`
-- `data-visited-subtab-action` for Adventure Challenge subtab/tool actions
+- `data-visited-subtab-action` for Adventures subtab/tool actions
 
 ### Why
 
@@ -168,15 +168,15 @@ Do not assume every optional runtime helper exists in every loading state.
 
 Examples:
 
-- `data-visited-subtab-action` already powers Adventure Challenge CTA routing
-- `data-birds-*` already powers dense Nature Challenge flows
+- `data-visited-subtab-action` already powers Adventures CTA routing
+- `data-birds-*` already powers dense Nature flows
 
 If a feature already has a mature action bus, extend it instead of introducing a second parallel system.
 
 ### Good examples
 
 - Add `data-visited-action="open-central-hub"` to a small visited-only utility button
-- Keep Adventure Challenge tool routing on `data-visited-subtab-action`
+- Keep Adventures tool routing on `data-visited-subtab-action`
 - Add `data-birds-action="open-central-hub"` to a Birds diagnostics utility button
 
 ---

@@ -6,7 +6,7 @@
 - Location: `/index.html` (Line 7163)
 - Position: **Left of "Adventure Progress" tab** as requested
 - Icon: 🌿
-- Label: "Nature Challenge"
+- Label: "Nature"
 - Tooltip: "Track nature species sightings and challenges"
 
 ### 2. **Tab content container added** ✓

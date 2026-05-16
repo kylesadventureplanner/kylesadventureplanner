@@ -3,7 +3,7 @@
 
 <div id="natureChallengeRoot">
   <div class="nature-challenge-header tab-shell-header">
-    <h1 id="natureChallengeTitle">Nature Challenge - Birds</h1>
+    <h1 id="natureChallengeTitle">Nature - Birds</h1>
     <div class="nature-jump-links" data-birds-jump-links role="navigation" aria-label="Jump to section links">
       <span class="nature-jump-links-label">Jump to section:</span>
       <button type="button" class="pill-button" data-birds-overview-jump="categories">📊 Category Progression</button>
@@ -14,7 +14,9 @@
     </div>
   </div>
 
-  <div class="nature-challenge-subtabs" role="tablist" aria-label="Nature Challenge categories">
+  <div class="nature-challenge-subtabs" role="tablist" aria-label="Nature sections">
+    <button id="natureChallengeTab-garden" type="button" class="nature-challenge-subtab nature-challenge-subtab--garden-link" role="tab" aria-selected="false" data-nature-link-tab="garden" aria-label="Open Garden Planner" title="Open Garden Planner" data-tooltip="Open Garden Planner">🌱 Garden Planner</button>
+    <button id="natureChallengeTab-birding" type="button" class="nature-challenge-subtab nature-challenge-subtab--birding-link" role="tab" aria-selected="false" data-nature-link-tab="birding" aria-label="Open Birding Locations" title="Open Birding Locations" data-tooltip="Open Birding Locations">🐦 Birding Locations</button>
     <button id="natureChallengeTab-birds" type="button" class="nature-challenge-subtab active" role="tab" aria-controls="natureChallengePane-birds" aria-selected="true" data-nature-subtab="birds" aria-label="Open Birds section" title="Open Birds section" data-tooltip="Open Birds section">🐦 Birds</button>
     <button id="natureChallengeTab-mammals" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-mammals" aria-selected="false" data-nature-subtab="mammals" aria-label="Open Mammals section" title="Open Mammals section" data-tooltip="Open Mammals section">🦊 Mammals</button>
     <button id="natureChallengeTab-reptiles" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-reptiles" aria-selected="false" data-nature-subtab="reptiles" aria-label="Open Reptiles section" title="Open Reptiles section" data-tooltip="Open Reptiles section">🐢 Reptiles</button>
@@ -336,7 +338,7 @@
             <button id="birdsClearKnownGoodSnapshotsBtn" type="button" class="pill-button" title="Delete all saved known-good GUI snapshots for this browser" data-tooltip="Delete all saved known-good GUI snapshots for this browser">Clear Known-Good Snapshots</button>
             <button id="birdsRunWorkbookDiagReportBtn" type="button" class="pill-button" title="Run workbook path and table diagnostics and print a summarized report" data-tooltip="Run workbook path and table diagnostics and print a summarized report">Run Workbook Diagnostic Report</button>
             <button id="birdsHardRefreshPageBtn" type="button" class="pill-button" title="Reload the current page" data-tooltip="Reload the current page">Hard Refresh Page</button>
-            <button id="birdsClearCacheReloadBtn" type="button" class="pill-button" title="Clear this app's cached files and service worker, then reload" data-tooltip="Clear this app's cached files and service worker, then reload" data-hard-refresh-confirm="Clear Cache + Reload will reset this app's cached files and reload Nature Challenge. Continue?">Clear Cache + Reload</button>
+            <button id="birdsClearCacheReloadBtn" type="button" class="pill-button" title="Clear this app's cached files and service worker, then reload" data-tooltip="Clear this app's cached files and service worker, then reload" data-hard-refresh-confirm="Clear Cache + Reload will reset this app's cached files and reload Nature. Continue?">Clear Cache + Reload</button>
           </div>
           <div id="birdsClearCacheReloadStatus" class="card-subtitle" aria-live="polite">Hard refresh diagnostics: never run.</div>
           <div id="birdsDiagnosticsHelpBackdrop" class="nature-diagnostics-help-backdrop" hidden></div>

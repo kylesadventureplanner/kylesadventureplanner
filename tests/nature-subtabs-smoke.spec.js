@@ -417,7 +417,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
     });
 
     await expect(page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#natureChallengeTitle')).toHaveText('Nature Challenge - Mammals');
+    await expect(page.locator('#natureChallengeTitle')).toHaveText('Nature - Mammals');
   });
 
 
@@ -444,7 +444,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
       await page.locator(`#appSubTabsSlot [data-nature-subtab="${key}"]`).click();
       await expect(page.locator(`#appSubTabsSlot [data-nature-subtab="${key}"]`)).toHaveAttribute('aria-selected', 'true');
       await expect(page.locator('#natureChallengePane-birds')).toBeVisible();
-      await expect(page.locator('#natureChallengeTitle')).toHaveText(`Nature Challenge - ${label}`);
+      await expect(page.locator('#natureChallengeTitle')).toHaveText(`Nature - ${label}`);
 
       const totalSpeciesText = await page.locator(`#${key}TotalSpecies`).textContent();
       expect(String(totalSpeciesText || '').trim().length).toBeGreaterThan(0);

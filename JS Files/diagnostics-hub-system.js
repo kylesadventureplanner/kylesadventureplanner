@@ -27,31 +27,31 @@
     },
     {
       test: function (key) { return key === 'visitedLocationsTrackerV1'; },
-      label: 'Adventure Challenge visited tracker map',
+      label: 'Adventures visited tracker map',
       backend: 'Partially mirrored via visited persistence events',
       reason: 'The tracker keeps a fast local working copy; unsynced items remain local until persistence replay succeeds.',
-      area: 'Adventure Challenge'
+      area: 'Adventures'
     },
     {
       test: function (key) { return key === 'visitedLocationsChallengeStateV1' || key === 'visitedLocationsMetaV1' || key === 'visitedLocationRecordsV1'; },
-      label: 'Adventure Challenge progress and visit metadata',
+      label: 'Adventures progress and visit metadata',
       backend: 'Mostly device only; selected events can mirror to persistence workbook',
       reason: 'Challenge progress is computed locally for responsiveness, while only specific persistence events are published.',
-      area: 'Adventure Challenge'
+      area: 'Adventures'
     },
     {
       test: function (key) { return key === 'natureChallengeBirdSyncQueueV1' || key === 'natureChallengeBirdSyncConflictsV1'; },
-      label: 'Nature Challenge sync queue',
+      label: 'Nature sync queue',
       backend: 'Excel sync target expected',
       reason: 'Nature writes are queued locally until workbook sync succeeds.',
-      area: 'Nature Challenge'
+      area: 'Nature'
     },
     {
       test: function (key) { return /^natureChallenge.*(Sightings|Favorites|SightingLog|Gamification|BirdCache)/.test(key); },
-      label: 'Nature Challenge local state',
+      label: 'Nature local state',
       backend: 'Mixed: sightings can sync, caches/preferences stay local',
       reason: 'The app keeps an immediate local copy for offline use and faster species tracking.',
-      area: 'Nature Challenge'
+      area: 'Nature'
     },
     {
       test: function (key) { return key === '__nearby_attractions_cache_v2' || /^__detail_nearby_ui_prefs_/i.test(key); },
@@ -313,7 +313,7 @@
       syncHealth: null,
       pendingLocalOnlyCount: pending.length,
       pendingLocalOnlyItems: pending,
-      persistenceStatus: { text: 'Adventure Challenge snapshot unavailable', detail: '', pathIssue: false },
+      persistenceStatus: { text: 'Adventures snapshot unavailable', detail: '', pathIssue: false },
       migrationStatus: null,
       persistenceTarget: null
     };
@@ -448,7 +448,7 @@
     if (visited.persistenceStatus && visited.persistenceStatus.pathIssue) {
       cards.push({
         tone: 'error',
-        title: 'Adventure Challenge persistence workbook is missing or misrouted',
+        title: 'Adventures persistence workbook is missing or misrouted',
         why: String(visited.persistenceStatus.text || 'The persistence workbook path is not resolving.'),
         fix: 'Update `visitedSyncConfig.persistenceWorkbookPath` or upload the workbook/table to the expected OneDrive location, then retry sync.'
       });
@@ -459,7 +459,7 @@
     if (natureCode === 'NOT_FOUND' || !String(nature.workbookPath || '').trim()) {
       cards.push({
         tone: 'warn',
-        title: 'Nature Challenge sync workbook is not configured or not found',
+        title: 'Nature sync workbook is not configured or not found',
         why: 'The Birds/Nature sync target workbook could not be resolved, so writes stay in the local queue.',
         fix: 'Make sure the expected workbook and tables exist in OneDrive. If you recently renamed files, update the sync file candidates or restore the original names.'
       });
@@ -467,7 +467,7 @@
     if (natureCode === 'SCHEMA' || (nature.schemaDiagnostics && nature.schemaDiagnostics.status && nature.schemaDiagnostics.status !== 'ok' && nature.schemaDiagnostics.status !== 'unknown')) {
       cards.push({
         tone: 'error',
-        title: 'Nature Challenge backend schema needs attention',
+        title: 'Nature backend schema needs attention',
         why: 'Required columns are missing or the workbook schema no longer matches what the app writes.',
         fix: 'Open Workbook Diagnostics from the Nature tab, add the missing columns/tables, then rerun sync.'
       });
@@ -643,7 +643,7 @@
        '<section class="diagnostics-hub-card">',
        '<div class="diagnostics-hub-card-title">Local-only data that still needs backend sync</div>',
        '<div class="diagnostics-hub-kpi">' + escHtml(String(summary.pendingSyncRecords)) + '</div>',
-       '<div class="diagnostics-hub-note">Includes offline queue items, Adventure Challenge pending tracker rows, and Nature Challenge queued writes.</div>',
+       '<div class="diagnostics-hub-note">Includes offline queue items, Adventures pending tracker rows, and Nature queued writes.</div>',
        '</section>',
        '<section class="diagnostics-hub-card">',
        '<div class="diagnostics-hub-card-title">Device-only storage entries</div>',
@@ -720,14 +720,14 @@
       (offlineRows || '<div class="diagnostics-hub-empty">No offline queue items are currently pending.</div>'),
       '</section>',
       '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Adventure Challenge pending tracker rows</div>',
+      '<div class="diagnostics-hub-card-title">Adventures pending tracker rows</div>',
       '<div class="diagnostics-hub-note">Fast local tracker state that still needs persistence replay.</div>',
-      ((adventure.pendingLocalOnlyItems || []).length ? '<ul class="diagnostics-hub-bullets">' + adventureRows + '</ul>' : '<div class="diagnostics-hub-empty">No pending Adventure Challenge tracker rows.</div>'),
+      ((adventure.pendingLocalOnlyItems || []).length ? '<ul class="diagnostics-hub-bullets">' + adventureRows + '</ul>' : '<div class="diagnostics-hub-empty">No pending Adventures tracker rows.</div>'),
       '</section>',
       '<section class="diagnostics-hub-card">',
-      '<div class="diagnostics-hub-card-title">Nature Challenge pending writes</div>',
+      '<div class="diagnostics-hub-card-title">Nature pending writes</div>',
       '<div class="diagnostics-hub-note">Queued sightings/favorites that have not finished syncing to Excel yet.</div>',
-      ((nature.queueItems || []).length ? '<ul class="diagnostics-hub-bullets">' + natureRows + '</ul>' : '<div class="diagnostics-hub-empty">No Nature Challenge queue items are pending.</div>'),
+      ((nature.queueItems || []).length ? '<ul class="diagnostics-hub-bullets">' + natureRows + '</ul>' : '<div class="diagnostics-hub-empty">No Nature queue items are pending.</div>'),
       '</section>',
       '</div>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
@@ -810,7 +810,7 @@
       '</ul>',
       '<div class="diagnostics-hub-action-row">',
       '<button type="button" class="planner-top-btn" data-diagnostics-action="open-city-viewer-nearby">Open City Explorer</button>',
-      '<button type="button" class="planner-top-btn" data-diagnostics-action="open-adventure-challenge">Open Adventure Challenge</button>',
+      '<button type="button" class="planner-top-btn" data-diagnostics-action="open-adventure-challenge">Open Adventures</button>',
       '</div>',
       '</section>',
       '<section class="diagnostics-hub-card diagnostics-hub-card--wide">',
@@ -1092,9 +1092,9 @@
         .then(function () { setActionStatus('Offline queue replay finished.', 'success'); return refreshDiagnosticsHub(); });
     }
     if (action === 'retry-nature-syncs') {
-      setActionStatus('Retrying Nature Challenge sync...', 'info');
+      setActionStatus('Retrying Nature sync...', 'info');
       return Promise.resolve(typeof window.runBirdSyncNow === 'function' ? window.runBirdSyncNow() : null)
-        .then(function () { setActionStatus('Nature Challenge sync finished.', 'success'); return refreshDiagnosticsHub(); });
+        .then(function () { setActionStatus('Nature sync finished.', 'success'); return refreshDiagnosticsHub(); });
     }
     if (action === 'retry-queue-item' && queueId && window.OfflinePwa && typeof window.OfflinePwa.resolveConflict === 'function') {
       setActionStatus('Retrying queued item...', 'info');

@@ -92,7 +92,7 @@ Example trace:
 
 ### Real-time debugging in browser console
 
-1. Open your app (Adventure Challenge / `visited-locations`; legacy/archived Adventure Planner naming)
+1. Open your app (Adventures / `visited-locations`; legacy/archived Adventure Planner naming)
 2. Press F12 or right-click → "Inspect" to open DevTools
 3. Click the "Console" tab
 4. Watch the debug messages appear as you interact with the app

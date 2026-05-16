@@ -43,7 +43,7 @@ async function getPlaceDetails(placeId) {
 
 ### 2. Excel Sync Failures
 
-**Location:** Visited Locations, Adventure Challenge, Persistence Sync
+**Location:** Visited Locations, Adventures, Persistence Sync
 
 ```javascript
 // When Excel sync becomes unavailable
@@ -85,7 +85,7 @@ async function persistAdventureChallenge(updates) {
 }
 ```
 
-### 3. Nature Challenge Sync Issues
+### 3. Nature Sync Issues
 
 **Location:** Birds Tab, Sighting Logs, Queue Management
 
