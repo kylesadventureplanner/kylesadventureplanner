@@ -2766,7 +2766,17 @@
   }
 
   function normalizePdfLine(line) {
-    return String(line || '')
+    var text = String(line || '');
+    var circledMap = {
+      '①': '1', '②': '2', '③': '3', '④': '4', '⑤': '5',
+      '⑥': '6', '⑦': '7', '⑧': '8', '⑨': '9', '⑩': '10',
+      '❶': '1', '❷': '2', '❸': '3', '❹': '4', '❺': '5',
+      '❻': '6', '❼': '7', '❽': '8', '❾': '9', '❿': '10'
+    };
+    text = text.replace(/[①②③④⑤⑥⑦⑧⑨⑩❶❷❸❹❺❻❼❽❾❿]/g, function (ch) {
+      return (circledMap[ch] || '') + ' ';
+    });
+    return text
       .replace(/\s+/g, ' ')
       .replace(/(\d)\s*\/\s*(\d)/g, '$1/$2')
       .replace(/\(\s+/g, '(')
@@ -2928,10 +2938,10 @@
       var ingredients = [];
       var leftLines = windowRows.map(function (row) { return normalizePdfLine(row.left || ''); }).filter(Boolean);
       leftLines = leftLines.map(function (line, idx, all) {
-        if (/^\d+$/.test(line) && all[idx + 1] && /^\/\d+/.test(all[idx + 1])) {
+        if (/^\d+$/.test(line) && all[idx + 1] && /^\s*\/\s*\d+/.test(all[idx + 1])) {
           return line + all[idx + 1];
         }
-        if (idx > 0 && /^\/\d+/.test(line) && /^\d+$/.test(all[idx - 1])) {
+        if (idx > 0 && /^\s*\/\s*\d+/.test(line) && /^\d+$/.test(all[idx - 1])) {
           return '';
         }
         return line;
@@ -2941,7 +2951,7 @@
         var ingredient = parseIngredientLine(line);
         if (!ingredient) return;
         var previous = ingredients.length ? ingredients[ingredients.length - 1] : null;
-        var continuesPrev = previous && !/^\d/.test(line) && ingredient.quantity === '';
+        var continuesPrev = previous && !/^\d/.test(line) && ingredient.quantity === '' && previous.quantity === '';
         if (continuesPrev) {
           previous.item = normalizePdfLine(previous.item + ' ' + ingredient.item);
         } else {
@@ -3049,11 +3059,14 @@
   function detectPdfSectionHeading(line) {
     var cleaned = normalizePdfLine(line);
     if (!cleaned) return '';
-    var numbered = cleaned.match(/^(\d+)\s+([A-Za-z].+)$/);
-    if (numbered && !/^(\d+)\s+(cups?|tbsp|tsp|oz|lb|lbs|g|kg|ml|l)\b/i.test(cleaned)) {
+    var numbered = cleaned.match(/^(\d{1,2})\s+([A-Za-z][A-Za-z\s\-]+)$/);
+    if (numbered) {
+      var sectionNumber = Number(numbered[1]);
       var headingCandidate = String(numbered[2] || '').trim();
       var wordCount = headingCandidate.split(/\s+/).filter(Boolean).length;
-      if (headingCandidate.length <= 44 && wordCount <= 4 && !/[.;,!?]/.test(headingCandidate) && !/^\(.+\)$/.test(headingCandidate)) {
+      var token = normalizeToken(headingCandidate);
+      var looksLikeIngredient = /\b(cups?|cup|tbsp|tablespoons?|tsp|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|can|onion|garlic|tomatoes?|sausage|rigatoni|salt|pepper|basil|cream)\b/.test(token);
+      if (sectionNumber <= 20 && headingCandidate.length <= 44 && wordCount <= 4 && !/[.;,!?]/.test(headingCandidate) && !/^\(.+\)$/.test(headingCandidate) && !looksLikeIngredient) {
         return headingCandidate;
       }
     }
