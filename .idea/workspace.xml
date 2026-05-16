@@ -6,12 +6,41 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/recipes-tab.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/recipes-tab.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/recipes-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/recipes-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/recipes-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/recipes-tab-system.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CopilotChats">
+    <option name="panelChat">
+      <chat>
+        <option name="activeSessionId" value="ce7da504-59c0-495b-97e8-05c08ea151c0" />
+        <option name="sessions">
+          <session>
+            <option name="chatType" value="PANEL" />
+            <option name="id" value="ee06e4e9-b7db-465b-a3a1-ea930d8674f8" />
+            <option name="modeId" value="Agent" />
+            <option name="modelType" value="builtin_family" />
+            <option name="modelValue" value="auto" />
+            <option name="status" value="Completed" />
+            <option name="targetType" value="LOCAL" />
+          </session>
+          <session>
+            <option name="chatType" value="PANEL" />
+            <option name="id" value="ce7da504-59c0-495b-97e8-05c08ea151c0" />
+            <option name="modeId" value="Agent" />
+            <option name="modelType" value="builtin_family" />
+            <option name="modelValue" value="auto" />
+            <option name="targetType" value="LOCAL" />
+          </session>
+        </option>
+        <option name="type" value="PANEL" />
+      </chat>
+    </option>
   </component>
   <component name="CopilotPersistence">
     <persistenceIdMap>
@@ -101,6 +130,8 @@
       <workItem from="1777494531732" duration="92762000" />
       <workItem from="1777741223725" duration="94208000" />
       <workItem from="1778017353146" duration="10311000" />
+      <workItem from="1778620279012" duration="48477000" />
+      <workItem from="1778942044064" duration="5213000" />
     </task>
     <servers />
   </component>

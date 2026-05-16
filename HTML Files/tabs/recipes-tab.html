@@ -31,6 +31,7 @@
       <button type="button" class="recipes-intake-tab active" data-recipes-intake-tab="manual">Manual</button>
       <button type="button" class="recipes-intake-tab" data-recipes-intake-tab="url">Recipe URL</button>
       <button type="button" class="recipes-intake-tab" data-recipes-intake-tab="paste">Paste text</button>
+      <button type="button" class="recipes-intake-tab" data-recipes-intake-tab="pdf">Upload PDF</button>
     </div>
 
     <div class="recipes-intake-pane" data-recipes-intake-pane="manual">
@@ -51,6 +52,13 @@
       <label for="recipesPasteInput">Paste recipe text</label>
       <textarea id="recipesPasteInput" rows="6" placeholder="Paste ingredient list and steps..."></textarea>
       <button type="button" class="pill-button" data-recipes-intake-action="parse-text">Parse pasted text</button>
+    </div>
+
+    <div class="recipes-intake-pane" data-recipes-intake-pane="pdf" hidden>
+      <label for="recipesPdfInput">Recipe PDF file</label>
+      <input id="recipesPdfInput" type="file" accept="application/pdf">
+      <button type="button" class="pill-button" data-recipes-intake-action="parse-pdf">Parse PDF</button>
+      <p class="recipes-help-text">Use semi-standard recipe PDFs with section headers and numbered steps for best results.</p>
     </div>
 
     <div id="recipesIntakeStatus" class="recipes-status" aria-live="polite"></div>
@@ -165,6 +173,9 @@
         <label>Description
           <textarea name="description" rows="2" placeholder="Optional description"></textarea>
         </label>
+        <label>Recipe source URL
+          <input name="sourceUrl" type="url" placeholder="https://example.com/recipe">
+        </label>
 
         <div class="recipes-grid-two">
           <div class="recipes-filter-chip-group" data-chip-group="editor-proteins">
@@ -197,6 +208,9 @@
           <label>Cook minutes
             <input name="cookMinutes" type="number" min="0" placeholder="25">
           </label>
+          <label>Servings
+            <input name="servings" type="number" min="1" step="1" placeholder="4">
+          </label>
           <label>Course category
             <select name="courseCategory">
               <option value="">Not set</option>
@@ -225,12 +239,14 @@
               <input id="recipesPhotoUrlInput" type="url" placeholder="https://...">
             </label>
             <button type="button" class="pill-button" id="recipesAddPhotoUrlBtn">Add photo URL</button>
+            <button type="button" class="pill-button" id="recipesImportPhotosFromSourceBtn">Import from source URL</button>
           </div>
           <div class="recipes-inline-input-row">
             <label for="recipesPhotoFileInput">Upload photos</label>
             <input id="recipesPhotoFileInput" type="file" accept="image/*" multiple>
           </div>
           <div id="recipesPhotoPreview" class="recipes-photo-preview"></div>
+          <div id="recipesPhotoImportDiagnostics" class="recipes-help-text" aria-live="polite"></div>
         </section>
 
         <section>
@@ -249,6 +265,26 @@
           </div>
           <p class="recipes-help-text">Type your own step or select a suggestion to speed up entry.</p>
           <div id="recipesStepsList"></div>
+        </section>
+
+        <section>
+          <div class="recipes-editor-subheader">
+            <h3>Manual sections (optional override)</h3>
+            <button type="button" class="pill-button" id="recipesAddSectionOverrideBtn">+ Section</button>
+          </div>
+          <p class="recipes-help-text">Override auto-inferred sections by defining section title, step range (for example 1-3,4), and ingredient keywords.</p>
+          <div id="recipesSectionOverridesList"></div>
+        </section>
+
+        <section id="recipesPdfPreviewSection" hidden>
+          <div class="recipes-editor-subheader">
+            <h3>Preview parsed PDF text</h3>
+            <button type="button" class="pill-button" id="recipesApplySuggestedSectionsBtn">Apply suggested section titles</button>
+          </div>
+          <p class="recipes-help-text">Use this preview to confirm section boundaries before saving.</p>
+          <label class="recipes-safe-temp-mode-toggle"><input type="checkbox" id="recipesPdfAutoAcceptStepRangesToggle" checked> Auto-accept only sections with valid step ranges</label>
+          <div id="recipesPdfSuggestionsList" class="recipes-ref-list"></div>
+          <pre id="recipesPdfPreviewText" class="recipes-pdf-preview"></pre>
         </section>
 
         <div id="recipesEditorStatus" class="recipes-status" aria-live="polite"></div>

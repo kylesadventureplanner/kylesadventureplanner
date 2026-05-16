@@ -2,9 +2,14 @@
   var STORAGE_KEY = 'kapRecipesV2';
   var LEGACY_STORAGE_KEY = 'kapRecipesV1';
   var PANTRY_STORAGE_KEY = 'kapRecipesPantrySpicesV1';
+  var MEASUREMENT_PREF_STORAGE_KEY = 'kapRecipesMeasurementPrefV1';
+  var INGREDIENT_DB_STORAGE_KEY = 'kapRecipesIngredientsDbV1';
+  var SUBSTITUTION_DB_STORAGE_KEY = 'kapRecipesSubstitutionsDbV1';
   var ROOT_ID = 'recipesRoot';
   var EXCEL_WORKBOOK_CANDIDATES = ['recipes.xlsx', 'recipes.xlsm', 'recipes'];
   var EXCEL_TABLE_NAME = 'recipes';
+  var EXCEL_SUBSTITUTIONS_TABLE_NAME = 'substitutions';
+  var EXCEL_INGREDIENTS_TABLE_NAME = 'ingredients';
   var AUTO_SYNC_COOLDOWN_MS = 45000;
 
   var METHOD_OPTIONS = ['Oven', 'Air Fryer', 'Skillet', 'Sous Vide', 'Instant Pot', 'Grill', 'Smoker', 'Slow Cooker', 'Stovetop', 'No Cook'];
@@ -35,6 +40,72 @@
     'egg': ['Flax egg', 'Chia egg', 'Unsweetened applesauce'],
     'eggs': ['Flax eggs', 'Chia eggs', 'Silken tofu']
   };
+  var CUISINE_IMPROVEMENT_HINTS = {
+    mexican: [
+      { item: 'Cumin', quantity: '1 tsp', reason: 'Adds depth commonly used in Mexican-style dishes.' },
+      { item: 'Smoked paprika', quantity: '1/2 tsp', reason: 'Adds smoky warmth found in many regional recipes.' },
+      { item: 'Oregano', quantity: '1/2 tsp', reason: 'Brings a classic herb note used in many Mexican sauces.' },
+      { item: 'Lime juice', quantity: '1 tbsp', reason: 'Brightens and balances rich flavors.' }
+    ],
+    italian: [
+      { item: 'Basil', quantity: '1 tbsp', reason: 'Adds a fresh herb finish common in Italian dishes.' },
+      { item: 'Oregano', quantity: '1/2 tsp', reason: 'Adds a familiar savory herb layer.' },
+      { item: 'Red pepper flakes', quantity: '1/4 tsp', reason: 'Adds optional gentle heat for balance.' },
+      { item: 'Parmesan', quantity: '1/4 cup', reason: 'Adds savory umami and authenticity.' }
+    ],
+    indian: [
+      { item: 'Cumin', quantity: '1 tsp', reason: 'Core spice in many Indian profiles.' },
+      { item: 'Coriander', quantity: '1 tsp', reason: 'Adds citrusy earthiness common in curries.' },
+      { item: 'Turmeric', quantity: '1/2 tsp', reason: 'Contributes color and classic flavor base.' },
+      { item: 'Garam masala', quantity: '1/2 tsp', reason: 'Adds warm finishing spice depth.' }
+    ],
+    thai: [
+      { item: 'Fish sauce', quantity: '1 tbsp', reason: 'Adds salty-umami backbone often used in Thai cooking.' },
+      { item: 'Lime juice', quantity: '1 tbsp', reason: 'Adds acidity essential to Thai balance.' },
+      { item: 'Brown sugar', quantity: '1 tsp', reason: 'Rounds spicy and sour elements.' },
+      { item: 'Cilantro', quantity: '1 tbsp', reason: 'Adds fresh herb finish.' }
+    ],
+    japanese: [
+      { item: 'Soy sauce', quantity: '1 tbsp', reason: 'Builds a classic savory base.' },
+      { item: 'Rice vinegar', quantity: '1 tsp', reason: 'Adds balanced acidity.' },
+      { item: 'Sesame oil', quantity: '1 tsp', reason: 'Adds nutty aroma for authenticity.' },
+      { item: 'Mirin', quantity: '1 tbsp', reason: 'Adds subtle sweetness and gloss.' }
+    ]
+  };
+  var RECIPE_KEYWORD_IMPROVEMENT_HINTS = [
+    { keyword: 'taco', suggestions: [
+      { item: 'Cumin', quantity: '1 tsp', reason: 'Common taco seasoning foundation.' },
+      { item: 'Chili powder', quantity: '1 tsp', reason: 'Adds chili warmth and color.' },
+      { item: 'Garlic powder', quantity: '1/2 tsp', reason: 'Boosts savory depth in quick taco blends.' }
+    ] },
+    { keyword: 'chili', suggestions: [
+      { item: 'Cumin', quantity: '1 tsp', reason: 'Essential earthy chili profile.' },
+      { item: 'Smoked paprika', quantity: '1 tsp', reason: 'Improves smoky depth.' },
+      { item: 'Cocoa powder', quantity: '1/2 tsp', reason: 'Optional but common depth enhancer in chili.' }
+    ] },
+    { keyword: 'curry', suggestions: [
+      { item: 'Cumin', quantity: '1 tsp', reason: 'Common aromatic base for curries.' },
+      { item: 'Coriander', quantity: '1 tsp', reason: 'Balances warm spices with citrus notes.' },
+      { item: 'Ginger', quantity: '1 tsp', reason: 'Adds brightness and warmth.' }
+    ] },
+    { keyword: 'pasta', suggestions: [
+      { item: 'Basil', quantity: '1 tbsp', reason: 'Classic Italian herb lift for pasta.' },
+      { item: 'Parmesan', quantity: '1/4 cup', reason: 'Adds umami and richer finish.' },
+      { item: 'Red pepper flakes', quantity: '1/4 tsp', reason: 'Optional heat balance.' }
+    ] },
+    { keyword: 'stew', suggestions: [
+      { item: 'Bay leaf', quantity: '1', reason: 'Traditional slow-cook aromatic.' },
+      { item: 'Thyme', quantity: '1/2 tsp', reason: 'Adds savory body to long-cooked dishes.' }
+    ] }
+  ];
+  var MEASUREMENT_CONVERSION = {
+    mlPerCup: 236.588,
+    mlPerTablespoon: 14.7868,
+    mlPerTeaspoon: 4.92892,
+    mlPerFluidOz: 29.5735,
+    gPerOz: 28.3495,
+    gPerLb: 453.592
+  };
   var SAFE_COOK_TEMPERATURES = {
     chicken: { label: 'Chicken', tempF: 165, tempC: 74, note: 'Cook to minimum internal temperature.' },
     'steak_rare': { label: 'Steak - Rare', tempF: 145, tempC: 63, note: 'USDA safe endpoint for intact beef cuts.', culinaryTempF: 125, culinaryTempC: 52, culinaryNote: 'Culinary target for rare doneness; rest before serving.' },
@@ -62,6 +133,68 @@
     'over_easy_egg': { label: 'Over Easy Egg', tempF: 160, tempC: 71, note: 'For strict safety, cook until yolk and white are firm.', culinaryTempF: 145, culinaryTempC: 63, culinaryNote: 'Culinary target for runny yolk.' }
   };
   var COMMON_STEAK_DONENESS = ['rare', 'medium_rare', 'medium', 'medium_well', 'well_done'];
+  var COOK_METHOD_CONVERSION_PROFILES = {
+    skillet_saute: { label: 'Skillet saute', factor: 0.7 },
+    conventional_oven: { label: 'Conventional oven', factor: 1.0 },
+    convection_oven: { label: 'Convection oven', factor: 0.85 },
+    air_fry_oven: { label: 'Air fry oven', factor: 0.75 },
+    indoor_grill: { label: 'Indoor grill', factor: 0.72 },
+    flat_top_grill: { label: 'Flat top grill', factor: 0.68 },
+    infrared_smoker_big_easy: { label: 'Infrared smoker (Char-Broil Big Easy)', factor: 1.2 }
+  };
+  var PROTEIN_CONVERSION_PRESETS = {
+    none: {
+      label: 'No protein profile',
+      doneness: ['auto'],
+      thicknessMultiplier: { thin: 1.0, standard: 1.0, thick: 1.0 },
+      donenessMultiplier: { auto: 1.0 }
+    },
+    chicken_breast: {
+      label: 'Chicken breast',
+      doneness: ['auto', 'safe'],
+      thicknessMultiplier: { thin: 0.84, standard: 1.0, thick: 1.22 },
+      donenessMultiplier: { auto: 1.0, safe: 1.05 }
+    },
+    steak: {
+      label: 'Steak',
+      doneness: ['auto', 'rare', 'medium_rare', 'medium', 'medium_well', 'well_done'],
+      thicknessMultiplier: { thin: 0.8, standard: 1.0, thick: 1.26 },
+      donenessMultiplier: { auto: 1.0, rare: 0.82, medium_rare: 0.92, medium: 1.0, medium_well: 1.12, well_done: 1.22 }
+    },
+    pork_chop: {
+      label: 'Pork chop',
+      doneness: ['auto', 'safe'],
+      thicknessMultiplier: { thin: 0.85, standard: 1.0, thick: 1.24 },
+      donenessMultiplier: { auto: 1.0, safe: 1.08 }
+    },
+    salmon_fillet: {
+      label: 'Salmon fillet',
+      doneness: ['auto', 'medium', 'safe'],
+      thicknessMultiplier: { thin: 0.82, standard: 1.0, thick: 1.2 },
+      donenessMultiplier: { auto: 1.0, medium: 0.95, safe: 1.08 }
+    },
+    brisket: {
+      label: 'Brisket (smoker)',
+      doneness: ['auto', 'fork_tender'],
+      thicknessMultiplier: { thin: 0.92, standard: 1.0, thick: 1.15 },
+      donenessMultiplier: { auto: 1.0, fork_tender: 1.16 }
+    }
+  };
+  var PROTEIN_THICKNESS_PRESETS = {
+    thin: { label: 'Thin cut' },
+    standard: { label: 'Standard cut' },
+    thick: { label: 'Thick cut' }
+  };
+  var PROTEIN_DONENESS_PRESETS = {
+    auto: { label: 'Auto' },
+    rare: { label: 'Rare' },
+    medium_rare: { label: 'Medium rare' },
+    medium: { label: 'Medium' },
+    medium_well: { label: 'Medium well' },
+    well_done: { label: 'Well done' },
+    safe: { label: 'USDA safe' },
+    fork_tender: { label: 'Fork tender' }
+  };
   var COMMON_COOK_TIMES = {
     baked_potato: {
       label: 'Baked Potato',
@@ -301,7 +434,10 @@
     description: 'description',
     photosJson: 'photo_urls_json',
     notesJson: 'notes_json',
+    recipeUrl: 'recipe_url',
     sourceUrl: 'source_url',
+    sectionOverridesJson: 'section_overrides_json',
+    preferredCookMethodProfile: 'preferred_cook_method_profile',
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   };
@@ -326,7 +462,10 @@
     EXCEL_COLUMNS.description,
     EXCEL_COLUMNS.photosJson,
     EXCEL_COLUMNS.notesJson,
+    EXCEL_COLUMNS.recipeUrl,
     EXCEL_COLUMNS.sourceUrl,
+    EXCEL_COLUMNS.sectionOverridesJson,
+    EXCEL_COLUMNS.preferredCookMethodProfile,
     EXCEL_COLUMNS.courseCategory,
     EXCEL_COLUMNS.healthiness,
     EXCEL_COLUMNS.variationsJson,
@@ -390,13 +529,33 @@
     activeRecipeId: '',
     editingRecipeId: '',
     editorPhotos: [],
+    editorPdfPreviewText: '',
+    editorPdfSuggestedSections: [],
+    editorPdfAutoAcceptWithStepRefs: true,
+    editorSectionOverrides: [],
     editorTags: {
       proteins: [],
       cuisines: [],
       methods: []
     },
     pantrySpices: [],
+    measurementSystem: 'us',
+    showRecipeImprovements: false,
+    recipeImprovementStatus: '',
+    referenceDbStatus: '',
+    referenceDbFilters: {
+      substitutionsRelevantOnly: false,
+      substitutionsQuery: '',
+      ingredientType: 'all',
+      ingredientQuery: ''
+    },
+    servingTarget: 0,
+    substitutionsDbPairs: [],
+    substitutionsDbMap: {},
+    ingredientsDb: [],
     safeTempStrictMode: true,
+    lastCookMethodConversion: null,
+    detailsToastTimer: null,
     excel: {
       workbookPath: '',
       lastSyncAt: 0,
@@ -461,6 +620,579 @@
     return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
+  function normalizeIngredientName(value) {
+    return normalizeToken(value);
+  }
+
+  function splitSubstituteCell(value) {
+    return String(value || '')
+      .split(/[;,\n|]/)
+      .map(function (part) { return String(part || '').trim(); })
+      .filter(Boolean);
+  }
+
+  function defaultSubstitutionPairs() {
+    var pairs = [];
+    Object.keys(INGREDIENT_SUBSTITUTIONS).forEach(function (original) {
+      (INGREDIENT_SUBSTITUTIONS[original] || []).forEach(function (substitute) {
+        pairs.push({ original: original, substitute: substitute });
+      });
+    });
+    // Broad pantry and dietary-inclusive substitutions.
+    [
+      ['all purpose flour', 'Whole wheat flour'], ['all purpose flour', 'Gluten-free 1:1 flour'], ['all purpose flour', 'Almond flour'],
+      ['bread flour', 'All purpose flour'], ['cake flour', 'All purpose flour + cornstarch'], ['cornstarch', 'Arrowroot powder'],
+      ['cornstarch', 'Tapioca starch'], ['buttermilk', 'Milk + lemon juice'], ['buttermilk', 'Plain yogurt + water'],
+      ['whole milk', '2% milk'], ['whole milk', 'Unsweetened oat milk'], ['whole milk', 'Unsweetened soy milk'],
+      ['heavy cream', 'Evaporated milk'], ['half and half', 'Milk + butter'], ['sour cream', 'Plain Greek yogurt'],
+      ['mayonnaise', 'Greek yogurt'], ['mayonnaise', 'Mashed avocado'], ['butter', 'Olive oil'], ['butter', 'Ghee'],
+      ['vegetable oil', 'Canola oil'], ['vegetable oil', 'Avocado oil'], ['olive oil', 'Avocado oil'],
+      ['sesame oil', 'Tahini + neutral oil'], ['white sugar', 'Brown sugar'], ['brown sugar', 'White sugar + molasses'],
+      ['honey', 'Maple syrup'], ['maple syrup', 'Honey'], ['molasses', 'Brown sugar + water'],
+      ['soy sauce', 'Tamari'], ['soy sauce', 'Coconut aminos'], ['tamari', 'Soy sauce'], ['fish sauce', 'Soy sauce + lime juice'],
+      ['worcestershire sauce', 'Soy sauce + vinegar + sugar'], ['rice vinegar', 'Apple cider vinegar'], ['apple cider vinegar', 'White vinegar'],
+      ['lemon juice', 'Lime juice'], ['lime juice', 'Lemon juice'], ['fresh garlic', 'Garlic powder'], ['garlic powder', 'Fresh garlic'],
+      ['fresh onion', 'Onion powder'], ['onion powder', 'Fresh onion'], ['fresh basil', 'Dried basil'], ['fresh oregano', 'Dried oregano'],
+      ['fresh thyme', 'Dried thyme'], ['fresh rosemary', 'Dried rosemary'], ['cilantro', 'Parsley'],
+      ['parsley', 'Cilantro'], ['chili powder', 'Paprika + cumin + cayenne'], ['cumin', 'Ground coriander + chili powder'],
+      ['smoked paprika', 'Paprika + cumin'], ['paprika', 'Smoked paprika'], ['cayenne pepper', 'Red pepper flakes'],
+      ['red pepper flakes', 'Cayenne pepper'], ['black pepper', 'White pepper'], ['white pepper', 'Black pepper'],
+      ['eggs', 'Flax eggs'], ['eggs', 'Chia eggs'], ['eggs', 'Silken tofu'], ['egg', 'Mashed banana'],
+      ['breadcrumbs', 'Crushed crackers'], ['breadcrumbs', 'Rolled oats'], ['panko', 'Breadcrumbs'], ['rice', 'Quinoa'],
+      ['rice', 'Cauliflower rice'], ['jasmine rice', 'Basmati rice'], ['basmati rice', 'Jasmine rice'], ['pasta', 'Zucchini noodles'],
+      ['pasta', 'Chickpea pasta'], ['spaghetti', 'Linguine'], ['fettuccine', 'Tagliatelle'],
+      ['corn tortillas', 'Flour tortillas'], ['flour tortillas', 'Corn tortillas'], ['tortilla chips', 'Pita chips'],
+      ['ground chicken', 'Ground turkey'], ['ground turkey', 'Ground chicken'], ['ground pork', 'Ground turkey'],
+      ['beef broth', 'Chicken broth'], ['chicken broth', 'Vegetable broth'], ['vegetable broth', 'Chicken broth'],
+      ['coconut milk', 'Heavy cream'], ['coconut milk', 'Evaporated milk'], ['tomato paste', 'Tomato sauce reduced'],
+      ['tomato sauce', 'Crushed tomatoes'], ['crushed tomatoes', 'Diced tomatoes'], ['diced tomatoes', 'Crushed tomatoes'],
+      ['parmesan', 'Pecorino romano'], ['mozzarella', 'Provolone'], ['cheddar', 'Monterey jack'], ['cream cheese', 'Neufchatel'],
+      ['yogurt', 'Sour cream'], ['plain yogurt', 'Greek yogurt'], ['greek yogurt', 'Sour cream'],
+      ['kidney beans', 'Black beans'], ['black beans', 'Pinto beans'], ['pinto beans', 'Black beans'], ['chickpeas', 'Cannellini beans']
+    ].forEach(function (row) {
+      pairs.push({ original: row[0], substitute: row[1] });
+    });
+    return pairs;
+  }
+
+  function createIngredientType(name) {
+    var token = normalizeIngredientName(name);
+    if (/salt|pepper|paprika|cumin|oregano|thyme|basil|coriander|garlic powder|onion powder|seasoning|spice/.test(token)) return 'spice';
+    if (/chicken|beef|pork|turkey|salmon|shrimp|tofu|beans|egg/.test(token)) return 'protein';
+    if (/oil|vinegar|soy sauce|fish sauce|mustard|ketchup|mayo|mayonnaise/.test(token)) return 'sauce';
+    if (/rice|pasta|flour|bread|tortilla|quinoa|oats/.test(token)) return 'grain';
+    if (/tomato|onion|garlic|pepper|lettuce|spinach|carrot|potato|zucchini|lime|lemon|cilantro|parsley/.test(token)) return 'produce';
+    return 'other';
+  }
+
+  function uniqueIngredientRows(rows) {
+    var seen = new Set();
+    var out = [];
+    (Array.isArray(rows) ? rows : []).forEach(function (row) {
+      var name = String(row && row.name || row && row.ingredientName || '').trim();
+      var key = normalizeIngredientName(name);
+      if (!name || !key || seen.has(key)) return;
+      seen.add(key);
+      out.push({ name: name, type: String(row && row.type || row && row.ingredientType || createIngredientType(name)).trim() || 'other' });
+    });
+    return out.sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function normalizeSubstitutionPairRows(rows) {
+    var seen = new Set();
+    var out = [];
+    (Array.isArray(rows) ? rows : []).forEach(function (row) {
+      var original = String(row && row.original || row && row.originalIngredient || '').trim();
+      var substitute = String(row && row.substitute || row && row.substituteIngredient || '').trim();
+      var left = normalizeIngredientName(original);
+      var right = normalizeIngredientName(substitute);
+      var key = left + '::' + right;
+      if (!left || !right || seen.has(key)) return;
+      seen.add(key);
+      out.push({ original: original, substitute: substitute });
+    });
+    return out;
+  }
+
+  function substitutionMapFromPairs(pairs) {
+    var map = {};
+    normalizeSubstitutionPairRows(pairs).forEach(function (pair) {
+      var key = normalizeIngredientName(pair.original);
+      map[key] = map[key] || [];
+      if (map[key].indexOf(pair.substitute) < 0) map[key].push(pair.substitute);
+    });
+    return map;
+  }
+
+  function rebuildSubstitutionDatabase() {
+    var basePairs = defaultSubstitutionPairs();
+    var mergedPairs = normalizeSubstitutionPairRows(basePairs.concat(state.substitutionsDbPairs || []));
+    state.substitutionsDbPairs = mergedPairs;
+    state.substitutionsDbMap = substitutionMapFromPairs(mergedPairs);
+  }
+
+  function loadReferenceDatabasesFromCache() {
+    try {
+      var rawSubs = window.localStorage.getItem(SUBSTITUTION_DB_STORAGE_KEY);
+      var parsedSubs = rawSubs ? JSON.parse(rawSubs) : [];
+      state.substitutionsDbPairs = normalizeSubstitutionPairRows(parsedSubs);
+    } catch (_error) {
+      state.substitutionsDbPairs = [];
+    }
+    try {
+      var rawIngredients = window.localStorage.getItem(INGREDIENT_DB_STORAGE_KEY);
+      var parsedIngredients = rawIngredients ? JSON.parse(rawIngredients) : [];
+      state.ingredientsDb = uniqueIngredientRows(parsedIngredients);
+    } catch (_error) {
+      state.ingredientsDb = [];
+    }
+    rebuildSubstitutionDatabase();
+  }
+
+  function saveReferenceDatabasesToCache() {
+    try {
+      window.localStorage.setItem(SUBSTITUTION_DB_STORAGE_KEY, JSON.stringify(state.substitutionsDbPairs || []));
+      window.localStorage.setItem(INGREDIENT_DB_STORAGE_KEY, JSON.stringify(state.ingredientsDb || []));
+    } catch (_error) {}
+  }
+
+  function substitutionPairKey(original, substitute) {
+    return normalizeIngredientName(original) + '::' + normalizeIngredientName(substitute);
+  }
+
+  function sortSubstitutionPairs(pairs) {
+    return (Array.isArray(pairs) ? pairs.slice() : []).sort(function (a, b) {
+      var left = String(a.original || '').localeCompare(String(b.original || ''));
+      if (left !== 0) return left;
+      return String(a.substitute || '').localeCompare(String(b.substitute || ''));
+    });
+  }
+
+  function saveReferenceDatabasesAndRefresh() {
+    saveReferenceDatabasesToCache();
+    updateSuggestionLists();
+    if (state.activeRecipeId) renderDetails(state.activeRecipeId);
+  }
+
+  function addSubstitutionPairToDatabase(original, substitute) {
+    var originalName = String(original || '').trim();
+    var substituteName = String(substitute || '').trim();
+    if (!originalName || !substituteName) return false;
+    var key = substitutionPairKey(originalName, substituteName);
+    var exists = (state.substitutionsDbPairs || []).some(function (row) {
+      return substitutionPairKey(row.original, row.substitute) === key;
+    });
+    if (exists) return false;
+    state.substitutionsDbPairs.push({ original: originalName, substitute: substituteName });
+    state.substitutionsDbPairs = sortSubstitutionPairs(normalizeSubstitutionPairRows(state.substitutionsDbPairs));
+    rebuildSubstitutionDatabase();
+    return true;
+  }
+
+  function updateSubstitutionPairInDatabase(previousKey, nextOriginal, nextSubstitute) {
+    var originalName = String(nextOriginal || '').trim();
+    var substituteName = String(nextSubstitute || '').trim();
+    if (!originalName || !substituteName) return false;
+    var changed = false;
+    state.substitutionsDbPairs = (state.substitutionsDbPairs || []).filter(function (row) {
+      var key = substitutionPairKey(row.original, row.substitute);
+      if (key !== previousKey) return true;
+      changed = true;
+      return false;
+    });
+    if (!changed) return false;
+    addSubstitutionPairToDatabase(originalName, substituteName);
+    state.substitutionsDbPairs = sortSubstitutionPairs(normalizeSubstitutionPairRows(state.substitutionsDbPairs));
+    rebuildSubstitutionDatabase();
+    return true;
+  }
+
+  function removeSubstitutionPairFromDatabase(pairKey) {
+    var before = (state.substitutionsDbPairs || []).length;
+    state.substitutionsDbPairs = (state.substitutionsDbPairs || []).filter(function (row) {
+      return substitutionPairKey(row.original, row.substitute) !== pairKey;
+    });
+    var removed = before !== state.substitutionsDbPairs.length;
+    if (removed) {
+      state.substitutionsDbPairs = sortSubstitutionPairs(normalizeSubstitutionPairRows(state.substitutionsDbPairs));
+      rebuildSubstitutionDatabase();
+    }
+    return removed;
+  }
+
+  function ingredientRowKey(name) {
+    return normalizeIngredientName(name);
+  }
+
+  function addIngredientToDatabase(name, type) {
+    var ingredientName = String(name || '').trim();
+    var ingredientType = String(type || '').trim() || createIngredientType(ingredientName);
+    if (!ingredientName) return false;
+    var key = ingredientRowKey(ingredientName);
+    var exists = (state.ingredientsDb || []).some(function (row) { return ingredientRowKey(row.name) === key; });
+    if (exists) return false;
+    state.ingredientsDb.push({ name: ingredientName, type: ingredientType });
+    state.ingredientsDb = uniqueIngredientRows(state.ingredientsDb);
+    return true;
+  }
+
+  function updateIngredientInDatabase(previousKey, nextName, nextType) {
+    var ingredientName = String(nextName || '').trim();
+    var ingredientType = String(nextType || '').trim() || createIngredientType(ingredientName);
+    if (!ingredientName) return false;
+    var changed = false;
+    state.ingredientsDb = (state.ingredientsDb || []).filter(function (row) {
+      var key = ingredientRowKey(row.name);
+      if (key !== previousKey) return true;
+      changed = true;
+      return false;
+    });
+    if (!changed) return false;
+    addIngredientToDatabase(ingredientName, ingredientType);
+    state.ingredientsDb = uniqueIngredientRows(state.ingredientsDb);
+    return true;
+  }
+
+  function removeIngredientFromDatabase(keyToRemove) {
+    var before = (state.ingredientsDb || []).length;
+    state.ingredientsDb = (state.ingredientsDb || []).filter(function (row) {
+      return ingredientRowKey(row.name) !== keyToRemove;
+    });
+    return before !== state.ingredientsDb.length;
+  }
+
+  function isAdvancedMode() {
+    try {
+      if (typeof window.getAppMode === 'function') return window.getAppMode() === 'advanced';
+    } catch (_error) {}
+    return document.documentElement.getAttribute('data-app-mode') === 'advanced';
+  }
+
+  function formatNumber(value, maxDecimals) {
+    var fixed = Number(value || 0).toFixed(maxDecimals);
+    return fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+  }
+
+  function parseQuantityNumber(text) {
+    var raw = String(text || '').trim();
+    if (!raw) return NaN;
+    var mixed = raw.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (mixed) {
+      var whole = Number(mixed[1]);
+      var num = Number(mixed[2]);
+      var den = Number(mixed[3]);
+      if (den) return whole + (num / den);
+    }
+    var fraction = raw.match(/^(\d+)\/(\d+)$/);
+    if (fraction) {
+      var numerator = Number(fraction[1]);
+      var denominator = Number(fraction[2]);
+      if (denominator) return numerator / denominator;
+    }
+    return Number(raw);
+  }
+
+  function normalizeUnitToken(unitRaw) {
+    var token = String(unitRaw || '').trim().toLowerCase().replace(/\./g, '');
+    if (!token) return '';
+    if (token === 'cups' || token === 'cup') return 'cup';
+    if (token === 'tbsp' || token === 'tablespoon' || token === 'tablespoons') return 'tbsp';
+    if (token === 'tsp' || token === 'teaspoon' || token === 'teaspoons') return 'tsp';
+    if (token === 'oz' || token === 'ounce' || token === 'ounces') return 'oz';
+    if (token === 'lb' || token === 'lbs' || token === 'pound' || token === 'pounds') return 'lb';
+    if (token === 'g' || token === 'gram' || token === 'grams') return 'g';
+    if (token === 'kg' || token === 'kilogram' || token === 'kilograms') return 'kg';
+    if (token === 'ml' || token === 'milliliter' || token === 'milliliters') return 'ml';
+    if (token === 'l' || token === 'liter' || token === 'liters') return 'l';
+    return token;
+  }
+
+  function parseQuantityParts(quantityRaw) {
+    var raw = String(quantityRaw || '').trim();
+    if (!raw) return null;
+    var match = raw.match(/^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*([a-zA-Z.]+)?\s*(.*)$/);
+    if (!match) return null;
+    var amount = parseQuantityNumber(match[1]);
+    if (!Number.isFinite(amount)) return null;
+    return {
+      amount: amount,
+      unit: normalizeUnitToken(match[2] || ''),
+      tail: String(match[3] || '').trim()
+    };
+  }
+
+  function buildQuantityText(amount, unit, tail) {
+    var valuePart = formatNumber(amount, 2);
+    var unitPart = unit ? (' ' + unit) : '';
+    var tailPart = tail ? (' ' + tail) : '';
+    return (valuePart + unitPart + tailPart).trim();
+  }
+
+  function convertQuantityForDisplay(quantityRaw, targetSystem) {
+    var parsed = parseQuantityParts(quantityRaw);
+    if (!parsed || !parsed.unit) return String(quantityRaw || '').trim();
+
+    var amount = parsed.amount;
+    var unit = parsed.unit;
+    var tail = parsed.tail;
+    var c = MEASUREMENT_CONVERSION;
+
+    if (targetSystem === 'us') {
+      if (unit === 'ml' || unit === 'l') {
+        var mlValue = unit === 'l' ? amount * 1000 : amount;
+        if (mlValue >= c.mlPerCup) return buildQuantityText(mlValue / c.mlPerCup, 'cup', tail);
+        if (mlValue >= c.mlPerTablespoon) return buildQuantityText(mlValue / c.mlPerTablespoon, 'tbsp', tail);
+        return buildQuantityText(mlValue / c.mlPerTeaspoon, 'tsp', tail);
+      }
+      if (unit === 'g' || unit === 'kg') {
+        var gramsValue = unit === 'kg' ? amount * 1000 : amount;
+        if (gramsValue >= c.gPerLb) return buildQuantityText(gramsValue / c.gPerLb, 'lb', tail);
+        return buildQuantityText(gramsValue / c.gPerOz, 'oz', tail);
+      }
+      return String(quantityRaw || '').trim();
+    }
+
+    if (targetSystem === 'metric') {
+      if (unit === 'cup' || unit === 'tbsp' || unit === 'tsp') {
+        var ml = unit === 'cup'
+          ? amount * c.mlPerCup
+          : (unit === 'tbsp' ? amount * c.mlPerTablespoon : amount * c.mlPerTeaspoon);
+        if (ml >= 1000) return buildQuantityText(ml / 1000, 'l', tail);
+        return buildQuantityText(ml, 'ml', tail);
+      }
+      if (unit === 'oz' || unit === 'lb') {
+        var grams = unit === 'lb' ? amount * c.gPerLb : amount * c.gPerOz;
+        if (grams >= 1000) return buildQuantityText(grams / 1000, 'kg', tail);
+        return buildQuantityText(grams, 'g', tail);
+      }
+      return String(quantityRaw || '').trim();
+    }
+
+    return String(quantityRaw || '').trim();
+  }
+
+  function normalizeIngredientsToUs(ingredients) {
+    return (Array.isArray(ingredients) ? ingredients : []).map(function (row) {
+      return {
+        quantity: convertQuantityForDisplay(row && row.quantity, 'us'),
+        item: String(row && row.item || '').trim(),
+        category: String(row && row.category || '').trim()
+      };
+    });
+  }
+
+  function scaleQuantityText(quantityRaw, factor) {
+    var parsed = parseQuantityParts(quantityRaw);
+    if (!parsed || !parsed.unit || !Number.isFinite(factor) || factor <= 0) return String(quantityRaw || '').trim();
+    return buildQuantityText(parsed.amount * factor, parsed.unit, parsed.tail);
+  }
+
+  function normalizeServingsValue(value) {
+    var numeric = Number(value || 0);
+    return Number.isFinite(numeric) && numeric > 0 ? Math.round(numeric) : 0;
+  }
+
+  function absoluteUrl(rawUrl, baseUrl) {
+    try {
+      return new URL(String(rawUrl || '').trim(), baseUrl).toString();
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function collectPhotoUrlsFromJsonLd(doc, baseUrl) {
+    var urls = [];
+    Array.from(doc.querySelectorAll('script[type="application/ld+json"]')).forEach(function (node) {
+      var text = String(node.textContent || '').trim();
+      if (!text) return;
+      var parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (_error) {
+        return;
+      }
+      var entries = Array.isArray(parsed) ? parsed : [parsed];
+      entries.forEach(function walk(entry) {
+        if (!entry || typeof entry !== 'object') return;
+        var typeValue = Array.isArray(entry['@type']) ? entry['@type'].join(' ') : String(entry['@type'] || '');
+        if (/recipe/i.test(typeValue)) {
+          var imageValue = entry.image;
+          if (typeof imageValue === 'string') {
+            var url = absoluteUrl(imageValue, baseUrl);
+            if (url) urls.push(url);
+          }
+          if (Array.isArray(imageValue)) {
+            imageValue.forEach(function (raw) {
+              if (typeof raw === 'string') {
+                var nestedUrl = absoluteUrl(raw, baseUrl);
+                if (nestedUrl) urls.push(nestedUrl);
+              } else if (raw && typeof raw.url === 'string') {
+                var rawUrl = absoluteUrl(raw.url, baseUrl);
+                if (rawUrl) urls.push(rawUrl);
+              }
+            });
+          }
+          if (imageValue && typeof imageValue === 'object' && typeof imageValue.url === 'string') {
+            var objectUrl = absoluteUrl(imageValue.url, baseUrl);
+            if (objectUrl) urls.push(objectUrl);
+          }
+        }
+        Object.keys(entry).forEach(function (key) {
+          var child = entry[key];
+          if (child && typeof child === 'object') {
+            if (Array.isArray(child)) child.forEach(walk);
+            else walk(child);
+          }
+        });
+      });
+    });
+    return urls;
+  }
+
+  function setPhotoImportDiagnostics(message, isError) {
+    var root = getRoot();
+    if (!root) return;
+    var host = root.querySelector('#recipesPhotoImportDiagnostics');
+    if (!host) return;
+    host.textContent = String(message || '');
+    host.classList.toggle('is-error', Boolean(isError));
+  }
+
+  function extractPhotoUrlsFromRecipeHtml(htmlText, sourceUrl) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(String(htmlText || ''), 'text/html');
+    var urls = [];
+    var ogUrls = [];
+    var jsonLdUrls = [];
+    var fallbackImgUrls = [];
+    ['meta[property="og:image"]', 'meta[name="twitter:image"]', 'link[rel="image_src"]'].forEach(function (selector) {
+      var node = doc.querySelector(selector);
+      if (!node) return;
+      var content = node.getAttribute('content') || node.getAttribute('href') || '';
+      var url = absoluteUrl(content, sourceUrl);
+      if (url) {
+        urls.push(url);
+        ogUrls.push(url);
+      }
+    });
+    collectPhotoUrlsFromJsonLd(doc, sourceUrl).forEach(function (url) {
+      urls.push(url);
+      jsonLdUrls.push(url);
+    });
+    Array.from(doc.querySelectorAll('img[src]')).slice(0, 12).forEach(function (img) {
+      var url = absoluteUrl(img.getAttribute('src') || '', sourceUrl);
+      if (url) {
+        urls.push(url);
+        fallbackImgUrls.push(url);
+      }
+    });
+    return {
+      urls: uniqueStrings(urls),
+      diagnostics: {
+        ogCount: uniqueStrings(ogUrls).length,
+        jsonLdCount: uniqueStrings(jsonLdUrls).length,
+        fallbackImgCount: uniqueStrings(fallbackImgUrls).length
+      }
+    };
+  }
+
+  async function fetchRecipePhotoUrlsFromSourceUrl(sourceUrl) {
+    var url = String(sourceUrl || '').trim();
+    if (!url) throw new Error('Enter a valid source URL first.');
+    var response = await fetch(url, { method: 'GET' });
+    if (!response.ok) throw new Error('Unable to read recipe URL right now (' + response.status + ').');
+    var html = await response.text();
+    return extractPhotoUrlsFromRecipeHtml(html, url);
+  }
+
+  async function importPhotosFromSourceUrlIntoEditor(sourceUrl) {
+    var result = await fetchRecipePhotoUrlsFromSourceUrl(sourceUrl);
+    var urls = result && Array.isArray(result.urls) ? result.urls : [];
+    if (!urls.length) throw new Error('No recipe photos detected from source URL.');
+    var before = (state.editorPhotos || []).length;
+    state.editorPhotos = uniqueStrings((state.editorPhotos || []).concat(urls));
+    var after = (state.editorPhotos || []).length;
+    renderEditorPhotos();
+    return {
+      foundCount: urls.length,
+      addedCount: Math.max(0, after - before),
+      diagnostics: result && result.diagnostics ? result.diagnostics : { ogCount: 0, jsonLdCount: 0, fallbackImgCount: 0 }
+    };
+  }
+
+  function loadMeasurementPreference() {
+    try {
+      var raw = window.localStorage.getItem(MEASUREMENT_PREF_STORAGE_KEY);
+      state.measurementSystem = raw === 'metric' ? 'metric' : 'us';
+    } catch (_error) {
+      state.measurementSystem = 'us';
+    }
+  }
+
+  function saveMeasurementPreference() {
+    try {
+      window.localStorage.setItem(MEASUREMENT_PREF_STORAGE_KEY, state.measurementSystem === 'metric' ? 'metric' : 'us');
+    } catch (_error) {}
+  }
+
+  function recipeHasIngredient(recipe, ingredientName) {
+    var target = normalizeToken(ingredientName);
+    if (!target) return false;
+    return (recipe.ingredients || []).some(function (row) {
+      var current = normalizeToken(row && row.item);
+      if (!current) return false;
+      return current === target || current.indexOf(target) >= 0 || target.indexOf(current) >= 0;
+    });
+  }
+
+  function getIngredientImprovementSuggestions(recipe) {
+    if (!recipe) return [];
+    var candidates = [];
+    var seen = new Set();
+    var cuisineKeys = (recipe.cuisines || []).map(normalizeToken);
+    var recipeSearch = normalizeToken((recipe.title || '') + ' ' + (recipe.description || ''));
+
+    cuisineKeys.forEach(function (key) {
+      (CUISINE_IMPROVEMENT_HINTS[key] || []).forEach(function (entry) {
+        candidates.push(entry);
+      });
+    });
+
+    RECIPE_KEYWORD_IMPROVEMENT_HINTS.forEach(function (group) {
+      if (recipeSearch.indexOf(normalizeToken(group.keyword)) < 0) return;
+      (group.suggestions || []).forEach(function (entry) {
+        candidates.push(entry);
+      });
+    });
+
+    return candidates.filter(function (entry) {
+      var item = String(entry && entry.item || '').trim();
+      var key = normalizeToken(item);
+      if (!item || !key || seen.has(key) || recipeHasIngredient(recipe, item)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 10);
+  }
+
+  function applyIngredientImprovementSuggestion(itemName, quantity) {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return;
+    if (recipeHasIngredient(recipe, itemName)) {
+      state.recipeImprovementStatus = itemName + ' is already in this recipe.';
+      renderDetails(recipe.id);
+      return;
+    }
+    recipe.ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+    recipe.ingredients.push({ quantity: String(quantity || '').trim(), item: String(itemName || '').trim(), category: 'recommended' });
+    recipe.updatedAt = Date.now();
+    state.showRecipeImprovements = true;
+    state.recipeImprovementStatus = 'Added ' + itemName + ' to ingredients.';
+    saveRecipes();
+    updateSuggestionLists();
+    renderCards();
+    renderDetails(recipe.id);
+  }
+
   function displaySpiceName(value) {
     var text = normalizeSpiceName(value);
     return text.replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
@@ -498,12 +1230,12 @@
   function resolveIngredientSubstitutions(ingredientName) {
     var token = normalizeToken(ingredientName);
     if (!token) return [];
-    if (INGREDIENT_SUBSTITUTIONS[token]) return INGREDIENT_SUBSTITUTIONS[token].slice();
-    var keys = Object.keys(INGREDIENT_SUBSTITUTIONS);
+    if (state.substitutionsDbMap[token]) return state.substitutionsDbMap[token].slice();
+    var keys = Object.keys(state.substitutionsDbMap || {});
     for (var i = 0; i < keys.length; i += 1) {
       var key = keys[i];
       if (token.indexOf(key) >= 0 || key.indexOf(token) >= 0) {
-        return INGREDIENT_SUBSTITUTIONS[key].slice();
+        return (state.substitutionsDbMap[key] || []).slice();
       }
     }
     return [];
@@ -570,6 +1302,168 @@
 
   function commonCookItemKey(raw) {
     return String(raw || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  function cookMethodConversionOptions() {
+    return Object.keys(COOK_METHOD_CONVERSION_PROFILES).map(function (key) {
+      return { key: key, label: COOK_METHOD_CONVERSION_PROFILES[key].label };
+    });
+  }
+
+  function proteinConversionPresetOptions() {
+    return Object.keys(PROTEIN_CONVERSION_PRESETS).map(function (key) {
+      return { key: key, label: PROTEIN_CONVERSION_PRESETS[key].label };
+    });
+  }
+
+  function proteinThicknessPresetOptions() {
+    return Object.keys(PROTEIN_THICKNESS_PRESETS).map(function (key) {
+      return { key: key, label: PROTEIN_THICKNESS_PRESETS[key].label };
+    });
+  }
+
+  function proteinDonenessPresetOptions() {
+    return Object.keys(PROTEIN_DONENESS_PRESETS).map(function (key) {
+      return { key: key, label: PROTEIN_DONENESS_PRESETS[key].label };
+    });
+  }
+
+  function normalizeMethodProfileKey(raw) {
+    return String(raw || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  function inferMethodProfileKeyFromText(rawMethodText) {
+    var token = normalizeMethodProfileKey(rawMethodText);
+    if (!token) return '';
+    if (COOK_METHOD_CONVERSION_PROFILES[token]) return token;
+    if (/flat_top|griddle/.test(token)) return 'flat_top_grill';
+    if (/smok|big_easy/.test(token)) return 'infrared_smoker_big_easy';
+    if (/indoor_grill/.test(token)) return 'indoor_grill';
+    if (/grill/.test(token)) return 'flat_top_grill';
+    if (/air_fry/.test(token)) return 'air_fry_oven';
+    if (/convection/.test(token)) return 'convection_oven';
+    if (/oven|bake/.test(token)) return 'conventional_oven';
+    if (/skillet|saute|stove|pan/.test(token)) return 'skillet_saute';
+    return '';
+  }
+
+  function inferPreferredCookMethodProfile(recipe) {
+    var explicit = inferMethodProfileKeyFromText(recipe && recipe.preferredCookMethodProfile);
+    if (explicit) return explicit;
+    var methods = Array.isArray(recipe && recipe.methods) ? recipe.methods : [];
+    for (var i = 0; i < methods.length; i += 1) {
+      var inferred = inferMethodProfileKeyFromText(methods[i]);
+      if (inferred) return inferred;
+    }
+    return 'conventional_oven';
+  }
+
+  function parseMinuteRange(rawValue) {
+    var value = String(rawValue || '').trim().toLowerCase().replace(/minutes?|mins?|min/g, '').trim();
+    if (!value) return null;
+    var range = value.match(/^(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)$/);
+    if (range) {
+      var min = Number(range[1]);
+      var max = Number(range[2]);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+      return { min: Math.min(min, max), max: Math.max(min, max) };
+    }
+    var single = Number(value);
+    if (!Number.isFinite(single) || single <= 0) return null;
+    return { min: single, max: single };
+  }
+
+  function formatMinuteRange(range) {
+    if (!range) return '';
+    var min = Math.max(1, Math.round(range.min));
+    var max = Math.max(1, Math.round(range.max));
+    if (min === max) return String(min) + ' min';
+    return String(min) + '-' + String(max) + ' min';
+  }
+
+  function renderCookMethodConversion(baseMinutesText, fromMethodKey, toMethodKey, proteinPresetKey, thicknessKey, donenessKey) {
+    var parsedRange = parseMinuteRange(baseMinutesText);
+    if (!parsedRange) return { ok: false, message: 'Enter minutes in a format like 12 or 12-15.' };
+    var fromMeta = COOK_METHOD_CONVERSION_PROFILES[fromMethodKey];
+    var toMeta = COOK_METHOD_CONVERSION_PROFILES[toMethodKey];
+    if (!fromMeta || !toMeta) return { ok: false, message: 'Select both source and target methods.' };
+
+    var proteinKey = PROTEIN_CONVERSION_PRESETS[proteinPresetKey] ? proteinPresetKey : 'none';
+    var proteinPreset = PROTEIN_CONVERSION_PRESETS[proteinKey];
+    var appliedThickness = PROTEIN_THICKNESS_PRESETS[thicknessKey] ? thicknessKey : 'standard';
+    var allowedDoneness = proteinPreset.doneness || ['auto'];
+    var appliedDoneness = allowedDoneness.indexOf(donenessKey) >= 0 ? donenessKey : 'auto';
+    var thicknessMultiplier = Number(proteinPreset.thicknessMultiplier[appliedThickness] || 1);
+    var donenessMultiplier = Number(proteinPreset.donenessMultiplier[appliedDoneness] || 1);
+    var ratio = (toMeta.factor / fromMeta.factor) * thicknessMultiplier * donenessMultiplier;
+
+    var converted = {
+      min: parsedRange.min * ratio,
+      max: parsedRange.max * ratio
+    };
+    var methodDistance = Math.abs(Number(fromMeta.factor || 1) - Number(toMeta.factor || 1));
+    var hasKnownProfile = proteinKey !== 'none';
+    var confidence = 'low';
+    if (methodDistance <= 0.2 && hasKnownProfile) confidence = 'high';
+    else if (methodDistance <= 0.35 || hasKnownProfile) confidence = 'medium';
+    var confidenceLabel = confidence.charAt(0).toUpperCase() + confidence.slice(1);
+    var message = formatMinuteRange(parsedRange) + ' on ' + fromMeta.label + ' is about ' + formatMinuteRange(converted) + ' on ' + toMeta.label + '.';
+    var profileText = proteinKey === 'none'
+      ? 'No protein profile selected.'
+      : (proteinPreset.label + ' | ' + PROTEIN_THICKNESS_PRESETS[appliedThickness].label + ' | ' + PROTEIN_DONENESS_PRESETS[appliedDoneness].label + '.');
+
+    return {
+      ok: true,
+      confidence: confidence,
+      confidenceLabel: confidenceLabel,
+      message: message,
+      html: '<span class="recipes-confidence-badge recipes-confidence-' + confidence + '">' + confidenceLabel + ' confidence</span> ' + safeText(message) + ' <span class="recipes-help-text-inline">' + safeText(profileText) + '</span>',
+      noteText: '[Cook conversion | ' + confidenceLabel + '] ' + message + ' Profile: ' + profileText
+    };
+  }
+
+  function syncCookMethodDonenessPresetOptions() {
+    var root = getRoot();
+    if (!root) return;
+    var proteinPresetSelect = root.querySelector('#recipesCookMethodProteinPreset');
+    var donenessPresetSelect = root.querySelector('#recipesCookMethodDonenessPreset');
+    if (!proteinPresetSelect || !donenessPresetSelect) return;
+
+    var proteinPresetKey = PROTEIN_CONVERSION_PRESETS[proteinPresetSelect.value] ? proteinPresetSelect.value : 'none';
+    var allowedDoneness = (PROTEIN_CONVERSION_PRESETS[proteinPresetKey] && PROTEIN_CONVERSION_PRESETS[proteinPresetKey].doneness) || ['auto'];
+    var options = Array.from(donenessPresetSelect.options || []);
+    var firstAllowed = '';
+    options.forEach(function (option) {
+      var isAllowed = allowedDoneness.indexOf(option.value) >= 0;
+      option.hidden = !isAllowed;
+      option.disabled = !isAllowed;
+      if (isAllowed && !firstAllowed) firstAllowed = option.value;
+    });
+
+    if (allowedDoneness.indexOf(donenessPresetSelect.value) < 0) {
+      donenessPresetSelect.value = allowedDoneness.indexOf('auto') >= 0 ? 'auto' : (firstAllowed || 'auto');
+    }
+  }
+
+  function showDetailsToast(message) {
+    var root = getRoot();
+    if (!root) return;
+    var toast = root.querySelector('#recipesDetailsToast');
+    if (!toast) return;
+
+    if (state.detailsToastTimer) {
+      clearTimeout(state.detailsToastTimer);
+      state.detailsToastTimer = null;
+    }
+
+    toast.textContent = String(message || '').trim() || 'Saved.';
+    toast.hidden = false;
+    toast.classList.add('is-visible');
+    state.detailsToastTimer = setTimeout(function () {
+      toast.classList.remove('is-visible');
+      toast.hidden = true;
+      state.detailsToastTimer = null;
+    }, 1800);
   }
 
   function commonCookItemOptions() {
@@ -808,6 +1702,7 @@
     var normalizedPhotos = Array.isArray(recipe.photos) ? recipe.photos : [];
     var normalizedNotes = Array.isArray(recipe.notes) ? recipe.notes : [];
     var normalizedVariations = Array.isArray(recipe.variations) ? recipe.variations : [];
+    var normalizedSectionOverrides = Array.isArray(recipe.sectionOverrides) ? recipe.sectionOverrides : [];
 
     var proteins = asArray(recipe.proteins && recipe.proteins.length ? recipe.proteins : recipe.protein);
     var cuisines = asArray(recipe.cuisines && recipe.cuisines.length ? recipe.cuisines : recipe.cuisine);
@@ -822,6 +1717,7 @@
       methods: methods,
       courseCategory: normalizeCourseCategory(recipe.courseCategory || recipe.course_category),
       healthiness: normalizeHealthiness(recipe.healthiness || recipe.health_level),
+      servings: Number(recipe.servings || 0) > 0 ? Number(recipe.servings) : 4,
       prepMinutes: recipe.prepMinutes === '' ? '' : Number(recipe.prepMinutes || 0),
       cookMinutes: recipe.cookMinutes === '' ? '' : Number(recipe.cookMinutes || 0),
       ingredients: normalizedIngredients.map(function (row) {
@@ -849,7 +1745,16 @@
           updatedAt: Number((row && row.updatedAt) || Date.now())
         };
       }).filter(function (row) { return row.text; }),
+      sectionOverrides: normalizedSectionOverrides.map(function (row) {
+        return {
+          id: String((row && row.id) || uid('section')),
+          title: String((row && row.title) || '').trim(),
+          stepRefs: String((row && row.stepRefs) || '').trim(),
+          ingredientKeywords: String((row && row.ingredientKeywords) || '').trim()
+        };
+      }).filter(function (row) { return row.title; }),
       sourceUrl: String(recipe.sourceUrl || '').trim(),
+      preferredCookMethodProfile: inferMethodProfileKeyFromText(recipe.preferredCookMethodProfile),
       createdAt: Number(recipe.createdAt || Date.now()),
       updatedAt: Number(recipe.updatedAt || Date.now())
     };
@@ -1021,6 +1926,116 @@
     return state.recipes.find(function (recipe) { return recipe.id === id; }) || null;
   }
 
+  function inferSectionTitleFromStep(stepText, index) {
+    var token = normalizeToken(stepText);
+    if (/marinat|brine|rub|season/.test(token)) return 'Marinate / Season';
+    if (/prep|prepare|chop|slice|dice|mix|combine/.test(token)) return 'Prepare';
+    if (/sauce|glaze|dressing/.test(token)) return 'Prepare Sauce';
+    if (/cook|bake|grill|smoke|sear|fry|roast|broil|boil|simmer|air fry/.test(token)) return 'Cook';
+    if (/rest|cool/.test(token)) return 'Rest';
+    if (/serve|plate|garnish/.test(token)) return 'Serve';
+    return index === 0 ? 'Prepare' : 'Cook';
+  }
+
+  function extractDurationFromSectionSteps(steps) {
+    var joined = (Array.isArray(steps) ? steps : []).map(function (s) { return s.text; }).join(' ');
+    var match = joined.match(/(\d+\s*(?:-|to)\s*\d+\s*(?:min|minutes|hr|hours)|\d+\s*(?:min|minutes|hr|hours))/i);
+    return match ? match[1] : '';
+  }
+
+  function buildSectionedRecipeView(recipe, servingsScaleFactor) {
+    var steps = Array.isArray(recipe.steps) ? recipe.steps : [];
+    var sections = [];
+    var manualOverrides = Array.isArray(recipe.sectionOverrides) ? recipe.sectionOverrides.filter(function (row) {
+      return String(row && row.title || '').trim();
+    }) : [];
+
+    if (manualOverrides.length) {
+      sections = manualOverrides.map(function (row, index) {
+        var indexes = parseStepRefTokens(row.stepRefs || '');
+        var stepItems = steps.map(function (stepText, stepIndex) {
+          return { text: String(stepText || '').trim(), number: stepIndex + 1 };
+        }).filter(function (step) {
+          return indexes.size ? indexes.has(step.number) : true;
+        });
+        return {
+          id: 'recipes-section-manual-' + index,
+          title: String(row.title || '').trim(),
+          steps: stepItems,
+          ingredients: [],
+          keywordTokens: String(row.ingredientKeywords || '').split(',').map(normalizeToken).filter(Boolean)
+        };
+      }).filter(function (row) { return row.steps.length || row.keywordTokens.length; });
+    }
+
+    if (!sections.length) {
+      steps.forEach(function (stepText, index) {
+        var title = inferSectionTitleFromStep(stepText, index);
+        var section = sections.length ? sections[sections.length - 1] : null;
+        if (!section || section.title !== title) {
+          section = { id: 'recipes-section-' + index, title: title, steps: [], ingredients: [], keywordTokens: [] };
+          sections.push(section);
+        }
+        section.steps.push({ text: String(stepText || '').trim(), number: index + 1 });
+      });
+    }
+    if (!sections.length) {
+      sections.push({ id: 'recipes-section-0', title: 'Steps', steps: [], ingredients: [], keywordTokens: [] });
+    }
+
+    var sectionCorpora = sections.map(function (section) {
+      return normalizeToken(section.title + ' ' + section.steps.map(function (step) { return step.text; }).join(' ') + ' ' + (section.keywordTokens || []).join(' '));
+    });
+
+    (recipe.ingredients || []).forEach(function (row) {
+      var ingredientName = String(row && row.item || '').trim();
+      var token = normalizeToken(ingredientName);
+      var bestIndex = 0;
+      var bestScore = -1;
+      sectionCorpora.forEach(function (corpus, sectionIndex) {
+        var score = 0;
+        if (token && corpus.indexOf(token) >= 0) score += 3;
+        var primaryWord = token.split(' ')[0] || '';
+        if (primaryWord && corpus.indexOf(primaryWord) >= 0) score += 1;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = sectionIndex;
+        }
+      });
+      var scaledQuantity = scaleQuantityText(String(row && row.quantity || '').trim(), servingsScaleFactor);
+      var displayQuantity = convertQuantityForDisplay(scaledQuantity, state.measurementSystem);
+      sections[bestIndex].ingredients.push({
+        item: ingredientName,
+        quantity: displayQuantity || String(row && row.quantity || '').trim(),
+        category: String(row && row.category || '').trim()
+      });
+    });
+
+    return sections;
+  }
+
+  function openIngredientSubstitutionModal(ingredientName) {
+    var root = getRoot();
+    if (!root) return;
+    var modal = root.querySelector('#recipesIngredientSubModal');
+    var title = root.querySelector('#recipesIngredientSubModalTitle');
+    var body = root.querySelector('#recipesIngredientSubModalBody');
+    if (!modal || !title || !body) return;
+    var suggestions = resolveIngredientSubstitutions(ingredientName);
+    title.textContent = ingredientName || 'Ingredient substitutions';
+    body.innerHTML = suggestions.length
+      ? ('<ul>' + suggestions.map(function (row) { return '<li>' + safeText(row) + '</li>'; }).join('') + '</ul>')
+      : '<div class="recipes-help-text">No substitutions saved yet for this ingredient.</div>';
+    modal.hidden = false;
+  }
+
+  function closeIngredientSubstitutionModal() {
+    var root = getRoot();
+    if (!root) return;
+    var modal = root.querySelector('#recipesIngredientSubModal');
+    if (modal) modal.hidden = true;
+  }
+
   function renderDetails(recipeId) {
     var root = getRoot();
     if (!root) return;
@@ -1035,13 +2050,51 @@
       return;
     }
 
+    if (state.activeRecipeId !== recipe.id) {
+      state.showRecipeImprovements = false;
+      state.recipeImprovementStatus = '';
+      state.servingTarget = Number(recipe.servings || 0) > 0 ? Number(recipe.servings) : 4;
+    }
     state.activeRecipeId = recipe.id;
     title.textContent = recipe.title;
 
-    var ingredientItems = recipe.ingredients.map(function (row) {
-      return '<li><strong>' + safeText(row.quantity || '-') + '</strong> ' + safeText(row.item || '') + (row.category ? (' <em>(' + safeText(row.category) + ')</em>') : '') + '</li>';
+    var baseServings = normalizeServingsValue(recipe.servings) || 4;
+    var targetServings = normalizeServingsValue(state.servingTarget) || baseServings;
+    var servingsScaleFactor = targetServings / baseServings;
+
+    var sectionedRecipe = buildSectionedRecipeView(recipe, servingsScaleFactor);
+    var sectionCardsHtml = sectionedRecipe.map(function (section, sectionIndex) {
+      var leftIngredientsHtml = section.ingredients.length
+        ? section.ingredients.map(function (row) {
+          return '<button type="button" class="recipes-section-ingredient-item" data-section-ingredient="' + safeText(row.item) + '">'
+            + '<span class="recipes-section-ingredient-dot"></span>'
+            + '<span class="recipes-section-ingredient-text"><strong>' + safeText(row.quantity || '-') + '</strong> ' + safeText(row.item || '') + '</span>'
+            + '</button>';
+        }).join('')
+        : '<div class="recipes-help-text">No ingredients mapped to this section.</div>';
+      var rightStepsHtml = section.steps.length
+        ? section.steps.map(function (step, stepIndex) {
+          return '<div class="recipes-section-step-row"><span class="recipes-section-step-index">' + safeText(stepIndex + 1) + '</span><div>' + safeText(step.text || '') + '</div></div>';
+        }).join('')
+        : '<div class="recipes-help-text">No steps in this section yet.</div>';
+      return '<section class="recipes-section-card" id="' + safeText(section.id) + '">'
+        + '<div class="recipes-editor-subheader"><h3>' + safeText(section.title) + '</h3></div>'
+        + '<div class="recipes-section-grid">'
+          + '<div class="recipes-section-left">' + leftIngredientsHtml + '</div>'
+          + '<div class="recipes-section-right">' + rightStepsHtml + '</div>'
+        + '</div>'
+        + '</section>';
     }).join('');
-    var stepItems = recipe.steps.map(function (step) { return '<li>' + safeText(step) + '</li>'; }).join('');
+    var flowHtml = '<div class="recipes-flow-diagram">'
+      + sectionedRecipe.map(function (section, index) {
+        var duration = extractDurationFromSectionSteps(section.steps);
+        return '<button type="button" class="recipes-flow-node" data-flow-target="' + safeText(section.id) + '">'
+          + '<span>' + safeText(section.title) + '</span>'
+          + (duration ? ('<small>' + safeText(duration) + '</small>') : '')
+          + '</button>'
+          + (index < sectionedRecipe.length - 1 ? '<span class="recipes-flow-link"></span>' : '');
+      }).join('')
+      + '</div>';
     var noteRows = recipe.notes.map(function (note) {
       return '<div class="recipes-note-row" data-note-id="' + safeText(note.id) + '">' +
         '<input type="text" value="' + safeText(note.text) + '">' +
@@ -1056,12 +2109,86 @@
     var ingredientNames = ingredientNamesFromRecipe(recipe);
     var safeCookItems = safeCookOptions();
     var cookTimeItems = commonCookItemOptions();
+    var cookMethodConverterOptions = cookMethodConversionOptions();
+    var proteinPresetOptions = proteinConversionPresetOptions();
+    var thicknessPresetOptions = proteinThicknessPresetOptions();
+    var donenessPresetOptions = proteinDonenessPresetOptions();
+    var preferredCookMethodProfile = inferPreferredCookMethodProfile(recipe);
     var isEntree = normalizeCourseCategory(recipe.courseCategory) === 'entree';
     var sidePairings = isEntree ? getPairingRecommendations(recipe, 'side_dish') : [];
     var dessertPairings = isEntree ? getPairingRecommendations(recipe, 'dessert') : [];
     var similarRecipes = getSimilarRecipes(recipe);
     var variationSuggestions = getRecipeVariationSuggestions(recipe);
     var existingVariations = Array.isArray(recipe.variations) ? recipe.variations : [];
+    var measurementIsMetric = state.measurementSystem === 'metric';
+    var isAdvanced = isAdvancedMode();
+    var improvementSuggestions = isAdvanced && state.showRecipeImprovements ? getIngredientImprovementSuggestions(recipe) : [];
+    var improvementListHtml = improvementSuggestions.length
+      ? improvementSuggestions.map(function (entry) {
+        return '<div class="recipes-variation-card">'
+          + '<div><strong>' + safeText((entry.quantity ? (entry.quantity + ' ') : '') + entry.item) + '</strong></div>'
+          + '<div class="recipes-help-text">' + safeText(entry.reason || 'Suggested to improve flavor balance.') + '</div>'
+          + '<button type="button" class="pill-button" data-improvement-action="approve" data-improvement-item="' + safeText(entry.item) + '" data-improvement-qty="' + safeText(entry.quantity || '') + '">Approve and add</button>'
+          + '</div>';
+      }).join('')
+      : '<div class="recipes-help-text">No obvious missing spices/ingredients detected right now.</div>';
+    var improvementStatusText = state.recipeImprovementStatus
+      ? state.recipeImprovementStatus
+      : (state.showRecipeImprovements
+        ? 'Review each suggestion and approve one-by-one.'
+        : 'Click "Recommend additions" to compare this recipe to common versions.');
+    var recipeIngredientKeys = new Set((recipe.ingredients || []).map(function (row) { return normalizeIngredientName(row.item); }).filter(Boolean));
+    var substitutionsForRecipe = sortSubstitutionPairs((state.substitutionsDbPairs || []).filter(function (row) {
+      return recipeIngredientKeys.has(normalizeIngredientName(row.original));
+    }));
+    var substitutionQuery = normalizeToken(state.referenceDbFilters.substitutionsQuery || '');
+    var ingredientQuery = normalizeToken(state.referenceDbFilters.ingredientQuery || '');
+    var filteredSubstitutionRows = sortSubstitutionPairs((state.referenceDbFilters.substitutionsRelevantOnly ? substitutionsForRecipe : (state.substitutionsDbPairs || [])).filter(function (row) {
+      if (!substitutionQuery) return true;
+      var corpus = normalizeToken((row.original || '') + ' ' + (row.substitute || ''));
+      return corpus.indexOf(substitutionQuery) >= 0;
+    }));
+    var filteredIngredientRows = uniqueIngredientRows((state.ingredientsDb || []).filter(function (row) {
+      var typeFilter = String(state.referenceDbFilters.ingredientType || 'all');
+      if (typeFilter !== 'all' && normalizeToken(row.type) !== normalizeToken(typeFilter)) return false;
+      if (!ingredientQuery) return true;
+      return normalizeToken((row.name || '') + ' ' + (row.type || '')).indexOf(ingredientQuery) >= 0;
+    }));
+    var substitutionRows = filteredSubstitutionRows.slice(0, 120);
+    var ingredientRows = filteredIngredientRows.slice(0, 120);
+    var substitutionsForRecipeHtml = substitutionsForRecipe.length
+      ? substitutionsForRecipe.map(function (row) {
+        var key = substitutionPairKey(row.original, row.substitute);
+        return '<div class="recipes-ref-row" data-sub-pair-key="' + safeText(key) + '">'
+          + '<input type="text" data-sub-field="original" value="' + safeText(row.original) + '">'
+          + '<input type="text" data-sub-field="substitute" value="' + safeText(row.substitute) + '">'
+          + '<button type="button" class="pill-button" data-sub-action="save" data-sub-pair-key="' + safeText(key) + '">Save</button>'
+          + '<button type="button" class="pill-button" data-sub-action="delete" data-sub-pair-key="' + safeText(key) + '">Delete</button>'
+          + '</div>';
+      }).join('')
+      : '<div class="recipes-help-text">No substitution rows currently linked to this recipe.</div>';
+    var substitutionRowsHtml = substitutionRows.length
+      ? substitutionRows.map(function (row) {
+        var key = substitutionPairKey(row.original, row.substitute);
+        return '<div class="recipes-ref-row" data-sub-pair-key="' + safeText(key) + '">'
+          + '<input type="text" data-sub-field="original" value="' + safeText(row.original) + '">'
+          + '<input type="text" data-sub-field="substitute" value="' + safeText(row.substitute) + '">'
+          + '<button type="button" class="pill-button" data-sub-action="save" data-sub-pair-key="' + safeText(key) + '">Save</button>'
+          + '<button type="button" class="pill-button" data-sub-action="delete" data-sub-pair-key="' + safeText(key) + '">Delete</button>'
+          + '</div>';
+      }).join('')
+      : '<div class="recipes-help-text">No substitutions in database yet.</div>';
+    var ingredientRowsHtml = ingredientRows.length
+      ? ingredientRows.map(function (row) {
+        var key = ingredientRowKey(row.name);
+        return '<div class="recipes-ref-row" data-ingredient-row-key="' + safeText(key) + '">'
+          + '<input type="text" data-ingredient-field="name" value="' + safeText(row.name) + '">'
+          + '<input type="text" data-ingredient-field="type" value="' + safeText(row.type) + '">'
+          + '<button type="button" class="pill-button" data-ingredient-action="save" data-ingredient-row-key="' + safeText(key) + '">Save</button>'
+          + '<button type="button" class="pill-button" data-ingredient-action="delete" data-ingredient-row-key="' + safeText(key) + '">Delete</button>'
+          + '</div>';
+      }).join('')
+      : '<div class="recipes-help-text">No ingredients in database yet.</div>';
 
     var sidePairingsHtml = sidePairings.length
       ? sidePairings.map(function (row) {
@@ -1109,7 +2236,18 @@
     body.innerHTML = '<p>' + safeText(recipe.description || 'No description yet.') + '</p>' +
       '<p><strong>Proteins:</strong> ' + safeText((recipe.proteins || []).join(', ') || 'Not set') + ' | <strong>Cuisines:</strong> ' + safeText((recipe.cuisines || []).join(', ') || 'Not set') + ' | <strong>Methods:</strong> ' + safeText((recipe.methods || []).join(', ') || 'Not set') + '</p>' +
       '<p><strong>Course:</strong> ' + safeText(displayCourseCategory(recipe.courseCategory)) + ' | <strong>Healthiness:</strong> ' + safeText(displayHealthiness(recipe.healthiness)) + '</p>' +
+      '<p><strong>Source URL:</strong> ' + (recipe.sourceUrl ? ('<a href="' + safeText(recipe.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + safeText(recipe.sourceUrl) + '</a>') : 'Not set') + '</p>' +
       '<p><strong>Prep:</strong> ' + safeText(recipe.prepMinutes || '-') + ' min | <strong>Cook:</strong> ' + safeText(recipe.cookMinutes || '-') + ' min</p>' +
+      '<section class="recipes-substitutions">' +
+        '<div class="recipes-editor-subheader"><h3>Servings</h3></div>' +
+        '<div class="recipes-inline-input-row">' +
+          '<label>Base servings<input id="recipesServingsBase" type="number" min="1" step="1" value="' + safeText(baseServings) + '" disabled></label>' +
+          '<label>Target servings<input id="recipesServingsTarget" type="number" min="1" step="1" value="' + safeText(targetServings) + '"></label>' +
+          '<button type="button" class="pill-button" id="recipesApplyServingsBtn">Adjust quantities</button>' +
+          '<button type="button" class="pill-button" id="recipesSaveScaledServingsBtn">Save scaled quantities</button>' +
+        '</div>' +
+        '<div class="recipes-help-text">Ingredient quantities shown below are scaled by ' + safeText(formatNumber(servingsScaleFactor, 2)) + 'x.</div>' +
+      '</section>' +
       (photos ? ('<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">' + photos + '</div>') : '') +
       '<section class="recipes-recommendations">' +
         '<div class="recipes-editor-subheader"><h3>Pairings for this entree</h3></div>' +
@@ -1127,8 +2265,45 @@
             : '<option value="">No ingredients available</option>')
           + '</select>' +
           '<button type="button" class="pill-button" id="recipesFindSubstitutionsBtn">Find substitutions</button>' +
+          '<button type="button" class="pill-button" id="recipesShowAllSubsBtn">Show substitutions for all ingredients</button>' +
         '</div>' +
         '<div id="recipesSubstitutionsResult" class="recipes-help-text">Select an ingredient and click "Find substitutions".</div>' +
+        '<div id="recipesSubstitutionsMatrix" class="recipes-variation-list"></div>' +
+      '</section>' +
+      '<section class="recipes-substitutions">' +
+        '<div class="recipes-editor-subheader"><h3>Reference database manager</h3></div>' +
+        '<div class="recipes-help-text">Edit substitutions and ingredient types in-app, then push both tables to Excel in one click.</div>' +
+        '<div class="recipes-inline-input-row" style="margin-bottom:6px;">' +
+          '<button type="button" class="pill-button" id="recipesPushReferenceDbBtn">Push substitutions + ingredients DB to Excel</button>' +
+          '<button type="button" class="pill-button" id="recipesScanIngredientsDbBtn">Scan all recipes and add missing ingredients</button>' +
+        '</div>' +
+        '<div class="recipes-inline-input-row" style="margin-bottom:6px;">' +
+          '<label><input type="checkbox" id="recipesSubsRelevantOnlyToggle" ' + (state.referenceDbFilters.substitutionsRelevantOnly ? 'checked' : '') + '> Only substitutions relevant to this recipe</label>' +
+          '<label>Substitutions search<input id="recipesSubsSearchInput" type="search" placeholder="Filter substitutions" value="' + safeText(state.referenceDbFilters.substitutionsQuery || '') + '"></label>' +
+        '</div>' +
+        '<div class="recipes-inline-input-row" style="margin-bottom:6px;">' +
+          '<label>Ingredient type filter<select id="recipesIngredientTypeFilter"><option value="all"' + (state.referenceDbFilters.ingredientType === 'all' ? ' selected' : '') + '>All</option><option value="spice"' + (state.referenceDbFilters.ingredientType === 'spice' ? ' selected' : '') + '>Spice</option><option value="protein"' + (state.referenceDbFilters.ingredientType === 'protein' ? ' selected' : '') + '>Protein</option><option value="sauce"' + (state.referenceDbFilters.ingredientType === 'sauce' ? ' selected' : '') + '>Sauce</option><option value="grain"' + (state.referenceDbFilters.ingredientType === 'grain' ? ' selected' : '') + '>Grain</option><option value="produce"' + (state.referenceDbFilters.ingredientType === 'produce' ? ' selected' : '') + '>Produce</option><option value="other"' + (state.referenceDbFilters.ingredientType === 'other' ? ' selected' : '') + '>Other</option></select></label>' +
+          '<label>Ingredients search<input id="recipesIngredientsSearchInput" type="search" placeholder="Filter ingredients DB" value="' + safeText(state.referenceDbFilters.ingredientQuery || '') + '"></label>' +
+        '</div>' +
+        '<div id="recipesReferenceDbStatus" class="recipes-help-text">' + safeText(state.referenceDbStatus || 'No pending reference database actions.') + '</div>' +
+        '<div class="recipes-editor-subheader"><h3>Add substitution row</h3></div>' +
+        '<div class="recipes-ref-row">'
+          + '<input type="text" id="recipesSubsAddOriginal" placeholder="Original ingredient">'
+          + '<input type="text" id="recipesSubsAddSubstitute" placeholder="Substitute ingredient">'
+          + '<button type="button" class="pill-button" id="recipesSubsAddBtn">Add substitution</button>'
+          + '</div>' +
+        '<div class="recipes-editor-subheader"><h3>Substitutions matching this recipe (' + substitutionsForRecipe.length + ')</h3></div>' +
+        '<div class="recipes-ref-list">' + substitutionsForRecipeHtml + '</div>' +
+        '<div class="recipes-editor-subheader"><h3>All substitutions (showing up to 120 of ' + filteredSubstitutionRows.length + ' filtered rows)</h3></div>' +
+        '<div class="recipes-ref-list">' + substitutionRowsHtml + '</div>' +
+        '<div class="recipes-editor-subheader"><h3>Add ingredient row</h3></div>' +
+        '<div class="recipes-ref-row">'
+          + '<input type="text" id="recipesIngredientsDbAddName" placeholder="Ingredient name">'
+          + '<input type="text" id="recipesIngredientsDbAddType" placeholder="Ingredient type (e.g., spice, protein)">'
+          + '<button type="button" class="pill-button" id="recipesIngredientsDbAddBtn">Add ingredient</button>'
+          + '</div>' +
+        '<div class="recipes-editor-subheader"><h3>Ingredients DB (showing up to 120 of ' + filteredIngredientRows.length + ' filtered rows)</h3></div>' +
+        '<div class="recipes-ref-list">' + ingredientRowsHtml + '</div>' +
       '</section>' +
       '<section class="recipes-substitutions">' +
         '<div class="recipes-editor-subheader"><h3>Safe cook temperatures</h3></div>' +
@@ -1157,8 +2332,61 @@
         '</div>' +
         '<div id="recipesCookTimeResult" class="recipes-help-text">Select an item and method to view common cook-time guidance.</div>' +
       '</section>' +
-      '<div class="recipes-editor-subheader"><h3>Ingredients</h3></div>' +
-      '<ul>' + (ingredientItems || '<li>No ingredients yet.</li>') + '</ul>' +
+      '<section class="recipes-substitutions">' +
+        '<div class="recipes-editor-subheader"><h3>Cook method time converter</h3></div>' +
+        '<div class="recipes-inline-input-row">' +
+          '<label>Preferred method profile<select id="recipesPreferredCookMethodSelect">'
+            + cookMethodConverterOptions.map(function (item) { return '<option value="' + safeText(item.key) + '"' + (item.key === preferredCookMethodProfile ? ' selected' : '') + '>' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<button type="button" class="pill-button" id="recipesSavePreferredCookMethodBtn">Save preferred profile</button>' +
+        '</div>' +
+        '<div class="recipes-inline-input-row">' +
+          '<label>Base time<input id="recipesCookMethodBaseTime" type="text" placeholder="12 or 12-15"></label>' +
+          '<button type="button" class="pill-button" id="recipesUseRecipeCookTimeBtn">Use recipe cook time</button>' +
+          '<label>From method<select id="recipesCookMethodFromSelect">'
+            + cookMethodConverterOptions.map(function (item) { return '<option value="' + safeText(item.key) + '"' + (item.key === preferredCookMethodProfile ? ' selected' : '') + '>' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<label>To method<select id="recipesCookMethodToSelect">'
+            + cookMethodConverterOptions.map(function (item, index) { return '<option value="' + safeText(item.key) + '"' + (item.key === 'air_fry_oven' ? ' selected' : '') + '>' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<label>Protein<select id="recipesCookMethodProteinPreset">'
+            + proteinPresetOptions.map(function (item) { return '<option value="' + safeText(item.key) + '">' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<label>Thickness<select id="recipesCookMethodThicknessPreset">'
+            + thicknessPresetOptions.map(function (item) { return '<option value="' + safeText(item.key) + '"' + (item.key === 'standard' ? ' selected' : '') + '>' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<label>Doneness<select id="recipesCookMethodDonenessPreset">'
+            + donenessPresetOptions.map(function (item) { return '<option value="' + safeText(item.key) + '">' + safeText(item.label) + '</option>'; }).join('')
+          + '</select></label>' +
+          '<button type="button" class="pill-button" id="recipesConvertCookMethodBtn">Convert time</button>' +
+          '<button type="button" class="pill-button" id="recipesSaveCookConversionNoteBtn">Save conversion as recipe note</button>' +
+        '</div>' +
+        '<div id="recipesCookMethodConvertResult" class="recipes-help-text">Enter a base time and click "Convert time".</div>' +
+      '</section>' +
+      '<section class="recipes-substitutions">' +
+        '<div class="recipes-editor-subheader"><h3>Ingredient measurement view</h3></div>' +
+        '<label class="recipes-safe-temp-mode-toggle"><input type="checkbox" id="recipesMeasurementToggle" ' + (measurementIsMetric ? 'checked' : '') + '> Show metric values (toggle off for US standard values)</label>' +
+      '</section>' +
+      (isAdvanced
+        ? ('<section class="recipes-recommendations">' +
+            '<div class="recipes-editor-subheader"><h3>Recipe improvement suggestions</h3></div>' +
+            '<div class="recipes-inline-input-row"><button type="button" class="pill-button" id="recipesRecommendImprovementsBtn">Recommend additions</button></div>' +
+            '<div id="recipesImprovementStatus" class="recipes-help-text">' + safeText(improvementStatusText) + '</div>' +
+            (state.showRecipeImprovements ? ('<div id="recipesImprovementList" class="recipes-variation-list">' + improvementListHtml + '</div>') : '') +
+          '</section>')
+        : '') +
+      '<div class="recipes-editor-subheader"><h3>Recipe sections</h3></div>' +
+      '<div class="recipes-help-text">Ingredients are shown on the left and related steps on the right. Click an ingredient to view substitutions.</div>' +
+      '<div class="recipes-inline-input-row" style="margin-bottom:6px;"><button type="button" class="pill-button" id="recipesExportSectionedGroceryBtn">Export grocery list by section (Prepare/Cook/Sauce)</button></div>' +
+      '<div class="recipes-section-list">' + sectionCardsHtml + '</div>' +
+      '<div class="recipes-editor-subheader"><h3>Section flow</h3></div>' +
+      flowHtml +
+      '<div id="recipesIngredientSubModal" class="recipes-sub-modal" hidden>' +
+        '<div class="recipes-sub-modal-card">' +
+          '<div class="recipes-editor-subheader"><h3 id="recipesIngredientSubModalTitle">Ingredient substitutions</h3><button type="button" class="pill-button" id="recipesIngredientSubModalClose">Close</button></div>' +
+          '<div id="recipesIngredientSubModalBody" class="recipes-help-text"></div>' +
+        '</div>' +
+      '</div>' +
       '<section class="recipes-recommendations">' +
         '<div class="recipes-editor-subheader"><h3>Similar recipes</h3></div>' +
         '<div class="recipes-similar-list">' + similarRecipesHtml + '</div>' +
@@ -1172,14 +2400,14 @@
         '<div class="recipes-editor-subheader"><h3>Saved variations</h3></div>' +
         '<div class="recipes-variation-list">' + existingVariationsHtml + '</div>' +
       '</section>' +
-      '<div class="recipes-editor-subheader"><h3>Steps</h3></div>' +
-      '<ol>' + (stepItems || '<li>No steps yet.</li>') + '</ol>' +
       '<div class="recipes-editor-subheader"><h3>Notes</h3><button type="button" class="pill-button" id="recipesAddNoteBtn">+ Note</button></div>' +
+      '<div id="recipesDetailsToast" class="recipes-detail-toast" hidden></div>' +
       '<div id="recipesNotesList">' + noteRows + '</div>' +
       '<div class="recipes-inline-input-row" style="margin-top:8px;"><button type="button" class="pill-button" id="recipesEditActiveBtn">Edit recipe</button></div>';
 
     details.hidden = false;
     syncCommonCookTimeControls();
+    syncCookMethodDonenessPresetOptions();
   }
 
   function showIngredientSubstitutionsForActiveRecipe() {
@@ -1199,6 +2427,96 @@
     output.textContent = suggestions.length
       ? ('Potential substitutions for ' + ingredientName + ': ' + suggestions.join(', '))
       : ('No substitution suggestions saved yet for ' + ingredientName + '.');
+  }
+
+  function showAllIngredientSubstitutionsForActiveRecipe() {
+    var root = getRoot();
+    if (!root) return;
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return;
+    var output = root.querySelector('#recipesSubstitutionsMatrix');
+    if (!output) return;
+    var ingredients = ingredientNamesFromRecipe(recipe);
+    if (!ingredients.length) {
+      output.innerHTML = '<div class="recipes-help-text">No ingredients to scan for substitutions yet.</div>';
+      return;
+    }
+    output.innerHTML = ingredients.map(function (name) {
+      var suggestions = resolveIngredientSubstitutions(name);
+      return '<div class="recipes-variation-card">'
+        + '<strong>' + safeText(name) + '</strong>'
+        + '<div class="recipes-help-text">'
+        + safeText(suggestions.length ? suggestions.join(', ') : 'No substitutions in database yet.')
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function collectAllRecipeIngredientRows() {
+    var rows = [];
+    state.recipes.forEach(function (recipe) {
+      (recipe.ingredients || []).forEach(function (row) {
+        var name = String(row && row.item || '').trim();
+        if (!name) return;
+        rows.push({ name: name, type: createIngredientType(name) });
+      });
+    });
+    return uniqueIngredientRows(rows);
+  }
+
+  function mergeIngredientsDatabase(newRows) {
+    state.ingredientsDb = uniqueIngredientRows((state.ingredientsDb || []).concat(newRows || []));
+    saveReferenceDatabasesToCache();
+  }
+
+  async function scanRecipesIntoIngredientsDatabase() {
+    var allRows = collectAllRecipeIngredientRows();
+    var existingKeys = new Set((state.ingredientsDb || []).map(function (row) { return normalizeIngredientName(row.name); }));
+    var missingRows = allRows.filter(function (row) { return !existingKeys.has(normalizeIngredientName(row.name)); });
+    if (!missingRows.length) return { addedCount: 0, wroteExcel: false };
+
+    mergeIngredientsDatabase(missingRows);
+
+    var wroteExcel;
+    try {
+      await writeIngredientsToExcel();
+      wroteExcel = true;
+    } catch (_error) {
+      wroteExcel = false;
+    }
+    return { addedCount: missingRows.length, wroteExcel: wroteExcel };
+  }
+
+  function setServingTargetForActiveRecipe(nextServings) {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return false;
+    var base = normalizeServingsValue(recipe.servings) || 4;
+    var target = normalizeServingsValue(nextServings) || base;
+    state.servingTarget = target;
+    renderDetails(recipe.id);
+    return true;
+  }
+
+  function saveScaledIngredientsForActiveRecipe(nextServings) {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return false;
+    var base = normalizeServingsValue(recipe.servings) || 4;
+    var target = normalizeServingsValue(nextServings) || base;
+    var factor = target / base;
+    recipe.ingredients = (recipe.ingredients || []).map(function (row) {
+      return {
+        quantity: scaleQuantityText(row && row.quantity, factor),
+        item: String(row && row.item || '').trim(),
+        category: String(row && row.category || '').trim()
+      };
+    });
+    recipe.servings = target;
+    recipe.updatedAt = Date.now();
+    state.servingTarget = target;
+    saveRecipes();
+    renderCards();
+    renderDetails(recipe.id);
+    return true;
   }
 
   function showSafeCookTemperatureForSelection() {
@@ -1253,6 +2571,104 @@
     );
   }
 
+  function showCookMethodConversionForSelection() {
+    var root = getRoot();
+    if (!root) return;
+    var baseInput = root.querySelector('#recipesCookMethodBaseTime');
+    var fromSelect = root.querySelector('#recipesCookMethodFromSelect');
+    var toSelect = root.querySelector('#recipesCookMethodToSelect');
+    var proteinPresetSelect = root.querySelector('#recipesCookMethodProteinPreset');
+    var thicknessPresetSelect = root.querySelector('#recipesCookMethodThicknessPreset');
+    var donenessPresetSelect = root.querySelector('#recipesCookMethodDonenessPreset');
+    var output = root.querySelector('#recipesCookMethodConvertResult');
+    if (!baseInput || !fromSelect || !toSelect || !proteinPresetSelect || !thicknessPresetSelect || !donenessPresetSelect || !output) return;
+    syncCookMethodDonenessPresetOptions();
+    var conversion = renderCookMethodConversion(
+      baseInput.value,
+      fromSelect.value,
+      toSelect.value,
+      proteinPresetSelect.value,
+      thicknessPresetSelect.value,
+      donenessPresetSelect.value
+    );
+    state.lastCookMethodConversion = conversion && conversion.ok ? conversion : null;
+    output.innerHTML = conversion && conversion.ok ? conversion.html : safeText(conversion ? conversion.message : 'Unable to convert time.');
+  }
+
+  function saveCookMethodConversionAsRecipeNote() {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return;
+    var root = getRoot();
+    if (!root) return;
+    var output = root.querySelector('#recipesCookMethodConvertResult');
+    if (!state.lastCookMethodConversion || !state.lastCookMethodConversion.ok) {
+      if (output) output.textContent = 'Run a conversion first, then save it as a note.';
+      return;
+    }
+    recipe.notes = Array.isArray(recipe.notes) ? recipe.notes : [];
+    recipe.notes.push({ id: uid('note'), text: state.lastCookMethodConversion.noteText });
+    recipe.updatedAt = Date.now();
+    saveRecipes();
+    renderDetails(recipe.id);
+    showDetailsToast('Last saved conversion note added.');
+  }
+
+  function savePreferredCookMethodForActiveRecipe(preferredMethodKey) {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return;
+    var normalizedKey = COOK_METHOD_CONVERSION_PROFILES[preferredMethodKey] ? preferredMethodKey : inferPreferredCookMethodProfile(recipe);
+    recipe.preferredCookMethodProfile = normalizedKey;
+    recipe.updatedAt = Date.now();
+    saveRecipes();
+    renderCards();
+    renderDetails(recipe.id);
+  }
+
+  function exportSectionedGroceryListForActiveRecipe() {
+    var recipe = getRecipeById(state.activeRecipeId);
+    if (!recipe) return;
+    var baseServings = normalizeServingsValue(recipe.servings) || 4;
+    var targetServings = normalizeServingsValue(state.servingTarget) || baseServings;
+    var sections = buildSectionedRecipeView(recipe, targetServings / baseServings);
+    var lines = ['Recipe: ' + recipe.title, 'Servings: ' + targetServings, ''];
+    sections.forEach(function (section) {
+      if (!section.ingredients.length) return;
+      lines.push(section.title + ':');
+      section.ingredients.forEach(function (row) {
+        var line = '- ' + (row.quantity ? (String(row.quantity).trim() + ' ') : '') + String(row.item || '').trim();
+        lines.push(line.trim());
+      });
+      lines.push('');
+    });
+    var content = lines.join('\n').trim() + '\n';
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    var slug = String(recipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    link.href = url;
+    link.download = (slug || 'recipe') + '-grocery-by-section.txt';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function preloadCookMethodBaseTimeFromActiveRecipe() {
+    var root = getRoot();
+    if (!root) return;
+    var recipe = getRecipeById(state.activeRecipeId);
+    var baseInput = root.querySelector('#recipesCookMethodBaseTime');
+    var output = root.querySelector('#recipesCookMethodConvertResult');
+    if (!baseInput || !output) return;
+    var cookMinutes = recipe ? Number(recipe.cookMinutes || 0) : 0;
+    if (!Number.isFinite(cookMinutes) || cookMinutes <= 0) {
+      output.textContent = 'This recipe does not have a saved cook time yet. Set cook minutes first, then try again.';
+      return;
+    }
+    baseInput.value = String(Math.round(cookMinutes));
+    showCookMethodConversionForSelection();
+  }
+
   function parseTimeFromText(text, label) {
     var regex = new RegExp(label + '\\s*:?\\s*(\\d{1,3})\\s*(?:min|minutes|m)?', 'i');
     var match = String(text || '').match(regex);
@@ -1277,6 +2693,7 @@
       title: title,
       description: 'Imported from URL. Please verify ingredients and steps.',
       sourceUrl: url.toString(),
+      servings: 4,
       proteins: inferFromOptions(title, PROTEIN_OPTIONS),
       cuisines: inferFromOptions(title, CUISINE_OPTIONS),
       methods: inferFromOptions(title, METHOD_OPTIONS),
@@ -1318,6 +2735,7 @@
     return normalizeRecipe({
       title: lines[0] || 'Imported Recipe',
       description: 'Imported from pasted text. Confirm details before saving.',
+      servings: 4,
       proteins: inferFromOptions(text, PROTEIN_OPTIONS),
       cuisines: inferFromOptions(text, CUISINE_OPTIONS),
       methods: inferFromOptions(text, METHOD_OPTIONS),
@@ -1326,6 +2744,237 @@
       ingredients: ingredients.length ? ingredients : [{ quantity: '', item: '' }],
       steps: steps.length ? steps : ['']
     });
+  }
+
+  async function ensurePdfJsLoaded() {
+    if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') return window.pdfjsLib;
+    var module = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.mjs');
+    var pdfjsLib = module && module.default ? module.default : module;
+    if (!pdfjsLib || typeof pdfjsLib.getDocument !== 'function') {
+      throw new Error('PDF parser library failed to load.');
+    }
+    if (pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.mjs';
+    }
+    window.pdfjsLib = pdfjsLib;
+    return pdfjsLib;
+  }
+
+  function normalizePdfLine(line) {
+    return String(line || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function parseIngredientLine(line) {
+    var cleaned = normalizePdfLine(line);
+    if (!cleaned) return null;
+    var quantityMatch = cleaned.match(/^([\d./]+(?:\s+[\d./]+)?\s*(?:cups?|cup|tbsp|tablespoons?|tsp|teaspoons?|oz|ounces?|lb|lbs|pounds?|g|kg|ml|l|cloves?|cans?|can|head|sprigs?|bunch|pinch|dash|drizzle)?)\s+(.+)$/i);
+    if (quantityMatch) {
+      return { quantity: quantityMatch[1].trim(), item: quantityMatch[2].trim() };
+    }
+    return { quantity: '', item: cleaned };
+  }
+
+  function detectPdfSectionHeading(line) {
+    var cleaned = normalizePdfLine(line);
+    if (!cleaned) return '';
+    var numbered = cleaned.match(/^(\d+)\s+([A-Za-z].+)$/);
+    if (numbered && !/^(\d+)\s+(cups?|tbsp|tsp|oz|lb|lbs|g|kg|ml|l)\b/i.test(cleaned)) {
+      return numbered[2].trim();
+    }
+    var plain = cleaned.match(/^(prepare|cook|make|assemble|serve|rest|marinate|sauce|toppings?)\b[:\-]?\s*(.*)$/i);
+    if (plain) {
+      var tail = String(plain[2] || '').trim();
+      return (plain[1] + (tail ? (' ' + tail) : '')).replace(/\s+/g, ' ').trim();
+    }
+    var token = normalizeToken(cleaned);
+    if (/\bprepare\b|\bcook\b|\bserve\b|\bmarinate\b|\bsauce\b|\btoppings?\b/.test(token) && cleaned.length <= 60) {
+      return cleaned;
+    }
+    return '';
+  }
+
+  function parseRecipeFromPdfText(rawText, fallbackTitle) {
+    var lines = String(rawText || '').split(/\r?\n/).map(normalizePdfLine).filter(Boolean);
+    if (!lines.length) throw new Error('Unable to extract text from PDF.');
+
+    var title = lines.find(function (line) {
+      var token = normalizeToken(line);
+      if (!token) return false;
+      if (/kchavez s cookbook|cookbook/.test(token)) return false;
+      if (/^\d+$/.test(line)) return false;
+      return true;
+    }) || String(fallbackTitle || 'Imported Recipe PDF').trim();
+
+    var sections = [];
+    var current = null;
+    lines.forEach(function (line) {
+      var detectedHeading = detectPdfSectionHeading(line);
+      if (detectedHeading) {
+        current = { title: detectedHeading, ingredients: [], steps: [] };
+        sections.push(current);
+        return;
+      }
+      if (!current) return;
+      var stepMatch = line.match(/^(\d+)\s+(.+)$/);
+      if (stepMatch) {
+        current.steps.push(stepMatch[2].trim());
+        return;
+      }
+      if (!current.steps.length) {
+        var ingredient = parseIngredientLine(line);
+        if (!ingredient) return;
+        var previousIngredient = current.ingredients.length ? current.ingredients[current.ingredients.length - 1] : null;
+        var looksLikeContinuation = previousIngredient && !parseIngredientLine(previousIngredient.item).quantity && !/^\d/.test(line);
+        if (looksLikeContinuation && ingredient.quantity === '') {
+          previousIngredient.item = (previousIngredient.item + ' ' + ingredient.item).trim();
+        } else {
+          current.ingredients.push(ingredient);
+        }
+      } else {
+        var lastStepIndex = current.steps.length - 1;
+        current.steps[lastStepIndex] = (current.steps[lastStepIndex] + ' ' + line).trim();
+      }
+    });
+
+    var flatIngredients = [];
+    var flatSteps = [];
+    var sectionOverrides = [];
+    sections.forEach(function (section) {
+      var start = flatSteps.length + 1;
+      (section.steps || []).forEach(function (step) { flatSteps.push(step); });
+      var end = flatSteps.length;
+      (section.ingredients || []).forEach(function (row) { flatIngredients.push(row); });
+      if (section.steps.length || section.ingredients.length) {
+        sectionOverrides.push({
+          id: uid('section'),
+          title: section.title,
+          stepRefs: section.steps.length ? (start + '-' + end) : '',
+          ingredientKeywords: section.ingredients.map(function (row) { return row.item; }).slice(0, 5).join(', ')
+        });
+      }
+    });
+
+    var aggregateText = lines.join(' ');
+    var model = normalizeRecipe({
+      title: title,
+      description: 'Imported from PDF. Review and save.',
+      servings: 4,
+      proteins: inferFromOptions(aggregateText, PROTEIN_OPTIONS),
+      cuisines: inferFromOptions(aggregateText, CUISINE_OPTIONS),
+      methods: inferFromOptions(aggregateText, METHOD_OPTIONS),
+      prepMinutes: parseTimeFromText(aggregateText, 'prep'),
+      cookMinutes: parseTimeFromText(aggregateText, 'cook'),
+      ingredients: flatIngredients.length ? flatIngredients : [{ quantity: '', item: '' }],
+      steps: flatSteps.length ? flatSteps : [''],
+      sectionOverrides: sectionOverrides
+    });
+    var sectionPreviewLines = sectionOverrides.length
+      ? sectionOverrides.map(function (section, index) {
+        return (index + 1) + '. ' + section.title + ' | steps: ' + (section.stepRefs || 'all') + ' | ingredient keywords: ' + (section.ingredientKeywords || 'none');
+      }).join('\n')
+      : 'No section headers were detected. Auto-inference will be used.';
+    var previewText = [
+      'Detected title: ' + title,
+      '---',
+      'Detected section boundaries:',
+      sectionPreviewLines,
+      '---',
+      'Raw extracted PDF text (first 220 lines):',
+      lines.slice(0, 220).join('\n')
+    ].join('\n');
+    return {
+      model: model,
+      previewText: previewText,
+      suggestedSections: sectionOverrides.map(function (section) {
+        return {
+          id: section.id,
+          title: section.title,
+          stepRefs: section.stepRefs,
+          ingredientKeywords: section.ingredientKeywords,
+          accepted: true
+        };
+      })
+    };
+  }
+
+  async function parseRecipeFromPdfFile(file) {
+    if (!file) throw new Error('Select a PDF file first.');
+    var pdfjsLib = await ensurePdfJsLoaded();
+    var bytes = await file.arrayBuffer();
+    var doc = await pdfjsLib.getDocument({ data: bytes }).promise;
+    var texts = [];
+    for (var pageNum = 1; pageNum <= doc.numPages; pageNum += 1) {
+      var page = await doc.getPage(pageNum);
+      var content = await page.getTextContent();
+      var lineMap = {};
+      (content.items || []).forEach(function (item) {
+        var transform = item && item.transform ? item.transform : null;
+        var y = transform ? Math.round(transform[5]) : 0;
+        lineMap[y] = lineMap[y] || [];
+        lineMap[y].push(String(item.str || '').trim());
+      });
+      var pageLines = Object.keys(lineMap).map(function (key) { return Number(key); }).sort(function (a, b) { return b - a; }).map(function (key) {
+        return lineMap[key].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      }).filter(Boolean);
+      texts.push(pageLines.join('\n'));
+    }
+    return parseRecipeFromPdfText(texts.join('\n'), String(file.name || '').replace(/\.pdf$/i, ''));
+  }
+
+  function renderEditorPdfPreview() {
+    var root = getRoot();
+    if (!root) return;
+    var section = root.querySelector('#recipesPdfPreviewSection');
+    var host = root.querySelector('#recipesPdfPreviewText');
+    var suggestionsHost = root.querySelector('#recipesPdfSuggestionsList');
+    var applyBtn = root.querySelector('#recipesApplySuggestedSectionsBtn');
+    var autoAcceptToggle = root.querySelector('#recipesPdfAutoAcceptStepRangesToggle');
+    if (!section || !host || !suggestionsHost || !applyBtn || !autoAcceptToggle) return;
+    var text = String(state.editorPdfPreviewText || '').trim();
+    var suggestions = Array.isArray(state.editorPdfSuggestedSections) ? state.editorPdfSuggestedSections : [];
+    section.hidden = !text && !suggestions.length;
+    autoAcceptToggle.checked = state.editorPdfAutoAcceptWithStepRefs !== false;
+    host.textContent = text;
+    suggestionsHost.innerHTML = suggestions.length
+      ? suggestions.map(function (row, index) {
+        return '<div class="recipes-ref-row recipes-pdf-suggestion-row" data-pdf-suggestion-index="' + index + '">'
+          + '<label><input type="checkbox" data-pdf-suggestion-toggle="' + index + '" ' + (row.accepted !== false ? 'checked' : '') + '> Use</label>'
+          + '<input type="text" data-pdf-suggestion-title="' + index + '" value="' + safeText(row.title || '') + '">'
+          + '<input type="text" data-pdf-suggestion-steps="' + index + '" value="' + safeText(row.stepRefs || '') + '">'
+          + '<input type="text" data-pdf-suggestion-keywords="' + index + '" value="' + safeText(row.ingredientKeywords || '') + '">'
+          + '<button type="button" class="pill-button" data-pdf-suggestion-action="accept" data-pdf-suggestion-index="' + index + '">Accept</button>'
+          + '<button type="button" class="pill-button" data-pdf-suggestion-action="reject" data-pdf-suggestion-index="' + index + '">Reject</button>'
+          + '</div>';
+      }).join('')
+      : '<div class="recipes-help-text">No section title suggestions were extracted from this PDF.</div>';
+    applyBtn.disabled = !suggestions.some(function (row) {
+      if (row.accepted === false || !String(row.title || '').trim()) return false;
+      if (state.editorPdfAutoAcceptWithStepRefs !== false && !hasValidStepRefs(row.stepRefs)) return false;
+      return true;
+    });
+  }
+
+  function applyAcceptedPdfSectionSuggestions() {
+    var selected = (state.editorPdfSuggestedSections || []).filter(function (row) {
+      if (row.accepted === false || !String(row.title || '').trim()) return false;
+      if (state.editorPdfAutoAcceptWithStepRefs !== false && !hasValidStepRefs(row.stepRefs)) return false;
+      return true;
+    }).map(function (row) {
+      return {
+        id: uid('section'),
+        title: String(row.title || '').trim(),
+        stepRefs: String(row.stepRefs || '').trim(),
+        ingredientKeywords: String(row.ingredientKeywords || '').trim()
+      };
+    });
+    state.editorSectionOverrides = selected;
+    var root = getRoot();
+    if (!root) return selected.length;
+    var sectionList = root.querySelector('#recipesSectionOverridesList');
+    if (sectionList) {
+      sectionList.innerHTML = selected.map(sectionOverrideRowHtml).join('');
+    }
+    return selected.length;
   }
 
   function fillDatalist(id, values) {
@@ -1342,7 +2991,11 @@
     var proteins = uniqueSorted(PROTEIN_OPTIONS.concat(state.recipes.flatMap(function (row) { return row.proteins || []; })));
     var cuisines = uniqueSorted(CUISINE_OPTIONS.concat(state.recipes.flatMap(function (row) { return row.cuisines || []; })));
     var methods = uniqueSorted(METHOD_OPTIONS.concat(state.recipes.flatMap(function (row) { return row.methods || []; })));
-    var ingredientNames = uniqueSorted(state.recipes.flatMap(function (row) { return (row.ingredients || []).map(function (i) { return i.item; }); }).concat(['Olive oil', 'Garlic', 'Onion', 'Salt', 'Black pepper', 'Butter', 'Lemon juice']));
+    var ingredientNames = uniqueSorted(
+      state.recipes.flatMap(function (row) { return (row.ingredients || []).map(function (i) { return i.item; }); })
+        .concat((state.ingredientsDb || []).map(function (entry) { return entry.name; }))
+        .concat(['Olive oil', 'Garlic', 'Onion', 'Salt', 'Black pepper', 'Butter', 'Lemon juice'])
+    );
     var stepSuggestions = uniqueSorted(state.recipes.flatMap(function (row) { return row.steps || []; }).concat(['Preheat oven to 400F.', 'Heat skillet over medium heat.', 'Season to taste and serve warm.', 'Cook until internal temperature reaches 165F.']));
 
     fillDatalist('recipesProteinList', proteins);
@@ -1357,6 +3010,7 @@
     return '<div class="recipes-line-editor" data-editor-row="ingredient">' +
       '<input type="text" class="recipes-ingredient-qty" placeholder="Qty" value="' + safeText(row.quantity || '') + '">' +
       '<input type="text" class="recipes-ingredient-item" list="recipesIngredientSuggestions" placeholder="Ingredient" value="' + safeText(row.item || '') + '">' +
+      '<div class="recipes-ingredient-conversion-preview" aria-live="polite"></div>' +
       '<button type="button" class="pill-button" data-row-action="remove">Remove</button>' +
     '</div>';
   }
@@ -1368,6 +3022,39 @@
     '</div>';
   }
 
+  function sectionOverrideRowHtml(row) {
+    row = row || { id: uid('section'), title: '', stepRefs: '', ingredientKeywords: '' };
+    return '<div class="recipes-line-editor recipes-section-override-row" data-editor-row="section-override" data-section-override-id="' + safeText(row.id) + '">' +
+      '<input type="text" class="recipes-section-override-title" placeholder="Section title (for example Prepare Meat)" value="' + safeText(row.title || '') + '">' +
+      '<input type="text" class="recipes-section-override-steps" placeholder="Step numbers/range (for example 1-3,5)" value="' + safeText(row.stepRefs || '') + '">' +
+      '<input type="text" class="recipes-section-override-ingredients" placeholder="Ingredient keywords (comma separated)" value="' + safeText(row.ingredientKeywords || '') + '">' +
+      '<button type="button" class="pill-button" data-row-action="remove">Remove</button>' +
+    '</div>';
+  }
+
+  function parseStepRefTokens(stepRefs) {
+    var indexes = new Set();
+    String(stepRefs || '').split(',').map(function (part) { return part.trim(); }).filter(Boolean).forEach(function (part) {
+      var range = part.match(/^(\d+)\s*-\s*(\d+)$/);
+      if (range) {
+        var start = Number(range[1]);
+        var end = Number(range[2]);
+        if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+        var min = Math.min(start, end);
+        var max = Math.max(start, end);
+        for (var index = min; index <= max; index += 1) indexes.add(index);
+        return;
+      }
+      var single = Number(part);
+      if (Number.isFinite(single) && single > 0) indexes.add(single);
+    });
+    return indexes;
+  }
+
+  function hasValidStepRefs(stepRefs) {
+    return parseStepRefTokens(stepRefs).size > 0;
+  }
+
   function renderEditorPhotos() {
     var root = getRoot();
     if (!root) return;
@@ -1376,6 +3063,31 @@
     photoPreview.innerHTML = state.editorPhotos.map(function (url, index) {
       return '<div class="recipes-photo-tile" data-photo-index="' + index + '"><img src="' + safeText(url) + '" alt="Recipe photo ' + (index + 1) + '"><button type="button" data-photo-action="remove">Remove</button></div>';
     }).join('');
+  }
+
+  function updateIngredientConversionPreviews() {
+    var root = getRoot();
+    if (!root) return;
+    var rows = Array.from(root.querySelectorAll('[data-editor-row="ingredient"]'));
+    rows.forEach(function (row) {
+      var qtyInput = row.querySelector('.recipes-ingredient-qty');
+      var hint = row.querySelector('.recipes-ingredient-conversion-preview');
+      if (!hint) return;
+      var qty = String(qtyInput ? qtyInput.value : '').trim();
+      if (!qty) {
+        hint.textContent = '';
+        return;
+      }
+      var normalizedUs = convertQuantityForDisplay(qty, 'us');
+      var unchanged = normalizeToken(qty) === normalizeToken(normalizedUs);
+      if (unchanged) {
+        hint.textContent = '';
+        return;
+      }
+      hint.textContent = state.editingRecipeId
+        ? ('US equivalent: ' + normalizedUs)
+        : ('Will save as US: ' + normalizedUs);
+    });
   }
 
   function overwriteArray(targetArray, nextValues) {
@@ -1394,7 +3106,8 @@
     renderChipList('recipesEditorMethodChips', state.editorTags.methods, 'editor:methods');
   }
 
-  function openEditor(recipe) {
+  function openEditor(recipe, options) {
+    options = options || {};
     var root = getRoot();
     if (!root) return;
     var overlay = root.querySelector('#recipesEditorOverlay');
@@ -1403,12 +3116,28 @@
     if (!overlay || !title || !form) return;
 
     var model = normalizeRecipe(recipe || { title: '', description: '', ingredients: [{ quantity: '', item: '' }], steps: [''], photos: [], notes: [] });
+    state.editorPdfPreviewText = String(options.pdfPreviewText || '').trim();
+    state.editorPdfSuggestedSections = Array.isArray(options.pdfSuggestedSections) ? options.pdfSuggestedSections.map(function (row) {
+      return {
+        id: String((row && row.id) || uid('section')),
+        title: String((row && row.title) || '').trim(),
+        stepRefs: String((row && row.stepRefs) || '').trim(),
+        ingredientKeywords: String((row && row.ingredientKeywords) || '').trim(),
+        accepted: row && row.accepted !== false
+      };
+    }) : [];
+    if (typeof options.pdfAutoAcceptWithStepRefs === 'boolean') {
+      state.editorPdfAutoAcceptWithStepRefs = options.pdfAutoAcceptWithStepRefs;
+    }
     state.editingRecipeId = recipe && recipe.id ? recipe.id : '';
     state.editorPhotos = model.photos.slice();
+    state.editorSectionOverrides = (model.sectionOverrides || []).slice();
 
     title.textContent = state.editingRecipeId ? 'Edit recipe' : 'Add recipe';
     form.elements.title.value = model.title;
     form.elements.description.value = model.description;
+    if (form.elements.sourceUrl) form.elements.sourceUrl.value = model.sourceUrl || '';
+    if (form.elements.servings) form.elements.servings.value = model.servings || 4;
     form.elements.prepMinutes.value = model.prepMinutes === '' ? '' : String(model.prepMinutes);
     form.elements.cookMinutes.value = model.cookMinutes === '' ? '' : String(model.cookMinutes);
     form.elements.courseCategory.value = normalizeCourseCategory(model.courseCategory);
@@ -1416,11 +3145,16 @@
 
     var ingredientsList = root.querySelector('#recipesIngredientsList');
     var stepsList = root.querySelector('#recipesStepsList');
+    var sectionsList = root.querySelector('#recipesSectionOverridesList');
     if (ingredientsList) ingredientsList.innerHTML = (model.ingredients.length ? model.ingredients : [{ quantity: '', item: '' }]).map(ingredientRowHtml).join('');
     if (stepsList) stepsList.innerHTML = (model.steps.length ? model.steps : ['']).map(stepRowHtml).join('');
+    if (sectionsList) sectionsList.innerHTML = (state.editorSectionOverrides || []).map(sectionOverrideRowHtml).join('');
 
     setEditorTags(model);
     renderEditorPhotos();
+    renderEditorPdfPreview();
+    setPhotoImportDiagnostics('', false);
+    updateIngredientConversionPreviews();
     setEditorStatus('', false);
     overlay.hidden = false;
   }
@@ -1432,9 +3166,15 @@
     if (overlay) overlay.hidden = true;
     state.editingRecipeId = '';
     state.editorPhotos = [];
+    state.editorPdfPreviewText = '';
+    state.editorPdfSuggestedSections = [];
+    state.editorPdfAutoAcceptWithStepRefs = true;
+    state.editorSectionOverrides = [];
     overwriteArray(state.editorTags.proteins, []);
     overwriteArray(state.editorTags.cuisines, []);
     overwriteArray(state.editorTags.methods, []);
+    setPhotoImportDiagnostics('', false);
+    renderEditorPdfPreview();
     setEditorStatus('', false);
   }
 
@@ -1578,6 +3318,21 @@
     return String(value || '').split(/[;,\n]/).map(function (s) { return s.trim(); }).filter(Boolean);
   }
 
+  function mapExcelRowToSubstitutionPairs(rowObj) {
+    var original = String(rowObj.original_ingredient || rowObj.originalingredient || '').trim();
+    var substitutes = splitSubstituteCell(rowObj.substitute_ingredient || rowObj.substituteingredient || '');
+    return substitutes.map(function (substitute) {
+      return { original: original, substitute: substitute };
+    }).filter(function (row) { return row.original && row.substitute; });
+  }
+
+  function mapExcelRowToIngredient(rowObj) {
+    var name = String(rowObj.ingredient_name || rowObj.ingredientname || '').trim();
+    var type = String(rowObj.ingredient_type || rowObj.ingredienttype || '').trim() || createIngredientType(name);
+    if (!name) return null;
+    return { name: name, type: type };
+  }
+
   function mapExcelRowToRecipe(rowObj) {
     var title = rowObj[EXCEL_COLUMNS.recipeName] || 'Untitled recipe';
     var categories = [
@@ -1605,6 +3360,7 @@
       methods: splitCsvCell(rowObj[EXCEL_COLUMNS.cookMethod]),
       courseCategory: normalizeCourseCategory(rowObj[EXCEL_COLUMNS.courseCategory]),
       healthiness: normalizeHealthiness(rowObj[EXCEL_COLUMNS.healthiness]),
+      servings: Number(rowObj.servings || 0) || 4,
       prepMinutes: Number(rowObj[EXCEL_COLUMNS.prepTime] || 0) || '',
       cookMinutes: Number(rowObj[EXCEL_COLUMNS.cookTime] || 0) || '',
       ingredients: ingredients,
@@ -1618,7 +3374,11 @@
       variations: (function () {
         try { return JSON.parse(rowObj[EXCEL_COLUMNS.variationsJson] || '[]'); } catch (_e) { return []; }
       })(),
-      sourceUrl: rowObj[EXCEL_COLUMNS.sourceUrl] || '',
+      sectionOverrides: (function () {
+        try { return JSON.parse(rowObj[EXCEL_COLUMNS.sectionOverridesJson] || '[]'); } catch (_e) { return []; }
+      })(),
+      sourceUrl: rowObj[EXCEL_COLUMNS.recipeUrl] || rowObj[EXCEL_COLUMNS.sourceUrl] || '',
+      preferredCookMethodProfile: rowObj[EXCEL_COLUMNS.preferredCookMethodProfile] || '',
       createdAt: Number(rowObj[EXCEL_COLUMNS.createdAt] || 0) || Date.now(),
       updatedAt: Number(rowObj[EXCEL_COLUMNS.updatedAt] || 0) || Date.now()
     });
@@ -1644,6 +3404,38 @@
       });
       return mapExcelRowToRecipe(mapped);
     });
+  }
+
+  async function readSubstitutionsFromExcel() {
+    var path = await resolveExcelWorkbookPath();
+    var encodedPath = encodeGraphPath(path);
+    var tableRef = encodeURIComponent(EXCEL_SUBSTITUTIONS_TABLE_NAME);
+    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+    var rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
+    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+    var normalizedNameByIndex = columns.map(function (col) { return String(col.name || '').trim().toLowerCase(); });
+    return (rowsResp.value || []).flatMap(function (row) {
+      var values = (row.values && row.values[0]) ? row.values[0] : [];
+      var mapped = {};
+      normalizedNameByIndex.forEach(function (name, index) { mapped[name] = values[index]; });
+      return mapExcelRowToSubstitutionPairs(mapped);
+    });
+  }
+
+  async function readIngredientsFromExcel() {
+    var path = await resolveExcelWorkbookPath();
+    var encodedPath = encodeGraphPath(path);
+    var tableRef = encodeURIComponent(EXCEL_INGREDIENTS_TABLE_NAME);
+    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+    var rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
+    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+    var normalizedNameByIndex = columns.map(function (col) { return String(col.name || '').trim().toLowerCase(); });
+    return uniqueIngredientRows((rowsResp.value || []).map(function (row) {
+      var values = (row.values && row.values[0]) ? row.values[0] : [];
+      var mapped = {};
+      normalizedNameByIndex.forEach(function (name, index) { mapped[name] = values[index]; });
+      return mapExcelRowToIngredient(mapped);
+    }).filter(Boolean));
   }
 
   function joinIngredientsByCategory(recipe, category) {
@@ -1678,7 +3470,11 @@
     byName[EXCEL_COLUMNS.photosJson] = JSON.stringify(model.photos || []);
     byName[EXCEL_COLUMNS.notesJson] = JSON.stringify(model.notes || []);
     byName[EXCEL_COLUMNS.variationsJson] = JSON.stringify(model.variations || []);
+    byName[EXCEL_COLUMNS.sectionOverridesJson] = JSON.stringify(model.sectionOverrides || []);
+    byName[EXCEL_COLUMNS.recipeUrl] = model.sourceUrl || '';
     byName[EXCEL_COLUMNS.sourceUrl] = model.sourceUrl || '';
+    byName[EXCEL_COLUMNS.preferredCookMethodProfile] = model.preferredCookMethodProfile || '';
+    byName.servings = model.servings || 4;
     byName[EXCEL_COLUMNS.createdAt] = model.createdAt || '';
     byName[EXCEL_COLUMNS.updatedAt] = model.updatedAt || '';
 
@@ -1706,6 +3502,97 @@
     });
   }
 
+  async function writeIngredientsToExcel() {
+    var path = await resolveExcelWorkbookPath();
+    var encodedPath = encodeGraphPath(path);
+    var tableRef = encodeURIComponent(EXCEL_INGREDIENTS_TABLE_NAME);
+    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+    var normalizedColumns = columns.map(function (c) { return String(c.name || '').trim().toLowerCase(); });
+    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/clear', { method: 'POST' });
+
+    var values = uniqueIngredientRows(state.ingredientsDb || []).map(function (row) {
+      var byName = {
+        ingredient_name: row.name,
+        ingredient_type: row.type
+      };
+      return normalizedColumns.map(function (name) { return byName.hasOwnProperty(name) ? byName[name] : ''; });
+    });
+    if (!values.length) return;
+    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/add', {
+      method: 'POST',
+      body: JSON.stringify({ values: values })
+    });
+  }
+
+  async function writeSubstitutionsToExcel() {
+    var path = await resolveExcelWorkbookPath();
+    var encodedPath = encodeGraphPath(path);
+    var tableRef = encodeURIComponent(EXCEL_SUBSTITUTIONS_TABLE_NAME);
+    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+    var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
+    var normalizedColumns = columns.map(function (c) { return String(c.name || '').trim().toLowerCase(); });
+    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/clear', { method: 'POST' });
+
+    var values = sortSubstitutionPairs(normalizeSubstitutionPairRows(state.substitutionsDbPairs || [])).map(function (row) {
+      var byName = {
+        original_ingredient: row.original,
+        substitute_ingredient: row.substitute
+      };
+      return normalizedColumns.map(function (name) { return byName.hasOwnProperty(name) ? byName[name] : ''; });
+    });
+    if (!values.length) return;
+    await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows/add', {
+      method: 'POST',
+      body: JSON.stringify({ values: values })
+    });
+  }
+
+  async function pushReferenceDatabasesToExcel() {
+    var wroteSubstitutions = false;
+    var wroteIngredients = false;
+    var errors = [];
+    try {
+      await writeSubstitutionsToExcel();
+      wroteSubstitutions = true;
+    } catch (error) {
+      errors.push('Substitutions: ' + (error && error.message ? error.message : 'write failed'));
+    }
+    try {
+      await writeIngredientsToExcel();
+      wroteIngredients = true;
+    } catch (error) {
+      errors.push('Ingredients: ' + (error && error.message ? error.message : 'write failed'));
+    }
+    return {
+      wroteSubstitutions: wroteSubstitutions,
+      wroteIngredients: wroteIngredients,
+      errors: errors
+    };
+  }
+
+  async function syncReferenceTablesFromExcel() {
+    var subsRead = false;
+    var ingredientsRead = false;
+    try {
+      var pairs = await readSubstitutionsFromExcel();
+      state.substitutionsDbPairs = normalizeSubstitutionPairRows(pairs);
+      rebuildSubstitutionDatabase();
+      subsRead = true;
+    } catch (_error) {
+      rebuildSubstitutionDatabase();
+    }
+    try {
+      var ingredients = await readIngredientsFromExcel();
+      state.ingredientsDb = uniqueIngredientRows(ingredients);
+      ingredientsRead = true;
+    } catch (_error) {
+      state.ingredientsDb = uniqueIngredientRows(state.ingredientsDb || []);
+    }
+    saveReferenceDatabasesToCache();
+    return { subsRead: subsRead, ingredientsRead: ingredientsRead };
+  }
+
   function setExcelStatus(message, isError) {
     var root = getRoot();
     if (!root) return;
@@ -1720,6 +3607,7 @@
     try {
       setExcelStatus(options.autoSync ? 'Auto-syncing from Excel...' : 'Syncing from Excel...', false);
       var excelRecipes = await readRecipesFromExcel();
+      var refSyncResult = await syncReferenceTablesFromExcel();
       if (excelRecipes.length) {
         state.recipes = excelRecipes.map(normalizeRecipe);
         saveRecipes();
@@ -1730,7 +3618,13 @@
       if (options.autoSync) {
         state.excel.lastAutoSyncAt = Date.now();
       }
-      setExcelStatus((options.autoSync ? 'Auto-sync complete. ' : '') + 'Loaded ' + excelRecipes.length + ' recipe(s) from Excel.', false);
+      setExcelStatus(
+        (options.autoSync ? 'Auto-sync complete. ' : '')
+          + 'Loaded ' + excelRecipes.length + ' recipe(s) from Excel.'
+          + ' Substitutions: ' + (refSyncResult.subsRead ? 'synced' : 'not available') + '.'
+          + ' Ingredients DB: ' + (refSyncResult.ingredientsRead ? 'synced' : 'not available') + '.',
+        false
+      );
     } catch (error) {
       state.excel.lastError = error && error.message ? error.message : 'Excel sync failed.';
       if (!options.silent) {
@@ -1743,6 +3637,16 @@
     try {
       setExcelStatus('Syncing to Excel...', false);
       await writeRecipesToExcel();
+      try {
+        await writeSubstitutionsToExcel();
+      } catch (_error) {
+        // Substitutions table may not always be available; recipes sync should still succeed.
+      }
+      try {
+        await writeIngredientsToExcel();
+      } catch (_error) {
+        // Ingredients table may not always be available; recipes sync should still succeed.
+      }
       setExcelStatus('Excel sync complete.', false);
     } catch (error) {
       setExcelStatus(error && error.message ? error.message : 'Excel write failed.', true);
@@ -1786,6 +3690,14 @@
     var steps = Array.from(root.querySelectorAll('[data-editor-row="step"] .recipes-step-text')).map(function (input) {
       return String(input.value || '').trim();
     }).filter(Boolean);
+    var sectionOverrides = Array.from(root.querySelectorAll('[data-editor-row="section-override"]')).map(function (row) {
+      return {
+        id: row.getAttribute('data-section-override-id') || uid('section'),
+        title: row.querySelector('.recipes-section-override-title') ? row.querySelector('.recipes-section-override-title').value : '',
+        stepRefs: row.querySelector('.recipes-section-override-steps') ? row.querySelector('.recipes-section-override-steps').value : '',
+        ingredientKeywords: row.querySelector('.recipes-section-override-ingredients') ? row.querySelector('.recipes-section-override-ingredients').value : ''
+      };
+    }).filter(function (row) { return String(row.title || '').trim(); });
 
     var missing = [];
     if (!String(form.elements.title.value || '').trim()) missing.push('Recipe name');
@@ -1797,6 +3709,8 @@
       return;
     }
 
+    var normalizedIngredientRows = state.editingRecipeId ? ingredients : normalizeIngredientsToUs(ingredients);
+
     var model = normalizeRecipe({
       id: state.editingRecipeId || undefined,
       title: form.elements.title.value,
@@ -1806,12 +3720,15 @@
       methods: state.editorTags.methods,
       courseCategory: normalizeCourseCategory(form.elements.courseCategory ? form.elements.courseCategory.value : ''),
       healthiness: normalizeHealthiness(form.elements.healthiness ? form.elements.healthiness.value : ''),
+      servings: form.elements.servings ? form.elements.servings.value : 4,
       prepMinutes: form.elements.prepMinutes.value,
       cookMinutes: form.elements.cookMinutes.value,
-      ingredients: ingredients,
+      sourceUrl: form.elements.sourceUrl ? form.elements.sourceUrl.value : '',
+      ingredients: normalizedIngredientRows,
       steps: steps,
       photos: state.editorPhotos,
-      notes: state.editingRecipeId ? ((getRecipeById(state.editingRecipeId) || {}).notes || []) : []
+      notes: state.editingRecipeId ? ((getRecipeById(state.editingRecipeId) || {}).notes || []) : [],
+      sectionOverrides: sectionOverrides
     });
 
     if (state.editingRecipeId) {
@@ -1977,13 +3894,33 @@
           if (action === 'start-manual') { openEditor(); updateIntakeStatus('Started a blank recipe.', false); }
           if (action === 'parse-url') {
             var urlInput = root.querySelector('#recipesUrlInput');
-            openEditor(deriveRecipeFromUrl(urlInput ? urlInput.value : ''));
-            updateIntakeStatus('URL parsed. Please review and save.', false);
+            var parsedRecipe = deriveRecipeFromUrl(urlInput ? urlInput.value : '');
+            openEditor(parsedRecipe);
+            updateIntakeStatus('URL parsed. Attempting to import photos from source URL...', false);
+            importPhotosFromSourceUrlIntoEditor(parsedRecipe.sourceUrl).then(function (result) {
+              setEditorStatus('Imported ' + result.addedCount + ' new photo(s) from source URL (' + result.foundCount + ' found).', false);
+              setPhotoImportDiagnostics('Photo import diagnostics: og:image=' + result.diagnostics.ogCount + ', JSON-LD=' + result.diagnostics.jsonLdCount + ', fallback <img>=' + result.diagnostics.fallbackImgCount + '.', false);
+              updateIntakeStatus('URL parsed and photos imported.', false);
+            }).catch(function (error) {
+              setPhotoImportDiagnostics('Photo import diagnostics unavailable for this URL.', true);
+              updateIntakeStatus('URL parsed. Photo auto-import unavailable: ' + (error && error.message ? error.message : 'no photos found'), true);
+            });
           }
           if (action === 'parse-text') {
             var textInput = root.querySelector('#recipesPasteInput');
             openEditor(parseRecipeFromText(textInput ? textInput.value : ''));
             updateIntakeStatus('Text parsed. Review and save.', false);
+          }
+          if (action === 'parse-pdf') {
+            var pdfInput = root.querySelector('#recipesPdfInput');
+            var pdfFile = pdfInput && pdfInput.files && pdfInput.files[0] ? pdfInput.files[0] : null;
+            updateIntakeStatus('Parsing PDF recipe...', false);
+            parseRecipeFromPdfFile(pdfFile).then(function (result) {
+              openEditor(result.model, { pdfPreviewText: result.previewText, pdfSuggestedSections: result.suggestedSections || [] });
+              updateIntakeStatus('PDF parsed. Review sections, ingredients, and steps before saving.', false);
+            }).catch(function (error) {
+              updateIntakeStatus(error && error.message ? error.message : 'Unable to parse PDF recipe.', true);
+            });
           }
         } catch (error) {
           updateIntakeStatus(error && error.message ? error.message : 'Unable to parse recipe.', true);
@@ -2010,27 +3947,215 @@
 
       var card = target.closest('.recipes-card[data-recipe-id]');
       if (card) { renderDetails(card.getAttribute('data-recipe-id')); return; }
+      var sectionIngredientBtn = target.closest('[data-section-ingredient]');
+      if (sectionIngredientBtn) {
+        openIngredientSubstitutionModal(sectionIngredientBtn.getAttribute('data-section-ingredient'));
+        return;
+      }
+      var flowNode = target.closest('[data-flow-target]');
+      if (flowNode) {
+        var flowTargetId = flowNode.getAttribute('data-flow-target');
+        var flowTargetNode = flowTargetId ? root.querySelector('#' + flowTargetId) : null;
+        if (flowTargetNode && typeof flowTargetNode.scrollIntoView === 'function') {
+          flowTargetNode.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+      if (target.closest('#recipesIngredientSubModalClose')) { closeIngredientSubstitutionModal(); return; }
+      if (target.id === 'recipesIngredientSubModal') { closeIngredientSubstitutionModal(); return; }
       if (target.closest('#recipesDetailsClose')) { var details = root.querySelector('#recipesDetails'); if (details) details.hidden = true; return; }
       if (target.closest('#recipesEditorCancel')) { closeEditor(); return; }
-      if (target.closest('#recipesAddIngredientBtn')) { var ingredientsList = root.querySelector('#recipesIngredientsList'); if (ingredientsList) ingredientsList.insertAdjacentHTML('beforeend', ingredientRowHtml({ quantity: '', item: '' })); return; }
+      if (target.closest('#recipesAddIngredientBtn')) {
+        var ingredientsList = root.querySelector('#recipesIngredientsList');
+        if (ingredientsList) ingredientsList.insertAdjacentHTML('beforeend', ingredientRowHtml({ quantity: '', item: '' }));
+        updateIngredientConversionPreviews();
+        return;
+      }
+      if (target.closest('#recipesAddSectionOverrideBtn')) {
+        var sectionOverrideList = root.querySelector('#recipesSectionOverridesList');
+        if (sectionOverrideList) sectionOverrideList.insertAdjacentHTML('beforeend', sectionOverrideRowHtml({ id: uid('section'), title: '', stepRefs: '', ingredientKeywords: '' }));
+        return;
+      }
+      if (target.closest('#recipesApplySuggestedSectionsBtn')) {
+        var appliedCount = applyAcceptedPdfSectionSuggestions();
+        setEditorStatus(appliedCount
+          ? ('Applied ' + appliedCount + ' suggested section title(s).')
+          : 'No accepted suggested sections to apply.', !appliedCount);
+        return;
+      }
+      var suggestionAction = target.closest('[data-pdf-suggestion-action][data-pdf-suggestion-index]');
+      if (suggestionAction) {
+        var suggestionActionType = suggestionAction.getAttribute('data-pdf-suggestion-action');
+        var suggestionIndex = Number(suggestionAction.getAttribute('data-pdf-suggestion-index'));
+        if (Number.isFinite(suggestionIndex) && suggestionIndex >= 0 && state.editorPdfSuggestedSections[suggestionIndex]) {
+          state.editorPdfSuggestedSections[suggestionIndex].accepted = suggestionActionType === 'accept';
+          renderEditorPdfPreview();
+        }
+        return;
+      }
       if (target.closest('#recipesAddStepBtn')) { var stepsList = root.querySelector('#recipesStepsList'); if (stepsList) stepsList.insertAdjacentHTML('beforeend', stepRowHtml('')); return; }
       if (target.closest('[data-row-action="remove"]')) { var row = target.closest('[data-editor-row]'); if (row) row.remove(); return; }
-      if (target.closest('#recipesEditActiveBtn')) { var activeRecipe = getRecipeById(state.activeRecipeId); if (activeRecipe) openEditor(activeRecipe); return; }
+      if (target.closest('#recipesEditActiveBtn')) { var activeRecipeForEdit = getRecipeById(state.activeRecipeId); if (activeRecipeForEdit) openEditor(activeRecipeForEdit); return; }
+      if (target.closest('#recipesApplyServingsBtn')) {
+        var servingsTargetInput = root.querySelector('#recipesServingsTarget');
+        setServingTargetForActiveRecipe(servingsTargetInput ? servingsTargetInput.value : '');
+        return;
+      }
+      if (target.closest('#recipesSaveScaledServingsBtn')) {
+        var servingsSaveInput = root.querySelector('#recipesServingsTarget');
+        if (saveScaledIngredientsForActiveRecipe(servingsSaveInput ? servingsSaveInput.value : '')) {
+          state.referenceDbStatus = 'Saved scaled ingredients and updated servings.';
+        }
+        return;
+      }
       if (target.closest('#recipesFindSubstitutionsBtn')) { showIngredientSubstitutionsForActiveRecipe(); return; }
+      if (target.closest('#recipesShowAllSubsBtn')) { showAllIngredientSubstitutionsForActiveRecipe(); return; }
+      if (target.closest('#recipesImportPhotosFromSourceBtn')) {
+        var editorForm = root.querySelector('#recipesEditorForm');
+        var sourceUrlValue = editorForm && editorForm.elements && editorForm.elements.sourceUrl ? editorForm.elements.sourceUrl.value : '';
+        setEditorStatus('Importing photos from source URL...', false);
+        importPhotosFromSourceUrlIntoEditor(sourceUrlValue).then(function (result) {
+          setEditorStatus('Imported ' + result.addedCount + ' new photo(s) from source URL (' + result.foundCount + ' found).', false);
+          setPhotoImportDiagnostics('Photo import diagnostics: og:image=' + result.diagnostics.ogCount + ', JSON-LD=' + result.diagnostics.jsonLdCount + ', fallback <img>=' + result.diagnostics.fallbackImgCount + '.', false);
+        }).catch(function (error) {
+          setPhotoImportDiagnostics('Photo import diagnostics unavailable for this URL.', true);
+          setEditorStatus(error && error.message ? error.message : 'Unable to import photos from source URL.', true);
+        });
+        return;
+      }
+      if (target.closest('#recipesPushReferenceDbBtn')) {
+        state.referenceDbStatus = 'Pushing substitutions and ingredients database to Excel...';
+        renderDetails(state.activeRecipeId);
+        pushReferenceDatabasesToExcel().then(function (result) {
+          if (!result.errors.length) {
+            state.referenceDbStatus = 'Reference database push complete (substitutions + ingredients).';
+          } else {
+            state.referenceDbStatus = 'Reference database push partially completed. ' + result.errors.join(' | ');
+          }
+          renderDetails(state.activeRecipeId);
+        }).catch(function (error) {
+          state.referenceDbStatus = error && error.message ? error.message : 'Unable to push reference databases to Excel.';
+          renderDetails(state.activeRecipeId);
+        });
+        return;
+      }
+      if (target.closest('#recipesSubsAddBtn')) {
+        var addOriginalInput = root.querySelector('#recipesSubsAddOriginal');
+        var addSubInput = root.querySelector('#recipesSubsAddSubstitute');
+        var added = addSubstitutionPairToDatabase(addOriginalInput ? addOriginalInput.value : '', addSubInput ? addSubInput.value : '');
+        state.referenceDbStatus = added
+          ? 'Added substitution row to database.'
+          : 'Could not add substitution row (check for empty or duplicate values).';
+        saveReferenceDatabasesAndRefresh();
+        return;
+      }
+      if (target.closest('#recipesIngredientsDbAddBtn')) {
+        var addIngredientName = root.querySelector('#recipesIngredientsDbAddName');
+        var addIngredientType = root.querySelector('#recipesIngredientsDbAddType');
+        var ingredientAdded = addIngredientToDatabase(addIngredientName ? addIngredientName.value : '', addIngredientType ? addIngredientType.value : '');
+        state.referenceDbStatus = ingredientAdded
+          ? 'Added ingredient row to database.'
+          : 'Could not add ingredient row (check for empty or duplicate name).';
+        saveReferenceDatabasesAndRefresh();
+        return;
+      }
+      var substitutionAction = target.closest('[data-sub-action][data-sub-pair-key]');
+      if (substitutionAction) {
+        var substitutionKey = substitutionAction.getAttribute('data-sub-pair-key');
+        var substitutionRow = root.querySelector('[data-sub-pair-key="' + substitutionKey + '"]');
+        var subOriginalInput = substitutionRow ? substitutionRow.querySelector('[data-sub-field="original"]') : null;
+        var subSubstituteInput = substitutionRow ? substitutionRow.querySelector('[data-sub-field="substitute"]') : null;
+        var subAction = substitutionAction.getAttribute('data-sub-action');
+        var substitutionChanged = false;
+        if (subAction === 'save') {
+          substitutionChanged = updateSubstitutionPairInDatabase(substitutionKey, subOriginalInput ? subOriginalInput.value : '', subSubstituteInput ? subSubstituteInput.value : '');
+          state.referenceDbStatus = substitutionChanged ? 'Saved substitution row.' : 'Unable to save substitution row.';
+        }
+        if (subAction === 'delete') {
+          substitutionChanged = removeSubstitutionPairFromDatabase(substitutionKey);
+          state.referenceDbStatus = substitutionChanged ? 'Deleted substitution row.' : 'Unable to delete substitution row.';
+        }
+        if (substitutionChanged) {
+          saveReferenceDatabasesAndRefresh();
+        } else {
+          renderDetails(state.activeRecipeId);
+        }
+        return;
+      }
+      var ingredientAction = target.closest('[data-ingredient-action][data-ingredient-row-key]');
+      if (ingredientAction) {
+        var ingredientKey = ingredientAction.getAttribute('data-ingredient-row-key');
+        var ingredientRow = root.querySelector('[data-ingredient-row-key="' + ingredientKey + '"]');
+        var ingredientNameInput = ingredientRow ? ingredientRow.querySelector('[data-ingredient-field="name"]') : null;
+        var ingredientTypeInput = ingredientRow ? ingredientRow.querySelector('[data-ingredient-field="type"]') : null;
+        var actionType = ingredientAction.getAttribute('data-ingredient-action');
+        var ingredientChanged = false;
+        if (actionType === 'save') {
+          ingredientChanged = updateIngredientInDatabase(ingredientKey, ingredientNameInput ? ingredientNameInput.value : '', ingredientTypeInput ? ingredientTypeInput.value : '');
+          state.referenceDbStatus = ingredientChanged ? 'Saved ingredient row.' : 'Unable to save ingredient row.';
+        }
+        if (actionType === 'delete') {
+          ingredientChanged = removeIngredientFromDatabase(ingredientKey);
+          state.referenceDbStatus = ingredientChanged ? 'Deleted ingredient row.' : 'Unable to delete ingredient row.';
+        }
+        if (ingredientChanged) {
+          saveReferenceDatabasesAndRefresh();
+        } else {
+          renderDetails(state.activeRecipeId);
+        }
+        return;
+      }
+      if (target.closest('#recipesScanIngredientsDbBtn')) {
+        state.referenceDbStatus = 'Scanning recipes and updating ingredients database...';
+        renderDetails(state.activeRecipeId);
+        scanRecipesIntoIngredientsDatabase().then(function (result) {
+          state.referenceDbStatus = result.addedCount
+            ? ('Added ' + result.addedCount + ' missing ingredient(s) to database' + (result.wroteExcel ? ' and synced to Excel.' : '.'))
+            : 'No missing ingredients found. Ingredients database already covers current recipes.';
+          saveReferenceDatabasesAndRefresh();
+        }).catch(function (error) {
+          state.referenceDbStatus = error && error.message ? error.message : 'Unable to scan ingredients database right now.';
+          renderDetails(state.activeRecipeId);
+        });
+        return;
+      }
       if (target.closest('#recipesFindSafeTempBtn')) { showSafeCookTemperatureForSelection(); return; }
       if (target.closest('#recipesFindCookTimeBtn')) { showCommonCookTimeForSelection(); return; }
+      if (target.closest('#recipesUseRecipeCookTimeBtn')) { preloadCookMethodBaseTimeFromActiveRecipe(); return; }
+      if (target.closest('#recipesConvertCookMethodBtn')) { showCookMethodConversionForSelection(); return; }
+      if (target.closest('#recipesSaveCookConversionNoteBtn')) { saveCookMethodConversionAsRecipeNote(); return; }
+      if (target.closest('#recipesSavePreferredCookMethodBtn')) {
+        var preferredSelect = root.querySelector('#recipesPreferredCookMethodSelect');
+        savePreferredCookMethodForActiveRecipe(preferredSelect ? preferredSelect.value : '');
+        return;
+      }
+      if (target.closest('#recipesExportSectionedGroceryBtn')) { exportSectionedGroceryListForActiveRecipe(); return; }
+      if (target.closest('#recipesRecommendImprovementsBtn')) {
+        state.showRecipeImprovements = true;
+        state.recipeImprovementStatus = '';
+        renderDetails(state.activeRecipeId);
+        return;
+      }
+      var approveImprovement = target.closest('[data-improvement-action="approve"][data-improvement-item]');
+      if (approveImprovement) {
+        applyIngredientImprovementSuggestion(
+          approveImprovement.getAttribute('data-improvement-item'),
+          approveImprovement.getAttribute('data-improvement-qty')
+        );
+        return;
+      }
       var variationAccept = target.closest('[data-variation-action="accept"][data-variation-index]');
       if (variationAccept) {
         var indexRaw = Number(variationAccept.getAttribute('data-variation-index'));
-        var activeRecipe = getRecipeById(state.activeRecipeId);
-        var suggestions = getRecipeVariationSuggestions(activeRecipe);
+        var activeRecipeForVariation = getRecipeById(state.activeRecipeId);
+        var suggestions = getRecipeVariationSuggestions(activeRecipeForVariation);
         var suggestion = Number.isFinite(indexRaw) && indexRaw >= 0 ? suggestions[indexRaw] : null;
-        if (activeRecipe && suggestion) {
+        if (activeRecipeForVariation && suggestion) {
           var titleInput = root.querySelector('[data-variation-title-index="' + indexRaw + '"]');
-          var textInput = root.querySelector('[data-variation-text-index="' + indexRaw + '"]');
+          var variationTextInput = root.querySelector('[data-variation-text-index="' + indexRaw + '"]');
           saveVariationForActiveRecipe({
             title: titleInput ? titleInput.value : suggestion.title,
-            text: textInput ? textInput.value : suggestion.text,
+            text: variationTextInput ? variationTextInput.value : suggestion.text,
             sourceSuggestionId: suggestion.id
           });
         }
@@ -2124,9 +4249,39 @@
       if (target.id === 'recipesFilterCourseCategory') { state.filters.courseCategory = normalizeCourseCategory(target.value); renderCards(); return; }
       if (target.id === 'recipesFilterHealthiness') { state.filters.healthiness = normalizeHealthiness(target.value); renderCards(); }
       if (target.id === 'recipesSafeTempStrictMode') { state.safeTempStrictMode = target.checked !== false; showSafeCookTemperatureForSelection(); return; }
+      if (target.id === 'recipesMeasurementToggle') {
+        state.measurementSystem = target.checked ? 'metric' : 'us';
+        saveMeasurementPreference();
+        renderDetails(state.activeRecipeId);
+        return;
+      }
+      if (target.id === 'recipesSubsRelevantOnlyToggle') {
+        state.referenceDbFilters.substitutionsRelevantOnly = target.checked === true;
+        renderDetails(state.activeRecipeId);
+        return;
+      }
+      if (target.id === 'recipesIngredientTypeFilter') {
+        state.referenceDbFilters.ingredientType = String(target.value || 'all') || 'all';
+        renderDetails(state.activeRecipeId);
+        return;
+      }
+      if (target.id === 'recipesPdfAutoAcceptStepRangesToggle') {
+        state.editorPdfAutoAcceptWithStepRefs = target.checked === true;
+        renderEditorPdfPreview();
+        return;
+      }
       if (target.id === 'recipesCookTimeItemSelect') { syncCommonCookTimeControls(); return; }
       if (target.id === 'recipesCookTimeMethodSelect') { syncCommonCookTimeControls(); return; }
       if (target.id === 'recipesCookTimeDonenessSelect') { showCommonCookTimeForSelection(); }
+      if (target.id === 'recipesCookMethodFromSelect') { showCookMethodConversionForSelection(); return; }
+      if (target.id === 'recipesCookMethodToSelect') { showCookMethodConversionForSelection(); return; }
+      if (target.id === 'recipesCookMethodProteinPreset') {
+        syncCookMethodDonenessPresetOptions();
+        showCookMethodConversionForSelection();
+        return;
+      }
+      if (target.id === 'recipesCookMethodThicknessPreset') { showCookMethodConversionForSelection(); return; }
+      if (target.id === 'recipesCookMethodDonenessPreset') { showCookMethodConversionForSelection(); return; }
     });
 
     root.addEventListener('input', function (event) {
@@ -2135,6 +4290,49 @@
       if (target.id === 'recipesFilterSearch') {
         state.filters.searchQuery = target.value;
         renderCards();
+      }
+      if (target.classList && target.classList.contains('recipes-ingredient-qty')) {
+        updateIngredientConversionPreviews();
+      }
+      if (target.id === 'recipesSubsSearchInput') {
+        state.referenceDbFilters.substitutionsQuery = target.value || '';
+        renderDetails(state.activeRecipeId);
+      }
+      if (target.id === 'recipesIngredientsSearchInput') {
+        state.referenceDbFilters.ingredientQuery = target.value || '';
+        renderDetails(state.activeRecipeId);
+      }
+      if (target.id === 'recipesCookMethodBaseTime') {
+        showCookMethodConversionForSelection();
+      }
+      var suggestionToggleIndex = target.getAttribute && target.getAttribute('data-pdf-suggestion-toggle');
+      if (suggestionToggleIndex != null) {
+        var toggleIndex = Number(suggestionToggleIndex);
+        if (Number.isFinite(toggleIndex) && toggleIndex >= 0 && state.editorPdfSuggestedSections[toggleIndex]) {
+          state.editorPdfSuggestedSections[toggleIndex].accepted = target.checked === true;
+          renderEditorPdfPreview();
+        }
+      }
+      var suggestionTitleIndex = target.getAttribute && target.getAttribute('data-pdf-suggestion-title');
+      if (suggestionTitleIndex != null) {
+        var titleIndex = Number(suggestionTitleIndex);
+        if (Number.isFinite(titleIndex) && titleIndex >= 0 && state.editorPdfSuggestedSections[titleIndex]) {
+          state.editorPdfSuggestedSections[titleIndex].title = target.value || '';
+        }
+      }
+      var suggestionStepIndex = target.getAttribute && target.getAttribute('data-pdf-suggestion-steps');
+      if (suggestionStepIndex != null) {
+        var stepIndex = Number(suggestionStepIndex);
+        if (Number.isFinite(stepIndex) && stepIndex >= 0 && state.editorPdfSuggestedSections[stepIndex]) {
+          state.editorPdfSuggestedSections[stepIndex].stepRefs = target.value || '';
+        }
+      }
+      var suggestionKeywordIndex = target.getAttribute && target.getAttribute('data-pdf-suggestion-keywords');
+      if (suggestionKeywordIndex != null) {
+        var keywordIndex = Number(suggestionKeywordIndex);
+        if (Number.isFinite(keywordIndex) && keywordIndex >= 0 && state.editorPdfSuggestedSections[keywordIndex]) {
+          state.editorPdfSuggestedSections[keywordIndex].ingredientKeywords = target.value || '';
+        }
       }
     });
 
@@ -2162,6 +4360,8 @@
 
     loadRecipes();
     loadPantrySpices();
+    loadReferenceDatabasesFromCache();
+    loadMeasurementPreference();
     updateSuggestionLists();
     renderCards();
     renderPantryTracker('');
@@ -2172,6 +4372,7 @@
       setActiveIntakeTab('manual');
       document.addEventListener('kap:app-mode-changed', function () {
         updateRecipesSchemaBanner(state.excel.schemaColumnNames || []);
+        if (state.activeRecipeId) renderDetails(state.activeRecipeId);
       });
       window.addEventListener('app:tab-switched', function (event) {
         var tabId = event && event.detail ? event.detail.tabId : '';
