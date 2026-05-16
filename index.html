@@ -9131,7 +9131,7 @@
     <button id="sessionRecoveryDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
   </div>
 </div>
-<div id="workbookPatchDiagnosticsPanel" class="workbook-patch-diagnostics" role="status" aria-live="polite" data-advanced-only="true" hidden>
+<div id="workbookPatchDiagnosticsPanel" class="workbook-patch-diagnostics" role="status" aria-live="polite" hidden>
   <div class="workbook-patch-diagnostics-header">
     <div class="workbook-patch-diagnostics-title-wrap">
       <div class="workbook-patch-diagnostics-title">🩺 Workbook row patch diagnostics</div>
@@ -9637,6 +9637,14 @@
     }).join('');
   }
 
+  function ensureWorkbookPatchDiagnosticsPanelVisible() {
+    if (!workbookPatchDiagnostics.length) return;
+    const panel = document.getElementById('workbookPatchDiagnosticsPanel');
+    if (!panel) return;
+    panel.hidden = false;
+    panel.removeAttribute('hidden');
+  }
+
   function renderWorkbookPatchDiagnosticsModal() {
     const bodyEl = document.getElementById('workbookPatchDiagnosticsModalBody');
     const subtitleEl = document.getElementById('workbookPatchDiagnosticsModalSubtitle');
@@ -9727,6 +9735,10 @@
 
     window.__lastWorkbookPatchDiagnostic = { ...entry };
     renderWorkbookPatchDiagnostics();
+    ensureWorkbookPatchDiagnosticsPanelVisible();
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => ensureWorkbookPatchDiagnosticsPanelVisible());
+    }
     renderWorkbookPatchDiagnosticsModal();
     return entry;
   }
