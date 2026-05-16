@@ -57,6 +57,7 @@
     <div class="recipes-intake-pane" data-recipes-intake-pane="pdf" hidden>
       <label for="recipesPdfInput">Recipe PDF file</label>
       <input id="recipesPdfInput" type="file" accept="application/pdf">
+      <label class="recipes-safe-temp-mode-toggle"><input id="recipesPdfSaveOriginalToggle" type="checkbox" checked> Save original PDF to OneDrive folder <code>recipe_pdfs</code> and store URL in <code>recipe_pdf</code></label>
       <button type="button" class="pill-button" data-recipes-intake-action="parse-pdf">Parse PDF</button>
       <p class="recipes-help-text">Use semi-standard recipe PDFs with section headers and numbered steps for best results.</p>
     </div>

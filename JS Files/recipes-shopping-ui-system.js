@@ -566,6 +566,12 @@
         : null;
     }
 
+    function getPdfRecipeUploader() {
+      return window.RecipesTabSystem && typeof window.RecipesTabSystem.uploadRecipePdfToOneDrive === 'function'
+        ? window.RecipesTabSystem.uploadRecipePdfToOneDrive
+        : null;
+    }
+
     function saveParsedPdfRecipe(recipeName, parsedResult, descriptionText) {
       var model = parsedResult && parsedResult.model ? parsedResult.model : null;
       if (!model) {
@@ -579,6 +585,7 @@
         name: normalizedName,
         title: normalizedName,
         description: String(descriptionText || model.description || 'Imported from PDF.').trim() || 'Imported from PDF.',
+        recipePdf: String(parsedResult && parsedResult.recipePdfUrl || '').trim(),
         source: 'imported-pdf',
         originalText: String(parsedResult.previewText || '').trim(),
         syncStatus: 'local-only'
@@ -655,6 +662,7 @@
           <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe PDF file</label>\
           <input type="file" id="recipe-pdf-file" accept="application/pdf" style="width:100%;" />\
         </div>\
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;color:#334155;font-size:13px;"><input type="checkbox" id="recipe-pdf-upload-original" checked> Save original PDF to OneDrive folder <code>recipe_pdfs</code> and store URL in <code>recipe_pdf</code></label>\
         <div style="margin-bottom:16px;padding:12px;background:#f0f7ff;border-radius:6px;border-left:4px solid #0066cc;">\
           <p style="margin:0;color:#0066cc;font-size:13px;">\
             Upload a recipe PDF, parse it, review the extracted ingredients/steps, and then save it as a new recipe.\
@@ -680,6 +688,7 @@
         if (String(target.getAttribute('data-modal-action') || '').trim() !== 'parse-pdf-recipe') return;
         var nameInput = modal.querySelector('#recipe-pdf-name');
         var fileInput = modal.querySelector('#recipe-pdf-file');
+        var uploadOriginalToggle = modal.querySelector('#recipe-pdf-upload-original');
         var recipeName = String((nameInput && nameInput.value) || '').trim();
         var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
         if (!file) {
@@ -695,7 +704,19 @@
 
         target.disabled = true;
         target.textContent = 'Parsing…';
-        parser(file).then(function (parsedResult) {
+        parser(file).then(async function (parsedResult) {
+          var shouldUploadOriginal = !uploadOriginalToggle || uploadOriginalToggle.checked === true;
+          if (shouldUploadOriginal && file) {
+            var uploader = getPdfRecipeUploader();
+            if (uploader) {
+              try {
+                var uploaded = await uploader(file);
+                parsedResult.recipePdfUrl = String(uploaded && uploaded.url || '').trim();
+              } catch (_uploadError) {
+                // Keep parser preview flow usable even if upload fails.
+              }
+            }
+          }
           modal.remove();
           showPdfRecipePreview(recipeName, parsedResult);
         }).catch(function (error) {
@@ -812,13 +833,13 @@
      var modal = showModalDialog({
        modalClass: 'recipes-shopping-create-recipe-modal',
        title: 'Create new recipe',
-       bodyHtml: '<label style="display:block;margin-bottom:8px;">Recipe name<input id="quick-recipe-name" type="text" style="width:100%;margin-top:4px;"></label>'
+       bodyHtml: '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><button type="button" class="pill-button" data-modal-action="import-pdf">📄 Import PDF</button></div>'
+          + '<label style="display:block;margin-bottom:8px;">Recipe name<input id="quick-recipe-name" type="text" style="width:100%;margin-top:4px;"></label>'
            + renderRecipeIngredientPresetPickerHtml()
          + '<label style="display:block;margin-bottom:8px;">Ingredients (required)<textarea id="quick-recipe-ingredients" rows="5" placeholder="One ingredient per line" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;margin-bottom:8px;">Cook instructions (required)<textarea id="quick-recipe-instructions" rows="5" placeholder="Step-by-step instructions" style="width:100%;margin-top:4px;"></textarea></label>'
          + '<label style="display:block;">Description<textarea id="quick-recipe-description" rows="3" placeholder="Optional notes" style="width:100%;margin-top:4px;"></textarea></label>',
         footerHtml: '<button type="button" class="pill-button" data-modal-action="close">Cancel</button>'
-          + '<button type="button" class="pill-button" data-modal-action="import-pdf">📄 Import PDF</button>'
           + buildPrimaryModalButton('save-recipe', 'Save recipe')
      });
 
@@ -900,6 +921,9 @@
          <h2 style="margin: 0; font-size: 20px; color: #333;">📥 Import Recipe</h2>\
          <button onclick="this.closest(\'.recipe-import-modal\').remove()" style="border: none; background: none; font-size: 24px; cursor: pointer; padding: 0;">×</button>\
        </div>\
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">\
+          <button data-modal-action="open-pdf-import" style="padding:8px 14px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;color:#1f2937;font-weight:600;">📄 Import PDF</button>\
+        </div>\
        \
        <div style="margin-bottom: 16px;">\
          <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Recipe Name</label>\
@@ -939,6 +963,15 @@
 
      modal.appendChild(dialog);
      document.body.appendChild(modal);
+
+      modal.addEventListener('click', function (event) {
+        var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
+        if (!target) return;
+        var modalAction = String(target.getAttribute('data-modal-action') || '').trim();
+        if (modalAction !== 'open-pdf-import') return;
+        modal.remove();
+        showPdfImportRecipeForm();
+      });
 
      // Focus on name input
      setTimeout(function() {

@@ -435,6 +435,7 @@
     photosJson: 'photo_urls_json',
     notesJson: 'notes_json',
     recipeUrl: 'recipe_url',
+    recipePdf: 'recipe_pdf',
     sourceUrl: 'source_url',
     sectionOverridesJson: 'section_overrides_json',
     preferredCookMethodProfile: 'preferred_cook_method_profile',
@@ -463,6 +464,7 @@
     EXCEL_COLUMNS.photosJson,
     EXCEL_COLUMNS.notesJson,
     EXCEL_COLUMNS.recipeUrl,
+    EXCEL_COLUMNS.recipePdf,
     EXCEL_COLUMNS.sourceUrl,
     EXCEL_COLUMNS.sectionOverridesJson,
     EXCEL_COLUMNS.preferredCookMethodProfile,
@@ -529,6 +531,7 @@
     activeRecipeId: '',
     editingRecipeId: '',
     editorPhotos: [],
+    editorRecipePdfUrl: '',
     editorPdfPreviewText: '',
     editorPdfSuggestedSections: [],
     editorPdfAutoAcceptWithStepRefs: true,
@@ -1754,6 +1757,7 @@
         };
       }).filter(function (row) { return row.title; }),
       sourceUrl: String(recipe.sourceUrl || '').trim(),
+      recipePdf: String(recipe.recipePdf || '').trim(),
       preferredCookMethodProfile: inferMethodProfileKeyFromText(recipe.preferredCookMethodProfile),
       createdAt: Number(recipe.createdAt || Date.now()),
       updatedAt: Number(recipe.updatedAt || Date.now())
@@ -2237,6 +2241,7 @@
       '<p><strong>Proteins:</strong> ' + safeText((recipe.proteins || []).join(', ') || 'Not set') + ' | <strong>Cuisines:</strong> ' + safeText((recipe.cuisines || []).join(', ') || 'Not set') + ' | <strong>Methods:</strong> ' + safeText((recipe.methods || []).join(', ') || 'Not set') + '</p>' +
       '<p><strong>Course:</strong> ' + safeText(displayCourseCategory(recipe.courseCategory)) + ' | <strong>Healthiness:</strong> ' + safeText(displayHealthiness(recipe.healthiness)) + '</p>' +
       '<p><strong>Source URL:</strong> ' + (recipe.sourceUrl ? ('<a href="' + safeText(recipe.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' + safeText(recipe.sourceUrl) + '</a>') : 'Not set') + '</p>' +
+      '<p><strong>Original PDF:</strong> ' + (recipe.recipePdf ? ('<a href="' + safeText(recipe.recipePdf) + '" target="_blank" rel="noopener noreferrer">Open original PDF</a>') : 'Not set') + '</p>' +
       '<p><strong>Prep:</strong> ' + safeText(recipe.prepMinutes || '-') + ' min | <strong>Cook:</strong> ' + safeText(recipe.cookMinutes || '-') + ' min</p>' +
       '<section class="recipes-substitutions">' +
         '<div class="recipes-editor-subheader"><h3>Servings</h3></div>' +
@@ -2809,6 +2814,36 @@
     });
   }
 
+  function calculatePdfColumnSplitX(items, viewportWidth) {
+    var xs = (items || []).map(function (item) {
+      var transform = item && item.transform ? item.transform : null;
+      return transform ? Number(transform[4]) : NaN;
+    }).filter(function (x) { return Number.isFinite(x); }).sort(function (a, b) { return a - b; });
+
+    if (!xs.length) return Number(viewportWidth || 640) / 2;
+    var minX = xs[0];
+    var maxX = xs[xs.length - 1];
+    if (maxX - minX < 140) return minX + ((maxX - minX) / 2);
+
+    var bestGap = 0;
+    var bestMid = 0;
+    for (var i = 1; i < xs.length; i += 1) {
+      var gap = xs[i] - xs[i - 1];
+      if (gap > bestGap) {
+        var mid = (xs[i] + xs[i - 1]) / 2;
+        var leftCount = xs.filter(function (x) { return x < mid; }).length;
+        var rightCount = xs.length - leftCount;
+        if (leftCount >= Math.max(6, Math.floor(xs.length * 0.18)) && rightCount >= Math.max(6, Math.floor(xs.length * 0.18))) {
+          bestGap = gap;
+          bestMid = mid;
+        }
+      }
+    }
+
+    if (bestGap >= 24) return bestMid;
+    return minX + ((maxX - minX) * 0.48);
+  }
+
   function splitInlineStepText(line) {
     var text = normalizePdfLine(line);
     if (!text) return [];
@@ -2863,6 +2898,9 @@
       if (!row || !row.full) return false;
       if (/^\d+$/.test(row.full)) return false;
       if (detectPdfSectionHeading(row.full)) return false;
+      var token = normalizeToken(row.full);
+      if (!token) return false;
+      if (/kchavez s cookbook|cookbook|recipe index/.test(token)) return false;
       return row.full.length >= 4;
     });
     if (!topRows.length) return String(fallbackTitle || 'Imported Recipe PDF').trim();
@@ -2889,6 +2927,15 @@
       var windowRows = rows.slice(anchor.index + 1, endIndex);
       var ingredients = [];
       var leftLines = windowRows.map(function (row) { return normalizePdfLine(row.left || ''); }).filter(Boolean);
+      leftLines = leftLines.map(function (line, idx, all) {
+        if (/^\d+$/.test(line) && all[idx + 1] && /^\/\d+/.test(all[idx + 1])) {
+          return line + all[idx + 1];
+        }
+        if (idx > 0 && /^\/\d+/.test(line) && /^\d+$/.test(all[idx - 1])) {
+          return '';
+        }
+        return line;
+      }).filter(Boolean);
       leftLines.forEach(function (line) {
         if (detectPdfSectionHeading(line)) return;
         var ingredient = parseIngredientLine(line);
@@ -3004,7 +3051,11 @@
     if (!cleaned) return '';
     var numbered = cleaned.match(/^(\d+)\s+([A-Za-z].+)$/);
     if (numbered && !/^(\d+)\s+(cups?|tbsp|tsp|oz|lb|lbs|g|kg|ml|l)\b/i.test(cleaned)) {
-      return numbered[2].trim();
+      var headingCandidate = String(numbered[2] || '').trim();
+      var wordCount = headingCandidate.split(/\s+/).filter(Boolean).length;
+      if (headingCandidate.length <= 44 && wordCount <= 4 && !/[.;,!?]/.test(headingCandidate) && !/^\(.+\)$/.test(headingCandidate)) {
+        return headingCandidate;
+      }
     }
     var plain = cleaned.match(/^(prepare|cook|make|assemble|serve|rest|marinate|sauce|toppings?)\b[:\-]?\s*(.*)$/i);
     if (plain) {
@@ -3141,7 +3192,7 @@
       var page = await doc.getPage(pageNum);
       var content = await page.getTextContent();
       var viewport = page.getViewport({ scale: 1 });
-      var splitX = Number(viewport && viewport.width ? viewport.width / 2 : 320);
+      var splitX = calculatePdfColumnSplitX(content.items || [], Number(viewport && viewport.width || 640));
       var pageRows = buildPdfRowsFromItems(content.items || [], splitX);
       pageRows.forEach(function (row) {
         structuredRows.push({
@@ -3387,6 +3438,7 @@
     }
     state.editingRecipeId = recipe && recipe.id ? recipe.id : '';
     state.editorPhotos = model.photos.slice();
+    state.editorRecipePdfUrl = String(model.recipePdf || '').trim();
     state.editorSectionOverrides = (model.sectionOverrides || []).slice();
 
     title.textContent = state.editingRecipeId ? 'Edit recipe' : 'Add recipe';
@@ -3422,6 +3474,7 @@
     if (overlay) overlay.hidden = true;
     state.editingRecipeId = '';
     state.editorPhotos = [];
+    state.editorRecipePdfUrl = '';
     state.editorPdfPreviewText = '';
     state.editorPdfSuggestedSections = [];
     state.editorPdfAutoAcceptWithStepRefs = true;
@@ -3546,6 +3599,60 @@
     return response.json();
   }
 
+  async function ensureDriveFolderExists(folderName) {
+    var cleanName = String(folderName || '').trim().replace(/^\/+|\/+$/g, '');
+    if (!cleanName) throw new Error('Missing OneDrive folder name.');
+    var encoded = encodeGraphPath(cleanName);
+    try {
+      return await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encoded);
+    } catch (_error) {
+      return graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: cleanName,
+          folder: {},
+          '@microsoft.graph.conflictBehavior': 'rename'
+        })
+      });
+    }
+  }
+
+  function sanitizePdfFileName(name) {
+    var raw = String(name || '').trim() || 'recipe';
+    var base = raw.replace(/\.pdf$/i, '');
+    base = base.replace(/[^a-z0-9._-]+/gi, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    return (base || 'recipe') + '-' + Date.now() + '.pdf';
+  }
+
+  async function uploadRecipePdfToOneDrive(file) {
+    if (!file) throw new Error('Select a PDF file first.');
+    var token = getGraphAccessToken();
+    if (!token) throw new Error('Please sign in to Microsoft first.');
+    await ensureDriveFolderExists('recipe_pdfs');
+    var fileName = sanitizePdfFileName(file.name || 'recipe.pdf');
+    var graphPath = encodeGraphPath('recipe_pdfs/' + fileName);
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + graphPath + ':/content';
+    var uploadResp = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': String(file.type || '').trim() || 'application/pdf'
+      },
+      body: file
+    });
+    if (!uploadResp.ok) {
+      var errorText = await uploadResp.text().catch(function () { return ''; });
+      throw new Error('Unable to upload PDF to OneDrive (' + uploadResp.status + '). ' + errorText.slice(0, 140));
+    }
+    var uploaded = await uploadResp.json().catch(function () { return {}; });
+    return {
+      url: String(uploaded.webUrl || uploaded['@microsoft.graph.downloadUrl'] || '').trim(),
+      name: String(uploaded.name || fileName),
+      id: String(uploaded.id || '').trim(),
+      path: 'recipe_pdfs/' + fileName
+    };
+  }
+
   async function resolveExcelWorkbookPath() {
     if (state.excel.workbookPath) return state.excel.workbookPath;
 
@@ -3634,6 +3741,7 @@
         try { return JSON.parse(rowObj[EXCEL_COLUMNS.sectionOverridesJson] || '[]'); } catch (_e) { return []; }
       })(),
       sourceUrl: rowObj[EXCEL_COLUMNS.recipeUrl] || rowObj[EXCEL_COLUMNS.sourceUrl] || '',
+      recipePdf: rowObj[EXCEL_COLUMNS.recipePdf] || '',
       preferredCookMethodProfile: rowObj[EXCEL_COLUMNS.preferredCookMethodProfile] || '',
       createdAt: Number(rowObj[EXCEL_COLUMNS.createdAt] || 0) || Date.now(),
       updatedAt: Number(rowObj[EXCEL_COLUMNS.updatedAt] || 0) || Date.now()
@@ -3728,6 +3836,7 @@
     byName[EXCEL_COLUMNS.variationsJson] = JSON.stringify(model.variations || []);
     byName[EXCEL_COLUMNS.sectionOverridesJson] = JSON.stringify(model.sectionOverrides || []);
     byName[EXCEL_COLUMNS.recipeUrl] = model.sourceUrl || '';
+    byName[EXCEL_COLUMNS.recipePdf] = model.recipePdf || '';
     byName[EXCEL_COLUMNS.sourceUrl] = model.sourceUrl || '';
     byName[EXCEL_COLUMNS.preferredCookMethodProfile] = model.preferredCookMethodProfile || '';
     byName.servings = model.servings || 4;
@@ -3980,6 +4089,7 @@
       prepMinutes: form.elements.prepMinutes.value,
       cookMinutes: form.elements.cookMinutes.value,
       sourceUrl: form.elements.sourceUrl ? form.elements.sourceUrl.value : '',
+      recipePdf: state.editorRecipePdfUrl || (state.editingRecipeId ? ((getRecipeById(state.editingRecipeId) || {}).recipePdf || '') : ''),
       ingredients: normalizedIngredientRows,
       steps: steps,
       photos: state.editorPhotos,
@@ -4169,11 +4279,26 @@
           }
           if (action === 'parse-pdf') {
             var pdfInput = root.querySelector('#recipesPdfInput');
+            var saveOriginalToggle = root.querySelector('#recipesPdfSaveOriginalToggle');
             var pdfFile = pdfInput && pdfInput.files && pdfInput.files[0] ? pdfInput.files[0] : null;
             updateIntakeStatus('Parsing PDF recipe...', false);
-            parseRecipeFromPdfFile(pdfFile).then(function (result) {
+            parseRecipeFromPdfFile(pdfFile).then(async function (result) {
+              var shouldUploadOriginal = !saveOriginalToggle || saveOriginalToggle.checked === true;
+              if (shouldUploadOriginal && pdfFile) {
+                try {
+                  var uploadedPdf = await uploadRecipePdfToOneDrive(pdfFile);
+                  if (uploadedPdf && uploadedPdf.url && result && result.model) {
+                    result.model.recipePdf = uploadedPdf.url;
+                  }
+                  updateIntakeStatus('PDF parsed and original file uploaded to OneDrive recipe_pdfs.', false);
+                } catch (uploadError) {
+                  updateIntakeStatus('PDF parsed, but OneDrive upload failed: ' + (uploadError && uploadError.message ? uploadError.message : 'unknown error'), true);
+                }
+              }
               openEditor(result.model, { pdfPreviewText: result.previewText, pdfSuggestedSections: result.suggestedSections || [] });
-              updateIntakeStatus('PDF parsed. Review sections, ingredients, and steps before saving.', false);
+              if (!shouldUploadOriginal) {
+                updateIntakeStatus('PDF parsed. Review sections, ingredients, and steps before saving.', false);
+              }
             }).catch(function (error) {
               updateIntakeStatus(error && error.message ? error.message : 'Unable to parse PDF recipe.', true);
             });
@@ -4645,6 +4770,7 @@
   window.RecipesTabSystem = {
     init: init,
     parseRecipeFromPdfFile: parseRecipeFromPdfFile,
+    uploadRecipePdfToOneDrive: uploadRecipePdfToOneDrive,
     syncFromExcel: syncFromExcel,
     syncToExcel: syncToExcel
   };
