@@ -3034,6 +3034,18 @@
         rightLineCount: rows.filter(function (row) { return Boolean(String(row.right || '').trim()); }).length,
         usedFallback: false
       },
+      sections: sections.map(function (section) {
+        return {
+          title: String(section.title || '').trim(),
+          ingredients: (section.ingredients || []).map(function (row) {
+            return {
+              quantity: String((row && row.quantity) || '').trim(),
+              item: String((row && row.item) || '').trim()
+            };
+          }).filter(function (row) { return row.quantity || row.item; }),
+          steps: (section.steps || []).map(function (step) { return String(step || '').trim(); }).filter(Boolean)
+        };
+      }),
       suggestedSections: sectionOverrides.map(function (section) {
         return {
           id: section.id,
@@ -3182,6 +3194,18 @@
         rightLineCount: 0,
         usedFallback: true
       },
+      sections: sections.map(function (section) {
+        return {
+          title: String(section.title || '').trim(),
+          ingredients: (section.ingredients || []).map(function (row) {
+            return {
+              quantity: String((row && row.quantity) || '').trim(),
+              item: String((row && row.item) || '').trim()
+            };
+          }).filter(function (row) { return row.quantity || row.item; }),
+          steps: (section.steps || []).map(function (step) { return String(step || '').trim(); }).filter(Boolean)
+        };
+      }),
       suggestedSections: sectionOverrides.map(function (section) {
         return {
           id: section.id,

@@ -629,6 +629,76 @@
         + '</div>';
     }
 
+    function renderPdfSectionsPreview(parsedResult) {
+      var sections = parsedResult && Array.isArray(parsedResult.sections) ? parsedResult.sections : [];
+      var normalized = sections.map(function (section, idx) {
+        return {
+          index: idx,
+          title: String(section && section.title || '').trim(),
+          ingredients: Array.isArray(section && section.ingredients) ? section.ingredients : [],
+          steps: Array.isArray(section && section.steps) ? section.steps : []
+        };
+      }).filter(function (section) {
+        return section.title || section.ingredients.length || section.steps.length;
+      });
+      if (!normalized.length) return '';
+
+      return '<div style="margin-bottom:18px;">'
+        + '<h3 style="margin:0 0 10px 0;color:#334155;font-size:14px;text-transform:uppercase;">Detected sections</h3>'
+        + normalized.map(function (section) {
+          var ingredientsHtml = section.ingredients.length
+            ? ('<ul style="margin:8px 0 0;padding-left:18px;">' + section.ingredients.map(function (row) {
+              var line = [String(row.quantity || '').trim(), String(row.item || '').trim()].filter(Boolean).join(' ').trim();
+              return '<li style="margin-bottom:4px;">' + escapeHtml(line || 'Ingredient') + '</li>';
+            }).join('') + '</ul>')
+            : '<div style="margin-top:8px;color:#64748b;font-size:12px;">No ingredients detected for this section.</div>';
+          var stepsHtml = section.steps.length
+            ? ('<ol style="margin:8px 0 0;padding-left:18px;">' + section.steps.map(function (step) {
+              return '<li style="margin-bottom:4px;">' + escapeHtml(step) + '</li>';
+            }).join('') + '</ol>')
+            : '<div style="margin-top:8px;color:#64748b;font-size:12px;">No steps detected for this section.</div>';
+          return '<div data-pdf-section-card-index="' + escapeHtml(String(section.index)) + '" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#f8fafc;">'
+            + '<div style="font-weight:700;color:#0f172a;">' + escapeHtml(section.title || ('Section ' + (section.index + 1))) + '</div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+            + '<div><div style="margin-top:8px;font-size:12px;font-weight:700;color:#475569;">Ingredients</div>' + ingredientsHtml + '</div>'
+            + '<div><div style="margin-top:8px;font-size:12px;font-weight:700;color:#475569;">Steps</div>' + stepsHtml + '</div>'
+            + '</div>'
+            + '</div>';
+        }).join('')
+        + '</div>';
+    }
+
+    function renderPdfSectionQualityWarning(parsedResult) {
+      var sections = parsedResult && Array.isArray(parsedResult.sections) ? parsedResult.sections : [];
+      if (!sections.length) return { html: '', firstIncompleteIndex: -1 };
+      var incomplete = sections.map(function (section, idx) {
+        var ingredients = Array.isArray(section && section.ingredients) ? section.ingredients : [];
+        var steps = Array.isArray(section && section.steps) ? section.steps : [];
+        if (ingredients.length && steps.length) return null;
+        return {
+          index: idx,
+          title: String(section && section.title || '').trim() || ('Section ' + (idx + 1)),
+          missingIngredients: !ingredients.length,
+          missingSteps: !steps.length
+        };
+      }).filter(Boolean);
+      if (!incomplete.length) return { html: '', firstIncompleteIndex: -1 };
+      var detailText = incomplete.slice(0, 3).map(function (row) {
+        if (row.missingIngredients && row.missingSteps) return row.title + ' (ingredients + steps)';
+        if (row.missingIngredients) return row.title + ' (ingredients)';
+        return row.title + ' (steps)';
+      }).join(', ');
+      if (incomplete.length > 3) detailText += ', +' + (incomplete.length - 3) + ' more';
+      var firstIncompleteIndex = Number(incomplete[0] && incomplete[0].index || 0);
+      return {
+        html: '<button type="button" data-modal-action="focus-incomplete-section" data-section-index="' + escapeHtml(String(firstIncompleteIndex)) + '" style="margin-bottom:12px;padding:7px 10px;border-radius:999px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:600;border:1px solid #fdba74;display:inline-block;cursor:pointer;">'
+          + '⚠️ Section parse check: ' + escapeHtml(String(incomplete.length)) + ' section(s) may be incomplete — ' + escapeHtml(detailText)
+          + ' (click to jump)'
+          + '</button>',
+        firstIncompleteIndex: firstIncompleteIndex
+      };
+    }
+
     function showPdfImportRecipeForm() {
       var container = document.getElementById(ROOT_ID);
       if (!container) return;
@@ -764,6 +834,8 @@
 
       var resolvedRecipeName = String(recipeName || model.title || 'Imported recipe').trim();
       var parserDiagnosticsHtml = renderPdfParserDiagnostics(parsedResult);
+      var sectionWarning = renderPdfSectionQualityWarning(parsedResult);
+      var sectionPreviewHtml = renderPdfSectionsPreview(parsedResult);
 
       dialog.innerHTML = '\
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">\
@@ -774,6 +846,8 @@
           <p style="margin:0;color:#2e7d32;font-size:13px;">✓ Parsed PDF recipe. Review the ingredients and steps, then save it as a new recipe.</p>\
         </div>\
         ' + parserDiagnosticsHtml + '\
+        ' + (sectionWarning && sectionWarning.html ? sectionWarning.html : '') + '\
+        ' + sectionPreviewHtml + '\
         <div style="margin-bottom:16px;">\
           <label style="display:block;margin-bottom:8px;color:#555;font-weight:500;">Recipe Name</label>\
           <input type="text" id="recipe-pdf-preview-name" value="' + escapeHtml(resolvedRecipeName) + '" placeholder="e.g., Grandma\'s Chili" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;font-size:14px;" />\
@@ -821,7 +895,16 @@
       modal.addEventListener('click', function (event) {
         var target = event.target && event.target.nodeType === Node.ELEMENT_NODE ? event.target : null;
         if (!target) return;
-        if (String(target.getAttribute('data-modal-action') || '').trim() !== 'save-pdf-recipe') return;
+        var modalAction = String(target.getAttribute('data-modal-action') || '').trim();
+        if (modalAction === 'focus-incomplete-section') {
+          var targetIndex = String(target.getAttribute('data-section-index') || '').trim();
+          var card = modal.querySelector('[data-pdf-section-card-index="' + targetIndex + '"]');
+          if (card && typeof card.scrollIntoView === 'function') {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return;
+        }
+        if (modalAction !== 'save-pdf-recipe') return;
       var descriptionInput = modal.querySelector('#recipe-pdf-description-input');
       var effectiveName = getPreviewPdfRecipeName(recipeName, parsedResult);
       saveParsedPdfRecipe(effectiveName, parsedResult, descriptionInput ? descriptionInput.value : '');
