@@ -5,48 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/tests/food-drink-tab-grouping.spec.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/nature-primary-grouping.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/BUTTONS_VISIBILITY_FIX.md" beforeDir="false" afterPath="$PROJECT_DIR$/BUTTONS_VISIBILITY_FIX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/BUTTON_POSITIONING_FIX_PHASE2.md" beforeDir="false" afterPath="$PROJECT_DIR$/BUTTON_POSITIONING_FIX_PHASE2.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CTA_VIEWPORT_ISSUE_ANALYSIS.md" beforeDir="false" afterPath="$PROJECT_DIR$/CTA_VIEWPORT_ISSUE_ANALYSIS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FAST_VISUAL_QA_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/FAST_VISUAL_QA_CHECKLIST.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/drinks-cocktails-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/drinks-cocktails-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/INTEGRATION_EXAMPLES.md" beforeDir="false" afterPath="$PROJECT_DIR$/INTEGRATION_EXAMPLES.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/diagnostics-hub-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/drinks-cocktails-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/drinks-cocktails-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/recipes-shopping-ui-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/recipes-shopping-ui-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/recipes-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/recipes-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/tab-content-loader.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tab-content-loader.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UI_POLISH_IMPROVEMENTS_COMPLETED.md" beforeDir="false" afterPath="$PROJECT_DIR$/UI_POLISH_IMPROVEMENTS_COMPLETED.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UI_UX_ENHANCEMENTS_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/UI_UX_ENHANCEMENTS_SUMMARY.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/ADVENTURE_PLANNER_RETIREMENT.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ADVENTURE_PLANNER_RETIREMENT.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/DEBUG_SYSTEM_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DEBUG_SYSTEM_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IMPLEMENTATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IMPLEMENTATION_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/IPHONE_VIEW_FIX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IPHONE_VIEW_FIX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/PHASE2_SPECIES_EXPLORER_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/PHASE2_SPECIES_EXPLORER_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/TAB_ACTION_CONVENTIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TAB_ACTION_CONVENTIONS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/TV_MODE_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TV_MODE_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/diagnostics-hub-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/playwright-helpers.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/playwright-helpers.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/recipes-tab.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/recipes-tab.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,7 +25,7 @@
             <option name="modeId" value="Agent" />
             <option name="modelType" value="builtin_family" />
             <option name="modelValue" value="auto" />
-            <option name="status" value="Processing" />
+            <option name="status" value="Completed" />
             <option name="targetType" value="LOCAL" />
           </session>
           <session>
@@ -169,7 +130,7 @@
       <workItem from="1777741223725" duration="94208000" />
       <workItem from="1778017353146" duration="10311000" />
       <workItem from="1778620279012" duration="48477000" />
-      <workItem from="1778942044064" duration="16425000" />
+      <workItem from="1778942044064" duration="17469000" />
     </task>
     <servers />
   </component>

@@ -6,7 +6,25 @@
   var INGREDIENT_DB_STORAGE_KEY = 'kapRecipesIngredientsDbV1';
   var SUBSTITUTION_DB_STORAGE_KEY = 'kapRecipesSubstitutionsDbV1';
   var ROOT_ID = 'recipesRoot';
-  var EXCEL_WORKBOOK_CANDIDATES = ['recipes.xlsx', 'recipes.xlsm', 'recipes'];
+  var RECIPES_WORKBOOK_PATH_CACHE_KEY = 'kap_recipes_workbook_path_v1';
+  var EXCEL_WORKBOOK_CANDIDATES = [
+    'Copilot_Apps/Kyles_Adventure_Finder/Recipes.xlsx',
+    'Copilot_Apps/Kyles_Adventure_Finder/recipes.xlsx',
+    'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx',
+    'Copilot_Apps/Recipes.xlsx',
+    'Copilot_Apps/recipes.xlsx',
+    'Recipes.xlsx',
+    'recipes.xlsx',
+    'recipes.xlsm',
+    'Recipes.xlsm',
+    'recipes'
+  ];
+  var EXCEL_WORKBOOK_PATH_PREFIXES = [
+    '',
+    'Copilot_Apps/Kyles_Adventure_Finder/',
+    'Copilot_Apps/',
+    'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'
+  ];
   var EXCEL_TABLE_NAME = 'recipes';
   var EXCEL_SUBSTITUTIONS_TABLE_NAME = 'substitutions';
   var EXCEL_INGREDIENTS_TABLE_NAME = 'ingredients';
@@ -3909,28 +3927,108 @@
     };
   }
 
+  function clearRecipesWorkbookPath() {
+    state.excel.workbookPath = '';
+    try { window.localStorage.removeItem(RECIPES_WORKBOOK_PATH_CACHE_KEY); } catch (_e) {}
+  }
+
+  function rememberRecipesWorkbookPath(path) {
+    var normalized = String(path || '').trim();
+    if (!normalized) return;
+    state.excel.workbookPath = normalized;
+    try { window.localStorage.setItem(RECIPES_WORKBOOK_PATH_CACHE_KEY, normalized); } catch (_e) {}
+  }
+
+  function expandRecipesWorkbookPath(path) {
+    var clean = String(path || '').trim().replace(/^\/+/, '');
+    if (!clean) return [];
+    if (clean.indexOf('/') >= 0) return [clean];
+    return EXCEL_WORKBOOK_PATH_PREFIXES.map(function (prefix) {
+      return String(prefix || '') + clean;
+    }).filter(Boolean);
+  }
+
+  async function probeRecipesWorkbook(filePath) {
+    var normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath) return false;
+    var encodedPath = encodeGraphPath(normalizedPath);
+    var tableRef = encodeURIComponent(EXCEL_TABLE_NAME);
+    try {
+      await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+      return true;
+    } catch (error) {
+      var msg = String(error && error.message ? error.message : '');
+      if (/graph request failed \(4\d\d\)/i.test(msg) || /itemnotfound/i.test(msg)) return false;
+      throw error;
+    }
+  }
+
   async function resolveExcelWorkbookPath() {
     if (state.excel.workbookPath) return state.excel.workbookPath;
 
-    for (var i = 0; i < EXCEL_WORKBOOK_CANDIDATES.length; i += 1) {
-      var candidate = EXCEL_WORKBOOK_CANDIDATES[i];
-      var candidatePath = encodeGraphPath(candidate);
-      try {
-        await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + candidatePath);
-        state.excel.workbookPath = candidate;
-        return state.excel.workbookPath;
-      } catch (_error) {
-        // Try next candidate.
+    // Check localStorage cache first.
+    try {
+      var cached = String(window.localStorage.getItem(RECIPES_WORKBOOK_PATH_CACHE_KEY) || '').trim();
+      if (cached) {
+        if (await probeRecipesWorkbook(cached)) {
+          state.excel.workbookPath = cached;
+          return state.excel.workbookPath;
+        }
+        // Cached path no longer valid – clear and re-discover.
+        clearRecipesWorkbookPath();
       }
+    } catch (_cacheError) {}
+
+    var checked = [];
+    var seen = {};
+
+    function appendCandidate(list, path) {
+      expandRecipesWorkbookPath(path).forEach(function (expandedPath) {
+        var normalized = String(expandedPath || '').trim();
+        if (!normalized) return;
+        var key = normalized.toLowerCase();
+        if (seen[key]) return;
+        seen[key] = true;
+        list.push(normalized);
+      });
     }
 
-    var search = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root/search(q=\'recipes\')?$select=name,parentReference');
-    var list = Array.isArray(search.value) ? search.value : [];
-    var match = list.find(function (item) { return String(item.name || '').toLowerCase().indexOf('recipes') >= 0; });
-    if (!match || !match.parentReference) throw new Error('Could not find workbook named recipes.');
-    var parentPath = String(match.parentReference.path || '').replace('/drive/root:', '').replace(/^\/+/, '');
-    state.excel.workbookPath = parentPath ? (parentPath + '/' + match.name) : match.name;
-    return state.excel.workbookPath;
+    var candidates = [];
+    // Try the main app's known Excel path first (recipes may share the same workbook).
+    appendCandidate(candidates, String(window.__resolvedExcelFilePath || window.filePath || '').trim());
+    EXCEL_WORKBOOK_CANDIDATES.forEach(function (c) { appendCandidate(candidates, c); });
+
+    for (var i = 0; i < candidates.length; i += 1) {
+      var candidate = candidates[i];
+      checked.push(candidate);
+      try {
+        if (await probeRecipesWorkbook(candidate)) {
+          rememberRecipesWorkbookPath(candidate);
+          return state.excel.workbookPath;
+        }
+      } catch (_probeError) {}
+    }
+
+    // Fallback: OneDrive search.
+    try {
+      var search = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root/search(q=\'recipes\')?$select=name,parentReference');
+      var list = Array.isArray(search.value) ? search.value : [];
+      for (var j = 0; j < list.length; j += 1) {
+        var item = list[j];
+        var itemName = String(item && item.name ? item.name : '').trim();
+        if (!/\.(xlsx|xlsm)$/i.test(itemName) && itemName.toLowerCase().indexOf('recipes') < 0) continue;
+        var parentRef = String((item.parentReference && item.parentReference.path) || '').replace('/drive/root:', '').replace(/^\/+/, '');
+        var searchPath = parentRef ? (parentRef + '/' + itemName) : itemName;
+        if (seen[searchPath.toLowerCase()]) continue;
+        checked.push(searchPath);
+        if (await probeRecipesWorkbook(searchPath)) {
+          rememberRecipesWorkbookPath(searchPath);
+          return state.excel.workbookPath;
+        }
+      }
+    } catch (_searchError) {}
+
+    throw new Error('Could not find a OneDrive workbook containing the "' + EXCEL_TABLE_NAME + '" table. Checked: ' + checked.join(', '));
   }
 
   function splitCsvCell(value) {
@@ -4006,10 +4104,23 @@
 
   async function readRecipesFromExcel() {
     var path = await resolveExcelWorkbookPath();
-    var encodedPath = encodeGraphPath(path);
-    var tableRef = encodeURIComponent(EXCEL_TABLE_NAME);
-    var columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
-    var rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
+    var encodedPath, columnsResp, rowsResp;
+    try {
+      encodedPath = encodeGraphPath(path);
+      var tableRef = encodeURIComponent(EXCEL_TABLE_NAME);
+      columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/columns?$select=name,index');
+      rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableRef + '/rows?$top=5000');
+    } catch (firstError) {
+      var firstMsg = String(firstError && firstError.message ? firstError.message : '');
+      if (!/graph request failed \(4\d\d\)/i.test(firstMsg) && !/itemnotfound/i.test(firstMsg)) throw firstError;
+      // Stale path — clear cache and re-resolve.
+      clearRecipesWorkbookPath();
+      var retryPath = await resolveExcelWorkbookPath();
+      var retryEncoded = encodeGraphPath(retryPath);
+      var retryTableRef = encodeURIComponent(EXCEL_TABLE_NAME);
+      columnsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + retryEncoded + ':/workbook/tables/' + retryTableRef + '/columns?$select=name,index');
+      rowsResp = await graphFetchJson('https://graph.microsoft.com/v1.0/me/drive/root:/' + retryEncoded + ':/workbook/tables/' + retryTableRef + '/rows?$top=5000');
+    }
 
     var columns = (columnsResp.value || []).slice().sort(function (a, b) { return Number(a.index || 0) - Number(b.index || 0); });
     var names = columns.map(function (col) { return String(col.name || '').trim(); });
